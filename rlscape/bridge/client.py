@@ -55,6 +55,10 @@ class BridgeClient:
         """Block until ``ticks`` game ticks have passed; returns the tick it resumed on."""
         return self.request("wait", ticks=ticks)["tick"]
 
+    def ge_snapshot(self) -> dict[str, Any]:
+        """The full GE price index (``prices``), bot stock per item (``bot_stock``) and ``open_player_offers``."""
+        return self.request("ge_snapshot")
+
     def spawn(self) -> dict[str, Any]:
         """Spawn a fresh level-3 character at Lumbridge; returns its state."""
         return self.request("spawn")["state"]

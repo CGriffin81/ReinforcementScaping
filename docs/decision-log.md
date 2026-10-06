@@ -30,6 +30,11 @@ The interaction records in `docs/agent-interactions/` hold the full context.
     reversible choice.
   - The fork's LFS cache history (43 objects, 367 MB) went to GitHub LFS. The
     GitHub Free quota is 10 GiB.
+- **Fixed price table:** snapshot the GE price index after the ambient bots
+  have traded for **10 game-hours** from a freshly seeded GE. This is the
+  agent's recommended option (b); the alternative was the seeded
+  high-alchemy values (a). Produced by `scripts/ge_warmup.py` into
+  `data/prices_v1.csv` plus `.meta.json`.
 - **Stretch (E7):** deferred. Caleb asked for more information, which is now
   in ROADMAP Appendix B. Decide at the week-5 midpoint.
 
@@ -43,6 +48,19 @@ The interaction records in `docs/agent-interactions/` hold the full context.
 - Stretch: an LLM planner (option A).
 - Keep server modifications as a patch set in this repo. **Not accepted:** the
   user chose a separate fork (see the user decisions above).
+- **Pending, from the G3 findings:**
+  - *Economy model:* sell through shops, plus High Level Alchemy once it's
+    unlocked; buy from shops and from GE bot stock. This needs a fork change
+    so bridge characters trade on the GE as players. Drop the "sell at GE"
+    options, since this world has no GE buyers.
+  - *Stable prices across episodes:* set `bots_influence_ge_price = false` in
+    `rl.conf` so the agent's purchases don't move the index (avoiding the
+    upstream first-trade bug), and reset the GE to
+    `grandexchange_warmup10h.db` at the start of each real-server episode.
+  - *Valuation:* keep the high-alchemy table (`prices_v1`) for net worth,
+    since it's what this world actually pays through alchemy and shops. Add
+    an evaluation-time sensitivity check against an alternative table built
+    from `BotPrices`.
 
 ### Findings
 - **G1 (tick speed), early read:** the game loop is
@@ -89,6 +107,48 @@ The interaction records in `docs/agent-interactions/` hold the full context.
   pulses, no tick listeners) when the connectivity check to google.com and
   2009scape.org fails. Experiments therefore need internet access, or a
   config change.
+- **GE economy mechanics (G3, from reading the code):**
+  - *Bot sales are stock, not trades.* Ambient bots sell through
+    `GrandExchange.addBotOffer` into a `bot_offers` table, priced at
+    1.1 × max(base value or `BotPrices` override, price index).
+  - *Only real players' buy offers match bot stock.* `tryExchangeWithBots`
+    runs only for non-bot **buy** offers. Player **sell** offers match only
+    player buy offers. Nothing in the game creates buy offers: no bot calls
+    `ScriptAPI.buyFromGE`, and it only stores the offer in a map without
+    dispatching it.
+  - *The price index moves only on executed trades* (`PriceIndex.addTrade`).
+    With no human players it should stay at the seeded high-alchemy value
+    (about 60% of base value). The warm-up below tests this.
+  - *A server-controlled character can't trade as a player.*
+    `GrandExchange.dispatch` rewrites every offer from an artificial player
+    into a bot offer on the server's own account. Our RL character is an
+    `AIPlayer`, so as-is its buys never fill and its sales vanish into bot
+    stock.
+  - *Upstream seeding bug:* the index is seeded with `total_value = alch` but
+    `unique_trades = 0`, so an item's first trade sets its price to about
+    alch + trade price.
+- **G3 result: prices are static and the market is bot-stocked.** The
+  10-game-hour warm-up from a freshly seeded GE (22:30–22:52, fork
+  `a394d60`, 15 ms ticks, 100 ambient bots) changed **0 of 7,324 prices** and
+  left **0 items ever traded**. Open player offers stayed at 0 throughout.
+  - Bot stock grew from 0 to 19,675 units of 145 items. The largest stocks:
+    pure essence 5,643; oak logs 3,192; cannonballs 2,016; bow strings 1,596;
+    logs 1,544; willow logs 1,287; yew logs 955; bones 764.
+  - Achieved speed over the run was 21.5 ms per tick (28×), slower than the
+    gate's 17.6 ms. Per-sample snapshots and the growing world state add
+    overhead.
+  - So `data/prices_v1.csv` is **exactly the seeded high-alchemy values**.
+    Under this server's mechanics, options (a) and (b) give the same table.
+    Examples: cowhide 1, bones 1, big bones 1, logs 2, oak 12, willow 24,
+    coal 27, iron bar 17, raw lobster 170, steel pickaxe 300.
+  - `data/grandexchange_warmup10h.db` keeps the GE database at the end of the
+    warm-up. It was copied about 1 game-minute after the 10-hour mark, so it
+    holds 19,723 bot-stock units. Real-server episodes can reset to it.
+- **Shop economics:** general stores buy from players at the low-alchemy
+  value (about 40% of base value), minus 3% of value per unit of overstock
+  (capped at 10 units). They sell at 100–130% of base value. Items sold to
+  shops are recycled into GE bot stock every 180 game-minutes
+  (`Shops.kt`, tick-based).
 - **Fidelity notes for later:**
   - `AIPlayer.finalizeDeath` calls `fullRestore()`. Check death and item-loss
     behaviour against a real player before combat options rely on it.

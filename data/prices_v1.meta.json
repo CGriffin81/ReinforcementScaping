@@ -1,0 +1,19 @@
+{
+  "description": "Fixed price table for net worth: GE price index after the ambient bots traded for 10 game-hours from a freshly seeded GE.",
+  "decision": "Caleb, 2026-10-05 (docs/decision-log.md)",
+  "server_commit": "a394d60486ebc65ed2d003d514028dcbc9dc16e2",
+  "started": "2026-10-05T22:30:23-05:00",
+  "finished": "2026-10-05T22:51:54-05:00",
+  "start_tick": 18,
+  "end_tick": 60020,
+  "game_hours": 10.0,
+  "tick_ms": 15,
+  "items": 7324,
+  "items_changed_from_seed": 0,
+  "items_ever_traded": 0,
+  "time_series": [
+    "results\\ge\\warmup_20261005_223023_prices.csv",
+    "results\\ge\\warmup_20261005_223023_bot_stock.csv",
+    "results\\ge\\warmup_20261005_223023_summary.csv"
+  ]
+}
