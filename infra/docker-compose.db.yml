@@ -1,0 +1,27 @@
+# Local MariaDB for the 2009Scape server.
+# server/Server/worldprops/default.conf expects database "global" at 127.0.0.1:3306, user root, empty password.
+# The empty root password is a deliberate local-only choice (approved 2026-10-05); the port is bound to localhost.
+#
+#   docker compose -f infra/docker-compose.db.yml up -d
+services:
+  db:
+    image: mariadb:11.4-noble
+    container_name: rlscape-mariadb
+    restart: unless-stopped
+    environment:
+      MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "1"
+    ports:
+      - "127.0.0.1:3306:3306"
+    volumes:
+      - rlscape-db:/var/lib/mysql
+      # global.sql runs CREATE DATABASE itself, so MARIADB_DATABASE must stay unset.
+      - ../server/Server/db_exports/global.sql:/docker-entrypoint-initdb.d/global.sql:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      start_period: 30s
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  rlscape-db:

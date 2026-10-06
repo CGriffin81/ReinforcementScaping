@@ -1,0 +1,21 @@
+# 2009Scape server checkout (separate git repo, AGPLv3); tracked as a submodule once a fork remote exists
+/server/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+*.egg-info/
+
+# Experiment outputs
+/results/
+/runs/
+*.ckpt
+*.zip
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
