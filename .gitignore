@@ -1,6 +1,3 @@
-# 2009Scape server checkout (separate git repo, AGPLv3); tracked as a submodule once a fork remote exists
-/server/
-
 # Python
 __pycache__/
 *.py[cod]

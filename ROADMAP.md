@@ -96,7 +96,7 @@ ReinforcementScaping/
 
 - **Sim:** target ≥20k decisions/s on 16 threads. A 20-game-hour episode has roughly 100–300 decisions, so a 5M-decision run should take roughly 15–30 min including PPO updates, and all of E2 (25 runs) fits overnight. Small-MLP PPO runs faster on CPU (Ryzen 7 5800X) than on the GPU. Save the RTX 3050 for Envelope Q and the stretch work.
 - **Real server:** at the default 600 ms tick, 1 game-hour takes 1 wall-hour. With a 10× tick and 8 RL-controlled `AIPlayer`s in one world, 1 wall-hour ≈ 80 game-hours. Then E6 (4 configs × 5 seeds × 20 game-hours = 400 game-hours) takes about 5 wall-hours. **Without the speedup it takes about 50 wall-hours**, which is why decision gate G1 matters. A fallback is to validate only the first 10 game-hours (checkpoints 2–10).
-- **G1 early read (Oct 5):** the tick loop is `core/worker/MajorUpdateWorker.kt` and sleeps a hard-coded `600 - elapsed` ms, so making the interval configurable is a one-line patch. About 160 call sites use `System.currentTimeMillis()`. Most are farming, brewing and minigame timers, which are out of scope. The one that matters for us is the 10 s "in combat" flag (`CombatPulse.kt` / `Entity.java`), which stays on wall-clock time. That needs checking under speedup.
+- **G1 measured (Oct 5):** 34× at a 15 ms tick with one world and 100 ambient bots. So 8 parallel RL characters would give about 270 game-hours per wall-hour, and E6's 400 game-hours fit in about 1.5 wall-hours. About 2.6 ms per tick is fixed overhead, so going much faster probably means turning down the ambient bots (not yet tried). Still open: about 160 `System.currentTimeMillis()` call sites stay on wall-clock time. Most are out of scope (farming, brewing, minigames), but the 10 s "in combat" flag (`CombatPulse.kt` / `Entity.java`) is in scope and needs checking once combat options exist.
 
 ---
 
@@ -107,18 +107,19 @@ ReinforcementScaping/
 
 *Server track*
 - [x] Install JDK 11 (Temurin 11.0.32 via winget). Maven isn't needed because the repo ships `Server/mvnw.cmd`.
-- [x] Clone the 2009scape server into `server/` (shallow, upstream `master`; switch to a fork once a remote exists).
+- [x] Fork the server: [CGriffin81/2009scape-rl](https://github.com/CGriffin81/2009scape-rl) (private, full upstream history; `master` = upstream `bea45a9e`, our work on `rl`). Linked here as the `server/` submodule.
 - [x] Build the server jar (`Server/target/server-1.0.0-jar-with-dependencies.jar`, ~3 min cold build).
 - [x] Run it against MariaDB (`infra/docker-compose.db.yml`, localhost-only). The first launch took 418 s, mostly filling the GE price index in SQLite; built-in bots start ticking right away. The game port 43595 binds to **all interfaces**, so restrict it to localhost before leaving the server up for long stretches.
 - [ ] Install Singleplayer through the Saradomin launcher, for reference play and for watching bots.
-- [ ] Read `core/game/bots/` (`AIPlayer`, `Script`, `ScriptAPI`) and 4–5 of the bundled scripts.
-- [ ] **G1, tick and headless:** find the main tick loop and the 600 ms constant, make it configurable, and test stability at 10× and 50×. The server is already headless; the client is optional.
-- [ ] **G2, state and actions:** write a minimal `RLBridge.kt` that spawns an `AIPlayer` at Lumbridge, runs an existing script for N ticks, and returns XP and inventory as JSON over TCP. Read the result from a Python client.
+- [x] Read `core/game/bots/` (`AIPlayer`, `Script`, `ScriptAPI`, `GeneralBotCreator`) and the bundled-script economy helpers.
+- [x] **G1, tick and headless: PASS.** `server.tick_ms` is now configurable and changeable at runtime through the bridge. Measured with 100 ambient bots: 4.9× at 120 ms, 9.5× at 60 ms, 17.5× at 30 ms, 34× at 15 ms (about 2.6 ms of overhead per tick). The "in combat" wall-clock flag is still untested under speedup.
+- [x] **G2, state and actions: PASS.** `content/rl/RLBridge.kt` + `RLCommands.kt` in the fork, and `rlscape/bridge/client.py` here. Spawns a character exactly as it leaves Tutorial Island, reads its full state, and drives authentic interactions: 600 ticks of chopping gave 10 logs and 250 XP. Covered by `scripts/gate_check.py` and `tests/test_bridge_live.py`.
 - [ ] **G3, GE dynamics:** read the GE price-update code (`bots_influence_ge_price = true` in `worldprops/default.conf` suggests prices follow bot volume). Log ~20 item prices over a few sped-up hours.
 - [ ] Export the fixed price table to `prices_v1.yaml`.
 
 *Python track*
-- [ ] `git init`, then `uv init` with Python 3.12. Add gymnasium, torch, stable-baselines3, sb3-contrib, morl-baselines, mo-gymnasium, tensorboard, pandas, pyarrow, matplotlib and pytest.
+- [x] `git init`, and a `uv` project pinned to Python 3.12 (`rlscape` package, pytest).
+- [ ] Add the RL stack when the sim needs it: gymnasium, torch, stable-baselines3, sb3-contrib, morl-baselines, mo-gymnasium, tensorboard, pandas, pyarrow, matplotlib.
 - [ ] `docs/env-contract.md`: obs fields and normalization, action list, mask semantics, info fields, and the reward vector `[skill, wealth]`.
 - [ ] `docs/option-catalog.md` v0 with ~20–30 options (see [Appendix A](#7-appendix-a-option-catalog-v0-draft)).
 

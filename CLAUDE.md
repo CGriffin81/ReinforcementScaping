@@ -50,17 +50,28 @@ work.
   too new for the RL stack.
 - JDK 11: `C:\Program Files\Eclipse Adoptium\jdk-11.0.32.101-hotspot`.
   Maven comes from the repo's `server/Server/mvnw.cmd` wrapper.
-- `server/` is an upstream clone of https://gitlab.com/2009scape/2009scape
-  (AGPLv3) at commit `bea45a9e93592b567f9b9293b82a36c8773244be`. It's
-  git-ignored and is **not** part of this repo.
-- Database: `docker compose -f infra/docker-compose.db.yml up -d` starts
-  MariaDB on 127.0.0.1:3306 (root, empty password, local only), loaded from
-  `server/Server/db_exports/global.sql`.
-- Build the server from `server/Server`: `mvnw.cmd -B clean package
-  -DskipTests` (about 3 min cold).
-- Run it from `server/Server` (the working directory matters for `data/`):
-  `java -jar target/server-1.0.0-jar-with-dependencies.jar`. The first launch
-  is slow because it fills the GE price index in SQLite one row at a time.
+- `server/` is a **git submodule** pointing to the fork
+  https://github.com/CGriffin81/2009scape-rl, branch `rl` (AGPLv3; upstream
+  is https://gitlab.com/2009scape/2009scape). In the fork, `master` = upstream
+  `bea45a9e` and our changes live on `rl`. All server modifications go in the
+  fork and are committed there first; then this repo's submodule pointer is
+  bumped.
+- Our server code is `Server/src/main/content/rl/` (`RLBridge.kt` transport,
+  `RLCommands.kt` commands). Config: `server.tick_ms` and the `[rl]` section;
+  `worldprops/rl.conf` is `default.conf` with the bridge enabled.
+- Build from `server/Server`: `mvnw.cmd -B package -DskipTests` (about 3 min
+  cold, about 1 min incremental).
+- Run from `server/Server` (the working directory matters for `data/`):
+  `java -jar target/server-1.0.0-jar-with-dependencies.jar worldprops/rl.conf`.
+  The first launch ever takes about 7 min to fill the GE price index; later
+  launches take about 8 s. The bridge listens on 127.0.0.1:43610.
+- The world only ticks fully while the server can reach the internet (its
+  connectivity check).
+- Python: `uv sync`, `uv run pytest` (live bridge tests skip when the server
+  is down), and `uv run python scripts/gate_check.py`.
+- Database: not needed with the current config (auth and account persistence
+  are off). `docker compose -f infra/docker-compose.db.yml up -d` starts
+  MariaDB on 127.0.0.1:3306 if it's ever needed.
 
 ## Engineering rules
 

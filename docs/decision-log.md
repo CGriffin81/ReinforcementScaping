@@ -22,6 +22,14 @@ The interaction records in `docs/agent-interactions/` hold the full context.
 - **Repository:** create a new GitHub repo under the `CGriffin81` account. It was
   created private at https://github.com/CGriffin81/ReinforcementScaping; private
   is the agent's reversible default. Keep the GitHub CLI installed.
+- **Server changes live in a separate fork,** not as patches in this repo. This
+  overrides the agent's recommendation.
+  - The fork is https://github.com/CGriffin81/2009scape-rl (private), with
+    `master` = upstream `bea45a9e` and our work on `rl`.
+  - It's linked here as the `server/` submodule; that link is the agent's
+    reversible choice.
+  - The fork's LFS cache history (43 objects, 367 MB) went to GitHub LFS. The
+    GitHub Free quota is 10 GiB.
 - **Stretch (E7):** deferred. Caleb asked for more information, which is now
   in ROADMAP Appendix B. Decide at the week-5 midpoint.
 
@@ -33,9 +41,8 @@ The interaction records in `docs/agent-interactions/` hold the full context.
   fixed price table, so that investing isn't penalized.
 - Measure skill reward as fractional total level gained.
 - Stretch: an LLM planner (option A).
-- Keep server modifications out of this repo for now: `server/` is a pinned
-  upstream clone. Whether to keep them as an overlay or patch set here, or as
-  a separate fork, is still open.
+- Keep server modifications as a patch set in this repo. **Not accepted:** the
+  user chose a separate fork (see the user decisions above).
 
 ### Findings
 - **G1 (tick speed), early read:** the game loop is
@@ -64,3 +71,26 @@ The interaction records in `docs/agent-interactions/` hold the full context.
 - **Server:** upstream commit `bea45a9e` builds cleanly with Temurin 11 and
   `mvnw.cmd`. The first launch spends minutes populating the GE price index
   in SQLite, one autocommitted insert per tradeable item.
+- **G1 PASS:** the tick length is configurable (`server.tick_ms`, and at
+  runtime through the bridge). Achieved ms per tick: 604 at 600, 123 at 120,
+  63 at 60, 34 at 30, and 17.6 at 15, i.e. 34× real time. Source:
+  `results/gates/gate_check_20261005_220938.json` (local only).
+- **G2 PASS:** the bridge spawns a character, reads its state, and injects
+  authentic interactions. 600 ticks of chopping gave 10 logs and 250 XP.
+- **XP cap without the tutorial flag:** `Skills.addExperience` clamps every
+  skill at 175 XP unless `tutorial:complete` is set. The first gate run hit
+  this (10 logs, 175 XP). The bridge's `spawn` now copies what the real
+  tutorial exit does (flag, varp/varbit, starter kit, landing tile
+  3233,3230). A live regression test covers it.
+- **No database needed:** with `use_auth = false` and
+  `persist_accounts = false`, the server doesn't need MariaDB (its own config
+  comment says so). The container is harmless but optional.
+- **World freezes offline:** `MajorUpdateWorker` runs a cut-down tick (no
+  pulses, no tick listeners) when the connectivity check to google.com and
+  2009scape.org fails. Experiments therefore need internet access, or a
+  config change.
+- **Fidelity notes for later:**
+  - `AIPlayer.finalizeDeath` calls `fullRestore()`. Check death and item-loss
+    behaviour against a real player before combat options rely on it.
+  - The bundled `BotScriptPulse` caps bot actions at 75 per tick across all
+    bots. Our own option executor should not go through it.
