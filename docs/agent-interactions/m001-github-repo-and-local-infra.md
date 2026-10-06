@@ -6,8 +6,8 @@
 - Timestamp CST: 2026-10-05 ~21:29:00 CST (estimated: the first command run for this prompt reported 21:30:12 local Central time)
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: PARTIAL (local work done; GitHub repo creation is waiting on `gh auth login` by the user)
-- Commit: the repo's initial commit (its SHA wasn't known when this record was written; see `git log`)
+- Status: SUCCESS
+- Commit: `1e7291a` (initial commit, which includes the first version of this record); this record was closed out in the following commit
 
 ## Full Prompt
 
@@ -16,6 +16,14 @@
 > Create a new repo in my github. Look in D:\Promethean\promethean\ if you need more context about that.
 >
 > It ok to run MariaDB in Docker with no root password.
+
+Follow-up prompts in the same thread, all about the GitHub step:
+
+> Check the terminal output.
+
+> I have gitbash. Let's use that instead of github cli.
+
+> Leave it. We're authenticated. Create the repo.
 
 ## Response Summary
 
@@ -29,9 +37,20 @@
 - **GitHub:** found the account `CGriffin81` from the Promethean remote and Git
   Credential Manager. The GitHub CLI wasn't installed, so I installed it via
   winget. It isn't authenticated, and signing in is the user's step (Claude
-  doesn't handle credentials), so repo creation is **blocked**. Made the local
-  initial commit with author `CGriffin81 <calebpgriffin81@gmail.com>`, the same
-  identity as the Promethean commits.
+  doesn't handle credentials), so repo creation was blocked at first. Made the
+  local initial commit with author `CGriffin81 <calebpgriffin81@gmail.com>`, the
+  same identity as the Promethean commits.
+  - *Terminal check:* the user's `gh auth login` failed with "not recognized"
+    because their terminal tab was opened before the CLI was installed, so its
+    PATH was stale. Their `git push` failed only because no remote existed yet.
+    Their `git add .` was harmless, and the working tree was clean at `1e7291a`.
+    Suggested using the full path or a new tab.
+  - *Git Bash instead of the CLI:* explained that git can't create a repo on
+    GitHub by itself, gave web-UI steps as the alternative, and asked whether to
+    uninstall the CLI. The user kept it.
+  - *Repo created:* after the user authenticated `gh` themselves (keyring, account
+    CGriffin81), ran
+    `gh repo create CGriffin81/ReinforcementScaping --private --source . --remote origin --push`.
 - **MariaDB:** added `infra/docker-compose.db.yml`: MariaDB 11.4, empty root
   password, port bound to `127.0.0.1:3306` only, initialized from the server's
   `global.sql`. Started it; it came up healthy with database `global` (tables
@@ -72,6 +91,9 @@
   git-ignored upstream clone.
 - Set repo-local git identity: `user.name=CGriffin81`,
   `user.email=calebpgriffin81@gmail.com`.
+- Created the GitHub repo `https://github.com/CGriffin81/ReinforcementScaping`
+  (private) with remote `origin`, and pushed `main` (tracking `origin/main`).
+  The GitHub CLI was authenticated by the user, not by Claude.
 
 ## Decisions
 
@@ -95,13 +117,15 @@
   `SHOW TABLES` in it returns `members` and `worlds`.
 - The server log ends with "2009Scape started in 418045 milliseconds" and contains
   zero `exception` or `error` matches. Port 43595 was listening.
-- `gh auth status` reports "You are not logged into any GitHub hosts", which is
-  the blocker.
+- Before the user signed in, `gh auth status` reported "You are not logged into
+  any GitHub hosts". After they signed in, it reported "Logged in to github.com
+  account CGriffin81 (keyring)".
+- `gh repo view` reports `PRIVATE`, with default branch `main`.
+  `git ls-remote origin main` returns `1e7291a73a1ea330d75474d94186db3fd5c10f7c`,
+  matching the local `HEAD`.
 
 ## Follow-Up
 
-- The user runs `gh auth login`. Then Claude creates
-  `github.com/CGriffin81/ReinforcementScaping` (private) and pushes `main`.
 - Next week-1 work, which is the first real code and should get its own record:
   the configurable tick patch (G1), a minimal `RLBridge` (G2), GE price logging
   (G3), and the Python `uv` skeleton.

@@ -19,7 +19,9 @@ The interaction records in `docs/agent-interactions/` hold the full context.
 - **Scope:** combat is included.
 - **Infrastructure:** install JDK 11, clone the 2009Scape server, and run
   MariaDB in Docker with an empty root password (local only).
-- **Repository:** create a new GitHub repo under the `CGriffin81` account.
+- **Repository:** create a new GitHub repo under the `CGriffin81` account. It was
+  created private at https://github.com/CGriffin81/ReinforcementScaping; private
+  is the agent's reversible default. Keep the GitHub CLI installed.
 - **Stretch (E7):** deferred. Caleb asked for more information, which is now
   in ROADMAP Appendix B. Decide at the week-5 midpoint.
 
