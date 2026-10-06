@@ -1,0 +1,7 @@
+{
+  "description": "GE database for real-server episodes: bot stock from the 10 game-hour warm-up, price index replaced by the historical 2009 table. Run with ge_freeze_prices = true so it never moves.",
+  "base": "data\\grandexchange_warmup10h.db",
+  "built": "2026-10-05T23:30:21-05:00",
+  "price_rows_set_to_2009": 6070,
+  "price_rows_kept_seeded": 1254
+}

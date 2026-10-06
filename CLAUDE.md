@@ -56,9 +56,22 @@ work.
   `bea45a9e` and our changes live on `rl`. All server modifications go in the
   fork and are committed there first; then this repo's submodule pointer is
   bumped.
-- Our server code is `Server/src/main/content/rl/` (`RLBridge.kt` transport,
-  `RLCommands.kt` commands). Config: `server.tick_ms` and the `[rl]` section;
-  `worldprops/rl.conf` is `default.conf` with the bridge enabled.
+- Our server code is `Server/src/main/content/rl/`: `RLBridge.kt` (transport),
+  `RLCommands.kt` (commands), and `RLPlayer.kt` (the agent's character).
+  - `RLPlayer` is **treated as a human by every game rule**
+    (`isArtificial() == false`). Session plumbing uses
+    `Player.hasClientSession()` instead.
+  - Config: `server.tick_ms`, `world.ge_freeze_prices`, and the `[rl]`
+    section (`bridge_enabled`, `bridge_port`, `random_events`).
+  - `worldprops/rl.conf` is `default.conf` with the bridge and the GE freeze
+    turned on.
+- **GE state:** before running the server for experiments, install the frozen
+  2009 GE: `uv run python scripts/install_ge_db.py`. The server must be
+  stopped; the old database is backed up. The pipeline is
+  `export_item_definitions.py` → `fetch_ge_history.py` →
+  `build_price_tables.py`.
+- **Net worth** uses `data/prices_v2.csv`: max(high alchemy − nature rune,
+  January 2009 GE price). `prices_v1` is superseded.
 - Build from `server/Server`: `mvnw.cmd -B package -DskipTests` (about 3 min
   cold, about 1 min incremental).
 - Run from `server/Server` (the working directory matters for `data/`):
@@ -83,7 +96,9 @@ work.
 - **Don't reuse the bundled bots' economy helpers.** `ScriptAPI.sellOnGE` and
   `buyFromGE` bypass real GP flows, and `teleportToGE` and `withdraw` skip
   travel. Economy and banking options must use the player-facing GE and bank
-  paths.
+  paths: the bridge's `ge_offer` and `ge_collect` call `StockMarket`.
+- **`debug_*` bridge commands are for tests and calibration only.** Never
+  expose them to the agent.
 - **SMDP discounting.** Use γ^τ, with τ in game time, in GAE and in PBRS.
 - **Log every agent decision** (obs, mask, option, action probabilities, value,
   duration, reward components), and seed everything.

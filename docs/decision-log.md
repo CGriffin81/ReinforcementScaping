@@ -34,7 +34,9 @@ The interaction records in `docs/agent-interactions/` hold the full context.
   have traded for **10 game-hours** from a freshly seeded GE. This is the
   agent's recommended option (b); the alternative was the seeded
   high-alchemy values (a). Produced by `scripts/ge_warmup.py` into
-  `data/prices_v1.csv` plus `.meta.json`.
+  `data/prices_v1.csv` plus `.meta.json`. **Superseded for valuing wealth** by
+  economy decision 3 below; the warm-up's bot stock is still the base of the
+  frozen GE.
 - **Stretch (E7):** deferred. Caleb asked for more information, which is now
   in ROADMAP Appendix B. Decide at the week-5 midpoint.
 
@@ -48,7 +50,7 @@ The interaction records in `docs/agent-interactions/` hold the full context.
 - Stretch: an LLM planner (option A).
 - Keep server modifications as a patch set in this repo. **Not accepted:** the
   user chose a separate fork (see the user decisions above).
-- **Pending, from the G3 findings:**
+- **Pending, from the G3 findings** (resolved by Caleb's decisions below):
   - *Economy model:* sell through shops, plus High Level Alchemy once it's
     unlocked; buy from shops and from GE bot stock. This needs a fork change
     so bridge characters trade on the GE as players. Drop the "sell at GE"
@@ -154,3 +156,77 @@ The interaction records in `docs/agent-interactions/` hold the full context.
     behaviour against a real player before combat options rely on it.
   - The bundled `BotScriptPulse` caps bot actions at 75 per tick across all
     bots. Our own option executor should not go through it.
+
+### User decisions (economy, later on 2026-10-05)
+1. **The RL character is always treated as a human player.** Implemented in
+   the fork as `content/rl/RLPlayer`.
+   - It keeps AIPlayer's connection-less plumbing: no packets, no saves, no
+     ping timeout. The new `Player.hasClientSession()` guards that plumbing.
+   - It reports `isArtificial() == false`, so every game rule sees a human.
+     Game-rule checks that tested the `AIPlayer` *type* now test
+     `isArtificial()`: interaction blocking by dialogues, the tutorial damage
+     guard, kill credit, drop tracking, Morytania effects, and
+     death-restore.
+   - Like a human, it runs every login hook (which creates the GE records,
+     slayer and hunter managers, etc.) and "clicks Play" on the welcome
+     screen.
+2. **Freeze the GE at historical 2009 prices.**
+   - Source: the RuneScape Wiki's Weird Gloop exchange API.
+   - Window: January 2009, since 2009Scape targets content "in and around
+     January 1st, 2009". An item first tracked later in 2009 uses its first
+     month with data. Items with no 2009 data keep the server's seeded
+     (high-alchemy) GE price.
+   - `world.ge_freeze_prices = true` (in `rl.conf`) stops trades from moving
+     the index, and makes bot stock sell at exactly the index price, with no
+     10% markup and no `BotPrices` floor.
+   - `data/grandexchange_2009_frozen.db` is the 10-hour warm-up bot stock with
+     the 2009 price index.
+3. **Value wealth at max(high alchemy − nature rune, historical 2009 GE
+   price).**
+   - The nature rune is priced from the January 2009 table (229 gp).
+   - The alchemy term follows the server's spell rule
+     (`ModernListeners.alchemize`: tradeable or alchemizable, not coins),
+     which covers every tradeable item.
+   - Coins = 1; values are floored at 0.
+   - Output: `data/prices_v2.csv`. This **supersedes `data/prices_v1.csv`**
+     (the 10-hour snapshot) for valuing wealth; v1 is kept as a record.
+
+### Agent interpretations of those decisions (reversible; flag if wrong)
+- Use the median of January 2009 samples. The `sample` endpoint gives about
+  500 points per item history, which is 2–4 points in January 2009.
+- When frozen, the GE quotes and trades at exactly the 2009 price.
+- Noted items take their unnoted item's prices.
+- Open dialogues are dismissed automatically each tick (a human clicking
+  "continue").
+- `ge_offer` requires standing within 15 tiles of the GE.
+- `ge_collect` takes banknotes when the items don't fit in the inventory.
+- `debug_teleport` and `debug_give` exist for tests and calibration only, and
+  are never exposed to the agent.
+
+### Findings (economy implementation)
+- An `AIPlayer`'s GE offer is rewritten into a bot offer. As an `RLPlayer`,
+  our buy matched bot stock: 10 oak logs at 12 gp, coins deducted, price
+  index unchanged under the freeze.
+- Without the login hooks, `GrandExchangeRecords.getInstance` returned a fresh
+  throwaway object on every call, so offer slots were lost even though the
+  trade completed.
+- With the tutorial flag set before init, `LoginConfiguration` parked the
+  character on the lobby screen, where it couldn't move.
+- A GE sell still never fills: nothing in this world places buy orders.
+- `ItemDefinition.isAlchemizable` is true for 1 of 7,324 items. The spell
+  doesn't rely on it.
+- RuneScape later re-issued many items under new ids (for example, rune
+  platebody 1127 → 45543), so the wiki's *current* item list can't be used as
+  a filter. The old ids' history (to 2019) is still served: rune platebody was
+  58,400–59,000 gp in January 2009, rune scimitar about 30,000.
+- RL characters all have GE `player_uid` 0 (AIPlayer details). This is
+  harmless while each episode resets the GE database.
+
+### Pending (needs Caleb)
+- **Random events:** they are on for the RL character, per "always human".
+  They will interrupt activities (some teleport the player away) until the
+  agent can handle them. `rl.random_events = false` turns them off.
+- **GE selling:** with no buyers in this world, the agent can only turn items
+  into coins through shops or alchemy. A market-maker that fills sell offers at
+  the frozen price would restore GE selling, but it isn't authentic to this
+  server.

@@ -1,0 +1,3277 @@
+item_id,name,ge_price_2009,samples,month
+2,Cannonball,187,3,2009-01
+6,Cannon base,163800,3,2009-01
+8,Cannon stand,145800,3,2009-01
+10,Cannon barrels,172700,3,2009-01
+12,Cannon furnace,117100,3,2009-01
+36,Candle,13,3,2009-01
+39,Bronze arrowtips,10,3,2009-01
+40,Iron arrowtips,13,3,2009-01
+41,Steel arrowtips,32,3,2009-01
+42,Mithril arrowtips,50,3,2009-01
+43,Adamant arrowtips,133,3,2009-01
+44,Rune arrowtips,451,3,2009-01
+45,Opal bolt tips,3,3,2009-01
+46,Pearl bolt tips,12,3,2009-01
+48,Longbow (u),27,3,2009-01
+50,Shortbow (u),10,3,2009-01
+52,Arrow shaft,5,3,2009-01
+53,Headless arrow,8,3,2009-01
+54,Oak shortbow (u),22,3,2009-01
+56,Oak longbow (u),36,3,2009-01
+58,Willow longbow (u),72,3,2009-01
+60,Willow shortbow (u),45,3,2009-01
+62,Maple longbow (u),144,3,2009-01
+64,Maple shortbow (u),90,3,2009-01
+66,Yew longbow (u),442,3,2009-01
+68,Yew shortbow (u),186,3,2009-01
+70,Magic longbow (u),1245,3,2009-01
+72,Magic shortbow (u),780,3,2009-01
+91,Guam potion(unf),558,3,2009-01
+93,Marrentill potion(unf),30,3,2009-01
+95,Tarromin potion(unf),441,3,2009-01
+97,Harralander potion(unf),912,3,2009-01
+99,Ranarr potion(unf),6540,3,2009-01
+101,Irit potion(unf),1577,3,2009-01
+103,Avantoe potion(unf),1719,3,2009-01
+105,Kwuarm potion(unf),3215,3,2009-01
+107,Cadantine potion(unf),1632,3,2009-01
+109,Dwarf weed potion(unf),2481,3,2009-01
+111,Torstol potion(unf),2092,3,2009-01
+113,Strength potion(4),938,3,2009-01
+115,Strength potion(3),704,3,2009-01
+117,Strength potion(2),469,3,2009-01
+119,Strength potion(1),270,3,2009-01
+121,Attack potion(3),252,3,2009-01
+123,Attack potion(2),189,3,2009-01
+125,Attack potion(1),126,3,2009-01
+127,Restore potion(3),89,3,2009-01
+129,Restore potion(2),59,3,2009-01
+131,Restore potion(1),29,3,2009-01
+133,Defence potion(3),402,3,2009-01
+135,Defence potion(2),297,3,2009-01
+137,Defence potion(1),198,3,2009-01
+139,Prayer potion(3),6150,3,2009-01
+141,Prayer potion(2),4100,3,2009-01
+143,Prayer potion(1),2050,3,2009-01
+145,Super attack(3),438,3,2009-01
+147,Super attack(2),292,3,2009-01
+149,Super attack(1),146,3,2009-01
+151,Fishing potion(3),90,3,2009-01
+153,Fishing potion(2),67,3,2009-01
+155,Fishing potion(1),45,3,2009-01
+157,Super strength(3),2503,3,2009-01
+159,Super strength(2),1668,3,2009-01
+161,Super strength(1),834,3,2009-01
+163,Super defence(3),627,3,2009-01
+165,Super defence(2),418,3,2009-01
+167,Super defence(1),209,3,2009-01
+169,Ranging potion(3),1404,3,2009-01
+171,Ranging potion(2),936,3,2009-01
+173,Ranging potion(1),468,3,2009-01
+175,Antipoison(3),289,3,2009-01
+177,Antipoison(2),192,3,2009-01
+179,Antipoison(1),96,3,2009-01
+181,Super antipoison(3),761,3,2009-01
+183,Super antipoison(2),507,3,2009-01
+185,Super antipoison(1),253,3,2009-01
+187,Weapon poison,174,8,2009-01
+189,Zamorak brew(3),654,3,2009-01
+191,Zamorak brew(2),436,3,2009-01
+193,Zamorak brew(1),218,3,2009-01
+195,Potion,16,3,2009-01
+197,Poison chalice,125,3,2009-01
+199,Grimy guam,503,3,2009-01
+201,Grimy marrentill,186,3,2009-01
+203,Grimy tarromin,323,3,2009-01
+205,Grimy harralander,776,3,2009-01
+207,Grimy ranarr,6217,3,2009-01
+209,Grimy irit,1259,3,2009-01
+211,Grimy avantoe,1380,3,2009-01
+213,Grimy kwuarm,2911,3,2009-01
+215,Grimy cadantine,1152,3,2009-01
+217,Grimy dwarf weed,1905,3,2009-01
+219,Grimy torstol,1808,3,2009-01
+221,Eye of newt,46,3,2009-01
+223,Red spiders' eggs,354,3,2009-01
+225,Limpwurt root,816,3,2009-01
+227,Vial of water,79,3,2009-01
+229,Vial,67,3,2009-01
+231,Snape grass,340,3,2009-01
+233,Pestle and mortar,81,3,2009-01
+235,Unicorn horn dust,925,3,2009-01
+237,Unicorn horn,890,3,2009-01
+239,White berries,622,3,2009-01
+241,Dragon scale dust,670,3,2009-01
+243,Blue dragon scale,610,3,2009-01
+245,Wine of zamorak,797,3,2009-01
+247,Jangerberries,448,3,2009-01
+249,Clean guam,493,3,2009-01
+251,Clean marrentill,77,3,2009-01
+253,Clean tarromin,287,3,2009-01
+255,Clean harralander,773,3,2009-01
+257,Clean ranarr,6258,3,2009-01
+259,Clean irit,1277,3,2009-01
+261,Clean avantoe,1398,3,2009-01
+263,Clean kwuarm,2935,3,2009-01
+265,Clean cadantine,1216,3,2009-01
+267,Clean dwarf weed,1919,3,2009-01
+269,Clean torstol,1809,3,2009-01
+288,Goblin mail,19,3,2009-01
+299,Mithril seeds,298,3,2009-01
+301,Lobster pot,70,3,2009-01
+303,Small fishing net,48,3,2009-01
+305,Big fishing net,85,3,2009-01
+307,Fishing rod,60,3,2009-01
+309,Fly fishing rod,77,3,2009-01
+311,Harpoon,47,3,2009-01
+313,Fishing bait,2,3,2009-01
+314,Feather,6,3,2009-01
+315,Shrimps,4,3,2009-01
+317,Raw shrimps,9,3,2009-01
+319,Anchovies,151,3,2009-01
+321,Raw anchovies,115,3,2009-01
+325,Sardine,5,3,2009-01
+327,Raw sardine,12,3,2009-01
+329,Salmon,59,3,2009-01
+331,Raw salmon,70,3,2009-01
+333,Trout,31,3,2009-01
+335,Raw trout,30,3,2009-01
+339,Cod,23,3,2009-01
+341,Raw cod,43,3,2009-01
+345,Raw herring,27,3,2009-01
+347,Herring,11,3,2009-01
+349,Raw pike,61,3,2009-01
+351,Pike,51,3,2009-01
+353,Raw mackerel,17,3,2009-01
+355,Mackerel,10,3,2009-01
+359,Raw tuna,102,3,2009-01
+361,Tuna,79,3,2009-01
+363,Raw bass,380,3,2009-01
+365,Bass,261,3,2009-01
+371,Raw swordfish,425,3,2009-01
+373,Swordfish,376,3,2009-01
+377,Raw lobster,285,3,2009-01
+379,Lobster,228,3,2009-01
+383,Raw shark,919,3,2009-01
+385,Shark,845,3,2009-01
+389,Raw manta ray,1505,3,2009-01
+391,Manta ray,1837,3,2009-01
+395,Raw sea turtle,1015,3,2009-01
+397,Sea turtle,1214,3,2009-01
+401,Seaweed,189,3,2009-01
+403,Edible seaweed,164,3,2009-01
+405,Casket,1317,3,2009-01
+407,Oyster,90,3,2009-01
+411,Oyster pearl,50,3,2009-01
+413,Oyster pearls,656,3,2009-01
+426,Priest gown,10,3,2009-01
+428,Priest gown,15,3,2009-01
+434,Clay,100,3,2009-01
+436,Copper ore,72,3,2009-01
+438,Tin ore,34,3,2009-01
+440,Iron ore,99,3,2009-01
+442,Silver ore,170,3,2009-01
+444,Gold ore,501,3,2009-01
+447,Mithril ore,269,3,2009-01
+449,Adamantite ore,1020,3,2009-01
+451,Runite ore,16500,3,2009-01
+453,Coal,177,3,2009-01
+464,Strange fruit,837,3,2009-01
+466,Pickaxe handle,360,31,2009-01
+468,Broken pickaxe,22,31,2009-01
+470,Broken pickaxe,19,31,2009-01
+472,Broken pickaxe,185,31,2009-01
+474,Broken pickaxe,392,31,2009-01
+476,Broken pickaxe,1390,31,2009-01
+478,Broken pickaxe,17400,31,2009-01
+480,Bronze pick head,40,31,2009-01
+482,Iron pick head,328,31,2009-01
+484,Steel pick head,1072,31,2009-01
+486,Mithril pick head,1221,31,2009-01
+488,Adamant pick head,2377,31,2009-01
+490,Rune pick head,22100,31,2009-01
+494,,14,31,2009-01
+496,,28,31,2009-01
+498,,100,31,2009-01
+500,,1312,31,2009-01
+502,,216,31,2009-01
+504,,596,31,2009-01
+506,,7697,31,2009-01
+526,Bones,75,3,2009-01
+528,Burnt bones,172,3,2009-01
+530,Bat bones,164,3,2009-01
+532,Big bones,350,3,2009-01
+534,Babydragon bones,886,3,2009-01
+536,Dragon bones,1908,3,2009-01
+538,Druid's robe,39,3,2009-01
+540,Druid's robe,39,3,2009-01
+542,Monk's robe,470,3,2009-01
+544,Monk's robe,519,3,2009-01
+550,Newcomer map,3,3,2009-01
+554,Fire rune,9,3,2009-01
+555,Water rune,16,3,2009-01
+556,Air rune,13,3,2009-01
+557,Earth rune,16,3,2009-01
+558,Mind rune,9,3,2009-01
+559,Body rune,10,3,2009-01
+560,Death rune,271,3,2009-01
+561,Nature rune,229,3,2009-01
+562,Chaos rune,136,3,2009-01
+563,Law rune,292,3,2009-01
+564,Cosmic rune,148,3,2009-01
+565,Blood rune,275,3,2009-01
+566,Soul rune,365,3,2009-01
+567,Unpowered orb,213,3,2009-01
+569,Fire orb,1130,3,2009-01
+571,Water orb,919,3,2009-01
+573,Air orb,1031,3,2009-01
+575,Earth orb,985,3,2009-01
+577,Wizard robe,846,3,2009-01
+579,Wizard hat,59,3,2009-01
+581,Black robe,424,3,2009-01
+583,Bailing bucket,6,31,2009-01
+585,Bailing bucket,6,31,2009-01
+590,Tinderbox,14,3,2009-01
+592,Ashes,4,3,2009-01
+596,Unlit torch,12,3,2009-01
+598,Bronze fire arrows,225,3,2009-01
+600,Astronomy book,48,3,2009-01
+626,Boots,386,3,2009-01
+628,Boots,354,3,2009-01
+630,Boots,366,3,2009-01
+632,Boots,372,3,2009-01
+634,Boots,373,3,2009-01
+636,Robe top,310,3,2009-01
+638,Robe top,318,3,2009-01
+640,Robe top,298,3,2009-01
+642,Robe top,330,3,2009-01
+644,Robe top,305,3,2009-01
+646,Robe bottoms,133,3,2009-01
+648,Robe bottoms,302,3,2009-01
+650,Robe bottoms,246,3,2009-01
+652,Robe bottoms,345,3,2009-01
+654,Robe bottoms,306,3,2009-01
+656,Hat,340,3,2009-01
+658,Hat,318,3,2009-01
+660,Hat,234,3,2009-01
+662,Hat,280,3,2009-01
+664,Hat,331,3,2009-01
+753,Cadava berries,3,3,2009-01
+800,Bronze thrownaxe,2,3,2009-01
+801,Iron thrownaxe,11,3,2009-01
+802,Steel thrownaxe,28,3,2009-01
+803,Mithril thrownaxe,104,3,2009-01
+804,Adamant thrownaxe,118,3,2009-01
+805,Rune thrownaxe,314,3,2009-01
+806,Bronze dart,30,3,2009-01
+807,Iron dart,25,3,2009-01
+808,Steel dart,29,3,2009-01
+809,Mithril dart,53,3,2009-01
+810,Adamant dart,86,3,2009-01
+811,Rune dart,182,3,2009-01
+812,Bronze dart(p),65,9,2009-01
+813,Iron dart(p),60,9,2009-01
+814,Steel dart(p),64,9,2009-01
+815,Mithril dart(p),89,9,2009-01
+816,Adamant dart(p),123,9,2009-01
+817,Rune dart(p),206,9,2009-01
+819,Bronze dart tip,22,3,2009-01
+820,Iron dart tip,20,3,2009-01
+821,Steel dart tip,39,3,2009-01
+822,Mithril dart tip,76,3,2009-01
+823,Adamant dart tip,198,3,2009-01
+824,Rune dart tip,191,3,2009-01
+825,Bronze javelin,3,3,2009-01
+826,Iron javelin,4,3,2009-01
+827,Steel javelin,19,3,2009-01
+828,Mithril javelin,49,3,2009-01
+829,Adamant javelin,123,3,2009-01
+830,Rune javelin,312,3,2009-01
+831,Bronze javelin(p),38,9,2009-01
+832,Iron javelin(p),39,9,2009-01
+833,Steel javelin(p),54,9,2009-01
+834,Mithril javelin(p),84,9,2009-01
+835,Adamant javelin(p),158,9,2009-01
+836,Rune javelin(p),347,9,2009-01
+837,Crossbow,87,3,2009-01
+839,Longbow,48,3,2009-01
+841,Shortbow,30,3,2009-01
+843,Oak shortbow,60,3,2009-01
+845,Oak longbow,96,3,2009-01
+847,Willow longbow,192,3,2009-01
+849,Willow shortbow,120,3,2009-01
+851,Maple longbow,384,3,2009-01
+853,Maple shortbow,240,3,2009-01
+855,Yew longbow,673,3,2009-01
+857,Yew shortbow,382,3,2009-01
+859,Magic longbow,1432,3,2009-01
+861,Magic shortbow,885,3,2009-01
+863,Iron knife,36,3,2009-01
+864,Bronze knife,14,3,2009-01
+865,Steel knife,60,3,2009-01
+866,Mithril knife,108,3,2009-01
+867,Adamant knife,307,3,2009-01
+868,Rune knife,684,3,2009-01
+869,Black knife,62,3,2009-01
+870,Bronze knife(p),49,9,2009-01
+871,Iron knife(p),69,9,2009-01
+872,Steel knife(p),92,9,2009-01
+873,Mithril knife(p),143,9,2009-01
+874,Black knife(p),93,9,2009-01
+875,Adamant knife(p),339,9,2009-01
+876,Rune knife(p),691,9,2009-01
+877,Bronze bolts,2,3,2009-01
+878,Bronze bolts(p),37,9,2009-01
+879,Opal bolts,3,3,2009-01
+880,Pearl bolts,40,3,2009-01
+881,Barbed bolts,90,3,2009-01
+882,Bronze arrow,6,3,2009-01
+883,Bronze arrow(p),41,9,2009-01
+884,Iron arrow,12,3,2009-01
+885,Iron arrow(p),47,9,2009-01
+886,Steel arrow,28,3,2009-01
+887,Steel arrow(p),63,9,2009-01
+888,Mithril arrow,46,3,2009-01
+889,Mithril arrow(p),81,9,2009-01
+890,Adamant arrow,119,3,2009-01
+891,Adamant arrow(p),152,9,2009-01
+892,Rune arrow,231,3,2009-01
+893,Rune arrow(p),269,9,2009-01
+942,Bronze fire arrows,225,3,2009-01
+946,Knife,25,3,2009-01
+948,Bear fur,6,3,2009-01
+950,Silk,37,3,2009-01
+952,Spade,77,3,2009-01
+954,Rope,39,3,2009-01
+958,Grey wolf fur,71,3,2009-01
+960,Plank,199,3,2009-01
+962,Christmas cracker,688800000,3,2009-01
+970,Papyrus,83,3,2009-01
+973,Charcoal,105,3,2009-01
+975,Machete,29,3,2009-01
+981,Disk of returning,4500000,3,2009-01
+983,Brass key,126,3,2009-01
+985,Tooth half of a key,51000,3,2009-01
+987,Loop half of a key,7392,3,2009-01
+989,Crystal key,60400,3,2009-01
+991,Muddy key,2564,3,2009-01
+993,Sinister key,22700,3,2009-01
+1005,White apron,14,3,2009-01
+1007,Cape,46,3,2009-01
+1009,Brass necklace,13,3,2009-01
+1011,Blue skirt,12,3,2009-01
+1013,Pink skirt,20,3,2009-01
+1015,Black skirt,16,3,2009-01
+1017,Wizard hat,45,3,2009-01
+1019,Cape,46,3,2009-01
+1021,Cape,46,3,2009-01
+1023,Cape,46,3,2009-01
+1025,Eye patch,24,3,2009-01
+1027,Cape,46,3,2009-01
+1029,Cape,46,3,2009-01
+1031,Cape,46,3,2009-01
+1033,Zamorak robe,1253,3,2009-01
+1035,Zamorak robe,1113,3,2009-01
+1038,Red partyhat,121900000,3,2009-01
+1040,Yellow partyhat,90700000,3,2009-01
+1042,Blue partyhat,336700000,3,2009-01
+1044,Green partyhat,106000000,3,2009-01
+1046,Purple partyhat,77500000,3,2009-01
+1048,White partyhat,176100000,3,2009-01
+1050,Santa hat,13300000,3,2009-01
+1053,Green h'ween mask,10300000,3,2009-01
+1055,Blue h'ween mask,12000000,3,2009-01
+1057,Red h'ween mask,16100000,3,2009-01
+1059,Leather gloves,6,3,2009-01
+1061,Leather boots,23,3,2009-01
+1063,Leather vambraces,8,3,2009-01
+1065,Green d'hide vamb,1426,3,2009-01
+1067,Iron platelegs,182,3,2009-01
+1069,Steel platelegs,550,4,2009-01
+1071,Mithril platelegs,1560,4,2009-01
+1073,Adamant platelegs,3766,4,2009-01
+1075,Bronze platelegs,54,3,2009-01
+1077,Black platelegs,1998,3,2009-01
+1079,Rune platelegs,53300,4,2009-01
+1081,Iron plateskirt,160,3,2009-01
+1083,Steel plateskirt,550,4,2009-01
+1085,Mithril plateskirt,1560,4,2009-01
+1087,Bronze plateskirt,154,3,2009-01
+1089,Black plateskirt,2015,3,2009-01
+1091,Adamant plateskirt,3704,4,2009-01
+1093,Rune plateskirt,51350,4,2009-01
+1095,Leather chaps,9,3,2009-01
+1097,Studded chaps,487,3,2009-01
+1099,Green d'hide chaps,2425,3,2009-01
+1101,Iron chainbody,145,3,2009-01
+1103,Bronze chainbody,39,3,2009-01
+1105,Steel chainbody,487,4,2009-01
+1107,Black chainbody,1021,3,2009-01
+1109,Mithril chainbody,1267,4,2009-01
+1111,Adamant chainbody,2726,4,2009-01
+1113,Rune chainbody,31500,4,2009-01
+1115,Iron platebody,370,3,2009-01
+1117,Bronze platebody,104,3,2009-01
+1119,Steel platebody,1306,4,2009-01
+1121,Mithril platebody,3380,4,2009-01
+1123,Adamant platebody,9790,4,2009-01
+1125,Black platebody,3538,3,2009-01
+1127,Rune platebody,58650,4,2009-01
+1129,Leather body,9,3,2009-01
+1131,Hardleather body,77,3,2009-01
+1133,Studded body,552,3,2009-01
+1135,Green d'hide body,4574,3,2009-01
+1137,Iron med helm,55,3,2009-01
+1139,Bronze med helm,16,3,2009-01
+1141,Steel med helm,195,4,2009-01
+1143,Mithril med helm,507,4,2009-01
+1145,Adamant med helm,1248,4,2009-01
+1147,Rune med helm,11400,4,2009-01
+1149,Dragon med helm,60700,3,2009-01
+1151,Black med helm,318,3,2009-01
+1153,Iron full helm,103,3,2009-01
+1155,Bronze full helm,29,3,2009-01
+1157,Steel full helm,357,4,2009-01
+1159,Mithril full helm,929,4,2009-01
+1161,Adamant full helm,2288,4,2009-01
+1163,Rune full helm,21100,4,2009-01
+1165,Black full helm,1467,3,2009-01
+1167,Leather cowl,11,3,2009-01
+1169,Coif,100,3,2009-01
+1171,Wooden shield,35,3,2009-01
+1173,Bronze sq shield,24,3,2009-01
+1175,Iron sq shield,84,3,2009-01
+1177,Steel sq shield,300,4,2009-01
+1179,Black sq shield,552,3,2009-01
+1181,Mithril sq shield,936,4,2009-01
+1183,Adamant sq shield,2146,4,2009-01
+1185,Rune sq shield,22900,4,2009-01
+1187,Dragon sq shield,533800,3,2009-01
+1189,Bronze kiteshield,34,3,2009-01
+1191,Iron kiteshield,119,3,2009-01
+1193,Steel kiteshield,468,4,2009-01
+1195,Black kiteshield,1120,3,2009-01
+1197,Mithril kiteshield,1326,4,2009-01
+1199,Adamant kiteshield,3214,4,2009-01
+1201,Rune kiteshield,52700,4,2009-01
+1203,Iron dagger,24,3,2009-01
+1205,Bronze dagger,9,3,2009-01
+1207,Steel dagger,81,4,2009-01
+1209,Mithril dagger,211,4,2009-01
+1211,Adamant dagger,520,4,2009-01
+1213,Rune dagger,4654,4,2009-01
+1215,Dragon dagger,29700,3,2009-01
+1217,Black dagger,156,3,2009-01
+1219,Iron dagger(p),199,9,2009-01
+1221,Bronze dagger(p),184,9,2009-01
+1223,Steel dagger(p),256,9,2009-01
+1225,Mithril dagger(p),386,9,2009-01
+1227,Adamant dagger(p),695,9,2009-01
+1229,Rune dagger(p),4832,9,2009-01
+1231,Dragon dagger(p),30000,9,2009-01
+1233,Black dagger(p),331,9,2009-01
+1237,Bronze spear,182,3,2009-01
+1239,Iron spear,164,3,2009-01
+1241,Steel spear,147,3,2009-01
+1243,Mithril spear,385,3,2009-01
+1245,Adamant spear,1081,3,2009-01
+1247,Rune spear,12300,3,2009-01
+1249,Dragon spear,37300,3,2009-01
+1251,Bronze spear(p),368,9,2009-01
+1253,Iron spear(p),335,9,2009-01
+1255,Steel spear(p),323,9,2009-01
+1257,Mithril spear(p),556,9,2009-01
+1259,Adamant spear(p),1249,9,2009-01
+1261,Rune spear(p),12500,9,2009-01
+1263,Dragon spear(p),37500,9,2009-01
+1265,Bronze pickaxe,11,3,2009-01
+1267,Iron pickaxe,209,3,2009-01
+1269,Steel pickaxe,576,4,2009-01
+1271,Adamant pickaxe,1792,4,2009-01
+1273,Mithril pickaxe,658,4,2009-01
+1275,Rune pickaxe,19100,4,2009-01
+1277,Bronze sword,17,3,2009-01
+1279,Iron sword,59,3,2009-01
+1281,Steel sword,211,4,2009-01
+1283,Black sword,406,3,2009-01
+1285,Mithril sword,549,4,2009-01
+1287,Adamant sword,1352,4,2009-01
+1289,Rune sword,12400,4,2009-01
+1291,Bronze longsword,26,3,2009-01
+1293,Iron longsword,91,3,2009-01
+1295,Steel longsword,325,4,2009-01
+1297,Black longsword,624,3,2009-01
+1299,Mithril longsword,845,4,2009-01
+1301,Adamant longsword,2080,4,2009-01
+1303,Rune longsword,19000,4,2009-01
+1305,Dragon longsword,98200,3,2009-01
+1307,Bronze 2h sword,40,3,2009-01
+1309,Iron 2h sword,140,3,2009-01
+1311,Steel 2h sword,500,4,2009-01
+1313,Black 2h sword,1889,3,2009-01
+1315,Mithril 2h sword,1560,4,2009-01
+1317,Adamant 2h sword,3740,4,2009-01
+1319,Rune 2h sword,53800,4,2009-01
+1321,Bronze scimitar,17,3,2009-01
+1323,Iron scimitar,56,3,2009-01
+1325,Steel scimitar,200,4,2009-01
+1327,Black scimitar,3083,3,2009-01
+1329,Mithril scimitar,522,4,2009-01
+1331,Adamant scimitar,2062,4,2009-01
+1333,Rune scimitar,29800,4,2009-01
+1335,Iron warhammer,101,3,2009-01
+1337,Bronze warhammer,36,3,2009-01
+1339,Steel warhammer,499,4,2009-01
+1341,Black warhammer,764,3,2009-01
+1343,Mithril warhammer,1295,4,2009-01
+1345,Adamant warhammer,3214,4,2009-01
+1347,Rune warhammer,28100,4,2009-01
+1349,Iron axe,28,3,2009-01
+1351,Bronze axe,14,3,2009-01
+1353,Steel axe,100,3,2009-01
+1355,Mithril axe,235,3,2009-01
+1357,Adamant axe,653,3,2009-01
+1359,Rune axe,8135,3,2009-01
+1361,Black axe,1377,3,2009-01
+1363,Iron battleaxe,91,3,2009-01
+1365,Steel battleaxe,325,4,2009-01
+1367,Black battleaxe,859,3,2009-01
+1369,Mithril battleaxe,1014,4,2009-01
+1371,Adamant battleaxe,2342,4,2009-01
+1373,Rune battleaxe,24900,4,2009-01
+1375,Bronze battleaxe,23,3,2009-01
+1377,Dragon battleaxe,120100,3,2009-01
+1379,Staff,9,3,2009-01
+1381,Staff of air,1055,3,2009-01
+1383,Staff of water,907,3,2009-01
+1385,Staff of earth,902,3,2009-01
+1387,Staff of fire,900,3,2009-01
+1389,Magic staff,138,3,2009-01
+1391,Battlestaff,8323,3,2009-01
+1393,Fire battlestaff,9161,3,2009-01
+1395,Water battlestaff,9111,3,2009-01
+1397,Air battlestaff,9101,3,2009-01
+1399,Earth battlestaff,9133,3,2009-01
+1401,Mystic fire staff,25500,3,2009-01
+1403,Mystic water staff,25400,3,2009-01
+1405,Mystic air staff,26300,3,2009-01
+1407,Mystic earth staff,25300,3,2009-01
+1420,Iron mace,31,3,2009-01
+1422,Bronze mace,9,3,2009-01
+1424,Steel mace,113,4,2009-01
+1426,Black mace,198,3,2009-01
+1428,Mithril mace,293,4,2009-01
+1430,Adamant mace,724,4,2009-01
+1432,Rune mace,8470,4,2009-01
+1434,Dragon mace,31600,3,2009-01
+1436,Rune essence,44,3,2009-01
+1438,Air talisman,213,3,2009-01
+1440,Earth talisman,316,3,2009-01
+1442,Fire talisman,1888,3,2009-01
+1444,Water talisman,3287,3,2009-01
+1446,Body talisman,403,3,2009-01
+1448,Mind talisman,158,3,2009-01
+1450,Blood talisman,4581,3,2009-01
+1452,Chaos talisman,337,3,2009-01
+1454,Cosmic talisman,308,3,2009-01
+1456,Death talisman,2255,3,2009-01
+1458,Law talisman,534,2,2009-01
+1462,Nature talisman,635,3,2009-01
+1464,Archery ticket,11,3,2009-01
+1470,Red bead,133,3,2009-01
+1472,Yellow bead,273,3,2009-01
+1474,Black bead,433,3,2009-01
+1476,White bead,553,3,2009-01
+1478,Amulet of accuracy,4930,3,2009-01
+1511,Logs,32,3,2009-01
+1513,Magic logs,1306,3,2009-01
+1515,Yew logs,467,3,2009-01
+1517,Maple logs,38,3,2009-01
+1519,Willow logs,18,3,2009-01
+1521,Oak logs,26,3,2009-01
+1523,Lockpick,55,3,2009-01
+1539,Steel nails,24,3,2009-01
+1540,Anti-dragon shield,301,3,2009-01
+1550,Garlic,20,3,2009-01
+1592,Ring mould,12,3,2009-01
+1595,Amulet mould,8,3,2009-01
+1597,Necklace mould,54,3,2009-01
+1599,Holy mould,49,3,2009-01
+1601,Diamond,3125,3,2009-01
+1603,Ruby,1279,3,2009-01
+1605,Emerald,652,3,2009-01
+1607,Sapphire,393,3,2009-01
+1609,Opal,45,3,2009-01
+1611,Jade,74,3,2009-01
+1613,Red topaz,275,3,2009-01
+1615,Dragonstone,46500,3,2009-01
+1617,Uncut diamond,3760,3,2009-01
+1619,Uncut ruby,1803,3,2009-01
+1621,Uncut emerald,985,3,2009-01
+1623,Uncut sapphire,616,3,2009-01
+1625,Uncut opal,99,3,2009-01
+1627,Uncut jade,90,3,2009-01
+1629,Uncut red topaz,264,3,2009-01
+1631,Uncut dragonstone,48900,3,2009-01
+1635,Gold ring,210,3,2009-01
+1637,Sapphire ring,541,3,2009-01
+1639,Emerald ring,833,3,2009-01
+1641,Ruby ring,1219,3,2009-01
+1643,Diamond ring,2193,3,2009-01
+1645,Dragonstone ring,43700,3,2009-01
+1654,Gold necklace,270,3,2009-01
+1656,Sapphire necklace,630,3,2009-01
+1658,Emerald necklace,855,3,2009-01
+1660,Ruby necklace,1305,3,2009-01
+1662,Diamond necklace,2254,3,2009-01
+1664,Dragon necklace,41900,3,2009-01
+1673,Gold amulet,210,3,2009-01
+1675,Sapphire amulet,540,3,2009-01
+1677,Emerald amulet,765,3,2009-01
+1679,Ruby amulet,1360,3,2009-01
+1681,Diamond amulet,2802,3,2009-01
+1683,Dragonstone ammy,45900,3,2009-01
+1692,Gold amulet,210,3,2009-01
+1694,Sapphire amulet,540,3,2009-01
+1696,Emerald amulet,765,3,2009-01
+1698,Ruby amulet,1360,3,2009-01
+1700,Diamond amulet,2802,3,2009-01
+1702,Dragonstone ammy,45900,3,2009-01
+1704,Amulet of glory,46500,3,2009-01
+1706,Amulet of glory(1),46200,31,2009-01
+1708,Amulet of glory(2),46200,31,2009-01
+1710,Amulet of glory(3),46200,31,2009-01
+1712,Amulet of glory(4),46500,3,2009-01
+1714,Unstrung symbol,140,3,2009-01
+1716,Unblessed symbol,90,3,2009-01
+1718,Holy symbol,137,3,2009-01
+1720,Unstrung emblem,133,3,2009-01
+1722,Unpowered symbol,90,3,2009-01
+1724,Unholy symbol,234,3,2009-01
+1725,Amulet of strength,1426,3,2009-01
+1727,Amulet of magic,451,3,2009-01
+1729,Amulet of defence,650,3,2009-01
+1731,Amulet of power,2709,3,2009-01
+1733,Needle,1,3,2009-01
+1734,Thread,3,3,2009-01
+1735,Shears,5,3,2009-01
+1737,Wool,123,3,2009-01
+1739,Cowhide,116,3,2009-01
+1741,Leather,166,3,2009-01
+1743,Hard leather,170,3,2009-01
+1745,Green d-leather,1833,3,2009-01
+1747,Black dragonhide,3097,3,2009-01
+1749,Red dragonhide,3133,3,2009-01
+1751,Blue dragonhide,2062,3,2009-01
+1753,Green dragonhide,1685,3,2009-01
+1755,Chisel,14,3,2009-01
+1757,Brown apron,19,3,2009-01
+1759,Ball of wool,11,3,2009-01
+1761,Soft clay,173,3,2009-01
+1763,Red dye,181,3,2009-01
+1765,Yellow dye,182,3,2009-01
+1767,Blue dye,196,3,2009-01
+1769,Orange dye,191,3,2009-01
+1771,Green dye,187,3,2009-01
+1773,Purple dye,124,3,2009-01
+1775,Molten glass,342,3,2009-01
+1777,Bow string,186,3,2009-01
+1779,Flax,90,3,2009-01
+1781,Soda ash,272,3,2009-01
+1783,Bucket of sand,160,3,2009-01
+1785,Glassblowing pipe,19,3,2009-01
+1787,Unfired pot,81,3,2009-01
+1789,Unfired pie dish,56,3,2009-01
+1791,Unfired bowl,89,3,2009-01
+1793,Woad leaf,30,3,2009-01
+1794,Bronze wire,172,3,2009-01
+1823,Waterskin(4),46,3,2009-01
+1825,Waterskin(3),37,31,2009-01
+1827,Waterskin(2),16,31,2009-01
+1829,Waterskin(1),10,31,2009-01
+1831,Waterskin(0),12,3,2009-01
+1833,Desert shirt,33,3,2009-01
+1835,Desert robe,42,3,2009-01
+1837,Desert boots,41,3,2009-01
+1859,Raw ugthanki meat,469,3,2009-01
+1861,Ugthanki meat,426,3,2009-01
+1863,Pitta dough,21,3,2009-01
+1865,Pitta bread,30,3,2009-01
+1869,Chopped tomato,31,3,2009-01
+1871,Chopped onion,9,3,2009-01
+1873,Chopped ugthanki,319,10,2009-01
+1875,Onion & tomato,26,3,2009-01
+1877,Ugthanki & onion,314,10,2009-01
+1879,Ugthanki & tomato,315,10,2009-01
+1881,Kebab mix,340,3,2009-01
+1883,Ugthanki kebab,1159,3,2009-01
+1885,Ugthanki kebab,812,3,2009-01
+1887,Cake tin,25,3,2009-01
+1889,Uncooked cake,370,3,2009-01
+1891,Cake,84,3,2009-01
+1893,2/3 cake,56,3,2009-01
+1895,Slice of cake,28,3,2009-01
+1897,Chocolate cake,194,3,2009-01
+1899,2/3 chocolate cake,129,3,2009-01
+1901,Chocolate slice,64,3,2009-01
+1905,Asgarnian ale,64,3,2009-01
+1907,Wizard's mind bomb,71,3,2009-01
+1909,Greenman's ale,201,3,2009-01
+1911,Dragon bitter,395,3,2009-01
+1913,Dwarven stout,57,3,2009-01
+1915,Grog,9,3,2009-01
+1917,Beer,23,3,2009-01
+1919,Beer glass,23,3,2009-01
+1921,Bowl of water,4,3,2009-01
+1923,Bowl,4,3,2009-01
+1925,Bucket,9,3,2009-01
+1927,Bucket of milk,46,3,2009-01
+1929,Bucket of water,9,3,2009-01
+1931,Empty pot,2,3,2009-01
+1933,Pot of flour,56,3,2009-01
+1935,Jug,2,3,2009-01
+1937,Jug of water,2,3,2009-01
+1939,Swamp tar,186,3,2009-01
+1940,Raw swamp paste,92,3,2009-01
+1941,Swamp paste,24,3,2009-01
+1942,Potato,75,3,2009-01
+1944,Egg,39,3,2009-01
+1947,Grain,4,3,2009-01
+1949,Chef's hat,17,3,2009-01
+1951,Redberries,11,3,2009-01
+1953,Pastry dough,178,3,2009-01
+1955,Cooking apple,159,3,2009-01
+1957,Onion,24,3,2009-01
+1959,Pumpkin,5300000,3,2009-01
+1961,Easter egg,4200000,3,2009-01
+1963,Banana,67,3,2009-01
+1965,Cabbage,6,3,2009-01
+1967,Cabbage,73,31,2009-01
+1971,Kebab,45,3,2009-01
+1973,Chocolate bar,77,3,2009-01
+1975,Chocolate dust,99,3,2009-01
+1978,Cup of tea,5,3,2009-01
+1980,Empty cup,1,3,2009-01
+1982,Tomato,32,3,2009-01
+1985,Cheese,62,3,2009-01
+1987,Grapes,412,3,2009-01
+1989,Half full wine jug,31100000,3,2009-01
+1993,Jug of wine,77,3,2009-01
+1997,Incomplete stew,112,3,2009-01
+1999,Incomplete stew,53,10,2009-01
+2001,Uncooked stew,247,3,2009-01
+2003,Stew,155,3,2009-01
+2007,Spice,317,3,2009-01
+2009,Uncooked curry,334,3,2009-01
+2011,Curry,638,3,2009-01
+2015,Vodka,191,3,2009-01
+2017,Whisky,54,3,2009-01
+2019,Gin,111,3,2009-01
+2021,Brandy,60,3,2009-01
+2023,Cocktail guide,15,31,2009-01
+2025,Cocktail shaker,103,31,2009-01
+2026,Cocktail glass,58,31,2009-01
+2028,Premade blurb' sp.,13,3,2009-01
+2030,Premade choc s'dy,21,3,2009-01
+2032,Premade dr' dragon,29,3,2009-01
+2034,Premade fr' blast,45,3,2009-01
+2036,Premade p' punch,31,3,2009-01
+2038,Premade sgg,29,3,2009-01
+2040,Premade wiz blz'd,29,3,2009-01
+2048,Pineapple punch,77,3,2009-01
+2054,Wizard blizzard,112,3,2009-01
+2064,Blurberry special,230,3,2009-01
+2074,Choc saturday,67,3,2009-01
+2080,Short green guy,113,3,2009-01
+2084,Fruit blast,230,3,2009-01
+2092,Drunk dragon,125,3,2009-01
+2102,Lemon,119,3,2009-01
+2104,Lemon chunks,13,3,2009-01
+2106,Lemon slices,135,3,2009-01
+2108,Orange,256,3,2009-01
+2110,Orange chunks,11,3,2009-01
+2112,Orange slices,274,3,2009-01
+2114,Pineapple,105,3,2009-01
+2116,Pineapple chunks,160,3,2009-01
+2118,Pineapple ring,75,3,2009-01
+2120,Lime,19,3,2009-01
+2122,Lime chunks,6,3,2009-01
+2124,Lime slices,11,3,2009-01
+2126,Dwellberries,14,3,2009-01
+2128,Equa leaves,45,3,2009-01
+2130,Pot of cream,89,3,2009-01
+2132,Raw beef,59,3,2009-01
+2134,Raw rat meat,41,3,2009-01
+2136,Raw bear meat,59,3,2009-01
+2138,Raw chicken,59,3,2009-01
+2140,Cooked chicken,12,3,2009-01
+2142,Cooked meat,31,3,2009-01
+2150,Swamp toad,330,3,2009-01
+2152,Toad's legs,281,3,2009-01
+2162,King worm,20,3,2009-01
+2164,Batta tin,8,31,2009-01
+2165,Crunchy tray,9,31,2009-01
+2166,Gnomebowl mould,19,31,2009-01
+2167,Gianne's cook book,33,31,2009-01
+2169,Gnome spice,127,3,2009-01
+2171,Gianne dough,2,3,2009-01
+2185,Chocolate bomb,569,3,2009-01
+2187,Tangled toads' legs,299,3,2009-01
+2191,Worm hole,125,3,2009-01
+2195,Veg ball,128,3,2009-01
+2202,Raw crunchies,112,3,2009-01
+2205,Worm crunchies,113,3,2009-01
+2209,Chocchip crunchies,252,3,2009-01
+2213,Spicy crunchies,77,3,2009-01
+2217,Toad crunchies,882,3,2009-01
+2219,Premade w'm batta,120,3,2009-01
+2221,Premade t'd batta,120,3,2009-01
+2223,Premade c+t batta,120,3,2009-01
+2225,Premade fr't batta,121,3,2009-01
+2227,Premade veg batta,121,3,2009-01
+2229,Premade choc bomb,300,3,2009-01
+2231,Premade ttl,255,3,2009-01
+2233,Premade worm hole,154,3,2009-01
+2235,Premade veg ball,163,3,2009-01
+2237,Premade w'm crun',75,3,2009-01
+2239,Premade ch' crunch,73,3,2009-01
+2241,Premade s'y crunch,63,3,2009-01
+2243,Premade t'd crunch,57,3,2009-01
+2253,Worm batta,135,3,2009-01
+2255,Toad batta,117,3,2009-01
+2259,Cheese+tom batta,108,3,2009-01
+2277,Fruit batta,118,3,2009-01
+2281,Vegetable batta,116,3,2009-01
+2283,Pizza base,104,3,2009-01
+2285,Incomplete pizza,277,3,2009-01
+2287,Uncooked pizza,393,3,2009-01
+2289,Plain pizza,264,3,2009-01
+2291,1/2 plain pizza,132,3,2009-01
+2293,Meat pizza,321,3,2009-01
+2295,1/2 meat pizza,160,3,2009-01
+2297,Anchovy pizza,478,3,2009-01
+2299,1/2 anchovy pizza,239,3,2009-01
+2301,Pineapple pizza,524,3,2009-01
+2303,,262,3,2009-01
+2307,Bread dough,123,3,2009-01
+2309,Bread,25,3,2009-01
+2313,Pie dish,20,3,2009-01
+2315,Pie shell,285,3,2009-01
+2317,Uncooked apple pie,396,3,2009-01
+2319,Uncooked meat pie,245,3,2009-01
+2321,Uncooked berry pie,309,3,2009-01
+2323,Apple pie,166,3,2009-01
+2325,Redberry pie,174,3,2009-01
+2327,Meat pie,116,3,2009-01
+2331,Half a meat pie,58,3,2009-01
+2333,Half a redberry pie,87,3,2009-01
+2335,Half an apple pie,83,3,2009-01
+2337,Raw oomlie,17,3,2009-01
+2341,Wrapped oomlie,59,3,2009-01
+2343,Cooked oomlie wrap,686,3,2009-01
+2347,Hammer,13,3,2009-01
+2349,Bronze bar,180,3,2009-01
+2351,Iron bar,235,3,2009-01
+2353,Steel bar,629,3,2009-01
+2355,Silver bar,171,3,2009-01
+2357,Gold bar,181,3,2009-01
+2359,Mithril bar,1191,3,2009-01
+2361,Adamantite bar,2272,3,2009-01
+2363,Runite bar,18500,3,2009-01
+2366,Shield left half,65900,3,2009-01
+2368,Shield right half,742300,3,2009-01
+2370,Steel studs,462,3,2009-01
+2391,Ground bat bones,39,3,2009-01
+2428,Attack potion(4),336,3,2009-01
+2430,Restore potion(4),118,3,2009-01
+2432,Defence potion(4),536,3,2009-01
+2434,Prayer potion(4),8200,3,2009-01
+2436,Super attack(4),584,3,2009-01
+2438,Fishing potion(4),120,3,2009-01
+2440,Super strength(4),3337,3,2009-01
+2442,Super defence(4),836,3,2009-01
+2444,Ranging potion(4),1872,3,2009-01
+2446,Antipoison(4),385,3,2009-01
+2448,Super antipoison(4),1014,3,2009-01
+2450,Zamorak brew(4),872,3,2009-01
+2452,Antifire potion(4),750,3,2009-01
+2454,Antifire potion(3),563,3,2009-01
+2456,Antifire potion(2),375,3,2009-01
+2458,Antifire potion(1),187,3,2009-01
+2460,Flowers,46,3,2009-01
+2462,Flowers,2142,3,2009-01
+2464,Flowers,46,3,2009-01
+2466,Flowers,45,3,2009-01
+2468,Flowers,50,3,2009-01
+2470,Flowers,47,3,2009-01
+2472,Flowers,46,3,2009-01
+2474,Flowers,37300,3,2009-01
+2476,Flowers,8659,3,2009-01
+2481,Clean lantadyme,1228,3,2009-01
+2483,Lantadyme potion(unf),1662,3,2009-01
+2485,Grimy lantadyme,1188,3,2009-01
+2487,Blue d'hide vamb,1680,3,2009-01
+2489,Red d'hide vamb,2043,3,2009-01
+2491,Black d'hide vamb,2636,3,2009-01
+2493,Blue d'hide chaps,2478,3,2009-01
+2495,Red d'hide chaps,5047,3,2009-01
+2497,Black d'hide chaps,5650,3,2009-01
+2499,Blue d'hide body,5483,3,2009-01
+2501,Red d'hide body,6746,3,2009-01
+2503,Black d'hide body,7944,3,2009-01
+2505,Blue d-leather,2275,3,2009-01
+2507,Red dragon leather,3375,3,2009-01
+2509,Black d-leather,3287,3,2009-01
+2518,Rotten tomato,2,31,2009-01
+2520,Toy horsey,67,31,2009-01
+2522,Toy horsey,72,31,2009-01
+2524,Toy horsey,67,31,2009-01
+2526,Toy horsey,67,31,2009-01
+2532,Iron fire arrows,244,3,2009-01
+2533,Iron fire arrows,244,3,2009-01
+2534,Steel fire arrows,244,3,2009-01
+2535,Steel fire arrows,244,3,2009-01
+2536,Mithril fire arrows,242,3,2009-01
+2537,Mithril fire arrows,242,3,2009-01
+2538,Adamant fire arrows,106,3,2009-01
+2539,Adamant fire arrows,106,3,2009-01
+2540,Rune fire arrows,304,3,2009-01
+2541,Rune fire arrows,304,3,2009-01
+2550,Ring of recoil,778,3,2009-01
+2552,Ring of duelling(8),1024,3,2009-01
+2554,Ring of duelling(7),1028,31,2009-01
+2556,Ring of duelling(6),1028,31,2009-01
+2558,Ring of duelling(5),1028,31,2009-01
+2560,Ring of duelling(4),1028,31,2009-01
+2562,Ring of duelling(3),1028,31,2009-01
+2564,Ring of duelling(2),1028,31,2009-01
+2566,Ring of duelling(1),1024,3,2009-01
+2568,Ring of forging,1118,3,2009-01
+2570,Ring of life,2088,3,2009-01
+2572,Ring of wealth,27700,3,2009-01
+2577,Ranger boots,5500000,3,2009-01
+2579,Wizard boots,328500,3,2009-01
+2581,Robin hood hat,1900000,3,2009-01
+2583,Black platebody (t),84600,3,2009-01
+2585,Black platelegs (t),57300,3,2009-01
+2587,Black full helm(t),58400,3,2009-01
+2589,Black kiteshield (t),51500,3,2009-01
+2591,Black platebody (g),221100,3,2009-01
+2593,Black platelegs (g),112900,3,2009-01
+2595,Black full helm(g),136300,3,2009-01
+2597,Black kiteshield (g),168900,3,2009-01
+2599,Adam platebody (t),88600,3,2009-01
+2601,Adam platelegs (t),40400,3,2009-01
+2603,Adam kiteshield (t),46400,3,2009-01
+2605,Adam full helm(t),57900,3,2009-01
+2607,Adam platebody (g),197900,3,2009-01
+2609,Adam platelegs (g),71700,3,2009-01
+2611,Adam kiteshield (g),109100,3,2009-01
+2613,Adam full helm(g),124500,3,2009-01
+2615,Rune platebody (g),612800,3,2009-01
+2617,Rune platelegs (g),302100,3,2009-01
+2619,Rune full helm(g),463400,3,2009-01
+2621,Rune kiteshield (g),438200,3,2009-01
+2623,Rune platebody (t),396500,3,2009-01
+2625,Rune platelegs (t),208100,3,2009-01
+2627,Rune full helm (t),358400,3,2009-01
+2629,Rune kiteshield (t),302100,3,2009-01
+2631,Highwayman mask,50700,3,2009-01
+2633,Blue beret,34400,3,2009-01
+2635,Black beret,113100,3,2009-01
+2637,White beret,224200,3,2009-01
+2639,Tan cavalier,15700,3,2009-01
+2641,Dark cavalier,30200,3,2009-01
+2643,Black cavalier,383900,3,2009-01
+2645,Red headband,28000,3,2009-01
+2647,Black headband,15700,3,2009-01
+2649,Brown headband,3617,3,2009-01
+2651,Pirate's hat,37200,3,2009-01
+2653,Zamorak platebody,1100000,3,2009-01
+2655,Zamorak platelegs,347900,3,2009-01
+2657,Zamorak full helm,613500,3,2009-01
+2659,Zamorak kiteshield,667100,3,2009-01
+2661,Saradomin platebody,1700000,3,2009-01
+2663,Saradomin platelegs,384300,3,2009-01
+2665,Saradomin full helm,885400,3,2009-01
+2667,Saradomin kiteshield,932400,3,2009-01
+2669,Guthix platebody,618100,3,2009-01
+2671,Guthix platelegs,288400,3,2009-01
+2673,Guthix full helm,393500,3,2009-01
+2675,Guthix kiteshield,392200,3,2009-01
+2859,Wolf bones,493,3,2009-01
+2861,Wolfbone arrowtips,4,3,2009-01
+2862,Achey tree logs,195,3,2009-01
+2864,Ogre arrow shaft,56,3,2009-01
+2865,Flighted ogre arrow,97,3,2009-01
+2866,Ogre arrow,24,3,2009-01
+2876,Raw chompy,1856,3,2009-01
+2878,Cooked chompy,91,3,2009-01
+2890,Elemental shield,149,3,2009-01
+2894,Boots,772,3,2009-01
+2896,Robe top,755,3,2009-01
+2898,Robe bottoms,787,3,2009-01
+2900,Hat,783,3,2009-01
+2902,Gloves,743,3,2009-01
+2904,Boots,761,3,2009-01
+2906,Robe top,674,3,2009-01
+2908,Robe bottoms,755,3,2009-01
+2910,Hat,801,3,2009-01
+2912,Gloves,745,3,2009-01
+2914,Boots,795,3,2009-01
+2916,Robe top,722,3,2009-01
+2918,Robe bottoms,790,3,2009-01
+2920,Hat,774,3,2009-01
+2922,Gloves,740,3,2009-01
+2924,Boots,782,3,2009-01
+2926,Robe top,823,3,2009-01
+2928,Robe bottoms,608,3,2009-01
+2930,Hat,774,3,2009-01
+2932,Gloves,745,3,2009-01
+2934,Boots,735,3,2009-01
+2936,Robe top,780,3,2009-01
+2938,Robe bottoms,772,3,2009-01
+2940,Hat,763,3,2009-01
+2942,Gloves,738,3,2009-01
+2955,Moonlight mead,8,3,2009-01
+2961,Silver sickle,79,3,2009-01
+2970,Mort myre fungus,633,3,2009-01
+2972,Mort myre stem,126,3,2009-01
+2974,Mort myre pear,27,3,2009-01
+2976,Sickle mould,132,3,2009-01
+2997,Pirate's hook,1400000,3,2009-01
+2998,Clean toadflax,2283,3,2009-01
+3000,Clean snapdragon,8024,3,2009-01
+3002,Toadflax potion(unf),2422,3,2009-01
+3004,Snapdragon potion(unf),8395,3,2009-01
+3008,Energy potion(4),286,3,2009-01
+3010,Energy potion(3),215,3,2009-01
+3012,Energy potion(2),143,3,2009-01
+3014,Energy potion(1),71,3,2009-01
+3016,Super energy(4),1488,3,2009-01
+3018,Super energy(3),1116,3,2009-01
+3020,Super energy(2),744,3,2009-01
+3022,Super energy(1),372,3,2009-01
+3024,Super restore(4),9682,3,2009-01
+3026,Super restore(3),7262,3,2009-01
+3028,Super restore(2),4841,3,2009-01
+3030,Super restore(1),2420,3,2009-01
+3032,Agility potion(4),117,3,2009-01
+3034,Agility potion(3),88,3,2009-01
+3036,Agility potion(2),58,3,2009-01
+3038,Agility potion(1),29,3,2009-01
+3040,Magic potion(4),881,3,2009-01
+3042,Magic potion(3),661,3,2009-01
+3044,Magic potion(2),440,3,2009-01
+3046,Magic potion(1),220,3,2009-01
+3049,Grimy toadflax,2257,3,2009-01
+3051,Grimy snapdragon,7993,3,2009-01
+3053,Lava battlestaff,10100,3,2009-01
+3054,Mystic lava staff,26800,3,2009-01
+3093,Black dart,318,3,2009-01
+3094,Black dart(p),353,9,2009-01
+3095,Bronze claws,57,3,2009-01
+3096,Iron claws,22,3,2009-01
+3097,Steel claws,79,4,2009-01
+3098,Black claws,208,3,2009-01
+3099,Mithril claws,285,4,2009-01
+3100,Adamant claws,2088,4,2009-01
+3101,Rune claws,7380,4,2009-01
+3105,Climbing boots,592,3,2009-01
+3122,Granite shield,41500,3,2009-01
+3123,Shaikahan bones,583,3,2009-01
+3125,Jogre bones,441,3,2009-01
+3138,Potato cactus,1136,3,2009-01
+3140,Dragon chainbody,5100000,3,2009-01
+3142,Raw karambwan,640,3,2009-01
+3144,Cooked karambwan,656,3,2009-01
+3157,Karambwan vessel,77,3,2009-01
+3162,Sliced banana,9,3,2009-01
+3183,Monkey bones,194,3,2009-01
+3188,Cleaning cloth,236,3,2009-01
+3190,Bronze halberd,304,3,2009-01
+3192,Iron halberd,165,3,2009-01
+3194,Steel halberd,590,3,2009-01
+3196,Black halberd,2692,3,2009-01
+3198,Mithril halberd,3580,3,2009-01
+3200,Adamant halberd,4775,3,2009-01
+3202,Rune halberd,77200,3,2009-01
+3204,Dragon halberd,195100,3,2009-01
+3211,Limestone,109,3,2009-01
+3216,Barrel,11,3,2009-01
+3226,Raw rabbit,69,3,2009-01
+3228,Cooked rabbit,19,3,2009-01
+3239,Bark,6,3,2009-01
+3325,Vampire dust,707,3,2009-01
+3327,Myre snelm,210,3,2009-01
+3329,Blood'n'tar snelm,263,3,2009-01
+3331,Ochre snelm,537,3,2009-01
+3333,Bruise blue snelm,135,3,2009-01
+3335,Broken bark snelm,144,3,2009-01
+3337,Myre snelm,403,3,2009-01
+3339,Blood'n'tar snelm,151,3,2009-01
+3341,Ochre snelm,548,3,2009-01
+3343,Bruise blue snelm,1828,3,2009-01
+3345,Blamish myre shell,188,3,2009-01
+3347,Blamish red shell,208,3,2009-01
+3349,Blamish ochre shell,495,3,2009-01
+3351,Blamish blue shell,227,3,2009-01
+3353,Blamish bark shell,180,3,2009-01
+3355,Blamish myre shell,369,3,2009-01
+3357,Blamish red shell,249,3,2009-01
+3359,Blamish ochre shell,466,3,2009-01
+3361,Blamish blue shell,1893,3,2009-01
+3363,Thin snail,210,3,2009-01
+3365,Lean snail,425,3,2009-01
+3367,Fat snail,681,3,2009-01
+3369,Thin snail meat,136,3,2009-01
+3371,Lean snail meat,47,3,2009-01
+3373,Fat snail meat,118,3,2009-01
+3377,Sample bottle,18,3,2009-01
+3379,Slimy eel,376,3,2009-01
+3381,Cooked slimy eel,105,3,2009-01
+3385,Splitbark helm,5838,3,2009-01
+3387,Splitbark body,27300,3,2009-01
+3389,Splitbark legs,24200,3,2009-01
+3391,Splitbark gauntlets,2808,3,2009-01
+3393,Splitbark boots,2887,3,2009-01
+3396,Loar remains,9,3,2009-01
+3398,Phrin remains,206,3,2009-01
+3400,Riyl remains,244,3,2009-01
+3402,Asyn remains,983,3,2009-01
+3404,Fiyr remains,1833,3,2009-01
+3406,Ash potion(unf),16,10,2009-01
+3420,Limestone brick,98,3,2009-01
+3422,Olive oil(4),278,3,2009-01
+3424,Olive oil(3),209,3,2009-01
+3426,Olive oil(2),139,3,2009-01
+3428,Olive oil(1),69,3,2009-01
+3430,Sacred oil(4),1556,3,2009-01
+3432,Sacred oil(3),1167,3,2009-01
+3434,Sacred oil(2),778,3,2009-01
+3436,Sacred oil(1),389,3,2009-01
+3438,Pyre logs,196,3,2009-01
+3440,Oak pyre logs,133,3,2009-01
+3442,Willow pyre logs,197,3,2009-01
+3444,Maple pyre logs,1169,3,2009-01
+3446,Yew pyre logs,1635,3,2009-01
+3448,Magic pyre logs,2680,3,2009-01
+3470,Fine cloth,964,3,2009-01
+3472,Black plateskirt (t),11800,3,2009-01
+3473,Black plateskirt (g),28900,3,2009-01
+3474,Adam plateskirt (t),8800,3,2009-01
+3475,Adam plateskirt (g),18000,3,2009-01
+3476,Rune plateskirt (g),68100,3,2009-01
+3477,Rune plateskirt (t),65000,3,2009-01
+3478,Zamorak plateskirt,95500,3,2009-01
+3479,Saradomin plateskirt,101300,3,2009-01
+3480,Guthix plateskirt,57600,3,2009-01
+3481,Gilded platebody,1400000,3,2009-01
+3483,Gilded platelegs,580500,3,2009-01
+3485,Gilded plateskirt,192000,3,2009-01
+3486,Gilded full helm,405400,3,2009-01
+3488,Gilded kiteshield,492000,3,2009-01
+3749,Archer helm,56700,3,2009-01
+3751,Berserker helm,77800,3,2009-01
+3753,Warrior helm,53600,3,2009-01
+3755,Farseer helm,53600,3,2009-01
+3759,Fremennik cloak,411,3,2009-01
+3761,Fremennik cloak,256,3,2009-01
+3763,Fremennik cloak,439,3,2009-01
+3765,Fremennik cloak,438,3,2009-01
+3767,Fremennik shirt,195,3,2009-01
+3769,Fremennik shirt,276,3,2009-01
+3771,Fremennik shirt,206,3,2009-01
+3773,Fremennik shirt,484,3,2009-01
+3775,Fremennik shirt,492,3,2009-01
+3777,Fremennik cloak,420,3,2009-01
+3779,Fremennik cloak,442,3,2009-01
+3781,Fremennik cloak,440,3,2009-01
+3783,Fremennik cloak,460,3,2009-01
+3785,Fremennik cloak,448,3,2009-01
+3787,Fremennik cloak,445,3,2009-01
+3789,Fremennik cloak,479,3,2009-01
+3791,Fremennik boots,393,3,2009-01
+3793,Fremennik robe,704,3,2009-01
+3795,Fremennik skirt,845,3,2009-01
+3797,Fremennik hat,835,3,2009-01
+3799,Gloves,390,3,2009-01
+3801,Keg of beer,505,3,2009-01
+3803,Beer,204,3,2009-01
+3827,Saradomin page 1,95700,3,2009-01
+3828,Saradomin page 2,78300,3,2009-01
+3829,Saradomin page 3,71000,3,2009-01
+3830,Saradomin page 4,90600,3,2009-01
+3831,Zamorak page 1,435600,3,2009-01
+3832,Zamorak page 2,280100,3,2009-01
+3833,Zamorak page 3,283800,3,2009-01
+3834,Zamorak page 4,293200,3,2009-01
+3835,Guthix page 1,58800,3,2009-01
+3836,Guthix page 2,55600,3,2009-01
+3837,Guthix page 3,53500,3,2009-01
+3838,Guthix page 4,49800,3,2009-01
+3853,Games necklace(8),867,3,2009-01
+3855,Games necklace(7),861,31,2009-01
+3857,Games necklace(6),861,31,2009-01
+3859,Games necklace(5),861,31,2009-01
+3861,Games necklace(4),861,31,2009-01
+3863,Games necklace(3),861,31,2009-01
+3865,Games necklace(2),861,31,2009-01
+3867,Games necklace(1),867,3,2009-01
+4087,Dragon platelegs,626500,3,2009-01
+4089,Mystic hat,14800,3,2009-01
+4091,Mystic robe top,73100,3,2009-01
+4093,Mystic robe bottom,48800,3,2009-01
+4095,Mystic gloves,5866,3,2009-01
+4097,Mystic boots,5908,3,2009-01
+4099,Mystic hat,8987,3,2009-01
+4101,Mystic robe top,72500,3,2009-01
+4103,Mystic robe bottom,48200,3,2009-01
+4105,Mystic gloves,5942,3,2009-01
+4107,Mystic boots,21900,3,2009-01
+4109,Mystic hat,8853,3,2009-01
+4111,Mystic robe top,72100,3,2009-01
+4113,Mystic robe bottom,48000,3,2009-01
+4115,Mystic gloves,8176,3,2009-01
+4117,Mystic boots,5992,3,2009-01
+4119,Bronze boots,940,3,2009-01
+4121,Iron boots,6904,3,2009-01
+4123,Steel boots,137,4,2009-01
+4125,Black boots,265,3,2009-01
+4127,Mithril boots,518,4,2009-01
+4129,Adamant boots,2086,4,2009-01
+4131,Rune boots,59950,4,2009-01
+4151,Abyssal whip,1500000,3,2009-01
+4153,Granite maul,129200,3,2009-01
+4156,Mirror shield,2918,3,2009-01
+4161,Bag of salt,5,3,2009-01
+4162,Rock hammer,262,3,2009-01
+4164,Face mask,221,3,2009-01
+4166,Earmuffs,307,3,2009-01
+4168,Nose peg,303,3,2009-01
+4170,Slayer's staff,12700,3,2009-01
+4207,Crystal seed,74000,7,2009-01
+4212,New crystal bow,902800,7,2009-01
+4224,New crystal shield,742900,7,2009-01
+4287,Raw beef,120,3,2009-01
+4289,Raw chicken,111,3,2009-01
+4291,Cooked chicken,19,3,2009-01
+4293,Cooked meat,17,3,2009-01
+4298,Ham shirt,34,3,2009-01
+4300,Ham robe,112,3,2009-01
+4302,Ham hood,1092,3,2009-01
+4304,Ham cloak,1862,3,2009-01
+4306,H.a.m logo,34,3,2009-01
+4308,Gloves,35,3,2009-01
+4310,Boots,132,3,2009-01
+4315,Team-1 cape,150,3,2009-01
+4317,Team-2 cape,150,3,2009-01
+4319,Team-3 cape,120,3,2009-01
+4321,Team-4 cape,150,3,2009-01
+4323,Team-5 cape,150,3,2009-01
+4325,Team-6 cape,76,3,2009-01
+4327,Team-7 cape,150,3,2009-01
+4329,Team-8 cape,150,3,2009-01
+4331,Team-9 cape,148,3,2009-01
+4333,Team-10 cape,150,3,2009-01
+4335,Team-11 cape,150,3,2009-01
+4337,Team-12 cape,150,3,2009-01
+4339,Team-13 cape,134,3,2009-01
+4341,Team-14 cape,150,3,2009-01
+4343,Team-15 cape,150,3,2009-01
+4345,Team-16 cape,71,3,2009-01
+4347,Team-17 cape,150,3,2009-01
+4349,Team-18 cape,150,3,2009-01
+4351,Team-19 cape,143,3,2009-01
+4353,Team-20 cape,150,3,2009-01
+4355,Team-21 cape,150,3,2009-01
+4357,Team-22 cape,150,3,2009-01
+4359,Team-23 cape,133,3,2009-01
+4361,Team-24 cape,150,3,2009-01
+4363,Team-25 cape,150,3,2009-01
+4365,Team-26 cape,72,3,2009-01
+4367,Team-27 cape,150,3,2009-01
+4369,Team-28 cape,150,3,2009-01
+4371,Team-29 cape,149,3,2009-01
+4373,Team-30 cape,150,3,2009-01
+4375,Team-31 cape,150,3,2009-01
+4377,Team-32 cape,150,3,2009-01
+4379,Team-33 cape,141,3,2009-01
+4381,Team-34 cape,150,3,2009-01
+4383,Team-35 cape,150,3,2009-01
+4385,Team-36 cape,76,3,2009-01
+4387,Team-37 cape,150,3,2009-01
+4389,Team-38 cape,150,3,2009-01
+4391,Team-39 cape,148,3,2009-01
+4393,Team-40 cape,150,3,2009-01
+4395,Team-41 cape,150,3,2009-01
+4397,Team-42 cape,150,3,2009-01
+4399,Team-43 cape,114,3,2009-01
+4401,Team-44 cape,150,3,2009-01
+4403,Team-45 cape,150,3,2009-01
+4405,Team-46 cape,68,3,2009-01
+4407,Team-47 cape,150,3,2009-01
+4409,Team-48 cape,150,3,2009-01
+4411,Team-49 cape,145,3,2009-01
+4413,Team-50 cape,150,3,2009-01
+4417,Guthix rest(4),92,3,2009-01
+4419,Guthix rest(3),69,3,2009-01
+4421,Guthix rest(2),46,3,2009-01
+4423,Guthix rest(1),23,3,2009-01
+4436,Airtight pot,57,3,2009-01
+4438,Unfired pot lid,13,3,2009-01
+4440,Pot lid,8,3,2009-01
+4456,Bowl of hot water,18,3,2009-01
+4458,Cup of water,23,3,2009-01
+4460,Cup of hot water,18,3,2009-01
+4464,Herb tea mix,10,6,2009-01
+4466,Herb tea mix,10,6,2009-01
+4468,Herb tea mix,11,6,2009-01
+4470,Herb tea mix,15,6,2009-01
+4472,Herb tea mix,15,6,2009-01
+4474,Herb tea mix,15,6,2009-01
+4476,Herb tea mix,15,6,2009-01
+4478,Herb tea mix,32,6,2009-01
+4480,Herb tea mix,30,6,2009-01
+4482,Herb tea mix,31,6,2009-01
+4517,Giant frog legs,943,3,2009-01
+4522,Oil lamp,736,3,2009-01
+4525,Oil lamp,15,3,2009-01
+4527,Candle lantern,45,3,2009-01
+4529,Candle lantern,171,3,2009-01
+4535,Oil lantern,54,3,2009-01
+4537,Oil lantern,159,3,2009-01
+4540,Oil lantern frame,42,3,2009-01
+4542,Lantern lens,31,3,2009-01
+4544,Bullseye lantern,135,3,2009-01
+4546,Bullseye lantern,182,3,2009-01
+4548,Bullseye lantern,818,3,2009-01
+4551,Spiny helmet,781,3,2009-01
+4580,Black spear,1212,3,2009-01
+4582,Black spear(p),1429,9,2009-01
+4585,Dragon plateskirt,196500,3,2009-01
+4587,Dragon scimitar,99900,3,2009-01
+4600,Willow-blackjack,270,3,2009-01
+4608,Super kebab,37,3,2009-01
+4627,Bandit's brew,783,3,2009-01
+4675,Ancient staff,61100,3,2009-01
+4694,Steam rune,99,3,2009-01
+4695,Mist rune,82,3,2009-01
+4696,Dust rune,11,3,2009-01
+4697,Smoke rune,230,3,2009-01
+4698,Mud rune,236,3,2009-01
+4699,Lava rune,15,3,2009-01
+4708,Ahrim's hood,57600,3,2009-01
+4710,Ahrim's staff,52400,3,2009-01
+4712,Ahrim's robetop,312200,3,2009-01
+4714,Ahrim's robeskirt,679600,3,2009-01
+4716,Dharok's helm,3300000,3,2009-01
+4718,Dharok's greataxe,230600,3,2009-01
+4720,Dharok's platebody,218300,3,2009-01
+4722,Dharok's platelegs,307300,3,2009-01
+4724,Guthan's helm,1700000,3,2009-01
+4726,Guthan's warspear,1700000,3,2009-01
+4728,Guthan's platebody,304200,3,2009-01
+4730,Guthan's chainskirt,195400,3,2009-01
+4732,Karil's coif,37600,3,2009-01
+4734,Karil's crossbow,128700,3,2009-01
+4736,Karil's leathertop,912300,3,2009-01
+4738,Karil's leatherskirt,245900,3,2009-01
+4740,Bolt rack,228,3,2009-01
+4745,Torag's helm,471400,3,2009-01
+4747,Torag's hammers,100600,3,2009-01
+4749,Torag's platebody,205600,3,2009-01
+4751,Torag's platelegs,351100,3,2009-01
+4753,Verac's helm,1600000,3,2009-01
+4755,Verac's flail,160300,3,2009-01
+4757,Verac's brassard,221200,3,2009-01
+4759,Verac's plateskirt,527500,3,2009-01
+4773,Bronze brutal,27,3,2009-01
+4778,Iron brutal,31,3,2009-01
+4783,Steel brutal,39,3,2009-01
+4788,Black brutal,45,3,2009-01
+4793,Mithril brutal,68,3,2009-01
+4798,Adamant brutal,107,3,2009-01
+4803,Rune brutal,225,3,2009-01
+4812,Zogre bones,555,3,2009-01
+4819,Bronze nails,6,3,2009-01
+4820,Iron nails,15,3,2009-01
+4821,Black nails,8,3,2009-01
+4822,Mithril nails,20,3,2009-01
+4823,Adamantite nails,21,3,2009-01
+4824,Rune nails,100,3,2009-01
+4825,Unstrung comp bow,143,3,2009-01
+4827,Comp ogre bow,357,3,2009-01
+4830,Fayrg bones,4015,3,2009-01
+4832,Raurg bones,6627,3,2009-01
+4834,Ourg bones,22200,3,2009-01
+4840,Rogue's purse potion(unf),36,3,2009-01
+4842,Relicym's balm(4),418,3,2009-01
+4844,Relicym's balm(3),314,3,2009-01
+4846,Relicym's balm(2),209,3,2009-01
+4848,Relicym's balm(1),104,3,2009-01
+4850,Ogre coffin key,587,3,2009-01
+4860,Ahrim's hood 0,27600,3,2009-01
+4866,Ahrim's staff 0,50700,3,2009-01
+4872,Ahrim's top 0,267200,3,2009-01
+4878,Ahrim's skirt 0,639600,3,2009-01
+4884,Dharok's helm 0,3300000,3,2009-01
+4890,Dharok's axe 0,167650,6,2009-01
+4896,Dharok's body 0,185950,6,2009-01
+4902,Dharok's legs 0,267300,3,2009-01
+4908,Guthan's helm 0,1700000,3,2009-01
+4914,Guthan's spear 0,1600000,3,2009-01
+4920,Guthan's body 0,259200,3,2009-01
+4926,Guthan's skirt 0,164700,3,2009-01
+4932,Karil's coif 0,7621,3,2009-01
+4938,Karil's x-bow 0,95700,3,2009-01
+4944,Karil's top 0,867300,3,2009-01
+4950,Karil's skirt 0,205900,3,2009-01
+4956,Torag's helm 0,441400,3,2009-01
+4962,Torag's hammer 0,95700,3,2009-01
+4968,Torag's body 0,167700,3,2009-01
+4974,Torag's legs 0,311100,3,2009-01
+4980,Verac's helm 0,1500000,3,2009-01
+4986,Verac's flail 0,110300,3,2009-01
+4992,Verac's top 0,176200,3,2009-01
+4998,Verac's skirt 0,487500,3,2009-01
+5001,Raw cave eel,413,3,2009-01
+5003,Cave eel,156,3,2009-01
+5014,Mining helmet,405,3,2009-01
+5016,Bone spear,764,3,2009-01
+5018,Bone club,304,3,2009-01
+5024,Woven top,833,3,2009-01
+5026,Woven top,983,3,2009-01
+5028,Woven top,1025,3,2009-01
+5030,Shirt,784,3,2009-01
+5032,Shirt,970,3,2009-01
+5034,Shirt,994,3,2009-01
+5036,Trousers,752,3,2009-01
+5038,Trousers,416,3,2009-01
+5040,Trousers,569,3,2009-01
+5042,Shorts,564,3,2009-01
+5044,Shorts,603,3,2009-01
+5046,Shorts,705,3,2009-01
+5048,Skirt,646,3,2009-01
+5050,Skirt,906,3,2009-01
+5052,Skirt,986,3,2009-01
+5096,Marigold seed,81,3,2009-01
+5097,Rosemary seed,51,3,2009-01
+5098,Nasturtium seed,5,3,2009-01
+5099,Woad seed,5,3,2009-01
+5100,Limpwurt seed,372,3,2009-01
+5101,Redberry seed,2,3,2009-01
+5102,Cadavaberry seed,4,3,2009-01
+5103,Dwellberry seed,11,3,2009-01
+5104,Jangerberry seed,27,3,2009-01
+5105,Whiteberry seed,60,3,2009-01
+5106,Poison ivy seed,201,3,2009-01
+5280,Cactus seed,52,3,2009-01
+5281,Belladonna seed,80,3,2009-01
+5283,Apple tree seed,16,3,2009-01
+5284,Banana tree seed,40,3,2009-01
+5285,Orange tree seed,435,3,2009-01
+5286,Curry tree seed,2359,3,2009-01
+5287,Pineapple seed,14400,3,2009-01
+5288,Papaya tree seed,33100,3,2009-01
+5289,Palm tree seed,83400,3,2009-01
+5290,Calquat tree seed,24300,3,2009-01
+5291,Guam seed,25,3,2009-01
+5292,Marrentill seed,5,3,2009-01
+5293,Tarromin seed,8,3,2009-01
+5294,Harralander seed,38,3,2009-01
+5295,Ranarr seed,22700,3,2009-01
+5296,Toadflax seed,499,3,2009-01
+5297,Irit seed,86,3,2009-01
+5298,Avantoe seed,213,3,2009-01
+5299,Kwuarm seed,4872,3,2009-01
+5300,Snapdragon seed,37500,3,2009-01
+5301,Cadantine seed,880,3,2009-01
+5302,Lantadyme seed,1818,3,2009-01
+5303,Dwarf weed seed,5145,3,2009-01
+5304,Torstol seed,7011,3,2009-01
+5305,Barley seed,19,3,2009-01
+5306,Jute seed,43,3,2009-01
+5307,Hammerstone seed,26,3,2009-01
+5308,Asgarnian seed,30,3,2009-01
+5309,Yanillian seed,105,3,2009-01
+5310,Krandorian seed,4,3,2009-01
+5311,Wildblood seed,27,3,2009-01
+5312,Acorn,67,3,2009-01
+5313,Willow seed,4831,3,2009-01
+5314,Maple seed,31300,3,2009-01
+5315,Yew seed,71700,3,2009-01
+5316,Magic seed,163700,3,2009-01
+5318,Potato seed,4,3,2009-01
+5319,Onion seed,5,3,2009-01
+5320,Sweetcorn seed,659,3,2009-01
+5321,Watermelon seed,3195,3,2009-01
+5322,Tomato seed,18,3,2009-01
+5323,Strawberry seed,653,3,2009-01
+5324,Cabbage seed,13,3,2009-01
+5325,Gardening trowel,108,3,2009-01
+5329,Secateurs,98,3,2009-01
+5331,Watering can,97,3,2009-01
+5341,Rake,66,3,2009-01
+5343,Seed dibber,93,3,2009-01
+5345,Gardening boots,2975,3,2009-01
+5350,Plant pot,1,3,2009-01
+5352,Unfired plant pot,8,3,2009-01
+5354,Plant pot,79,3,2009-01
+5376,Basket,68,3,2009-01
+5378,Apples(1),229,31,2009-01
+5380,Apples(2),391,31,2009-01
+5382,Apples(3),552,31,2009-01
+5384,Apples(4),713,31,2009-01
+5386,Apples(5),863,3,2009-01
+5388,Oranges(1),325,31,2009-01
+5390,Oranges(2),584,31,2009-01
+5392,Oranges(3),843,31,2009-01
+5394,Oranges(4),1102,31,2009-01
+5396,Oranges(5),1339,3,2009-01
+5398,Strawberries(1),120,31,2009-01
+5400,Strawberries(2),172,31,2009-01
+5402,Strawberries(3),227,31,2009-01
+5404,Strawberries(4),281,31,2009-01
+5406,Strawberries(5),329,3,2009-01
+5408,Bananas(1),138,31,2009-01
+5410,Bananas(2),206,31,2009-01
+5412,Bananas(3),273,31,2009-01
+5414,Bananas(4),340,31,2009-01
+5416,Bananas(5),403,3,2009-01
+5418,Empty sack,68,3,2009-01
+5420,Potatoes(1),142,31,2009-01
+5422,Potatoes(2),221,31,2009-01
+5424,Potatoes(3),297,31,2009-01
+5426,Potatoes(4),374,31,2009-01
+5428,Potatoes(5),451,31,2009-01
+5430,Potatoes(6),528,31,2009-01
+5432,Potatoes(7),605,31,2009-01
+5434,Potatoes(8),682,31,2009-01
+5436,Potatoes(9),759,31,2009-01
+5438,Potatoes(10),815,3,2009-01
+5440,Onions(1),91,31,2009-01
+5442,Onions(2),115,31,2009-01
+5444,Onions(3),141,31,2009-01
+5446,Onions(4),167,31,2009-01
+5448,Onions(5),193,31,2009-01
+5450,Onions(6),218,31,2009-01
+5452,Onions(7),243,31,2009-01
+5454,Onions(8),268,31,2009-01
+5456,Onions(9),293,31,2009-01
+5458,Onions(10),305,3,2009-01
+5460,Cabbages(1),72,31,2009-01
+5462,Cabbages(2),78,31,2009-01
+5464,Cabbages(3),84,31,2009-01
+5466,Cabbages(4),90,31,2009-01
+5468,Cabbages(5),96,31,2009-01
+5470,Cabbages(6),102,31,2009-01
+5472,Cabbages(7),108,31,2009-01
+5474,Cabbages(8),114,31,2009-01
+5476,Cabbages(9),120,31,2009-01
+5478,Cabbages(10),128,3,2009-01
+5504,Strawberry,54,3,2009-01
+5516,Elemental talisman,580,3,2009-01
+5521,Binding necklace,689,3,2009-01
+5523,Tiara mould,56,3,2009-01
+5525,Tiara,45,3,2009-01
+5527,Air tiara,45,3,2009-01
+5529,Mind tiara,45,3,2009-01
+5531,Water tiara,3204,3,2009-01
+5533,Body tiara,45,3,2009-01
+5535,Earth tiara,45,3,2009-01
+5537,Fire tiara,52,3,2009-01
+5539,Cosmic tiara,45,3,2009-01
+5541,Nature tiara,45,3,2009-01
+5543,Chaos tiara,45,3,2009-01
+5545,Law tiara,45,2,2009-01
+5547,Death tiara,945,3,2009-01
+5549,Blood tiara,4364,3,2009-01
+5574,Initiate sallet,3446,3,2009-01
+5575,Initiate hauberk,5934,3,2009-01
+5576,Initiate cuisse,4687,3,2009-01
+5616,Bronze arrow(p+),95,9,2009-01
+5617,Iron arrow(p+),101,9,2009-01
+5618,Steel arrow(p+),117,9,2009-01
+5619,Mithril arrow(p+),135,9,2009-01
+5620,Adamant arrow(p+),208,9,2009-01
+5621,Rune arrow(p+),323,9,2009-01
+5622,Bronze arrow(p++),1189,9,2009-01
+5623,Iron arrow(p++),1195,9,2009-01
+5624,Steel arrow(p++),1211,9,2009-01
+5625,Mithril arrow(p++),1229,9,2009-01
+5626,Adamant arrow(p++),1302,9,2009-01
+5627,Rune arrow(p++),1412,9,2009-01
+5628,Bronze dart(p+),120,9,2009-01
+5629,Iron dart(p+),114,9,2009-01
+5630,Steel dart(p+),118,9,2009-01
+5631,Black dart(p+),413,9,2009-01
+5632,Mithril dart(p+),143,9,2009-01
+5633,Adamant dart(p+),177,9,2009-01
+5634,Rune dart(p+),260,9,2009-01
+5635,Bronze dart(p++),1215,9,2009-01
+5636,Iron dart(p++),1209,9,2009-01
+5637,Steel dart(p++),1213,9,2009-01
+5638,Black dart(p++),1505,9,2009-01
+5639,Mithril dart(p++),1235,9,2009-01
+5640,Adamant dart(p++),1267,9,2009-01
+5641,Rune dart(p++),1348,9,2009-01
+5642,Bronze javelin(p+),92,9,2009-01
+5643,Iron javelin(p+),93,9,2009-01
+5644,Steel javelin(p+),108,9,2009-01
+5645,Mithril javelin(p+),138,9,2009-01
+5646,Adamant javelin(p+),212,9,2009-01
+5647,Rune javelin(p+),401,9,2009-01
+5648,Bronze jav'n(p++),1186,9,2009-01
+5649,Iron javelin(p++),1187,9,2009-01
+5650,Steel javelin(p++),1202,9,2009-01
+5651,Mithril javelin(p++),1232,9,2009-01
+5652,Adamant javelin(p++),1306,9,2009-01
+5653,Rune javelin(p++),1495,9,2009-01
+5654,Bronze knife(p+),103,9,2009-01
+5655,Iron knife(p+),123,9,2009-01
+5656,Steel knife(p+),146,9,2009-01
+5657,Mithril knife(p+),198,9,2009-01
+5658,Black knife(p+),148,9,2009-01
+5659,Adamant knife(p+),393,9,2009-01
+5660,Rune knife(p+),745,9,2009-01
+5661,Bronze knife(p++),1197,9,2009-01
+5662,Iron knife(p++),1219,9,2009-01
+5663,Steel knife(p++),1242,9,2009-01
+5664,Mithril knife(p++),1287,9,2009-01
+5665,Black knife(p++),1243,9,2009-01
+5666,Adamant knife(p++),1468,9,2009-01
+5667,Rune knife(p++),1834,9,2009-01
+5668,Iron dagger(p+),472,9,2009-01
+5670,Bronze dagger(p+),458,9,2009-01
+5672,Steel dagger(p+),530,9,2009-01
+5674,Mithril dagger(p+),660,9,2009-01
+5676,Adamant dagger(p+),974,9,2009-01
+5678,Rune dagger(p+),5113,9,2009-01
+5680,Dragon dagger(p+),30300,9,2009-01
+5682,Black dagger(p+),605,9,2009-01
+5686,Iron dagger(p++),5939,9,2009-01
+5688,Br'ze dagger(p++),5925,9,2009-01
+5690,Steel dagger(p++),5997,9,2009-01
+5692,Mithril dagger(p++),6127,9,2009-01
+5694,Adamant dagger(p++),6436,9,2009-01
+5696,Rune dagger(p++),10600,9,2009-01
+5698,Dragon dagger(p++),35600,9,2009-01
+5700,Black dagger(p++),6072,9,2009-01
+5704,Bronze spear(p+),638,9,2009-01
+5706,Iron spear(p+),614,9,2009-01
+5708,Steel spear(p+),596,9,2009-01
+5710,Mithril spear(p+),834,9,2009-01
+5712,Adamant spear(p+),1525,9,2009-01
+5714,Rune spear(p+),12800,9,2009-01
+5716,Dragon spear(p+),37800,9,2009-01
+5718,Bronze spear(p++),6092,9,2009-01
+5720,Iron spear(p++),6084,9,2009-01
+5722,Steel spear(p++),6062,9,2009-01
+5724,Mithril spear(p++),6296,9,2009-01
+5726,Adamant spear(p++),7005,9,2009-01
+5728,Rune spear(p++),18200,9,2009-01
+5730,Dragon spear(p++),43200,9,2009-01
+5734,Black spear(p+),1706,9,2009-01
+5736,Black spear(p++),7140,9,2009-01
+5739,Asgarnian ale(m),192,3,2009-01
+5741,Mature wmb,827,3,2009-01
+5743,Greenman's ale(m),3030,3,2009-01
+5745,Dragon bitter(m),1026,3,2009-01
+5747,Dwarven stout(m),6993,3,2009-01
+5749,Moonlight mead(m),12,3,2009-01
+5751,Axeman's folly,925,3,2009-01
+5753,Axeman's folly(m),7185,3,2009-01
+5755,Chef's delight,2210,3,2009-01
+5757,Chef's delight(m),5057,3,2009-01
+5759,Slayer's respite,40,3,2009-01
+5761,Slayer's respite(m),1098,3,2009-01
+5763,Cider,50,3,2009-01
+5765,Mature cider,1188,3,2009-01
+5767,Ale yeast,20,3,2009-01
+5769,Calquat keg,26,3,2009-01
+5771,Dwarven stout(1),5083,3,2009-01
+5773,Dwarven stout(2),4869,3,2009-01
+5775,Dwarven stout(3),4985,3,2009-01
+5777,Dwarven stout(4),4363,3,2009-01
+5779,Asgarnian ale(1),5506,3,2009-01
+5781,Asgarnian ale(2),5239,3,2009-01
+5783,Asgarnian ale(3),5171,3,2009-01
+5785,Asgarnian ale(4),6984,3,2009-01
+5787,Greenmans ale(1),7732,3,2009-01
+5789,Greenmans ale(2),5676,3,2009-01
+5791,Greenmans ale(3),5673,3,2009-01
+5793,Greenmans ale(4),9693,3,2009-01
+5795,Mind bomb(1),5426,3,2009-01
+5797,Mind bomb(2),5040,3,2009-01
+5799,Mind bomb(3),5043,3,2009-01
+5801,Mind bomb(4),5179,3,2009-01
+5803,Dragon bitter(1),5235,3,2009-01
+5805,Dragon bitter(2),5000,3,2009-01
+5807,Dragon bitter(3),5051,3,2009-01
+5809,Dragon bitter(4),5879,3,2009-01
+5811,Moonlight mead(1),5000,3,2009-01
+5813,Moonlight mead(2),5000,3,2009-01
+5815,Moonlight mead(3),5000,3,2009-01
+5817,Moonlight mead(4),5029,3,2009-01
+5819,Axeman's folly(1),9375,3,2009-01
+5821,Axeman's folly(2),13800,3,2009-01
+5823,Axeman's folly(3),18100,3,2009-01
+5825,Axeman's folly(4),18400,3,2009-01
+5827,Chef's delight(1),18600,3,2009-01
+5829,Chef's delight(2),29700,3,2009-01
+5831,Chef's delight(3),27900,3,2009-01
+5833,Chef's delight(4),24100,3,2009-01
+5835,Slayer's respite(1),5800,3,2009-01
+5837,Slayer's respite(2),6600,3,2009-01
+5839,Slayer's respite(3),7087,3,2009-01
+5841,Slayer's respite(4),6057,3,2009-01
+5843,Cider(1),5800,3,2009-01
+5845,Cider(2),6600,3,2009-01
+5847,Cider(3),7400,3,2009-01
+5849,Cider(4),8693,3,2009-01
+5851,Dwarven stout(m1),6104,3,2009-01
+5853,Dwarven stout(m2),6116,3,2009-01
+5855,Dwarven stout(m3),6737,3,2009-01
+5857,Dwarven stout(m4),9929,3,2009-01
+5859,Asgarnian ale(m1),5000,3,2009-01
+5861,Asgarnian ale(m2),5000,3,2009-01
+5863,Asgarnian ale(m3),5000,3,2009-01
+5865,Asgarnian ale(m4),5230,3,2009-01
+5867,Greenmans ale(m1),6820,3,2009-01
+5869,Greenmans ale(m2),7472,3,2009-01
+5871,Greenmans ale(m3),8460,3,2009-01
+5873,Greenmans ale(m4),12000,3,2009-01
+5875,Mind bomb(m1),5750,3,2009-01
+5877,Mind bomb(m2),6500,3,2009-01
+5879,Mind bomb(m3),7250,3,2009-01
+5881,Mind bomb(m4),8744,3,2009-01
+5883,Dragon bitter(m1),5000,3,2009-01
+5885,Dragon bitter(m2),5000,3,2009-01
+5887,Dragon bitter(m3),5000,3,2009-01
+5889,Dragon bitter(m4),5783,3,2009-01
+5891,M'light mead(m1),5000,3,2009-01
+5893,M'light mead(m2),5000,3,2009-01
+5895,M'light mead(m3),5000,3,2009-01
+5897,M'light mead(m4),5000,3,2009-01
+5899,Axeman's folly(m1),12300,3,2009-01
+5901,Axeman's folly(m2),19500,3,2009-01
+5903,Axeman's folly(m3),26800,3,2009-01
+5905,Axeman's folly(m4),34800,3,2009-01
+5907,Chef's delight(m1),37500,3,2009-01
+5909,Chef's delight(m2),70000,3,2009-01
+5911,Chef's delight(m3),102000,3,2009-01
+5913,Chef's delight(m4),110400,3,2009-01
+5915,Slayer respite(m1),6000,3,2009-01
+5917,Slayer respite(m2),7000,3,2009-01
+5919,Slayer respite(m3),8000,3,2009-01
+5921,Slayer respite(m4),9535,3,2009-01
+5923,Cider(m1),6000,3,2009-01
+5925,Cider(m2),7000,3,2009-01
+5927,Cider(m3),8000,3,2009-01
+5929,Cider(m4),9000,3,2009-01
+5931,Jute fibre,572,3,2009-01
+5933,Willow branch,846,3,2009-01
+5935,Coconut milk,1243,3,2009-01
+5937,Weapon poison+,448,8,2009-01
+5940,Weapon poison++,5852,8,2009-01
+5943,Antipoison+(4),7258,3,2009-01
+5945,Antipoison+(3),5444,3,2009-01
+5947,Antipoison+(2),3629,3,2009-01
+5949,Antipoison+(1),1814,3,2009-01
+5952,Antipoison++(4),10700,3,2009-01
+5954,Antipoison++(3),8006,3,2009-01
+5956,Antipoison++(2),5337,3,2009-01
+5958,Antipoison++(1),2668,3,2009-01
+5960,Tomatoes(1),99,31,2009-01
+5962,Tomatoes(2),132,31,2009-01
+5964,Tomatoes(3),163,31,2009-01
+5966,Tomatoes(4),194,31,2009-01
+5968,Tomatoes(5),228,3,2009-01
+5970,Curry leaf,114,3,2009-01
+5972,Papaya fruit,769,3,2009-01
+5974,Coconut,1018,3,2009-01
+5976,Coconut,1018,3,2009-01
+5978,Coconut shell,70,3,2009-01
+5980,Calquat fruit,49,3,2009-01
+5982,Watermelon,106,3,2009-01
+5984,Watermelon slice,8,3,2009-01
+5986,Sweetcorn,248,3,2009-01
+5988,Cooked sweetcorn,252,3,2009-01
+5992,Apple mush,16,3,2009-01
+5994,Hammerstone hops,8,3,2009-01
+5996,Asgarnian hops,9,3,2009-01
+5998,Yanillian hops,7,3,2009-01
+6000,Krandorian hops,13,3,2009-01
+6002,Wildblood hops,44,3,2009-01
+6004,Mushroom,91,3,2009-01
+6006,Barley,251,3,2009-01
+6008,Barley malt,193,3,2009-01
+6010,Marigolds,3328,3,2009-01
+6012,Nasturtiums,34,3,2009-01
+6014,Rosemary,22,3,2009-01
+6016,Cactus spine,2596,3,2009-01
+6018,Poison ivy berries,918,3,2009-01
+6020,Leaves,12,3,2009-01
+6022,Leaves,6,3,2009-01
+6024,Leaves,5,3,2009-01
+6026,Leaves,2,3,2009-01
+6028,Leaves,3,3,2009-01
+6030,Leaves,2,3,2009-01
+6032,Compost,93,3,2009-01
+6034,Supercompost,485,3,2009-01
+6036,Plant cure,86,3,2009-01
+6038,Magic string,5020,3,2009-01
+6041,Pre-nature amulet,7488,3,2009-01
+6043,Oak roots,129,3,2009-01
+6045,Willow roots,83,3,2009-01
+6047,Maple roots,96,3,2009-01
+6049,Yew roots,2892,3,2009-01
+6051,Magic roots,8641,3,2009-01
+6055,Weeds,9,19,2009-01
+6061,Bronze bolts(p+),91,9,2009-01
+6062,Bronze bolts(p++),1185,9,2009-01
+6128,Rock-shell helm,21000,3,2009-01
+6129,Rock-shell plate,46100,3,2009-01
+6130,Rock-shell legs,52100,3,2009-01
+6131,Spined helm,36200,3,2009-01
+6133,Spined body,4507,3,2009-01
+6135,Spined chaps,2093,3,2009-01
+6137,Skeletal helm,5765,3,2009-01
+6139,Skeletal top,26900,3,2009-01
+6141,Skeletal bottoms,24000,3,2009-01
+6143,Spined boots,3636,3,2009-01
+6145,Rock-shell boots,321,3,2009-01
+6147,Skeletal boots,21100,3,2009-01
+6149,Spined gloves,2707,3,2009-01
+6151,Rock-shell gloves,3529,3,2009-01
+6153,Skeletal gloves,50400,3,2009-01
+6155,Dagannoth hide,3663,3,2009-01
+6157,Rock-shell chunk,10400,3,2009-01
+6159,Rock-shell shard,21400,3,2009-01
+6161,Rock-shell splinter,32100,3,2009-01
+6163,Skull piece,11000,3,2009-01
+6165,Ribcage piece,12000,3,2009-01
+6167,Fibula piece,9900,3,2009-01
+6169,Circular hide,23800,3,2009-01
+6171,Flattened hide,2827,3,2009-01
+6173,Stretched hide,1751,3,2009-01
+6211,Teak pyre logs,1714,3,2009-01
+6213,Mahogany pyre log,939,3,2009-01
+6215,Broodoo shield (10),11200,3,2009-01
+6217,Broodoo shield (9),11200,31,2009-01
+6219,Broodoo shield (8),11200,31,2009-01
+6221,Broodoo shield (7),11200,31,2009-01
+6223,Broodoo shield (6),11200,31,2009-01
+6225,Broodoo shield (5),11200,31,2009-01
+6227,Broodoo shield (4),11200,31,2009-01
+6229,Broodoo shield (3),11200,31,2009-01
+6231,Broodoo shield (2),11200,31,2009-01
+6233,Broodoo shield (1),11200,31,2009-01
+6235,Broodoo shield,11200,3,2009-01
+6237,Broodoo shield (10),7055,3,2009-01
+6239,Broodoo shield (9),7055,31,2009-01
+6241,Broodoo shield (8),7055,31,2009-01
+6243,Broodoo shield (7),7055,31,2009-01
+6245,Broodoo shield (6),7055,31,2009-01
+6247,Broodoo shield (5),7055,31,2009-01
+6249,Broodoo shield (4),7055,31,2009-01
+6251,Broodoo shield (3),7055,31,2009-01
+6253,Broodoo shield (2),7055,31,2009-01
+6255,Broodoo shield (1),7055,31,2009-01
+6257,Broodoo shield,7055,3,2009-01
+6259,Broodoo shield (10),12500,3,2009-01
+6261,Broodoo shield (9),12200,31,2009-01
+6263,Broodoo shield (8),12200,31,2009-01
+6265,Broodoo shield (7),12200,31,2009-01
+6267,Broodoo shield (6),12200,31,2009-01
+6269,Broodoo shield (5),12200,31,2009-01
+6271,Broodoo shield (4),12200,31,2009-01
+6273,Broodoo shield (3),12200,31,2009-01
+6275,Broodoo shield (2),12200,31,2009-01
+6277,Broodoo shield (1),12200,31,2009-01
+6279,Broodoo shield,12500,3,2009-01
+6281,Thatch spar light,4,3,2009-01
+6283,Thatch spar med,7,3,2009-01
+6285,Thatch spar dense,9,3,2009-01
+6287,Snake hide,2098,3,2009-01
+6289,Snakeskin,2318,3,2009-01
+6291,Spider carcass,724,3,2009-01
+6293,Spider on stick,105,3,2009-01
+6295,Spider on shaft,79,3,2009-01
+6297,Spider on stick,77,3,2009-01
+6299,Spider on shaft,81,3,2009-01
+6305,Skewer stick,4,3,2009-01
+6306,Trading sticks,5,3,2009-01
+6311,Gout tuber,91400,3,2009-01
+6313,Opal machete,467,3,2009-01
+6315,Jade machete,5894,3,2009-01
+6317,Red topaz machete,11500,3,2009-01
+6319,Proboscis,3142,3,2009-01
+6322,Snakeskin body,1656,3,2009-01
+6324,Snakeskin chaps,3843,3,2009-01
+6326,Snakeskin bandana,6966,3,2009-01
+6328,Snakeskin boots,13200,3,2009-01
+6330,Snakeskin v'brace,9015,3,2009-01
+6332,Mahogany logs,206,3,2009-01
+6333,Teak logs,105,3,2009-01
+6335,Tribal mask,1233,3,2009-01
+6337,Tribal mask,588,3,2009-01
+6339,Tribal mask,1619,3,2009-01
+6341,Tribal top,2235,3,2009-01
+6343,Villager robe,907,3,2009-01
+6345,Villager hat,1355,3,2009-01
+6347,Villager armband,717,3,2009-01
+6349,Villager sandals,722,3,2009-01
+6351,Tribal top,2222,3,2009-01
+6353,Villager robe,1771,3,2009-01
+6355,Villager hat,1087,3,2009-01
+6357,Villager sandals,835,3,2009-01
+6359,Villager armband,1039,3,2009-01
+6361,Tribal top,1125,3,2009-01
+6363,Villager robe,1410,3,2009-01
+6365,Villager hat,933,3,2009-01
+6367,Villager sandals,872,3,2009-01
+6369,Villager armband,1010,3,2009-01
+6371,Tribal top,2071,3,2009-01
+6373,Villager robe,1464,3,2009-01
+6375,Villager hat,859,3,2009-01
+6377,Villager sandals,495,3,2009-01
+6379,Villager armband,1007,3,2009-01
+6382,Fez,165,3,2009-01
+6384,Desert top,215,3,2009-01
+6386,Desert robes,225,3,2009-01
+6388,Desert top,234,3,2009-01
+6390,Desert legs,225,3,2009-01
+6392,Menap headgear,234,3,2009-01
+6394,Menaphite top,220,3,2009-01
+6396,Menaphite robe,236,3,2009-01
+6398,Menap action kilt,97,3,2009-01
+6400,Menap headgear,235,3,2009-01
+6402,Menaphite top,220,3,2009-01
+6404,Menaphite robe,239,3,2009-01
+6406,Menap action kilt,91,3,2009-01
+6408,Oak blackjack(o),530,3,2009-01
+6410,Oak blackjack(d),542,3,2009-01
+6412,Willow blackjack(o),1000,3,2009-01
+6414,Willow blackjack(d),1000,3,2009-01
+6416,Maple blackjack,1393,3,2009-01
+6418,Maple blackjack(o),1791,3,2009-01
+6420,Maple blackjack(d),1722,3,2009-01
+6470,Compost potion(4),488,3,2009-01
+6472,Compost potion(3),366,3,2009-01
+6474,Compost potion(2),244,3,2009-01
+6476,Compost potion(1),122,3,2009-01
+6522,Toktz-xil-ul,433,3,2009-01
+6523,Toktz-xil-ak,140700,3,2009-01
+6524,Toktz-ket-xil,307300,3,2009-01
+6525,Toktz-xil-ek,85300,3,2009-01
+6526,Toktz-mej-tal,123200,3,2009-01
+6527,Tzhaar-ket-em,104300,3,2009-01
+6528,Tzhaar-ket-om,182100,3,2009-01
+6562,Mud battlestaff,158400,3,2009-01
+6563,Mystic mud staff,61600,3,2009-01
+6568,Obsidian cape,216000,3,2009-01
+6571,Uncut onyx,2700000,3,2009-01
+6573,Onyx,2700000,3,2009-01
+6575,Onyx ring,2500000,3,2009-01
+6577,Onyx necklace,2700000,3,2009-01
+6579,Onyx amulet,2700000,16,2009-01
+6581,Onyx amulet,2700000,3,2009-01
+6583,Ring of stone,322200,3,2009-01
+6585,Amulet of fury,2700000,3,2009-01
+6587,White claws,560,3,2009-01
+6589,White battleaxe,1444,3,2009-01
+6591,White dagger,343,3,2009-01
+6593,White dagger(p),508,9,2009-01
+6595,White dagger(p+),792,9,2009-01
+6597,White dagger(p++),6259,9,2009-01
+6599,White halberd,2105,3,2009-01
+6601,White mace,468,3,2009-01
+6603,White magic staff,400,3,2009-01
+6605,White sword,809,3,2009-01
+6607,White longsword,1151,3,2009-01
+6609,White 2h sword,2118,3,2009-01
+6611,White scimitar,968,3,2009-01
+6613,White warhammer,1176,3,2009-01
+6615,White chainbody,1080,3,2009-01
+6617,White platebody,4016,3,2009-01
+6619,White boots,774,3,2009-01
+6621,White med helm,766,3,2009-01
+6623,White full helm,1254,3,2009-01
+6625,White platelegs,1857,3,2009-01
+6627,White plateskirt,2112,3,2009-01
+6629,White gloves,195,3,2009-01
+6631,White sq shield,1333,3,2009-01
+6633,White kiteshield,1827,3,2009-01
+6667,Fishbowl,217,3,2009-01
+6681,Ground guam,2,3,2009-01
+6683,Ground seaweed,11,3,2009-01
+6685,Saradomin brew(4),2845,3,2009-01
+6687,Saradomin brew(3),2134,3,2009-01
+6689,Saradomin brew(2),1422,3,2009-01
+6691,Saradomin brew(1),711,3,2009-01
+6693,Crushed nest,1865,3,2009-01
+6697,Pat of butter,395,3,2009-01
+6701,Baked potato,170,3,2009-01
+6703,Potato with butter,652,3,2009-01
+6705,Potato with cheese,385,3,2009-01
+6724,Seercull,60500,3,2009-01
+6729,Dagannoth bones,7368,3,2009-01
+6731,Seers ring,91800,3,2009-01
+6733,Archers ring,785100,3,2009-01
+6735,Warrior ring,175100,3,2009-01
+6737,Berserker ring,1900000,3,2009-01
+6739,Dragon axe,1700000,3,2009-01
+6741,,1700000,31,2009-01
+6760,Guthix mjolnir,3454,3,2009-01
+6762,Saradomin mjolnir,5890,3,2009-01
+6764,Zamorak mjolnir,4295,3,2009-01
+6794,Choc-ice,50,3,2009-01
+6809,Granite legs,272900,3,2009-01
+6812,Wyvern bones,1589,3,2009-01
+6814,Fur,132,3,2009-01
+6889,Mage's book,2500000,3,2009-01
+6908,Beginner wand,1506,3,2009-01
+6910,Apprentice wand,4466,3,2009-01
+6912,Teacher wand,156300,3,2009-01
+6914,Master wand,1100000,3,2009-01
+6916,Infinity top,868300,3,2009-01
+6918,Infinity hat,894700,3,2009-01
+6920,Infinity boots,747300,3,2009-01
+6922,Infinity gloves,333000,3,2009-01
+6924,Infinity bottoms,659800,3,2009-01
+6959,Cape,46,3,2009-01
+6962,Triangle sandwich,85,3,2009-01
+6971,Sandstone (1kg),22,3,2009-01
+6973,Sandstone (2kg),30,3,2009-01
+6975,Sandstone (5kg),13,3,2009-01
+6977,Sandstone (10kg),76,3,2009-01
+6979,Granite (500g),107,3,2009-01
+6981,Granite (2kg),122,3,2009-01
+6983,Granite (5kg),236,3,2009-01
+7051,Unlit bug lantern,232,3,2009-01
+7054,Chilli potato,831,3,2009-01
+7056,Egg potato,467,3,2009-01
+7058,Mushroom potato,995,3,2009-01
+7060,Tuna potato,1421,3,2009-01
+7062,Chilli con carne,86,3,2009-01
+7064,Egg and tomato,81,3,2009-01
+7066,Mushroom & onion,215,3,2009-01
+7068,Tuna and corn,644,3,2009-01
+7070,Minced meat,12,3,2009-01
+7072,Spicy sauce,25,3,2009-01
+7074,Chopped garlic,12,3,2009-01
+7076,Uncooked egg,18,3,2009-01
+7078,Scrambled egg,15,3,2009-01
+7080,Sliced mushrooms,123,3,2009-01
+7082,Fried mushrooms,185,3,2009-01
+7084,Fried onions,30,3,2009-01
+7086,Chopped tuna,181,3,2009-01
+7088,Sweetcorn,390,10,2009-01
+7110,Stripy pirate shirt,150,3,2009-01
+7112,Pirate bandana,150,3,2009-01
+7114,Pirate boots,461,3,2009-01
+7116,Pirate leggings,175,3,2009-01
+7122,Stripy pirate shirt,382,3,2009-01
+7124,Pirate bandana,200,3,2009-01
+7126,Pirate leggings,467,3,2009-01
+7128,Stripy pirate shirt,234,3,2009-01
+7130,Pirate bandana,197,3,2009-01
+7132,Pirate leggings,445,3,2009-01
+7134,Stripy pirate shirt,307,3,2009-01
+7136,Pirate bandana,217,3,2009-01
+7138,Pirate leggings,298,3,2009-01
+7158,Dragon 2h sword,1100000,3,2009-01
+7159,Insulated boots,109,3,2009-01
+7162,Pie recipe book,17,3,2009-01
+7164,Part mud pie,35,3,2009-01
+7166,Part mud pie,44,3,2009-01
+7168,Raw mud pie,283,3,2009-01
+7170,Mud pie,420,3,2009-01
+7172,Part garden pie,32,3,2009-01
+7174,Part garden pie,45,3,2009-01
+7176,Raw garden pie,77,3,2009-01
+7178,Garden pie,95,3,2009-01
+7180,Half a garden pie,47,3,2009-01
+7182,Part fish pie,80,3,2009-01
+7184,Part fish pie,104,3,2009-01
+7186,Raw fish pie,208,3,2009-01
+7188,Fish pie,119,3,2009-01
+7190,Half a fish pie,59,3,2009-01
+7192,Part admiral pie,105,3,2009-01
+7194,Part admiral pie,238,3,2009-01
+7196,Raw admiral pie,557,3,2009-01
+7198,Admiral pie,445,3,2009-01
+7200,Half an admiral pie,222,3,2009-01
+7202,Part wild pie,40,3,2009-01
+7204,Part wild pie,141,3,2009-01
+7206,Raw wild pie,355,3,2009-01
+7208,Wild pie,2427,3,2009-01
+7210,Half a wild pie,1213,3,2009-01
+7212,Part summer pie,230,3,2009-01
+7214,Part summer pie,764,3,2009-01
+7216,Raw summer pie,1374,3,2009-01
+7218,Summer pie,619,3,2009-01
+7220,Half a summer pie,309,3,2009-01
+7223,Roast rabbit,23,3,2009-01
+7224,Skewered rabbit,88,3,2009-01
+7225,Iron spit,30,3,2009-01
+7228,Cooked chompy,100,10,2009-01
+7230,Skewered chompy,174,3,2009-01
+7319,Red boater,15100,3,2009-01
+7321,Orange boater,7994,3,2009-01
+7323,Green boater,13600,3,2009-01
+7325,Blue boater,15600,3,2009-01
+7327,Black boater,16900,3,2009-01
+7332,Black shield(h1),13900,3,2009-01
+7334,Adamant shield(h1),18100,3,2009-01
+7336,Rune shield(h1),52800,3,2009-01
+7338,Black shield(h2),9986,3,2009-01
+7340,Adamant shield(h2),11100,3,2009-01
+7342,Rune shield(h2),51600,3,2009-01
+7344,Black shield(h3),12200,3,2009-01
+7346,Adamant shield(h3),13900,3,2009-01
+7348,Rune shield(h3),52100,3,2009-01
+7350,Black shield(h4),11300,3,2009-01
+7352,Adamant shield(h4),12300,3,2009-01
+7354,Rune shield(h4),52000,3,2009-01
+7356,Black shield(h5),11300,3,2009-01
+7358,Adamant shield(h5),15300,3,2009-01
+7360,Rune shield(h5),57700,3,2009-01
+7362,Studded body (g),64000,3,2009-01
+7364,Studded body (t),23100,3,2009-01
+7366,Studded chaps (g),40200,3,2009-01
+7368,Studded chaps (t),23300,3,2009-01
+7370,D'hide body(g),162200,3,2009-01
+7372,D'hide body (t),31700,3,2009-01
+7374,D'hide body (g),5341,3,2009-01
+7376,D'hide body (t),5338,3,2009-01
+7378,D'hide chaps (g),330100,3,2009-01
+7380,D'hide chaps (t),147400,3,2009-01
+7382,D'hide chaps (g),15600,3,2009-01
+7384,D'hide chaps (t),3029,3,2009-01
+7386,Blue skirt (g),133400,3,2009-01
+7388,Blue skirt (t),78300,3,2009-01
+7390,Wizard robe (g),508600,3,2009-01
+7392,Wizard robe (t),193900,3,2009-01
+7394,Wizard hat (g),565300,3,2009-01
+7396,Wizard hat (t),239700,3,2009-01
+7398,Enchanted robe,48500,3,2009-01
+7399,Enchanted top,72400,3,2009-01
+7400,Enchanted hat,8989,3,2009-01
+7416,Mole claw,4153,3,2009-01
+7418,Mole skin,4460,3,2009-01
+7433,Wooden spoon,28,3,2009-01
+7435,Egg whisk,22,3,2009-01
+7437,Spork,154,3,2009-01
+7439,Spatula,943,3,2009-01
+7441,Frying pan,772,3,2009-01
+7443,Skewer,1739,3,2009-01
+7445,Rolling pin,10700,3,2009-01
+7447,Kitchen knife,9431,3,2009-01
+7449,Meat tenderiser,24700,3,2009-01
+7451,Cleaver,15200,3,2009-01
+7521,Cooked crab meat,101,3,2009-01
+7566,Raw jubbly,298,3,2009-01
+7568,Cooked jubbly,332,3,2009-01
+7650,Silver dust,339,3,2009-01
+7652,Guthix balance(unf),130,3,2009-01
+7654,Guthix balance(unf),98,3,2009-01
+7656,Guthix balance(unf),65,3,2009-01
+7658,Guthix balance(unf),49,3,2009-01
+7660,Guthix balance(4),240,3,2009-01
+7662,Guthix balance(3),180,3,2009-01
+7664,Guthix balance(2),120,3,2009-01
+7666,Guthix balance(1),90,3,2009-01
+7668,Gadderhammer,1804,3,2009-01
+7759,Toy soldier,1119,3,2009-01
+7761,Toy soldier (wound),1143,16,2009-01
+7763,Toy doll,1417,3,2009-01
+7765,Toy doll (wound),1423,16,2009-01
+7767,Toy mouse,1362,3,2009-01
+7769,Toy mouse (wound),1403,16,2009-01
+7771,Clockwork cat,2310,3,2009-01
+7801,Snake hide,2248,3,2009-01
+7919,Bottle of wine,250,16,2009-01
+7934,Field ration,186,3,2009-01
+7936,Pure essence,137,3,2009-01
+7939,Tortoise shell,6018,3,2009-01
+7944,Raw monkfish,374,3,2009-01
+7946,Monkfish,327,3,2009-01
+8007,Varrock teleport,803,3,2009-01
+8008,Lumbridge teleport,840,3,2009-01
+8009,Falador teleport,841,3,2009-01
+8010,Camelot teleport,732,3,2009-01
+8011,Ardougne teleport,995,3,2009-01
+8012,Watchtower t'port,931,3,2009-01
+8013,Teleport to house,859,3,2009-01
+8014,Bones to bananas,636,3,2009-01
+8015,Bones to peaches,1096,3,2009-01
+8016,Enchant sapphire,468,3,2009-01
+8017,Enchant emerald,567,3,2009-01
+8018,Enchant ruby,560,3,2009-01
+8019,Enchant diamond,413,3,2009-01
+8020,Enchant dragonstn.,338,3,2009-01
+8021,Enchant onyx,88,3,2009-01
+8417,Bagged dead tree,1071,31,2009-01
+8419,Bagged nice tree,2171,31,2009-01
+8421,Bagged oak tree,5187,31,2009-01
+8423,Bagged willow tree,10200,31,2009-01
+8425,Bagged maple tree,15100,31,2009-01
+8427,Bagged yew tree,19700,31,2009-01
+8429,Bagged magic tree,30200,31,2009-01
+8431,Bagged plant 1,1129,3,2009-01
+8433,Bagged plant 2,5180,31,2009-01
+8435,Bagged plant 3,10200,31,2009-01
+8437,Thorny hedge,2909,31,2009-01
+8439,Nice hedge,5806,31,2009-01
+8441,Small box hedge,11600,31,2009-01
+8443,Topiary hedge,16900,31,2009-01
+8445,Fancy hedge,21100,31,2009-01
+8447,Tall fancy hedge,41000,31,2009-01
+8449,Tall box hedge,91100,31,2009-01
+8451,Bagged rosemary,2778,31,2009-01
+8453,Bagged daffodils,7813,31,2009-01
+8455,Bagged bluebells,10900,31,2009-01
+8457,Bagged sunflower,3193,31,2009-01
+8459,Bagged marigolds,6617,31,2009-01
+8461,Bagged roses,8768,31,2009-01
+8496,Crude wooden chair,70,3,2009-01
+8498,Wooden chair,235,3,2009-01
+8500,Rocking chair,4,3,2009-01
+8502,Oak chair,4,3,2009-01
+8504,Oak armchair,4,3,2009-01
+8506,Teak armchair,4,3,2009-01
+8508,Mahogany armchair,33,3,2009-01
+8510,Wooden bookcase,25,3,2009-01
+8512,Oak bookcase,4,3,2009-01
+8514,Mahogany b'kcase,63,3,2009-01
+8516,Beer barrel,87,3,2009-01
+8518,Cider barrel,5090,3,2009-01
+8520,Asgarnian ale,2694,3,2009-01
+8522,Greenman's ale,2879,3,2009-01
+8524,Dragon bitter,6570,3,2009-01
+8526,Chef's delight,10900,3,2009-01
+8528,Wood kitchen table,49,3,2009-01
+8530,Oak kitchen table,4,3,2009-01
+8532,Teak kitchen table,27,3,2009-01
+8548,Wood dining table,76,3,2009-01
+8550,Oak dining table,45,3,2009-01
+8552,Carved oak table,4,3,2009-01
+8554,Teak table,14,3,2009-01
+8556,Carved teak table,556,3,2009-01
+8558,Mahogany table,18,3,2009-01
+8560,Opulent table,24900,3,2009-01
+8562,Wooden bench,172,3,2009-01
+8564,Oak bench,548,3,2009-01
+8566,Carved oak bench,13,3,2009-01
+8568,Teak dining bench,482,3,2009-01
+8570,Carved teak bench,61,3,2009-01
+8572,Mahogany bench,290,3,2009-01
+8574,Gilded bench,24100,3,2009-01
+8576,Wooden bed,1763,3,2009-01
+8578,Oak bed,1566,3,2009-01
+8580,Large oak bed,764,3,2009-01
+8582,Teak bed,1760,3,2009-01
+8584,Large teak bed,1510,3,2009-01
+8586,4-poster,1606,3,2009-01
+8588,Gilded 4-poster,6425,3,2009-01
+8590,Oak clock,400,3,2009-01
+8592,Teak clock,479,3,2009-01
+8594,Gilded clock,3966,3,2009-01
+8596,Shaving stand,428,3,2009-01
+8598,Oak shaving stand,500,3,2009-01
+8600,Oak dresser,187,3,2009-01
+8602,Teak dresser,1035,3,2009-01
+8604,Fancy teak dresser,291,3,2009-01
+8606,Mahogany dresser,1178,3,2009-01
+8608,Gilded dresser,3332,3,2009-01
+8610,Shoe box,155,3,2009-01
+8612,Oak drawers,263,3,2009-01
+8614,Oak wardrobe,38,3,2009-01
+8616,Teak drawers,749,3,2009-01
+8618,Teak wardrobe,163,3,2009-01
+8620,Mahogany 'drobe,706,3,2009-01
+8622,Gilded wardrobe,1846,3,2009-01
+8778,Oak plank,426,3,2009-01
+8780,Teak plank,761,3,2009-01
+8782,Mahogany plank,1552,3,2009-01
+8784,Gold leaf,130100,3,2009-01
+8786,Marble block,324700,3,2009-01
+8788,Magic stone,918000,3,2009-01
+8790,Bolt of cloth,826,3,2009-01
+8792,Clockwork,816,3,2009-01
+8794,Saw,50,3,2009-01
+8837,Timber beam,12,3,2009-01
+8872,Bone dagger,2024,3,2009-01
+8874,Bone dagger (p),2159,9,2009-01
+8876,Bone dagger (p+),2429,9,2009-01
+8878,Bone dagger (p++),7863,9,2009-01
+8880,Dorgeshuun c'bow,2109,3,2009-01
+8882,Bone bolts,3,3,2009-01
+8901,Black mask (10),615300,3,2009-01
+8903,Black mask (9),622000,31,2009-01
+8905,Black mask (8),622000,31,2009-01
+8907,Black mask (7),622000,31,2009-01
+8909,Black mask (6),622000,31,2009-01
+8911,Black mask (5),622000,31,2009-01
+8913,Black mask (4),622000,31,2009-01
+8915,Black mask (3),622000,31,2009-01
+8917,Black mask (2),622000,31,2009-01
+8919,Black mask (1),622000,31,2009-01
+8921,Black mask,615300,3,2009-01
+8924,Bandana and eyepatch,178,12,2009-01
+8925,Bandana and eyepatch,222,12,2009-01
+8926,Bandana and eyepatch,223,12,2009-01
+8927,Bandana and eyepatch,241,12,2009-01
+8928,Hat and eyepatch,37500,12,2009-01
+9003,Security book,20,3,2009-01
+9004,Stronghold notes,6,3,2009-01
+9026,Ivory comb,62,3,2009-01
+9028,Golden scarab,670,3,2009-01
+9030,Stone scarab,163,3,2009-01
+9032,Pottery scarab,73,3,2009-01
+9034,Golden statuette,978,3,2009-01
+9036,Pottery statuette,92,3,2009-01
+9038,Stone statuette,191,3,2009-01
+9040,Gold seal,391,3,2009-01
+9042,Stone seal,143,3,2009-01
+9044,Pharaoh's sceptre,417000,3,2009-01
+9046,Pharaoh's sceptre,417000,23,2009-01
+9048,Pharaoh's sceptre,417000,23,2009-01
+9050,Pharaoh's sceptre,417000,3,2009-01
+9052,Locust meat,71,3,2009-01
+9075,Astral rune,155,3,2009-01
+9140,Iron bolts,26,3,2009-01
+9141,Steel bolts,51,3,2009-01
+9142,Mithril bolts,78,3,2009-01
+9143,Adamant bolts,180,3,2009-01
+9144,Rune bolts,610,3,2009-01
+9145,Silver bolts,6,3,2009-01
+9174,Bronze crossbow,36,3,2009-01
+9177,Iron crossbow,79,3,2009-01
+9179,Steel crossbow,180,3,2009-01
+9181,Mith crossbow,391,3,2009-01
+9183,Adamant crossbow,920,3,2009-01
+9185,Rune crossbow,9927,3,2009-01
+9187,Jade bolt tips,4,3,2009-01
+9188,Topaz bolt tips,6,3,2009-01
+9189,Sapphire bolt tips,8,3,2009-01
+9190,Emerald bolt tips,63,3,2009-01
+9191,Ruby bolt tips,120,3,2009-01
+9192,Diamond bolt tips,290,3,2009-01
+9193,Dragon bolt tips,3846,3,2009-01
+9194,Onyx bolt tips,8090,3,2009-01
+9236,Opal bolts (e),11,3,2009-01
+9238,Pearl bolts (e),54,3,2009-01
+9239,Topaz bolts (e),58,3,2009-01
+9240,Sapphire bolts (e),98,3,2009-01
+9241,Emerald bolts (e),180,3,2009-01
+9242,Ruby bolts (e),343,3,2009-01
+9243,Diamond bolts (e),572,3,2009-01
+9244,Dragon bolts (e),4655,3,2009-01
+9245,Onyx bolts (e),8811,3,2009-01
+9287,Iron bolts (p),59,9,2009-01
+9288,Steel bolts (p),85,9,2009-01
+9289,Mithril bolts (p),113,9,2009-01
+9290,Adamant bolts (p),207,9,2009-01
+9291,Runite bolts (p),621,9,2009-01
+9292,Silver bolts (p),41,9,2009-01
+9294,Iron bolts(p+),114,9,2009-01
+9295,Steel bolts(p+),140,9,2009-01
+9296,Mithril bolts(p+),167,9,2009-01
+9298,Runite bolts(p+),676,9,2009-01
+9299,Silver bolts(p+),95,9,2009-01
+9301,Iron bolts(p++),1209,9,2009-01
+9302,Steel bolts(p++),1234,9,2009-01
+9303,Mithril bolts(p++),1261,9,2009-01
+9305,Runite bolts(p++),1774,9,2009-01
+9306,Silver bolts(p++),1189,9,2009-01
+9336,Topaz bolts,54,3,2009-01
+9337,Sapphire bolts,81,3,2009-01
+9338,Emerald bolts,153,3,2009-01
+9339,Ruby bolts,301,3,2009-01
+9340,Diamond bolts,481,3,2009-01
+9341,Dragon bolts,4472,3,2009-01
+9342,Onyx bolts,8667,3,2009-01
+9375,Bronze bolts (unf),9,3,2009-01
+9377,Iron bolts (unf),18,3,2009-01
+9378,Steel bolts (unf),43,3,2009-01
+9379,Mithril bolts (unf),73,3,2009-01
+9380,Adamant bolts(unf),177,3,2009-01
+9381,Runite bolts (unf),1457,3,2009-01
+9382,Silver bolts (unf),2,3,2009-01
+9416,Mith grapple tip,527,3,2009-01
+9418,Mith grapple,790,3,2009-01
+9419,Mith grapple,906,3,2009-01
+9420,Bronze limbs,61,3,2009-01
+9423,Iron limbs,78,3,2009-01
+9425,Steel limbs,125,3,2009-01
+9427,Mithril limbs,556,3,2009-01
+9429,Adamantite limbs,1692,3,2009-01
+9431,Runite limbs,9495,3,2009-01
+9434,Bolt mould,112,3,2009-01
+9436,Sinew,133,3,2009-01
+9438,Crossbow string,99,3,2009-01
+9440,Wooden stock,10,3,2009-01
+9442,Oak stock,14,3,2009-01
+9444,Willow stock,26,3,2009-01
+9446,Teak stock,39,3,2009-01
+9448,Maple stock,50,3,2009-01
+9450,Mahogany stock,66,3,2009-01
+9452,Yew stock,271,3,2009-01
+9454,Bronze c'bow (u),18,3,2009-01
+9457,Iron c'bow (u),55,3,2009-01
+9459,Steel c'bow (u),195,3,2009-01
+9461,Mithril c'bow (u),390,3,2009-01
+9463,Adamant c'bow (u),1198,3,2009-01
+9465,Runite c'bow (u),11200,3,2009-01
+9469,Grand seed pod,927,3,2009-01
+9470,Gnome scarf,853900,3,2009-01
+9472,Gnome goggles,59800,3,2009-01
+9475,Mint cake,678,3,2009-01
+9629,Tyras helm,1209,3,2009-01
+9634,Vyrewatch top,850,3,2009-01
+9636,Vyrewatch legs,850,3,2009-01
+9638,Vyrewatch shoes,850,3,2009-01
+9640,Citizen top,206,3,2009-01
+9642,Citizen trousers,206,3,2009-01
+9644,Citizen shoes,206,3,2009-01
+9666,Pros'yte harness m,25100,3,2009-01
+9668,Initiate harness m,20000,3,2009-01
+9670,Pros'yte harness f,25200,3,2009-01
+9672,Proselyte sallet,4608,3,2009-01
+9674,Proselyte hauberk,7087,3,2009-01
+9676,Proselyte cuisse,6040,3,2009-01
+9678,Proselyte tasset,5978,3,2009-01
+9729,Elemental helmet,92,3,2009-01
+9731,Mind shield,2495,3,2009-01
+9733,Mind helmet,1608,3,2009-01
+9735,Desert goat horn,682,3,2009-01
+9736,Goat horn dust,749,3,2009-01
+9739,Combat potion(4),864,3,2009-01
+9741,Combat potion(3),648,3,2009-01
+9743,Combat potion(2),432,3,2009-01
+9745,Combat potion(1),216,3,2009-01
+9843,Oak cape rack,143,3,2009-01
+9844,Teak cape rack,778,3,2009-01
+9845,M'gany cape rack,402,3,2009-01
+9846,Gilded cape rack,135300,3,2009-01
+9847,Marble cape rack,329500,3,2009-01
+9848,Magical cape rack,913400,3,2009-01
+9849,Oak toy box,226,3,2009-01
+9850,Teak toy box,794,3,2009-01
+9851,Mahogany toy box,713,3,2009-01
+9852,Oak magic wardrobe,440,3,2009-01
+9853,Carved oak magic wardrobe,95,3,2009-01
+9854,Teak magic wardrobe,905,3,2009-01
+9855,Carved teak magic wardrobe,532,3,2009-01
+9856,Mahogany magic wardrobe,418,3,2009-01
+9857,Gilded magic wardrobe,140900,3,2009-01
+9858,Marble magic wardrobe,334700,3,2009-01
+9859,Oak armour case,170,3,2009-01
+9860,Teak armour case,357,3,2009-01
+9861,M'gany arm'r case,917,3,2009-01
+9862,Oak treasure chest,171,3,2009-01
+9863,Teak treas' chest,621,3,2009-01
+9864,M'gany treas' chest,701,3,2009-01
+9865,Oak costume box,264,3,2009-01
+9866,Teak costume box,553,3,2009-01
+9867,Mahogany cos box,679,3,2009-01
+9978,Raw bird meat,66,3,2009-01
+9980,Roast bird meat,16,3,2009-01
+9984,Skewered bird meat,90,3,2009-01
+9986,Raw beast meat,19,3,2009-01
+9988,Roast beast meat,31,3,2009-01
+9992,Skewered beast,90,3,2009-01
+9994,Spicy tomato,66,3,2009-01
+9996,Spicy minced meat,23,3,2009-01
+9998,Hunter potion(4),110,3,2009-01
+10000,Hunter potion(3),83,3,2009-01
+10002,Hunter potion(2),55,3,2009-01
+10004,Hunter potion(1),27,3,2009-01
+10006,Bird snare,64,3,2009-01
+10008,Box trap,94,3,2009-01
+10010,Butterfly net,74,3,2009-01
+10012,Butterfly jar,54,3,2009-01
+10014,Black warlock,118,3,2009-01
+10016,Snowy knight,145,3,2009-01
+10018,Sapphire glacialis,40,3,2009-01
+10020,Ruby harvest,558,3,2009-01
+10025,Magic box,631,3,2009-01
+10029,Teasing stick,13,3,2009-01
+10031,Rabbit snare,9,3,2009-01
+10034,Red chinchompa,683,3,2009-01
+10035,Kyatt legs,276,3,2009-01
+10037,Kyatt top,206,3,2009-01
+10039,Kyatt hat,5733,3,2009-01
+10041,Larupia legs,336,3,2009-01
+10043,Larupia top,343,3,2009-01
+10045,Larupia hat,2980,3,2009-01
+10047,Graahk legs,170,3,2009-01
+10049,Graahk top,74,3,2009-01
+10051,Graahk headdress,1655,3,2009-01
+10053,Wood camo top,1142,3,2009-01
+10055,Wood camo legs,1165,3,2009-01
+10057,Jungle camo top,167,3,2009-01
+10059,Jungle camo legs,432,3,2009-01
+10061,Desert camo top,859,3,2009-01
+10063,Desert camo legs,870,3,2009-01
+10065,Polar camo top,3275,3,2009-01
+10067,Polar camo legs,3322,3,2009-01
+10069,Spotted cape,572,3,2009-01
+10071,Spottier cape,2059,3,2009-01
+10075,Gloves of silence,1098,3,2009-01
+10077,Spiky vambraces,72,3,2009-01
+10079,Green spiky vambs,1349,3,2009-01
+10081,Blue spiky vambs,1669,3,2009-01
+10083,Red spiky vambs,2006,3,2009-01
+10085,Black spiky vambs,2776,3,2009-01
+10087,Stripy feather,9,3,2009-01
+10088,Red feather,5,3,2009-01
+10089,Blue feather,7,3,2009-01
+10090,Yellow feather,8,3,2009-01
+10091,Orange feather,7,3,2009-01
+10093,Tatty larupia fur,43,3,2009-01
+10095,Larupia fur,2165,3,2009-01
+10097,Tatty graahk fur,49,3,2009-01
+10099,Graahk fur,4248,3,2009-01
+10101,Tatty kyatt fur,65,3,2009-01
+10103,Kyatt fur,5736,3,2009-01
+10105,Kebbit spike,183,3,2009-01
+10107,Long kebbit spike,638,3,2009-01
+10109,Kebbit teeth,542,3,2009-01
+10111,Kebbit teeth dust,608,3,2009-01
+10113,Kebbit claws,19,3,2009-01
+10115,Dark kebbit fur,100,3,2009-01
+10117,Polar kebbit fur,1801,3,2009-01
+10119,Feldip weasel fur,14,3,2009-01
+10121,Common kebbit fur,210,3,2009-01
+10123,Desert devil fur,97,3,2009-01
+10125,Spotted kebbit fur,67,3,2009-01
+10127,Dashing kebbit fur,456,3,2009-01
+10129,Barb-tail harpoon,35,3,2009-01
+10132,Strung rabbit foot,193,3,2009-01
+10134,Rabbit foot,138,3,2009-01
+10136,Rainbow fish,128,3,2009-01
+10138,Raw rainbow fish,205,3,2009-01
+10142,Guam tar,48,3,2009-01
+10143,Marrentill tar,29,3,2009-01
+10144,Tarromin tar,93,3,2009-01
+10145,Harralander tar,201,3,2009-01
+10146,Orange salamander,45,3,2009-01
+10147,Red salamander,67,3,2009-01
+10148,Black salamander,90,3,2009-01
+10149,Swamp lizard,767,3,2009-01
+10150,Noose wand,38,3,2009-01
+10156,Hunters' crossbow,2027,3,2009-01
+10158,Kebbit bolts,39,3,2009-01
+10159,Long kebbit bolts,148,3,2009-01
+10280,Willow comp bow,63200,3,2009-01
+10282,Yew comp bow,819,3,2009-01
+10284,Magic comp bow,6299,3,2009-01
+10286,Rune helm (h1),45800,3,2009-01
+10288,Rune helm (h2),33500,3,2009-01
+10290,Rune helm (h3),33600,3,2009-01
+10292,Rune helm (h4),45600,3,2009-01
+10294,Rune helm (h5),59200,3,2009-01
+10296,Adamant helm (h1),32800,3,2009-01
+10298,Adamant helm (h2),25100,3,2009-01
+10300,Adamant helm (h3),24800,3,2009-01
+10302,Adamant helm (h4),29700,3,2009-01
+10304,Adamant helm (h5),29200,3,2009-01
+10306,Black helm (h1),26500,3,2009-01
+10308,Black helm (h2),20000,3,2009-01
+10310,Black helm (h3),19700,3,2009-01
+10312,Black helm (h4),22300,3,2009-01
+10314,Black helm (h5),21400,3,2009-01
+10316,Bob shirt,6285,3,2009-01
+10318,Bob shirt,6797,3,2009-01
+10320,Bob shirt,6092,3,2009-01
+10322,Bob shirt,6204,3,2009-01
+10324,Bob shirt,7013,3,2009-01
+10330,3rd age range top,39000000,3,2009-01
+10332,3rd age range legs,26300000,3,2009-01
+10334,3rd age range coif,15400000,3,2009-01
+10336,3rd age vambraces,9500000,3,2009-01
+10338,3rd age robe top,43600000,3,2009-01
+10340,3rd age robe,26200000,3,2009-01
+10342,3rd age mage hat,24600000,3,2009-01
+10344,3rd age amulet,33200000,3,2009-01
+10346,3rd age platelegs,50600000,3,2009-01
+10348,3rd age platebody,65600000,3,2009-01
+10350,3rd age full helmet,38200000,3,2009-01
+10352,3rd age kiteshield,61300000,3,2009-01
+10354,Amulet of glory(t4),208300,3,2009-01
+10356,Amulet of glory(t3),210700,31,2009-01
+10358,Amulet of glory(t2),210700,31,2009-01
+10360,Amulet of glory(t1),210700,31,2009-01
+10362,Amulet of glory(t),208300,3,2009-01
+10364,Strength amulet(t),544300,3,2009-01
+10366,Amulet of magic(t),102500,3,2009-01
+10368,Zamorak bracers,450400,3,2009-01
+10370,Zamorak d'hide,831400,3,2009-01
+10372,Zamorak chaps,93400,3,2009-01
+10374,Zamorak coif,182600,3,2009-01
+10376,Guthix bracers,11900,3,2009-01
+10378,Guthix dragonhide,85600,3,2009-01
+10380,Guthix chaps,30600,3,2009-01
+10382,Guthix coif,96600,3,2009-01
+10384,Saradomin bracers,343500,3,2009-01
+10386,Saradomin d'hide,683900,3,2009-01
+10388,Saradomin chaps,73000,3,2009-01
+10390,Saradomin coif,147800,3,2009-01
+10392,A powdered wig,47800,3,2009-01
+10394,Flared trousers,677400,3,2009-01
+10396,Pantaloons,13400,3,2009-01
+10398,Sleeping cap,65400,3,2009-01
+10400,Black ele' shirt,410600,3,2009-01
+10402,Black ele' legs,107500,3,2009-01
+10404,Red ele' shirt,99200,3,2009-01
+10406,Red ele' legs,36100,3,2009-01
+10408,Blue ele' shirt,114300,3,2009-01
+10410,Blue ele' legs,39800,3,2009-01
+10412,Green ele' shirt,116500,3,2009-01
+10414,Green ele' legs,44200,3,2009-01
+10416,Purple ele' shirt,62100,3,2009-01
+10418,Purple ele' legs,28800,3,2009-01
+10420,White ele' blouse,500000,3,2009-01
+10422,White ele' skirt,37300,3,2009-01
+10424,Red ele' blouse,58900,3,2009-01
+10426,Red ele' skirt,10600,3,2009-01
+10428,Blue ele' blouse,92700,3,2009-01
+10430,Blue ele' skirt,15000,3,2009-01
+10432,Green ele' blouse,65200,3,2009-01
+10434,Green ele' skirt,11400,3,2009-01
+10436,Purple ele' blouse,44500,3,2009-01
+10438,Purple ele' skirt,9984,3,2009-01
+10440,Saradomin crozier,4830,3,2009-01
+10442,Guthix crozier,3540,3,2009-01
+10444,Zamorak crozier,5934,3,2009-01
+10446,Saradomin cloak,829800,3,2009-01
+10448,Guthix cloak,514300,3,2009-01
+10450,Zamorak cloak,931500,3,2009-01
+10452,Saradomin mitre,124200,3,2009-01
+10454,Guthix mitre,75500,3,2009-01
+10456,Zamorak mitre,111200,3,2009-01
+10458,Saradomin robe top,120900,3,2009-01
+10460,Zamorak robe top,185200,3,2009-01
+10462,Guthix robe top,109100,3,2009-01
+10464,Saradomin robe legs,79700,3,2009-01
+10466,Guthix robe legs,62900,3,2009-01
+10468,Zamorak robe legs,105400,3,2009-01
+10470,Saradomin stole,39800,3,2009-01
+10472,Guthix stole,12300,3,2009-01
+10474,Zamorak stole,49300,3,2009-01
+10476,Purple sweets,2576,3,2009-01
+10564,Granite body,70900,3,2009-01
+10589,Granite helm,27400,3,2009-01
+10808,Arctic pyre logs,1345,3,2009-01
+10810,Arctic pine logs,152,3,2009-01
+10812,Split log,52,3,2009-01
+10814,Hair,100,3,2009-01
+10816,Raw yak meat,36,3,2009-01
+10818,Yak-hide,147,3,2009-01
+10820,Cured yak-hide,222,3,2009-01
+10822,Yak-hide armour,225,3,2009-01
+10824,Yak-hide armour,225,3,2009-01
+10826,Fremennik round shield,229,3,2009-01
+10828,Helm of neitiznot,52000,3,2009-01
+10891,Wooden cat,56,3,2009-01
+10909,Mixture - step 1(4),8666,3,2009-01
+10911,Mixture - step 1(3),6500,3,2009-01
+10913,Mixture - step 1(2),4333,3,2009-01
+10915,Mixture - step 1(1),2166,3,2009-01
+10917,Mixture - step 2(4),8666,3,2009-01
+10919,Mixture - step 2(3),6500,3,2009-01
+10921,Mixture - step 2(2),4333,3,2009-01
+10923,Mixture - step 2(1),2166,3,2009-01
+10925,Sanfew serum(4),11900,3,2009-01
+10927,Sanfew serum(3),8906,3,2009-01
+10929,Sanfew serum(2),5937,3,2009-01
+10931,Sanfew serum(1),2968,3,2009-01
+10937,Nail beast nails,362,3,2009-01
+10952,Slayer bell,76,3,2009-01
+10954,Frog-leather body,1089,3,2009-01
+10956,Frog-leather chaps,994,3,2009-01
+10958,Frog-leather boots,319,3,2009-01
+10973,Light orb,157,3,2009-01
+10978,Swamp weed,203,3,2009-01
+10981,Cave goblin wire,911,3,2009-01
+11037,Brine sabre,49900,3,2009-01
+11061,Ancient mace,2554,3,2009-01
+11065,Bracelet mould,94,3,2009-01
+11069,Gold bracelet,247,3,2009-01
+11072,Sapphire bracelet,590,3,2009-01
+11074,Bracelet of clay,652,3,2009-01
+11076,Emerald bracelet,808,3,2009-01
+11079,Castlewar brace(3),931,3,2009-01
+11081,Castlewar brace(2),928,16,2009-01
+11083,Castlewar brace(1),931,3,2009-01
+11085,Ruby bracelet,1277,3,2009-01
+11088,Inoculation brace,1395,3,2009-01
+11090,Phoenix necklace,2299,3,2009-01
+11092,Diamond bracelet,2249,3,2009-01
+11095,Forinthry brace(5),2336,3,2009-01
+11097,Forinthry brace(4),2356,31,2009-01
+11099,Forinthry brace(3),2356,31,2009-01
+11101,Forinthry brace(2),2356,31,2009-01
+11103,Forinthry brace(1),2336,3,2009-01
+11105,Skills necklace(4),12100,3,2009-01
+11107,Skills necklace(3),12300,31,2009-01
+11109,Skills necklace(2),12300,31,2009-01
+11111,Skills necklace(1),12300,31,2009-01
+11113,Skills necklace,12100,3,2009-01
+11115,Dragon bracelet,44600,3,2009-01
+11118,Combat bracelet(4),19100,3,2009-01
+11120,Combat bracelet(3),23000,31,2009-01
+11122,Combat bracelet(2),23000,31,2009-01
+11124,Combat bracelet(1),23000,31,2009-01
+11126,Combat bracelet,19100,3,2009-01
+11128,Berserker necklace,184500,3,2009-01
+11130,Onyx bracelet,421200,3,2009-01
+11133,Regen bracelet,340900,3,2009-01
+11171,Newspaper,28,31,2009-01
+11200,Dwarven helmet,35800,3,2009-01
+11212,Dragon arrow,3771,3,2009-01
+11217,Dragon fire arrows,2926,3,2009-01
+11222,Dragon fire arrows,2926,3,2009-01
+11227,Dragon arrow(p),3735,9,2009-01
+11228,Dragon arrow(p+),3789,9,2009-01
+11229,Dragon arrow(p++),4849,9,2009-01
+11230,Dragon dart,589,3,2009-01
+11231,Dragon dart(p),699,9,2009-01
+11232,Dragon dart tip,678,3,2009-01
+11233,Dragon dart(p+),753,9,2009-01
+11234,Dragon dart(p++),1849,9,2009-01
+11235,Dark bow,808800,3,2009-01
+11237,Dragon arrowtips,3686,3,2009-01
+11238,Baby impling jar,591,3,2009-01
+11240,Young impling jar,559,3,2009-01
+11242,Gourm' impling jar,587,3,2009-01
+11244,Earth impling jar,833,3,2009-01
+11246,Ess' impling jar,1181,3,2009-01
+11248,Eclectic impling jar,1303,3,2009-01
+11250,Nature impling jar,2006,3,2009-01
+11252,Magpie impling jar,18200,3,2009-01
+11254,Ninja impling jar,21400,3,2009-01
+11256,Dragon impling jar,328400,3,2009-01
+11260,Impling jar,425,3,2009-01
+11262,Imp repellent,179,3,2009-01
+11264,Anchovy oil,298,8,2009-03
+11266,Anchovy paste,53,3,2009-01
+11280,Cavalier and mask,429050,12,2009-01
+11284,Dragonfire shield,16500000,3,2009-01
+11286,Draconic visage,16300000,3,2009-01
+11324,Roe,23,3,2009-01
+11326,Caviar,343,3,2009-01
+11328,Leaping trout,11,3,2009-01
+11330,Leaping salmon,22,3,2009-01
+11332,Leaping sturgeon,229,3,2009-01
+11334,Fish offcuts,2,3,2009-01
+11335,Dragon full helm,17400000,3,2009-01
+11367,Bronze hasta,189,3,2009-01
+11369,Iron hasta,41,3,2009-01
+11371,Steel hasta,146,3,2009-01
+11373,Mithril hasta,380,3,2009-01
+11375,Adamant hasta,1080,3,2009-01
+11377,Rune hasta,12300,3,2009-01
+11379,Bronze hasta(p),364,9,2009-01
+11382,Bronze hasta(p+),641,9,2009-01
+11384,Bronze hasta(p++),6101,9,2009-01
+11386,Iron hasta(p),216,9,2009-01
+11389,Iron hasta(p+),490,9,2009-01
+11391,Iron hasta(p++),5957,9,2009-01
+11393,Steel hasta(p),321,9,2009-01
+11396,Steel hasta(p+),595,9,2009-01
+11398,Steel hasta(p++),6062,9,2009-01
+11400,Mithril hasta(p),555,9,2009-01
+11403,Mithril hasta(p+),830,9,2009-01
+11405,Mithril hasta(p++),6298,9,2009-01
+11407,Adamant hasta(p),1247,9,2009-01
+11410,Adamant hasta(p+),1522,9,2009-01
+11412,Adamant hasta(p++),6996,9,2009-01
+11414,Rune hasta(p),12500,9,2009-01
+11417,Rune hasta(p+),12700,9,2009-01
+11419,Rune hasta(p++),18200,9,2009-01
+11429,Attack mix(2),43,3,2009-01
+11431,Attack mix(1),21,3,2009-01
+11433,Antipoison mix(2),201,3,2009-01
+11435,Antipoison mix(1),100,3,2009-01
+11437,Relicym's mix(2),162,3,2009-01
+11439,Relicym's mix(1),81,3,2009-01
+11441,Strength mix(1),159,3,2009-01
+11443,Strength mix(2),319,3,2009-01
+11445,Combat mix(2),765,3,2009-01
+11447,Combat mix(1),382,3,2009-01
+11449,Restore mix(2),32,3,2009-01
+11451,Restore mix(1),20,3,2009-01
+11453,Energy mix(2),834,3,2009-01
+11455,Energy mix(1),417,3,2009-01
+11457,Defence mix(2),684,3,2009-01
+11459,Defence mix(1),342,3,2009-01
+11461,Agility mix(2),220,3,2009-01
+11463,Agility mix(1),110,3,2009-01
+11465,Prayer mix(2),4043,3,2009-01
+11467,Prayer mix(1),2021,3,2009-01
+11469,Superattack mix(2),545,3,2009-01
+11471,Superattack mix(1),272,3,2009-01
+11473,Anti-p supermix(2),881,3,2009-01
+11475,Anti-p supermix(1),440,3,2009-01
+11477,Fishing mix(2),224,3,2009-01
+11479,Fishing mix(1),112,3,2009-01
+11481,Sup. energy mix(2),1134,3,2009-01
+11483,Sup. energy mix(1),567,3,2009-01
+11485,Sup. str. mix(2),1940,3,2009-01
+11487,Sup. str. mix(1),970,3,2009-01
+11489,Magic ess. mix(2),361,3,2009-01
+11491,Magic ess. mix(1),180,3,2009-01
+11493,Sup. restore mix(2),977,3,2009-01
+11495,Sup. restore mix(1),488,3,2009-01
+11497,Sup. def. mix(2),730,3,2009-01
+11499,Sup. def. mix(1),365,3,2009-01
+11501,Antidote+ mix(2),333,3,2009-01
+11503,Antidote+ mix(1),166,3,2009-01
+11505,Antifire mix(2),995,3,2009-01
+11507,Antifire mix(1),497,3,2009-01
+11509,Ranging mix(2),1815,3,2009-01
+11511,Ranging mix(1),907,3,2009-01
+11513,Magic mix(2),703,3,2009-01
+11515,Magic mix(1),351,3,2009-01
+11517,Hunting mix(2),475,3,2009-01
+11519,Hunting mix(1),237,3,2009-01
+11521,Zamorak mix(2),507,3,2009-01
+11523,Zamorak mix(1),253,3,2009-01
+11525,Wimpy feather,11,3,2009-01
+11656,Glassblowing book,271,3,2009-01
+11686,Godsword shards,301500,4,2009-01
+11688,Godsword shards,302850,4,2009-01
+11690,Godsword blade,452600,3,2009-01
+11692,Godsword shards,301700,4,2009-01
+11694,Armadyl godsword,64800000,3,2009-01
+11696,Bandos godsword,18700000,3,2009-01
+11698,Saradomin godsword,44700000,3,2009-01
+11700,Zamorak godsword,26600000,3,2009-01
+11702,Armadyl hilt,64300000,3,2009-01
+11704,Bandos hilt,18300000,3,2009-01
+11706,Saradomin hilt,44300000,3,2009-01
+11708,Zamorak hilt,26100000,3,2009-01
+11710,Godsword shard 1,151200,3,2009-01
+11712,Godsword shard 2,150100,3,2009-01
+11714,Godsword shard 3,151300,3,2009-01
+11716,Zamorakian spear,1100000,3,2009-01
+11718,Armadyl helmet,4600000,3,2009-01
+11720,Armadyl chestplate,10200000,3,2009-01
+11722,Armadyl plateskirt,10400000,3,2009-01
+11724,Bandos chestplate,12500000,3,2009-01
+11726,Bandos tassets,10200000,3,2009-01
+11728,Bandos boots,870200,3,2009-01
+11730,Saradomin sword,7700000,3,2009-01
+11732,Dragon boots,255300,3,2009-01
+11736,Steam battlestaff,375700,3,2009-01
+11738,Mystic steam staff,434100,3,2009-01
+11814,Bronze armour set (l),221,3,2009-01
+11816,Bronze armour set (sk),321,3,2009-01
+11818,Iron armour set (l),774,3,2009-01
+11820,Iron armour set (sk),752,3,2009-01
+11822,Steel armour set (l),2679,3,2009-01
+11824,Steel armour set (sk),2678,3,2009-01
+11826,Black armour set (l),8129,3,2009-01
+11828,Black armour set (sk),8146,3,2009-01
+11830,Mithril armour set (l),7195,3,2009-01
+11832,Mithril armour set (sk),7196,3,2009-01
+11834,Adamant armour set (l),19100,3,2009-01
+11836,Adamant armour set (sk),19100,3,2009-01
+11838,Rune armour set (l),188700,3,2009-01
+11840,Rune armour set (sk),185000,3,2009-01
+11842,Dragon chain armour set (l),5800000,3,2009-01
+11844,Dragon chain armour set (sk),5400000,3,2009-01
+11846,Barrows - ahrim's set,1100000,3,2009-01
+11848,Barrows - dharok's set,4100000,3,2009-01
+11850,Barrows - guthan's set,4000000,3,2009-01
+11852,Barrows - karil's set,1300000,3,2009-01
+11854,Barrows - torag's set,1100000,3,2009-01
+11856,Barrows - verac's set,2500000,3,2009-01
+11858,Third age melee set,215600000,11,2009-01
+11860,Third age ranger set,89500000,11,2009-01
+11862,Third age mage set,127600000,11,2009-01
+11864,Green dragonhide set,8424,3,2009-01
+11866,Blue dragonhide set,9641,3,2009-01
+11868,Red dragonhide set,13800,3,2009-01
+11870,Black dragonhide set,16500,3,2009-01
+11872,Mystic robes set,148500,3,2009-01
+11874,Infinity robes set,3400000,3,2009-01
+11876,Splitbark armour set,62900,3,2009-01
+11878,Black trimmed armour set (l),249500,11,2009-01
+11880,Black trimmed armour set (sk),204900,11,2009-01
+11882,Black gold-trimmed armour set (l),634400,11,2009-01
+11884,Black gold-trimmed armour set (sk),552300,11,2009-01
+11886,Adamant trimmed armour set (l),232600,11,2009-01
+11888,Adamant trimmed armour set (sk),201400,11,2009-01
+11890,Adamant gold-trimmed armour set (l),501500,11,2009-01
+11892,Adamant gold-trimmed armour set (sk),448000,11,2009-01
+11894,Rune trimmed armour set (l),1300000,11,2009-01
+11896,Rune trimmed armour set (sk),1100000,11,2009-01
+11898,Rune gold-trimmed armour set (l),1800000,11,2009-01
+11900,Rune gold-trimmed armour set (sk),1600000,11,2009-01
+11902,Enchanted set,129900,11,2009-01
+11904,Trimmed blue wizard set,509200,11,2009-01
+11906,Gold-trimmed blue wizard set,1200000,11,2009-01
+11908,Trimmed leather armour set,45400,11,2009-01
+11910,Gold-trimmed leather armour set,102500,11,2009-01
+11912,Green d'hide trimmed set,176800,11,2009-01
+11914,Green d'hide gold-trimmed set,489300,11,2009-01
+11916,Blue d'hide trimmed set,8367,11,2009-01
+11918,Blue d'hide gold-trimmed set,20900,11,2009-01
+11920,Green d'hide blessed set,217300,11,2009-01
+11922,Blue d'hide blessed set,1200000,11,2009-01
+11924,Red d'hide blessed set,1500000,11,2009-01
+11926,Guthix armour set (l),1700000,11,2009-01
+11928,Saradomin armour set (l),3900000,11,2009-01
+11930,Zamorak armour set (l),2700000,11,2009-01
+11932,Guthix armour set (sk),1500000,11,2009-01
+11934,Saradomin armour set (sk),3600000,11,2009-01
+11936,Zamorak armour set (sk),2500000,11,2009-01
+11938,Gilded armour set (l),2900000,11,2009-01
+11940,Gilded armour set (sk),2500000,11,2009-01
+11942,Rockshell armour set,123700,3,2009-01
+11944,Spined armour set,49100,3,2009-01
+11946,Skeletal armour set,128000,3,2009-01
+11960,Light mystic robes set,142900,3,2009-01
+11962,Dark mystic robes set,157500,3,2009-01
+11967,Dwarf cannon set,604900,3,2009-01
+12007,Spirit terrorbird pouch,334,3,2009-01
+12009,Granite crab pouch,272,3,2009-01
+12011,Praying mantis pouch,2634,3,2009-01
+12013,Giant ent pouch,1962,3,2009-01
+12015,Spirit cobra pouch,1842,3,2009-01
+12017,Spirit dagannoth pouch,338,3,2009-01
+12019,Thorny snail pouch,295,3,2009-01
+12021,Beaver pouch,1206,3,2009-01
+12023,Karam. overlord pouch,2291,3,2009-01
+12025,Hydra pouch,2016,3,2009-01
+12027,Spirit jelly pouch,2410,3,2009-01
+12029,Bunyip pouch,1873,3,2009-01
+12031,War tortoise pouch,5811,3,2009-01
+12033,Fruit bat pouch,2077,3,2009-01
+12035,Abyssal parasite pouch,2739,3,2009-01
+12037,Abyssal lurker pouch,4015,3,2009-01
+12039,Unicorn stallion pouch,2220,3,2009-01
+12041,Magpie pouch,1428,3,2009-01
+12043,Dreadfowl pouch,281,3,2009-01
+12045,Stranger plant pouch,2029,3,2009-01
+12047,Spirit wolf pouch,277,3,2009-01
+12049,Desert wyrm pouch,809,3,2009-01
+12051,Evil turnip pouch,1751,3,2009-01
+12053,Vampire bat pouch,1350,3,2009-01
+12055,Spirit scorpion pouch,982,3,2009-01
+12057,Arctic bear pouch,362,3,2009-01
+12059,Spirit spider pouch,281,3,2009-01
+12061,Bloated leech pouch,1893,3,2009-01
+12063,Spirit kalphite pouch,4562,3,2009-01
+12065,Honey badger pouch,1381,3,2009-01
+12067,Albino rat pouch,2735,3,2009-01
+12069,Granite lobster pouch,2646,3,2009-01
+12071,Macaw pouch,1280,3,2009-01
+12073,Bronze minotaur pouch,1735,3,2009-01
+12075,Iron minotaur pouch,2001,3,2009-01
+12077,Steel minotaur pouch,2283,3,2009-01
+12079,Mithril minotaur pouch,2388,3,2009-01
+12081,Adamant minotaur pouch,2263,3,2009-01
+12083,Rune minotaur pouch,2221,3,2009-01
+12085,Smoke devil pouch,2222,3,2009-01
+12087,Bull ant pouch,362,3,2009-01
+12089,Wolpertinger pouch,3126,3,2009-01
+12091,Compost mound pouch,843,3,2009-01
+12093,Pack yak pouch,3263,3,2009-01
+12095,Sp. cockatrice pouch,1416,3,2009-01
+12097,Sp. guthatrice pouch,2742,3,2009-01
+12099,Sp. saratrice pouch,3156,3,2009-01
+12101,Sp. zamatrice pouch,3752,3,2009-01
+12103,Sp. pengatrice pouch,1431,3,2009-01
+12105,Sp. coraxatrice pouch,3254,3,2009-01
+12107,Sp. vulatrice pouch,3517,3,2009-01
+12109,Cockatrice egg,608,3,2009-01
+12111,Guthatrice egg,3700,3,2009-01
+12113,Saratrice egg,4269,3,2009-01
+12115,Zamatrice egg,5256,3,2009-01
+12117,Pengatrice egg,1997,3,2009-01
+12119,Coraxatrice egg,3873,3,2009-01
+12121,Vulatrice egg,4535,3,2009-01
+12123,Barker toad pouch,322,3,2009-01
+12125,Flies,108,3,2009-01
+12127,Beetle bits,107,3,2009-01
+12129,Ground fishing bait,2,3,2009-01
+12130,Nuts,106,3,2009-01
+12134,Evil turnip,3308,3,2009-01
+12136,2/3 evil turnip,42,3,2009-01
+12138,1/3 evil turnip,12,3,2009-01
+12140,Summoning potion(4),1574,3,2009-01
+12142,Summoning potion(3),1181,3,2009-01
+12144,Summoning potion(2),787,3,2009-01
+12146,Summoning potion(1),393,3,2009-01
+12148,Evil turnip seed,224,3,2009-01
+12153,Carved evil turnip,4464,3,2009-01
+12155,Pouch,1,3,2009-01
+12156,Honeycomb,98,3,2009-01
+12172,Clean spirit weed,1595,3,2009-01
+12174,Grimy spirit weed,1704,3,2009-01
+12176,Spirit weed seed,88,3,2009-01
+12181,Spirit weed potion(unf),1736,3,2009-01
+12183,Spirit shards,25,2,2009-01
+12204,Antlers,45,3,2009-01
+12207,Lizard skull,90,3,2009-01
+12210,Feather headdress,180,3,2009-01
+12213,Feather headdress,180,3,2009-01
+12216,Feather headdress,180,3,2009-01
+12219,Feather headdress,180,3,2009-01
+12222,Feather headdress,180,3,2009-01
+12422,Herbcall scroll,107,3,2009-01
+12423,Fruitfall scroll,206,3,2009-01
+12424,Fish rain scroll,141,3,2009-01
+12425,Howl scroll,27,3,2009-01
+12426,Thieving fingers scroll,118,3,2009-01
+12427,Abyssal stealth scroll,223,3,2009-01
+12428,Egg spawn scroll,29,3,2009-01
+12429,Multichop scroll,100,3,2009-01
+12430,Cheese feast scroll,170,3,2009-01
+12431,Unburden scroll,60,3,2009-01
+12432,Venom shot scroll,83,3,2009-01
+12433,Insane ferocity scroll,113,3,2009-01
+12434,Healing aura scroll,268,3,2009-01
+12435,Winter storage scroll,319,3,2009-01
+12436,Oph. incubation scroll,180,3,2009-01
+12437,Magic focus scroll,291,3,2009-01
+12438,Swallow whole scroll,223,3,2009-01
+12439,Testudo scroll,61,3,2009-01
+12440,Generate compost scroll,72,3,2009-01
+12441,Tireless run scroll,39,3,2009-01
+12442,Regrowth scroll,163,3,2009-01
+12443,Call to arms scroll,458,3,2009-01
+12444,Blood drain scroll,150,3,2009-01
+12445,Dreadfowl strike scroll,28,3,2009-01
+12446,Sandstorm scroll,129,3,2009-01
+12447,Vampire touch scroll,110,3,2009-01
+12448,Evil flames scroll,223,3,2009-01
+12449,Crushing claw scroll,206,3,2009-01
+12450,Mantis strike scroll,248,3,2009-01
+12451,Arctic blast scroll,35,3,2009-01
+12452,Toad bark scroll,31,3,2009-01
+12453,Dissolve scroll,192,3,2009-01
+12454,Abyssal drain scroll,142,3,2009-01
+12455,Doomsphere scroll,181,3,2009-01
+12456,Spike shot scroll,35,3,2009-01
+12457,Acorn missile scroll,188,3,2009-01
+12458,Petrifying gaze scroll,118,3,2009-01
+12459,Slime spray scroll,29,3,2009-01
+12460,Electric lash scroll,69,3,2009-01
+12461,Bronze bull rush scroll,136,3,2009-01
+12462,Iron bull rush scroll,160,3,2009-01
+12463,Steel bull rush scroll,182,3,2009-01
+12464,Mith bull rush scroll,190,3,2009-01
+12465,Addy bull rush scroll,192,3,2009-01
+12466,Rune bull rush scroll,53,3,2009-01
+12467,Poisonous blast scroll,163,3,2009-01
+12468,Dust cloud scroll,177,3,2009-01
+12531,Ibis pouch,1798,3,2009-01
+12533,Stony shell scroll,27,3,2009-01
+12535,Raw pawya meat,895,3,2009-01
+12539,Grenwall spikes,90,3,2009-01
+12559,Ogre wig,760,3,2009-01
+12561,Ogre kilt,99,3,2009-01
+12563,Ogre top,85,3,2009-01
+12565,Ogre boots,56,3,2009-01
+12567,Diseased kebbit fur,135,3,2009-01
+12568,Davy kebbit hat,544,3,2009-01
+12570,Ogre club,109,3,2009-01
+12572,Lavender,13,3,2009-01
+12574,Fever grass,15,3,2009-01
+12576,Tansymum,15,3,2009-01
+12581,Eucalyptus logs,397,3,2009-01
+12583,Eucalyptus pyre logs,603,3,2009-01
+12588,Primweed,15,3,2009-01
+12590,Stinkbloom,13,3,2009-01
+12608,Amulet of farming(1),92,3,2009-01
+12610,Amulet of farming(2),91,16,2009-01
+12612,Amulet of farming(3),91,16,2009-01
+12614,Amulet of farming(4),91,16,2009-01
+12616,Amulet of farming(5),91,16,2009-01
+12618,Amulet of farming(6),91,16,2009-01
+12620,Amulet of farming(7),91,16,2009-01
+12622,Amulet of farming(8),92,3,2009-01
+12776,Swamp titan pouch,2346,3,2009-01
+12778,Spirit mosquito pouch,202,3,2009-01
+12780,Void spinner pouch,9096,3,2009-01
+12782,Forge regent pouch,2212,3,2009-01
+12784,Spirit larupia pouch,5467,3,2009-01
+12786,Geyser titan pouch,3479,3,2009-01
+12788,Lava titan pouch,3430,3,2009-01
+12790,Steel titan pouch,3302,3,2009-01
+12792,Obsidian golem pouch,3124,3,2009-01
+12794,Talon beast pouch,3503,3,2009-01
+12796,Abyssal titan pouch,3720,3,2009-01
+12798,Void torcher pouch,9402,3,2009-01
+12800,Giant chinchompa pouch,1389,3,2009-01
+12802,Fire titan pouch,3268,3,2009-01
+12804,Moss titan pouch,3305,3,2009-01
+12806,Ice titan pouch,6473,3,2009-01
+12808,Spirit tz-kih pouch,1060,3,2009-01
+12810,Spirit graahk pouch,8915,3,2009-01
+12812,Spirit kyatt pouch,9834,3,2009-01
+12814,Void shifter pouch,9371,3,2009-01
+12816,Pyrelord pouch,1802,3,2009-01
+12818,Void ravager pouch,4076,3,2009-01
+12820,Ravenous locust pouch,1290,3,2009-01
+12822,Iron titan pouch,3063,3,2009-01
+12824,Titan's con. scroll,353,3,2009-01
+12825,Steel of legends scroll,435,3,2009-01
+12826,Volcanic str. scroll,244,3,2009-01
+12827,Essence shipment scroll,344,3,2009-01
+12828,Iron within scroll,287,3,2009-01
+12829,Immense heat scroll,144,3,2009-01
+12830,Famine scroll,115,3,2009-01
+12831,Deadly claw scroll,423,3,2009-01
+12832,Swamp plague scroll,188,3,2009-01
+12833,Boil scroll,292,3,2009-01
+12834,Explode scroll,113,3,2009-01
+12835,Goad scroll,390,3,2009-01
+12836,Ambush scroll,830,3,2009-01
+12837,Ebon thunder scroll,367,3,2009-01
+12838,Pester scroll,20,3,2009-01
+12839,Fireball assault scroll,91,3,2009-01
+12840,Rending scroll,409,3,2009-01
+12841,Inferno scroll,179,3,2009-01
+12871,Battle hood 0,14800,3,2009-01
+12878,Battle robe top 0,29900,3,2009-01
+12885,Battle robe bottom 0,23800,3,2009-01
+12892,Druidic mage hood 0,2959,3,2009-01
+12899,Druidic mage top 0,10500,3,2009-01
+12906,Druidic mage bottom 0,4441,3,2009-01
+12913,Adamant spikeshield 0,2689,3,2009-01
+12920,Adamant berserker shield 0,12600,3,2009-01
+12927,Rune spikeshield 0,23900,3,2009-01
+12934,Rune berserker shield 0,39900,3,2009-01
+12941,Green d'hide coif 0,10048,6,2009-01
+12948,Blue d'hide coif 0,22050,6,2009-01
+12955,Red d'hide coif 0,4413,6,2009-01
+12962,Black d'hide coif 0,8303,6,2009-01
+12969,Combat hood 0,1117,3,2009-01
+12976,Combat robe top 0,11500,3,2009-01
+12983,Combat robe bottom 0,7115,3,2009-01
+12986,Worn-out bronze gauntlets,1985,6,2009-01
+12989,Worn-out iron gauntlets,6352,6,2009-01
+12992,Worn-out steel gauntlets,6224,6,2009-01
+12995,Worn-out black gauntlets,12400,6,2009-01
+12998,Worn-out mithril gauntlets,9086,6,2009-01
+13001,Worn-out adamant gauntlets,4540,6,2009-01
+13004,Worn-out rune gauntlets,38850,6,2009-01
+13007,Worn-out dragon gauntlets,55350,6,2009-01
+13081,Black crossbow,360,3,2009-01
+13083,Black bolts,91,3,2009-01
+13084,Black bolts(p),126,9,2009-01
+13085,Black bolts(p+),181,9,2009-01
+13086,Black bolts(p++),1276,9,2009-01
+13095,Black cane,182000,3,2009-01
+13097,Adamant cane,28800,3,2009-01
+13099,Rune cane,35700,3,2009-01
+13101,Top hat,116400,3,2009-01
+13103,Pith helmet,23900,3,2009-01
+13105,Spiked helmet,127500,3,2009-01
+13107,Sheep mask,1300000,3,2009-01
+13109,Penguin mask,1500000,3,2009-01
+13111,Bat mask,1700000,3,2009-01
+13113,Cat mask,3100000,3,2009-01
+13115,Wolf mask,3700000,3,2009-01
+13280,Broad-tipped bolts,67,2,2009-07
+13290,Leaf-bladed sword,43800,2,2009-07
+13337,Pirate impling jar,3785,2,2009-07
+13358,Stripy pirate shirt,4324,2,2009-07
+13360,Stripy pirate shirt,3975,2,2009-07
+13362,Stripy pirate shirt,922,2,2009-07
+13364,Pirate leggings,7497,2,2009-07
+13366,Pirate leggings,1135,2,2009-07
+13368,Pirate leggings,1215,2,2009-07
+13370,Bandana,990,2,2009-07
+13372,Bandana,1058,2,2009-07
+13374,Bandana,615,2,2009-07
+13431,Crayfish cage,33,2,2009-07
+13433,Crayfish,4,2,2009-07
+13435,Raw crayfish,14,2,2009-07
+13563,Button mushroom,87,2,2009-07
+13734,Spirit shield,105350,2,2009-07
+13736,Blessed spirit shield,2950000,2,2009-07
+13738,Arcane spirit shield,120400000,2,2009-07
+13740,Divine spirit shield,372450000,2,2009-07
+13742,Elysian spirit shield,327250000,2,2009-07
+13744,Spectral spirit shield,83350000,2,2009-07
+13746,Arcane sigil,117450000,2,2009-07
+13748,Divine sigil,369550000,2,2009-07
+13750,Elysian sigil,324300000,2,2009-07
+13752,Spectral sigil,80400000,2,2009-07
+13754,Holy elixir,2800000,2,2009-07
+13858,Zuriel's robe top,342300,2,2009-07
+13861,Zuriel's robe bottom,332600,2,2009-07
+13864,Zuriel's hood,156750,2,2009-07
+13867,Zuriel's staff,375600,2,2009-07
+13870,Morrigan's leather body,337950,2,2009-07
+13873,Morrigan's leather chaps,312750,2,2009-07
+13876,Morrigan's coif,151250,2,2009-07
+13879,Morrigan's javelin,45700,2,2009-07
+13880,Morrigan's javelin(p),33600,1,2009-06
+13881,Morrigan's javelin(p+),33600,1,2009-06
+13882,Morrigan's javelin(p++),34700,1,2009-06
+13883,Morrigan's throwing axe,24700,2,2009-07
+13884,Statius's platebody,707200,2,2009-07
+13887,Vesta's chainbody,1047900,2,2009-07
+13890,Statius's platelegs,838200,2,2009-07
+13893,Vesta's plateskirt,888550,2,2009-07
+13896,Statius's full helm,459000,2,2009-07
+13899,Vesta's longsword,7950000,2,2009-07
+13902,Statius's warhammer,3700000,2,2009-07
+13905,Vesta's spear,1046450,2,2009-07
+13908,,323650,2,2009-07
+13911,,429300,2,2009-07
+13914,,339950,2,2009-07
+13917,,312300,2,2009-07
+13920,,159200,2,2009-07
+13923,,1084750,2,2009-07
+13926,,823400,2,2009-07
+13929,,326200,2,2009-07
+13932,,80650,2,2009-07
+13935,,77700,2,2009-07
+13938,,47750,2,2009-07
+13941,,128900,2,2009-07
+13944,,103600,2,2009-07
+13947,,78950,2,2009-07
+13950,,42400,2,2009-07
+13958,,453100,2,2009-07
+13961,,138900,2,2009-07
+13964,,168050,2,2009-07
+13967,,228650,2,2009-07
+13970,,218650,2,2009-07
+13973,,1950000,2,2009-07
+13976,,216300,2,2009-07
+13979,,1400000,2,2009-07
+13982,,934650,2,2009-07
+13985,,261100,2,2009-07
+13988,,184450,2,2009-07
+14472,Ruined dragon armour lump,2900000,3,2009-01
+14474,Ruined dragon armour slice,2900000,3,2009-01
+14476,Ruined dragon armour shard,2900000,3,2009-01
+14479,Dragon platebody,9600000,3,2009-01
+14484,Dragon claws,27550000,2,2009-02
+14490,Elite black platelegs,53750,2,2009-07
+14492,Elite black platebody,137450,2,2009-07
+14494,Elite black full helm,102800,2,2009-07
+14497,Dagon'hai robe top,75300,2,2009-07
+14499,Dagon'hai hat,25050,2,2009-07
+14501,Dagon'hai robe bottom,52500,2,2009-07
+14525,Dagon'hai robes set,152850,2,2009-07
+14527,Elite black armour set,293950,2,2009-07
+14529,Dragon plate armour set (l),25450000,2,2009-07
+14531,Dragon plate armour set (sk),24850000,2,2009-07
+14616,Phoenix quill,1310,1,2009-05
+14622,Rise from the ashes scroll,230,2,2009-07
+14623,Phoenix pouch,2898,2,2009-07

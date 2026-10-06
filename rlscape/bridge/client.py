@@ -59,6 +59,28 @@ class BridgeClient:
         """The full GE price index (``prices``), bot stock per item (``bot_stock``) and ``open_player_offers``."""
         return self.request("ge_snapshot")
 
+    def item_definitions(self) -> list[dict[str, Any]]:
+        """Every tradeable item: id, name, unnoted_id, value, high/low alch, alchemizable, members, ge_price."""
+        return self.request("item_definitions")["items"]
+
+    def ge_offer(self, uid: int, item: int, amount: int, price: int, sell: bool = False) -> int:
+        """Place a GE offer through the human path (the character must be at the GE); returns its slot."""
+        return self.request("ge_offer", uid=uid, item=item, amount=amount, price=price, sell=sell)["slot"]
+
+    def ge_status(self, uid: int) -> list[dict[str, Any]]:
+        return self.request("ge_status", uid=uid)["slots"]
+
+    def ge_collect(self, uid: int) -> list[dict[str, Any]]:
+        return self.request("ge_collect", uid=uid)["slots"]
+
+    def debug_teleport(self, uid: int, x: int, y: int, z: int = 0) -> None:
+        """Setup only (tests, calibration). Breaks game rules; never exposed to the agent."""
+        self.request("debug_teleport", uid=uid, x=x, y=y, z=z)
+
+    def debug_give(self, uid: int, item: int, amount: int) -> None:
+        """Setup only (tests, calibration). Breaks game rules; never exposed to the agent."""
+        self.request("debug_give", uid=uid, item=item, amount=amount)
+
     def spawn(self) -> dict[str, Any]:
         """Spawn a fresh level-3 character at Lumbridge; returns its state."""
         return self.request("spawn")["state"]
