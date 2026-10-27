@@ -61,10 +61,12 @@ work.
   - `RLPlayer` is **treated as a human by every game rule**
     (`isArtificial() == false`). Session plumbing uses
     `Player.hasClientSession()` instead.
-  - Config: `server.tick_ms`, `world.ge_freeze_prices`, and the `[rl]`
-    section (`bridge_enabled`, `bridge_port`, `random_events`).
-  - `worldprops/rl.conf` is `default.conf` with the bridge and the GE freeze
-    turned on.
+  - Config: `server.tick_ms`, `world.ge_freeze_prices`,
+    `world.ge_frozen_buyer`, and the `[rl]` section (`bridge_enabled`,
+    `bridge_port`, `random_events`).
+  - `worldprops/rl.conf` is the training config: `default.conf` with the
+    bridge on, prices frozen, the frozen-price GE buyer on, and random events
+    off for RL characters.
 - **GE state:** before running the server for experiments, install the frozen
   2009 GE: `uv run python scripts/install_ge_db.py`. The server must be
   stopped; the old database is backed up. The pipeline is
