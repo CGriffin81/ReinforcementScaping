@@ -581,3 +581,93 @@ The interaction records in `docs/agent-interactions/` hold the full context.
 - **Ranking cost:** 60–100 ms for every monster and plan. That's fine for the
   server, but the simulator will need caching by character state.
 - **Poison** damage isn't in the estimate yet (catalog §4.B says so).
+
+### User decision (2026-10-28)
+- **Work on the access table** (option catalog §4.C), the blocker found the
+  night before.
+- **The Wilderness is in the enemy pool** (asked during the work; Claude
+  recommended including it). PvP is off in `rl.conf` and training has no other
+  players, so its monsters go through the same danger filter. The simulator
+  must model the harsher death there: all but 3 items lost, no gravestone.
+
+### Built
+- `data/access_areas.csv` (55 curated rules) and `rlscape/combat/access.py`.
+  - Each rule is a gated area (a rectangle) or a set of quest-only NPCs, with a
+    requirement in a small grammar: quest / started / underway / item / level /
+    coins / never.
+  - The rules are checked against the character's `Progress` every decision; a
+    site only counts if every rule covering it is unlocked.
+  - `unlocked_rules(progress)` is the observation's access-flag vector.
+- `rlscape/gamedata`: `slayer_levels()` parses the server's `Tasks.java` (all
+  93 tasks, 1,127 NPC ids; the first task listing an id wins, as in
+  `Tasks.forId`). `quest_names()` parses `Quests.kt`, so the table's quest names
+  are validated against the server.
+- `candidates.evaluate` applies the Slayer level and the access table before
+  rating a monster. `Character.progress` defaults to a fresh character.
+- Tests: `tests/test_access.py` (7). 25 pass, and 13 live tests are skipped.
+
+### How the rows were chosen
+- A sweep ran the candidate selection with every area open, over:
+  - levels 1–99 with matching melee, ranged and magic gear
+  - 18 hub towns
+  - the "valuable" and "all" loot modes
+- It collected every monster that reached a top-10 slot: 573 monster sites in
+  202 map regions.
+- Each surfaced site was checked against the server code:
+  - `MapArea` borders
+  - quest checks in the door, ship, ferry and dialogue handlers
+  - the quest folders
+- Then the table was built and the sweep re-run with the real 3 + 3 slots
+  until only open-world monsters surfaced.
+
+### Findings
+- **The server doesn't enforce Slayer levels.** `NPC.isAttackable` (and
+  `IdleAbstractNPC`) prints "You need a higher slayer level to know how to
+  wound this monster" but has no `return false`, so a Slayer-1 character can
+  fight abyssal demons. The candidate filter applies the 2009 rule on both
+  backends. A one-line fork fix would make the server match; that's for Caleb
+  to decide.
+- **Many 2009 gates have no server check:** Ape Atoll, the Lighthouse, the
+  Kalphite Lair rope, Entrana, Trollheim and others. Their rows say "not
+  enforced by the server". The table still applies them, because both
+  backends get their candidate list from it.
+- **The server's Morytania borders start at x 3426,** but the River Salve runs
+  at about x 3405. The strip in between holds Mort Myre's west edge, the Slayer
+  Tower's west side and the Haunted Mine. Three rows cover it; the Paterdomus
+  temple (reachable from the west) is left out.
+- **Mighty banshees aren't in `Tasks.java`** (only the ordinary banshee, 1612,
+  is). The table adds the 2009 Slayer-15 requirement.
+- **Fresh character at Lumbridge, melee:** the gp/hr slots went from Cockroach
+  drones (46,000 gp/hr), undead chickens and undead cows to cow calves, bats
+  and cows (5,900–7,600 gp/hr). The XP slots are unchanged.
+- **Gaps left for calibration:**
+  - the entry fees (Brimhaven 875, Waterbirth 1,000) gate access but aren't
+    charged in the rates yet
+  - separate maps at y ≈ 4,000–6,400 (Zanaris, the God Wars Dungeon, the Chaos
+    Tunnels) only stay out because the travel model puts them far away
+  - Colonel Radick (1/1/1 stats, 71 HP) slips past the believability rule
+  - light sources and Slayer gear aren't modelled
+  - areas missing from the table count as open
+
+### User decision (2026-10-28, afternoon)
+- **Apply the Slayer fix in the fork, and commit everything.**
+
+### Built
+- Fork: `NPC.isAttackable` and `IdleAbstractNPC.isAttackable` now
+  `return false` below the NPC's Slayer level. Before, they only printed the
+  warning. The rule applies to every player, including the ambient bots.
+- Fork: the bridge's `state` reports the character's combat `target` (the
+  victim's name while attacking, otherwise null). The test needed it, and
+  `ServerEnv` will too.
+- `tests/test_human_player_live.py::test_slayer_level_blocks_attacks`:
+  teleport a fresh character among the cave crawlers (Slayer 10, Fremennik
+  Slayer Dungeon), attack, and expect no combat target.
+
+### Validation
+- **Reproduced before fixing:** on the unfixed build, the test failed with
+  `target == 'Cave crawler'`.
+- **After the fix:** the test passes. The full suite with the live server
+  gives 39 passed, all 14 live tests included. `scripts/gate_check.py` passes:
+  - G1: world speed 34.6× at 15 ms per tick
+  - G2: a fresh character chops 10 logs for 250 Woodcutting XP
+- The clean frozen GE database was reinstalled afterwards.

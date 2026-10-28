@@ -16,6 +16,9 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 SERVER_CONFIGS = REPO / "server" / "Server" / "data" / "configs"
+SERVER_CONTENT = REPO / "server" / "Server" / "src" / "main" / "content"
+SLAYER_TASKS = SERVER_CONTENT / "global" / "skill" / "slayer" / "Tasks.java"
+QUESTS = SERVER_CONTENT / "data" / "Quests.kt"
 PRICES = REPO / "data" / "prices_v2.csv"
 ITEM_DEFINITIONS = REPO / "data" / "item_definitions.csv"  # scripts/export_item_definitions.py (cache)
 NPC_DEFINITIONS = REPO / "data" / "npc_definitions.csv"  # scripts/export_npc_definitions.py (cache)
@@ -254,3 +257,26 @@ def banks() -> tuple[Bank, ...]:
     with BANKS.open(newline="") as f:
         return tuple(Bank(r["name"], int(r["x"]), int(r["y"]), int(r["plane"]), r["members"] == "True")
                      for r in csv.DictReader(f))
+
+
+# Tasks enum entries: NAME(combatCheck, new int[] { ids }, new String[] { info }, levelReq, ...)
+_TASK = re.compile(r"^\s*[A-Z_]+\s*\(\s*\d+\s*,\s*new int\[\]\s*\{([^}]*)\}\s*,\s*new String\[\]\s*\{.*?\}\s*,\s*(\d+)",
+                   re.M | re.S)
+
+
+@cache
+def slayer_levels() -> dict[int, int]:
+    """NPC id -> the Slayer level needed to fight it, from the server's Tasks.java. As in Tasks.forId, an NPC listed
+    under two tasks takes the first one's level. NPC.isAttackable in the fork refuses the attack below this level, as
+    2009 did (upstream only printed a message)."""
+    out: dict[int, int] = {}
+    for ids, level in _TASK.findall(SLAYER_TASKS.read_text(encoding="utf-8")):
+        for npc_id in re.findall(r"\d+", ids):
+            out.setdefault(int(npc_id), int(level))
+    return out
+
+
+@cache
+def quest_names() -> frozenset[str]:
+    """The server's Quests enum names (content/data/Quests.kt), the vocabulary for quest requirements."""
+    return frozenset(re.findall(r"^\s+([A-Z_0-9]+)\(\"", QUESTS.read_text(encoding="utf-8"), re.M))

@@ -1,6 +1,6 @@
-# Environment Contract (v0.5, Proposed)
+# Environment Contract (v0.6, Proposed)
 
-**Status:** v0.5, 2026-10-27. All questions are decided by Caleb (§9); awaiting sign-off.
+**Status:** v0.6, 2026-10-28 (the access flags, §3; the Wilderness, §9). All questions are decided by Caleb (§9); awaiting sign-off.
 
 Both backends implement this contract exactly: `SimEnv` (the surrogate simulator) and `ServerEnv` (2009Scape
 through the bridge). Any policy, baseline or logger written against it runs on either one.
@@ -60,7 +60,7 @@ roughly [0, 1].
 | Region | R | one-hot over the catalog's regions |
 | Combat candidates | C × 5 | for each candidate slot: XP/hr, gp/hr, expected damage taken per hour vs food held, travel minutes, Slayer / level eligibility (option catalog §4) |
 | Loot mode | 4 | one-hot: all / valuable / vocabulary / none (option catalog §4.D) |
-| Access | A | 0/1 per gated area in the access table: unlocked by an item held, quest progress, or a level (option catalog §4.C) |
+| Access | A | 0/1 per access rule (`data/access_areas.csv`, A = 55 today; `access.unlocked_rules`): unlocked by quests, items held, levels or coins (option catalog §4.C) |
 | Quests | Q × 3 + 1 | stage one-hot (not started / underway / complete) per curated quest; quest points / 32 |
 | Mask | N | the action mask |
 | Preference | 2 | (w_s, w_b), for the E4 agent only |
@@ -165,5 +165,10 @@ These are *theoretical* rates (expected values). The real server measures the ac
    Slayer unlocks rune platebodies and green d'hide bodies.
 8. **The anti-dragon shield comes only from Duke Horacio** (once Dragon Slayer is underway). `rl.conf` sets
    `world.ge_blocked_items = "1540,1541"`, so the GE won't trade it.
+
+### Decided (Caleb, 2026-10-28)
+9. **The Wilderness is in the enemy pool.** PvP is off in `rl.conf` and training has no other players, so its monsters
+   are judged by the same danger filter. The simulator models the harsher death there: all but 3 items are lost,
+   with no gravestone.
 
 All questions are decided. Both documents stay "Proposed" until Caleb signs them off.

@@ -127,7 +127,7 @@ ReinforcementScaping/
 
 ### Week 2 (Oct 12–18): Surrogate sim v0, environment, baselines (E1)
 
-*Started 2026-10-27 (catching up):* `rlscape/gamedata` (server data loaders) and `rlscape/combat` (formulas ported from the server, plus the rate model), with tests. Next: clean the NPC pool (cache definitions), inventory-aware gp/hr, then the simulator state and options.
+*Started 2026-10-27 (catching up):* `rlscape/gamedata` (server data loaders) and `rlscape/combat` (formulas ported from the server, plus the rate model), with tests. Then the cleaned NPC pool (cache definitions), inventory-aware gp/hr and the retreat-aware filter. *2026-10-28:* the access table (gated areas, quest-only NPCs, Slayer levels). Next: the simulator state and options.
 - [ ] `sim/`: per option, check preconditions, sample a duration, apply XP/item/GP deltas and update state. Formulas are ported from the server source; overheads start as placeholders.
 - [ ] `envs/SimEnv`: Gymnasium API, `action_masks()`, `info["duration"]`, `info["reward_vec"]`, and a reward-weight wrapper.
 - [ ] Baselines:

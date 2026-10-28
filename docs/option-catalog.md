@@ -1,6 +1,6 @@
-# Option Catalog (v0.5, Proposed)
+# Option Catalog (v0.6, Proposed)
 
-**Status:** v0.5, 2026-10-27. Read it together with `docs/env-contract.md`; it replaces v0 and `ROADMAP.md`
+**Status:** v0.6, 2026-10-28 (the access table, §4.C). Read it together with `docs/env-contract.md`; it replaces v0 and `ROADMAP.md`
 Appendix A. All of its questions are decided: selling quantity, per-source buying, the combat design (§4), and
 quests (§10). It's "Proposed" only until Caleb signs off the whole document.
 
@@ -131,21 +131,67 @@ holds or what it's doing must be available.
 - **each monster keeps one site per map region** (a spawn and its nearest bank, from `data/banks.csv`). Each decision
   picks the site with the best rate from the character's location, counting the walk there and the bank trips.
 
-**Not implemented yet: the access table below.** The first real-data run shows why it's next. A fresh character's top
-gp/hr slots are monsters in gated areas:
-- Cockroach drones (Stronghold of Player Safety)
-- Undead chickens and cows, and Blamish snails (Morytania, behind Priest in Peril)
-- Scabaras lancers (Contact!)
+**The access table, implemented** (`rlscape/combat/access.py`, `data/access_areas.csv`, 55 rules). Each decision, a
+monster site only counts if every rule covering it is unlocked by the character's progress: quests complete or
+underway, items held (inventory, bank or equipped), levels and coins. There are three kinds of rule:
+- **Gated areas** (a rectangle). Examples:
+  - Morytania: the server's own borders, the strip east of the River Salve those borders miss, and the dungeons
+    underneath
+  - quest-gated places: Mos Le'Harmless, Sophanem, West Ardougne, the Fremennik Isles, Ape Atoll, Shilo Village and
+    the Kharazi Jungle, Crandor and Melzar's Maze, Trollheim
+  - item-gated places: the Kalphite Lair and the Lumbridge Swamp Caves (a rope); Taverley's blue dragons (the dusty key,
+    or 70 Agility)
+  - entry fees: Brimhaven Dungeon (875 coins and an axe); Waterbirth (1,000 coins, or free after the Fremennik Trials)
+  - Entrana (no weapons or armour allowed) and the Stronghold of Player Safety
+- **Quest-only NPCs** (a list of names), fought only while their quest is underway: for example the Fight Arena
+  bosses, Lucien, and Berry and Twig. Elvarg is fought inside the Dragon Slayer option, so she's never in the pool.
+- **Minigames** such as the Barrows tunnels are `never`.
 
-| Unlock | How it's checked | Examples |
-|---|---|---|
-| Items that open areas | item in the inventory or bank (keys) or equipped | brass key → Edgeville Dungeon hill giants; dusty key → Taverley Dungeon |
-| Quest progress | quest stage from the server's quest state | quest monsters while that quest is underway; areas a finished quest opens |
-| Skill levels | current levels | Slayer-locked monsters; agility shortcuts |
+**Slayer levels** come from the server's `Tasks.java` (93 tasks, 1,127 NPC ids). Slayer has no training options, so it
+stays at 1, and every Slayer-locked monster stays out.
 
-An **access table** (area → requirement) is built for the gated areas that matter: dungeons behind keys, and
-quest-gated regions. Areas not in it count as open unless calibration finds them closed. Minigame and instanced
-monsters stay out.
+The requirement grammar is `quest:` / `started:` / `underway:` / `item:` / `level:` / `coins:` / `never`, combined with
+`&` and ` or ` (see the module docstring).
+
+**Where the rules come from.** Each row names the server check that enforces it, or says the server doesn't. 2009Scape
+leaves many 2009 gates unenforced: no check was found for Ape Atoll, the Lighthouse, the Kalphite rope or Entrana. The
+table applies the 2009 rule anyway. The candidate list is built in Python for both backends, so the server is never
+asked to fight a locked monster.
+
+**Slayer levels are now enforced in the fork too** (Caleb, 2026-10-28). Upstream, `NPC.isAttackable` and
+`IdleAbstractNPC.isAttackable` printed "You need a higher slayer level to know how to wound this monster" but had no
+`return false`, so the attack went ahead. The fork adds the `return false`. The live test
+`test_slayer_level_blocks_attacks` shows a fresh character can no longer fight cave crawlers (Slayer 10). The change
+applies to every player, including the ambient bots.
+
+**How the rows were chosen.** Not from memory of the whole map. A sweep ran the selection with every area open, over:
+- levels 1–99 with matching gear
+- 18 hub towns
+- two loot modes
+- all three combat classes
+
+It collected every monster that reached a top-10 slot: 573 monster sites in 202 map regions. Each site that surfaced was
+checked against the server. Then the table was built, and the sweep re-run with the real 3 + 3 slots until only
+open-world monsters surfaced. Rows marked "2009 knowledge" or "to verify" get checked during calibration.
+
+**Result:** for a fresh character at Lumbridge (melee), the gp/hr slots were Cockroach drones (46,000 gp/hr), undead
+chickens and undead cows. They're now cow calves, bats and cows (5,900–7,600 gp/hr). The XP slots are unchanged (Rat,
+Man, Ram).
+
+**The Wilderness is open** (Caleb, 2026-10-28). PvP is off in `rl.conf`, and the danger filter judges its monsters like
+any other. Dying there loses everything but 3 items, because there's no gravestone; the simulator has to model that.
+
+**Known gaps (for calibration):**
+- Areas not in the table count as open. Likely misses: the Ardougne zoo enclosures, parts of the Yanille Agility
+  Dungeon, the Mountain Camp.
+- The entry fees gate access but aren't charged in the rates yet.
+- Separate maps at y ≈ 4,000–6,400 (Zanaris, the God Wars Dungeon, the Chaos Tunnels) are treated by the travel model as
+  far-away surface tiles, so they never reach a slot. That's conservative, but by accident; they need their own rows
+  and travel links.
+- Colonel Radick (stats 1/1/1, 71 HP) passes the believability rule and is offered at every level. The rule misses this
+  placeholder.
+- Light sources (the server has no dark zones) and Slayer gear (earmuffs, face masks) aren't modelled. Slayer gear
+  doesn't matter while Slayer stays at 1.
 
 Quests are agent options (§10). While one is underway, its monsters and the areas it opens are available.
 
