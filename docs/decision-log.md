@@ -230,3 +230,49 @@ The interaction records in `docs/agent-interactions/` hold the full context.
   into coins through shops or alchemy. A market-maker that fills sell offers at
   the frozen price would restore GE selling, but it isn't authentic to this
   server.
+
+---
+
+## 2026-10-27
+
+### User decisions
+- **Random events are off for training.** `rl.conf` sets
+  `rl.random_events = false`, so RL characters get no AntiMacro timer.
+  `default.conf` keeps the human default (on). This resolves the pending
+  random-events question.
+- **A buyer fills GE sell offers at the frozen 2009 price.** The new fork
+  setting `world.ge_frozen_buyer` is on in `rl.conf`, off in `default.conf`.
+  This resolves the pending GE-selling question; GE selling is an option for
+  the agent again.
+
+### Agent implementation choices (reversible; flag if wrong)
+- **When it fills:** the buyer runs on the GE worker thread *after* a sell
+  offer has been matched against any real player buy offers, and takes the
+  whole remaining amount.
+- **What it pays:** the frozen index price. It never pays above the index,
+  so asks above it stay open. Asks below the index are still paid the index,
+  since the buyer is treated as an older buy offer, the same rule `exchange()`
+  applies between players.
+- **Frozen market only:** it does nothing unless `world.ge_freeze_prices` is
+  on, which avoids the upstream first-trade price bug on a live index.
+- **Where the items go:** back into the GE as bot stock (`addBotOffer`), so
+  they can be bought back at the same frozen price.
+- **Why not reuse `exchange()`:** it would update a transient bot buy offer
+  and overwrite that item's bot-stock row. The buyer mirrors the seller's side
+  of `exchange()` instead.
+- **Untracked items:** items with no 2009 price still have their seeded
+  (high-alchemy) GE price, so the buyer paid high-alchemy value for those
+  roughly 1,250 rows. **Superseded** by the user decision below.
+
+### User decision (later on 2026-10-27)
+- **The buyer only buys items with a 2009 price.**
+  - The frozen GE database now carries a `historical_price_items` table
+    listing the 6,070 price rows that hold a 2009 price (unnoted and noted
+    ids). It is written by `scripts/build_price_tables.py`.
+  - The buyer (`GrandExchange.sellToFrozenBuyer`) checks it before buying. Any
+    other sell offer stays open until a real buyer appears, which in this
+    world means never; those items can still go to shops or alchemy.
+  - The server creates the table empty when a GE database doesn't have it, so
+    with any other database the buyer buys nothing.
+  - The price tables are unchanged: `prices_v2.csv` and `ge_prices_2009.csv`
+    rebuilt byte-for-byte identical.

@@ -220,7 +220,7 @@ Since the kit includes a pickaxe, axe, net, weapons and a shield, all the early 
 | Firemaking | Burn logs | Logs, tinderbox |
 | Prayer | Bury bones from combat | Bones |
 | Thieving | Men / women, farmers (`ManThiever` and `FarmerThiever` already exist) | Thieving level |
-| Economy | Bank all; buy tool / weapon / armor tier Y from GE bot stock (frozen 2009 prices) or shops; sell to shops or High Level Alchemy. A GE sell never fills in this world (no buyers); that's pending a decision. | GP, levels, Magic 55 for High Alchemy |
+| Economy | Bank all; buy tool / weapon / armor tier Y from GE bot stock or shops; sell item X at the GE (filled at the frozen 2009 price by `ge_frozen_buyer`), to shops, or by High Level Alchemy. All GE trades happen at frozen January 2009 prices. | GP, levels, Magic 55 for High Alchemy |
 
 **Why combat matters for H1:** it creates the strongest delayed-payoff loops in the game:
 - Fishing + Cooking → food → longer trips at tougher monsters.

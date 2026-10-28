@@ -1,9 +1,13 @@
 """Integration tests for the RL character being treated as a human player, and for the frozen GE.
 
-Needs the forked server running with worldprops/rl.conf (ge_freeze_prices = true); skipped otherwise.
+Needs the forked server running with worldprops/rl.conf (frozen prices, frozen-price buyer, no random events)
+and the frozen GE installed (scripts/install_ge_db.py); skipped when the server is down.
 """
 
 from __future__ import annotations
+
+import csv
+from pathlib import Path
 
 import pytest
 
@@ -12,6 +16,7 @@ from test_bridge_live import bridge_reachable
 
 COINS = 995
 GE = (3165, 3489)
+DATA = Path(__file__).resolve().parent.parent / "data"
 
 pytestmark = pytest.mark.skipif(not bridge_reachable(), reason="RL bridge not running on localhost")
 
@@ -85,11 +90,62 @@ def test_ge_buy_fills_from_bot_stock_at_the_frozen_price(client, character):
     assert frozen[item] == price
 
 
-def test_ge_sell_offer_waits_because_nothing_in_this_world_buys(client, character):
+def bot_stock_of(client: BridgeClient, item: int) -> int:
+    return sum(s["amount"] for s in client.ge_snapshot()["bot_stock"] if s["id"] == item)
+
+
+def test_ge_sell_fills_at_the_frozen_price_and_restocks_the_market(client, character):
+    """rl.conf's ge_frozen_buyer takes sell offers at the frozen 2009 price, paying that price even when asked less."""
     uid = character["uid"]
+    bronze_axe = 1351
+    price = {p["id"]: p["value"] for p in client.ge_snapshot()["prices"]}[bronze_axe]
+    stock_before = bot_stock_of(client, bronze_axe)
     client.debug_teleport(uid, *GE)
     client.wait(3)
-    bronze_axe = 1351
+    before = client.state(uid)
+
     client.ge_offer(uid, item=bronze_axe, amount=1, price=1, sell=True)
+    slots = wait_for_state(client, uid, "COMPLETED")
+    assert slots[0]["completed"] == 1
+    client.ge_collect(uid)
+    client.wait(3)
+    after = client.state(uid)
+
+    assert amount_of(after, COINS) - amount_of(before, COINS) == price
+    assert amount_of(after, bronze_axe) == amount_of(before, bronze_axe) - 1
+    for _ in range(20):  # the GE worker thread writes the restocked item asynchronously
+        if bot_stock_of(client, bronze_axe) == stock_before + 1:
+            break
+        client.wait(2)
+    assert bot_stock_of(client, bronze_axe) == stock_before + 1
+
+
+def test_ge_sell_above_the_frozen_price_stays_open(client, character):
+    uid = character["uid"]
+    wooden_shield = 1171
+    price = {p["id"]: p["value"] for p in client.ge_snapshot()["prices"]}[wooden_shield]
+    client.debug_teleport(uid, *GE)
+    client.wait(3)
+    client.ge_offer(uid, item=wooden_shield, amount=1, price=price + 1, sell=True)
     slots = wait_for_state(client, uid, "COMPLETED", ticks=100)
     assert slots[0]["completed"] == 0
+
+
+def test_ge_buyer_ignores_items_without_a_2009_price(client, character):
+    """The buyer only takes items listed in the frozen database's historical_price_items table."""
+    empty_oyster = 409
+    with (DATA / "ge_prices_2009.csv").open(newline="") as f:
+        assert empty_oyster not in {int(row["item_id"]) for row in csv.DictReader(f)}, "precondition: no 2009 price"
+    uid = character["uid"]
+    price = {p["id"]: p["value"] for p in client.ge_snapshot()["prices"]}[empty_oyster]
+    client.debug_teleport(uid, *GE)
+    client.debug_give(uid, empty_oyster, 1)
+    client.wait(3)
+    client.ge_offer(uid, item=empty_oyster, amount=1, price=price, sell=True)
+    slots = wait_for_state(client, uid, "COMPLETED", ticks=100)
+    assert slots[0]["completed"] == 0
+
+
+def test_random_events_are_off_for_training(character):
+    """rl.conf sets rl.random_events = false, so no AntiMacro timer is attached to the RL character."""
+    assert character["random_events"] is False
