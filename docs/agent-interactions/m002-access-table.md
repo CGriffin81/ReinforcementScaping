@@ -3,13 +3,12 @@
 ## Metadata
 
 - Interaction ID: m002-access-table
-- Timestamp CST: 2026-10-28, before 13:40 CDT (estimated: the shell clock read 13:40:55 CDT near the end of the work;
-  the start wasn't instrumented)
+- Timestamp CST: 2026-10-28 12:30:04 CST (from the session transcript's message timestamp, UTC−05:00; corrected 2026-10-28; the original said only "before 13:40")
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS (the access table is implemented, tested and wired into candidate selection; gaps are listed for
   calibration)
-- Commit: main repo: the commit that adds this record, on branch `env-contract-and-combat-model` (the Slayer fix that followed is fork `d49172e`)
+- Commit: main repo: `7ce1e7c`, the commit that adds this record, on branch `env-contract-and-combat-model` (the Slayer fix that followed is fork `d49172e`)
 
 ## Full Prompt
 

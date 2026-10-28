@@ -3,11 +3,11 @@
 ## Metadata
 
 - Interaction ID: m001-frozen-seller-and-decision-context
-- Timestamp CST: 2026-10-27 ~19:22:00 CST (estimated: follows the related-work review, which ended at about 19:20; the server for this work started at 19:34)
+- Timestamp CST: 2026-10-27 19:30:38 CST (from the session transcript's message timestamp, UTC−05:00; corrected 2026-10-28, the original estimate was ~19:22:00)
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS
-- Commit: fork `fdaf116` (branch `rl`); main repo: the commit that adds this record, on branch `env-contract-and-combat-model`
+- Commit: fork `fdaf116` (branch `rl`); main repo: `846ca33`, the commit that adds this record, on branch `env-contract-and-combat-model`
 
 ## Full Prompt
 

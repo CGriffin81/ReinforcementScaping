@@ -3,11 +3,11 @@
 ## Metadata
 
 - Interaction ID: m002-gamedata-and-combat-model
-- Timestamp CST: 2026-10-27 ~20:35:00 CST (estimated: follows the quest-set record, written at about 20:33; this work's last edit was at 20:45)
+- Timestamp CST: 2026-10-27 20:35:37 CST (from the session transcript's message timestamp, UTC−05:00; corrected 2026-10-28, the original estimate was ~20:35:00)
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: PARTIAL (shield value done; first build module done and tested; data-quality findings need fixes and one decision)
-- Commit: main repo: the commit that adds this record, on branch `env-contract-and-combat-model`
+- Commit: main repo: `846ca33`, the commit that adds this record, on branch `env-contract-and-combat-model`
 
 ## Full Prompt
 
@@ -99,3 +99,4 @@ None. Read-only use of the server source and configs; no server runs.
   - inventory-aware gp/hr (needs bank distances from the region graph)
   - the gear check for special damage (dragonfire)
   - then the simulator state and options
+- **Resolved later** (pointer added 2026-10-28): the danger-filter semantics (retreat-aware) and the planned fixes in `m002-pool-cleaning-and-retreat-filter`.

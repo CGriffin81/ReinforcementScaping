@@ -7,7 +7,7 @@ Built from `CS898BG_RL_Project_Proposal_2009Scape.pdf` and `Requirements.md`.
 - Every episode starts from a **fresh level-3 character**.
 - Training episodes are **20 game-hours**, evaluated at **checkpoints every 2 game-hours** (2, 4, …, 20).
 - **Combat is in scope** and is a core part of the option catalog.
-- Claude writes the code; Caleb reviews and runs it. The AI-assisted code policy from Promethean applies (reference pending).
+- Claude writes the code; Caleb reviews and runs it. The AI-assisted code policy from Promethean applies (`docs/ai-log-requirements.md`).
 
 ---
 
@@ -34,23 +34,28 @@ Built from `CS898BG_RL_Project_Proposal_2009Scape.pdf` and `Requirements.md`.
 │ eval/ · analysis/ · TensorBoard + parquet decision logs                         │
 └───────────────────────────────────────────────┼─────────────────────────────────┘
                                                 │
-┌────────────── 2009Scape server (Kotlin/Java, JDK 11, Maven, MySQL) ────────────┐
-│ content/rl/RLBridge.kt     socket server: reset / options / step / state        │
-│ content/rl/options/*.kt    one Script per option, adapted from global/bots/*    │
-│ AIPlayer (no client) · tick loop patched to a configurable interval             │
-│ Grand Exchange (bots_influence_ge_price) · adventurer bots                      │
+┌────────────── 2009Scape server (Kotlin/Java, JDK 11, Maven; SQLite GE) ─────────┐
+│ content/rl/RLBridge.kt     JSON-lines socket, commands in RLCommands.kt         │
+│ content/rl/RLPlayer.kt     the agent's character: an AIPlayer treated as human  │
+│ tick loop patched to a configurable interval (server.tick_ms, set_tick_ms)      │
+│ GE frozen at January 2009 prices · frozen buyer and seller · ambient bots       │
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Bridge protocol (draft)**
+**Bridge protocol (as built, 2026-10-28).** The full list, with payloads, is the header of
+`server/Server/src/main/content/rl/RLCommands.kt`. The Python side is `rlscape/bridge/client.py`.
 
-| Message       | Payload                       | Returns |
-|---------------|-------------------------------|---------|
-| `reset`       | start-template id, seed       | full state |
-| `options`     | —                             | option catalog + current mask |
-| `step`        | option id                     | state after the option ends, ticks elapsed, XP/item/GP deltas, termination reason |
-| `state`       | —                             | levels, XP, inventory, bank, equipment, region, GP, GE snapshot |
-| `set_tick_ms` | int                           | ack |
+| Group | Commands |
+|---|---|
+| World | `ping`, `set_tick_ms`, `wait` |
+| Character | `spawn` (a fresh level-3 character as it leaves Tutorial Island), `state`, `despawn` |
+| Actions (human paths) | `walk_to`, `interact`, `run_script`, `stop_script` |
+| Economy | `ge_offer`, `ge_status`, `ge_collect` (through `StockMarket`, only at the GE) |
+| Data exports | `ge_snapshot`, `item_definitions`, `npc_definitions` |
+| Tests and calibration only | `debug_teleport`, `debug_give`. Never exposed to the agent. |
+
+Whole options (`reset` / `step` in the env contract) are built in Python on top of these commands. That's the
+`ServerEnv` executor, planned for week 6.
 
 ---
 
@@ -58,17 +63,21 @@ Built from `CS898BG_RL_Project_Proposal_2009Scape.pdf` and `Requirements.md`.
 
 ```
 ReinforcementScaping/
-├── docs/          proposal, env-contract.md, option-catalog.md, decision-log.md
+├── docs/          env-contract.md, option-catalog.md, decision-log.md, resources.md, agent-interactions/
+├── data/          prices_v2, the frozen 2009 GE, cache exports, curated banks and access table   (built)
+├── infra/         MariaDB compose file (not needed with the current config)                      (built)
 ├── rlscape/
-│   ├── sim/       surrogate simulator; catalog/*.yaml (options, items, prices_v1)
+│   ├── gamedata/  server data loaders (items, NPCs, drops, spawns, Slayer, quests)               (built)
+│   ├── combat/    combat formulas, rates, candidate slots, access table                         (built)
+│   ├── sim/       surrogate simulator; options from docs/option-catalog.md, prices from data/
 │   ├── envs/      SimEnv, ServerEnv, wrappers (reward weights, PBRS, RND, MO vector)
-│   ├── bridge/    socket client for the server
+│   ├── bridge/    socket client for the server                                                  (built)
 │   ├── agents/    SMDP rollout buffer, RND module, masked Envelope adapter
 │   ├── baselines/ random, greedy_xp, greedy_gp, scripted_guide
 │   ├── eval/      harness, bootstrap CIs, hypervolume, discovery metrics
 │   └── analysis/  figure scripts
 ├── configs/       one YAML per experiment family
-├── scripts/       train.py, evaluate.py, sweep.py, calibrate.py
+├── scripts/       built: gate_check, ge_warmup, price pipeline, exports, install_ge_db; planned: train.py, evaluate.py, sweep.py, calibrate.py
 ├── server/        fork of 2009scape (git submodule) + RL bridge
 ├── tests/
 └── results/       (git-ignored) runs, checkpoints, logs
@@ -109,19 +118,35 @@ ReinforcementScaping/
 - [x] Install JDK 11 (Temurin 11.0.32 via winget). Maven isn't needed because the repo ships `Server/mvnw.cmd`.
 - [x] Fork the server: [CGriffin81/2009scape-rl](https://github.com/CGriffin81/2009scape-rl) (private, full upstream history; `master` = upstream `bea45a9e`, our work on `rl`). Linked here as the `server/` submodule.
 - [x] Build the server jar (`Server/target/server-1.0.0-jar-with-dependencies.jar`, ~3 min cold build).
-- [x] Run it against MariaDB (`infra/docker-compose.db.yml`, localhost-only). The first launch took 418 s, mostly filling the GE price index in SQLite; built-in bots start ticking right away. The game port 43595 binds to **all interfaces**, so restrict it to localhost before leaving the server up for long stretches.
+- [x] Run it against MariaDB (`infra/docker-compose.db.yml`, localhost-only; no longer needed, since auth and account persistence are off). The first launch took 418 s, mostly filling the GE price index in SQLite; built-in bots start ticking right away. The game port 43595 binds to **all interfaces**, so restrict it to localhost before leaving the server up for long stretches.
 - [ ] Install Singleplayer through the Saradomin launcher, for reference play and for watching bots.
 - [x] Read `core/game/bots/` (`AIPlayer`, `Script`, `ScriptAPI`, `GeneralBotCreator`) and the bundled-script economy helpers.
 - [x] **G1, tick and headless: PASS.** `server.tick_ms` is now configurable and changeable at runtime through the bridge. Measured with 100 ambient bots: 4.9× at 120 ms, 9.5× at 60 ms, 17.5× at 30 ms, 34× at 15 ms (about 2.6 ms of overhead per tick). The "in combat" wall-clock flag is still untested under speedup.
 - [x] **G2, state and actions: PASS.** `content/rl/RLBridge.kt` + `RLCommands.kt` in the fork, and `rlscape/bridge/client.py` here. Spawns a character exactly as it leaves Tutorial Island, reads its full state, and drives authentic interactions: 600 ticks of chopping gave 10 logs and 250 XP. Covered by `scripts/gate_check.py` and `tests/test_bridge_live.py`.
-- [x] **G3, GE dynamics: answered. The market is bot-stocked and prices are static.** A 10-game-hour warm-up from a fresh GE (`scripts/ge_warmup.py`) changed 0 of 7,324 prices and saw 0 trades, while bot stock grew to 19,675 units of 145 items. Nothing in this world places buy orders, so the price index never moves. See the decision log for the mechanics and the pending economy decisions.
-- [x] Export the fixed price table: `data/prices_v1.csv` plus `.meta.json` (the 10-hour snapshot, per Caleb's decision; identical to the seeded high-alchemy values), and `data/grandexchange_warmup10h.db` for resetting the real server's GE.
+- [x] **G3, GE dynamics: answered. The market is bot-stocked and prices are static.** A 10-game-hour warm-up from a fresh GE (`scripts/ge_warmup.py`) changed 0 of 7,324 prices and saw 0 trades, while bot stock grew to 19,675 units of 145 items. Nothing in this world places buy orders, so the price index never moves. See the decision log for the mechanics.
+- [x] Export the fixed price table: `data/prices_v1.csv` plus `.meta.json` (the 10-hour snapshot, per Caleb's decision; identical to the seeded high-alchemy values), and `data/grandexchange_warmup10h.db` for resetting the real server's GE. *Superseded by the economy decisions below.*
+- [x] Economy (Oct 5–27, Caleb's decisions; details in the decision log):
+  - the RL character (`RLPlayer`) is treated as a human by every game rule
+  - the GE is frozen at January 2009 prices (`data/grandexchange_2009_frozen.db`, installed by `scripts/install_ge_db.py`)
+  - net worth uses `data/prices_v2.csv`: max(high alchemy − nature rune, 2009 GE price)
+  - random events are off for RL characters
+  - a frozen-price GE buyer and seller trade items that have a 2009 price
+  - the anti-dragon shield can't be traded on the GE (Duke Horacio only)
 
 *Python track*
 - [x] `git init`, and a `uv` project pinned to Python 3.12 (`rlscape` package, pytest).
 - [ ] Add the RL stack when the sim needs it: gymnasium, torch, stable-baselines3, sb3-contrib, morl-baselines, mo-gymnasium, tensorboard, pandas, pyarrow, matplotlib.
-- [~] `docs/env-contract.md` **v0.2 (2026-10-27):** questions 1–4 decided by Caleb; question 5 (selling quantity) open.
-- [~] `docs/option-catalog.md` **v0.2, Proposed (2026-10-27):** about 425 actions, rebuilt around Caleb's decisions (no auto-banking, Magic and alchemy, any-enemy combat through candidate slots, frozen seller plus shops). Open: selling quantity, buy actions per source, the candidate-slot design.
+- [~] `docs/env-contract.md` **v0.6 (2026-10-28):** every question decided by Caleb. "Proposed" until he signs it off.
+- [~] `docs/option-catalog.md` **v0.6 (2026-10-28):** about 451 actions. Every question is decided:
+  - no auto-banking
+  - Magic and alchemy
+  - any-enemy combat through candidate slots and the access table
+  - frozen seller plus shops
+  - selling all of an item
+  - per-source buying
+  - the 21-quest set
+
+  "Proposed" until Caleb signs it off. The loot-mode design (§4.D) needs his approval as part of that sign-off.
 
 **Deliverable:** a `docs/decision-log.md` entry with G1–G3 results and the chosen path: real server + sim, or sim-primary.
 
@@ -197,6 +222,9 @@ ReinforcementScaping/
 
 ## 6. Weekly rhythm
 
+*Not followed so far (as of 2026-10-28): no `wkN` tags and no Monday or Friday entries. Whether to keep it is
+Caleb's call.*
+
 - Monday: write the week's goals in `docs/decision-log.md`.
 - Friday: a 5-line status entry (done, blocked, changed) and a commit tag `wkN`.
 - Each results table goes into `results/summary/` with the exact config hash that produced it.
@@ -204,6 +232,8 @@ ReinforcementScaping/
 ---
 
 ## 7. Appendix A: Option catalog v0 (draft)
+
+*Superseded by `docs/option-catalog.md` (v0.6), which replaces this appendix. Kept for history.*
 
 **Starting state (fixed):** a fresh level-3 character at Lumbridge: all skills 1 except Hitpoints 10. The starter kit comes from `tutisland/handlers/iface/CharacterDesign.java`:
 - **Inventory:** bronze axe, tinderbox, small fishing net, shrimps, bucket, pot, bread, bronze pickaxe, bronze dagger, bronze sword, wooden shield, shortbow, 25 bronze arrows, and runes (25 air, 15 mind, 6 water, 4 earth, 2 body).
@@ -242,10 +272,13 @@ Calibrate against the existing `ChickenKiller`, `CowKiller`, `GenericSlayerBot` 
 
 Answered Oct 5: due date (Nov 30), division of labor (Claude codes, Caleb reviews and runs), installs approved, fresh level-3 start, 20 h episodes with 2 h checkpoints, combat in.
 
+Also answered Oct 5:
+- **Promethean AI-assisted code policy:** adapted as `docs/ai-log-requirements.md`.
+- **Remote repo:** GitHub. `CGriffin81/ReinforcementScaping` and the fork `CGriffin81/2009scape-rl` are both private.
+  Making either public is Caleb's call; a public fork has to include its source (AGPLv3).
+
 Still open:
-1. **Promethean AI-assisted code policy:** reference text needed so commits, disclosure and review follow it.
-2. **Remote repo:** GitHub or GitLab, public or private? The modified server is an AGPLv3 fork, so a public fork has to include its source.
-3. **Stretch (E7):** choose at the week-5 midpoint. See Appendix B.
+1. **Stretch (E7):** choose at the week-5 midpoint. See Appendix B.
 
 ---
 

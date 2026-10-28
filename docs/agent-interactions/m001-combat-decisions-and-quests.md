@@ -3,11 +3,11 @@
 ## Metadata
 
 - Interaction ID: m001-combat-decisions-and-quests
-- Timestamp CST: 2026-10-27 ~20:00:00 CST (estimated: follows the combat-context record, written at about 19:58; this work's last edit was at 20:14)
+- Timestamp CST: 2026-10-27 20:10:45 CST (from the session transcript's message timestamp, UTC−05:00; corrected 2026-10-28, the original estimate was ~20:00:00)
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: PARTIAL (combat A–D recorded and designed; whether quests are agent options awaits Caleb)
-- Commit: main repo: the commit that adds this record, on branch `env-contract-and-combat-model`
+- Commit: main repo: `846ca33`, the commit that adds this record, on branch `env-contract-and-combat-model`
 
 ## Full Prompt
 
@@ -91,3 +91,4 @@ None. Read-only searches of the server source.
 - Caleb decides whether quests are agent options, and which.
 - Then: build the enemy pool, the access table and the combat-rate model; fix the item vocabulary; start
   simulator v0.
+- **Resolved later** (pointer added 2026-10-28): whether quests are agent options, and which, in `m001-quest-curation` and `m001-quest-set-and-duke-shield`.

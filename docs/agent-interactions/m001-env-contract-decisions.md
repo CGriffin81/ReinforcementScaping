@@ -3,11 +3,11 @@
 ## Metadata
 
 - Interaction ID: m001-env-contract-decisions
-- Timestamp CST: 2026-10-27 ~19:40:00 CST (estimated: follows the frozen-seller work, whose last edit was at 19:37; this work's final edits were at about 19:51)
+- Timestamp CST: 2026-10-27 19:46:29 CST (from the session transcript's message timestamp, UTC−05:00; corrected 2026-10-28, the original estimate was ~19:40:00)
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: PARTIAL (decisions 1–4 recorded and reflected in both docs; question 5 and the combat-candidate design await Caleb)
-- Commit: main repo: the commit that adds this record, on branch `env-contract-and-combat-model`
+- Commit: main repo: `846ca33`, the commit that adds this record, on branch `env-contract-and-combat-model`
 
 ## Full Prompt
 
@@ -96,3 +96,4 @@ None. Read-only parsing of the server's NPC and drop configs.
 - Caleb decides question 5 (selling quantity), the per-source buy actions, and the candidate-slot design.
 - Then build the enemy pool and combat-rate model, which feeds the simulator and the candidate features, and
   fix *V* from drop values.
+- **Resolved later** (pointer added 2026-10-28): question 5 and the per-source buy actions in `m001-combat-design-context`; the candidate-slot design in `m001-combat-decisions-and-quests`.

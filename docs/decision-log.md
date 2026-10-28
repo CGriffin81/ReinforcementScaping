@@ -582,7 +582,9 @@ The interaction records in `docs/agent-interactions/` hold the full context.
   server, but the simulator will need caching by character state.
 - **Poison** damage isn't in the estimate yet (catalog §4.B says so).
 
-### User decision (2026-10-28)
+## 2026-10-28
+
+### User decision (morning)
 - **Work on the access table** (option catalog §4.C), the blocker found the
   night before.
 - **The Wilderness is in the enemy pool** (asked during the work; Claude
@@ -649,7 +651,7 @@ The interaction records in `docs/agent-interactions/` hold the full context.
   - light sources and Slayer gear aren't modelled
   - areas missing from the table count as open
 
-### User decision (2026-10-28, afternoon)
+### User decision (afternoon, Slayer fix)
 - **Apply the Slayer fix in the fork, and commit everything.**
 
 ### Built
@@ -671,3 +673,39 @@ The interaction records in `docs/agent-interactions/` hold the full context.
   - G1: world speed 34.6× at 15 ms per tick
   - G2: a fresh character chops 10 logs for 250 Woodcutting XP
 - The clean frozen GE database was reinstalled afterwards.
+
+### Documentation audit and fixes (afternoon)
+- **Audit** (`m002-documentation-audit`), read-only. It checked every doc
+  against the code, the config, git, the logging policy and the session
+  transcript, which has an instrumented timestamp for every prompt.
+- **Caleb's decision: apply the fixes and commit everything**
+  (`m002-doc-fixes-and-commit`):
+  - **Records:**
+    - every timestamp now comes from the transcript, with the old estimate
+      kept in a note; nine estimates had been off by 4–10 minutes, and two
+      records used "CDT" instead of the policy's CST label
+    - "the commit that adds this record" now carries the SHA
+    - the five PARTIAL records point to where their open questions were
+      resolved
+    - the missing record for the 2026-10-27 commit-and-push turn was written
+      (`m002-commit-and-push`)
+  - **`env-contract.md` §8** no longer claims respawn waits, consumables or
+    entry fees are in the rates; they're marked "not yet".
+  - **`ROADMAP.md`:**
+    - the policy reference
+    - the architecture box and the bridge protocol as built
+    - the repo layout, marking what's built
+    - the week-1 economy items and doc versions
+    - Appendix A marked superseded
+    - the answered open questions
+    - a note that the weekly rhythm (§6) isn't followed; keeping it is
+      Caleb's call
+- **Still open, from the audit:**
+  - sign-off of both docs and the loot-mode design
+  - a PR for `env-contract-and-combat-model`
+  - the week-2 build items
+  - the combat-model gaps (poison, respawn, consumables, fees, Wilderness
+    death, the separate maps, Colonel Radick)
+  - calibration and verification items
+  - binding the game port to localhost
+  - citations for the access rows that rest on 2009 knowledge

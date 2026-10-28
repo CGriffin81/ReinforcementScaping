@@ -3,11 +3,11 @@
 ## Metadata
 
 - Interaction ID: m001-server-fork-and-control-bridge
-- Timestamp CST: 2026-10-05 ~21:54:00 CST (estimated: the previous commit `38a25f1` was at 21:53:14, and this prompt's first fetch finished at 21:56)
+- Timestamp CST: 2026-10-05 21:55:14 CST (from the session transcript's message timestamp, UTC−05:00; corrected 2026-10-28, the original estimate was ~21:54:00)
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS
-- Commit: fork `2d22dda` and `1591c87` (branch `rl`); main repo: the commit that adds this record
+- Commit: fork `2d22dda` and `1591c87` (branch `rl`); main repo: `86db771`, the commit that adds this record
 
 ## Full Prompt
 
