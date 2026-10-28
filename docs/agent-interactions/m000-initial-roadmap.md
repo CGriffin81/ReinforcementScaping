@@ -3,11 +3,11 @@
 ## Metadata
 
 - Interaction ID: m000-initial-roadmap
-- Timestamp CST: 2026-10-05 ~20:57:00 CST (estimated from file timestamps: `Requirements.md` was last written at 20:56, and this was the first prompt after it)
+- Timestamp CST: 2026-10-05 20:59:44 CST (from the session transcript's message timestamp, UTC−05:00; corrected 2026-10-28, the original estimate was ~20:57:00)
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS
-- Commit: None (the repo didn't exist yet; the roadmap was first committed with the m001 work)
+- Commit: None (the repo didn't exist yet; the roadmap was first committed with the m001 work in `1e7291a`)
 
 ## Full Prompt
 

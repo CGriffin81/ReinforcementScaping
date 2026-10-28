@@ -3,11 +3,11 @@
 ## Metadata
 
 - Interaction ID: m001-related-work-rs-sdk-runebench
-- Timestamp CST: 2026-10-27 ~19:15:00 CST (estimated: follows the env-contract work, whose last edits were at about 19:13; this work's final edits were at 19:20)
+- Timestamp CST: 2026-10-27 19:18:20 CST (from the session transcript's message timestamp, UTC−05:00; corrected 2026-10-28, the original estimate was ~19:15:00)
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS
-- Commit: main repo: the commit that adds this record, on branch `env-contract-and-combat-model`
+- Commit: main repo: `846ca33`, the commit that adds this record, on branch `env-contract-and-combat-model`
 
 ## Full Prompt
 

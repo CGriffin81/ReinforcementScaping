@@ -3,11 +3,11 @@
 ## Metadata
 
 - Interaction ID: m002-pool-cleaning-and-retreat-filter
-- Timestamp CST: 2026-10-27 ~21:05:00 CST (estimated: the first command run for this prompt reported 21:06:14 local Central time)
+- Timestamp CST: 2026-10-27 21:06:02 CST (from the session transcript's message timestamp, UTC−05:00; corrected 2026-10-28, the original estimate was ~21:05:00)
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS (the planned fixes and the retreat-aware filter are implemented and tested; the access table is identified as the next blocker)
-- Commit: fork `1223914` (branch `rl`); main repo: the commit that adds this record, on branch `env-contract-and-combat-model`
+- Commit: fork `1223914` (branch `rl`); main repo: `846ca33`, the commit that adds this record, on branch `env-contract-and-combat-model`
 
 ## Full Prompt
 

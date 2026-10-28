@@ -582,7 +582,9 @@ The interaction records in `docs/agent-interactions/` hold the full context.
   server, but the simulator will need caching by character state.
 - **Poison** damage isn't in the estimate yet (catalog §4.B says so).
 
-### User decision (2026-10-28)
+## 2026-10-28
+
+### User decision (morning)
 - **Work on the access table** (option catalog §4.C), the blocker found the
   night before.
 - **The Wilderness is in the enemy pool** (asked during the work; Claude
@@ -649,7 +651,7 @@ The interaction records in `docs/agent-interactions/` hold the full context.
   - light sources and Slayer gear aren't modelled
   - areas missing from the table count as open
 
-### User decision (2026-10-28, afternoon)
+### User decision (afternoon, Slayer fix)
 - **Apply the Slayer fix in the fork, and commit everything.**
 
 ### Built
@@ -671,3 +673,79 @@ The interaction records in `docs/agent-interactions/` hold the full context.
   - G1: world speed 34.6× at 15 ms per tick
   - G2: a fresh character chops 10 logs for 250 Woodcutting XP
 - The clean frozen GE database was reinstalled afterwards.
+
+### Documentation audit and fixes (afternoon)
+- **Audit** (`m002-documentation-audit`), read-only. It checked every doc
+  against the code, the config, git, the logging policy and the session
+  transcript, which has an instrumented timestamp for every prompt.
+- **Caleb's decision: apply the fixes and commit everything**
+  (`m002-doc-fixes-and-commit`):
+  - **Records:**
+    - every timestamp now comes from the transcript, with the old estimate
+      kept in a note; nine estimates had been off by 4–10 minutes, and two
+      records used "CDT" instead of the policy's CST label
+    - "the commit that adds this record" now carries the SHA
+    - the five PARTIAL records point to where their open questions were
+      resolved
+    - the missing record for the 2026-10-27 commit-and-push turn was written
+      (`m002-commit-and-push`)
+  - **`env-contract.md` §8** no longer claims respawn waits, consumables or
+    entry fees are in the rates; they're marked "not yet".
+  - **`ROADMAP.md`:**
+    - the policy reference
+    - the architecture box and the bridge protocol as built
+    - the repo layout, marking what's built
+    - the week-1 economy items and doc versions
+    - Appendix A marked superseded
+    - the answered open questions
+    - a note that the weekly rhythm (§6) isn't followed; keeping it is
+      Caleb's call
+- **Still open, from the audit:**
+  - sign-off of both docs and the loot-mode design
+  - a PR for `env-contract-and-combat-model`
+  - the week-2 build items
+  - the combat-model gaps (poison, respawn, consumables, fees, Wilderness
+    death, the separate maps, Colonel Radick)
+  - calibration and verification items
+  - binding the game port to localhost
+  - citations for the access rows that rest on 2009 knowledge
+
+### User decisions (afternoon, open-questions review)
+Caleb accepted all nine recommendations
+(`m002-open-decisions-accepted`):
+1. **Signed off** `env-contract.md` and `option-catalog.md`, both now
+   **v1.0**. Later changes need Caleb's approval and get logged here. The item
+   vocabulary is chosen by the agreed rule, and Caleb checks the list.
+2. **Loot modes approved** (catalog §4.D): four modes the agent sets (all,
+   valuable, vocabulary, none).
+3. **Death:** the character respawns in Lumbridge and the episode carries on.
+   Ported from the server (`DeathTask.getContainers`, `GraveController`,
+   `GraveType`):
+   - the 3 most valuable items by alchemy value are kept (none if skulled,
+     plus one with Protect Item)
+   - outside the Wilderness, everything else goes into a 2-minute gravestone
+     (200 ticks, the free memorial plaque); a new `reclaim_gravestone` option
+     recovers it if the walk back fits in that time
+   - in the Wilderness or when skulled there's no gravestone, and everything
+     else is lost
+   - the catalog grows to about 452 actions
+4. **Open a PR** for `env-contract-and-combat-model`. Caleb merges it after
+   review, and the simulator starts on a fresh branch.
+5. **Weekly rhythm trimmed** to a 5-line Friday status entry here (done,
+   blocked, changed, next, risks). No Monday goal entries or `wkN` tags.
+6. **The game port is bound to localhost.** New fork setting
+   `server.bind_address` (default `0.0.0.0`, as upstream); `rl.conf` sets
+   `127.0.0.1`. Verified: `netstat` shows `127.0.0.1:43595 LISTENING`, and the
+   full suite with the live server gives 39 passed.
+7. **E7 is tentatively A, the LLM planner.** It's confirmed at the week-5
+   midpoint, and only if E1–E6 are solid.
+8. **Singleplayer client:** deferred to week 7, for the replay recording.
+9. **Both repos stay private** for now. Revisit if the course submission
+   needs public links.
+- **Correction (same afternoon):** PRs #2 and #3 from
+  `env-contract-and-combat-model` had already been merged by Caleb
+  (2026-10-27 21:25:55 and 2026-10-28 13:54:12 CST). The audit's "a PR is
+  still open" item, and recommendation 4 built on it, were wrong, because the
+  audit never checked GitHub. The commits since #3 (the doc fixes, these
+  decisions, and this correction) go in PR #4. Lesson: check `gh pr list`
+  before reporting PR state.

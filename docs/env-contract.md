@@ -1,6 +1,7 @@
-# Environment Contract (v0.6, Proposed)
+# Environment Contract (v1.0, Signed off)
 
-**Status:** v0.6, 2026-10-28 (the access flags, §3; the Wilderness, §9). All questions are decided by Caleb (§9); awaiting sign-off.
+**Status:** v1.0, signed off by Caleb on 2026-10-28. v1.0 adds the death rule (§1) to v0.6. Any later change needs Caleb's
+approval and is logged in `docs/decision-log.md`.
 
 Both backends implement this contract exactly: `SimEnv` (the surrogate simulator) and `ServerEnv` (2009Scape
 through the bridge). Any policy, baseline or logger written against it runs on either one.
@@ -22,6 +23,16 @@ through the bridge). Any policy, baseline or logger written against it runs on e
     - the horizon
   - **Banking is never automatic** (decided). When the inventory fills, the agent chooses what to do: bank,
     drop, sell, alch, process, or keep going with something else.
+- **Death doesn't end the episode** (decided, 2026-10-28). The option ends with `died`, the character respawns in
+  Lumbridge, and the episode carries on. Items follow the server's rules (`DeathTask.getContainers`,
+  `GraveController`):
+  - the **3 most valuable items** (by alchemy value) from the inventory and equipment are kept. A skulled character
+    keeps none, and Protect Item adds one.
+  - **outside the Wilderness**, everything else goes into a gravestone that lasts **2 minutes** (200 ticks; the
+    free memorial plaque). The `reclaim_gravestone` option (option catalog §5) walks back and takes it all back, if
+    it gets there in time.
+  - **in the Wilderness** (or when skulled) there is no gravestone, and everything else is lost.
+  - lost items leave net worth, just like dropped ones.
 - **Horizon cut-off:** an option that would run past the horizon is cut off there. The episode ends as
   *truncated* (not terminal), so value bootstrapping is handled correctly.
 - **Discounting:** γ^τ, with γ set **per game-hour** and converted to ticks (γ_tick = γ_hr^(1/6000)). This
@@ -129,9 +140,9 @@ from `drop_tables.json`, and spawns from `npc_spawns.json`.
 
 | Quantity | How it's computed |
 |---|---|
-| Kills/hr | from hit chance and max hit against the NPC's defence and HP, plus respawn and walking time |
+| Kills/hr | from hit chance and max hit against the NPC's defence and HP, plus a fixed 6-tick overhead per kill for finding and reaching the next target. **Respawn waits aren't modelled yet.** |
 | XP/hr | combat XP and Hitpoints XP for the chosen style |
-| gp/hr | expected drop value (`prices_v2`) × kills/hr − consumables used (food, arrows, runes) at 2009 prices |
+| gp/hr | expected value (`prices_v2`) of the drops the loot mode keeps × kills/hr. **Not yet subtracted:** consumables used (food, arrows, runes) and entry fees (Brimhaven, Waterbirth). |
 | Risk | expected damage per kill, and the monster's max hit, against HP above the retreat point and the food held (the retreat-aware filter) |
 | Inventory and travel | kills continue until the looted drops fill the free slots, then a bank trip; the walk to the monster is taken out of the duration (*D* = 15 game-minutes = 1,500 ticks) |
 
@@ -170,5 +181,9 @@ These are *theoretical* rates (expected values). The real server measures the ac
 9. **The Wilderness is in the enemy pool.** PvP is off in `rl.conf` and training has no other players, so its monsters
    are judged by the same danger filter. The simulator models the harsher death there: all but 3 items are lost,
    with no gravestone.
+10. **Death respawns the character and the episode continues** (§1): 3 items kept, a 2-minute gravestone outside the
+    Wilderness, nothing recoverable inside it. The alternatives were ending the episode at death (too harsh, and
+    not how 2009 worked) and ignoring gravestones.
+11. **Looting is four loot modes the agent sets** (option catalog §4.D), approved as proposed.
 
-All questions are decided. Both documents stay "Proposed" until Caleb signs them off.
+Caleb signed off both documents on 2026-10-28 (v1.0).

@@ -3,11 +3,11 @@
 ## Metadata
 
 - Interaction ID: m001-env-contract-and-option-catalog
-- Timestamp CST: 2026-10-27 ~19:06:00 CST (estimated: follows the PR #1 update at about 19:05; the memory and decision-log edits at the end of this work happened around 19:13)
+- Timestamp CST: 2026-10-27 19:09:01 CST (from the session transcript's message timestamp, UTC−05:00; corrected 2026-10-28, the original estimate was ~19:06:00)
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: PARTIAL (both drafts written; they await Caleb's decisions, one of which is blocking)
-- Commit: main repo: the commit that adds this record, on branch `env-contract-and-combat-model`
+- Commit: main repo: `846ca33`, the commit that adds this record, on branch `env-contract-and-combat-model`
 
 ## Full Prompt
 
@@ -104,3 +104,4 @@ config files.
   evaluation harness.
 - Branching: these drafts sit in the working tree on the PR #1 branch. They
   should go in their own PR, either after PR #1 merges or stacked on it.
+- **Resolved later** (pointer added 2026-10-28): the gear-sourcing question in `m001-frozen-seller-and-decision-context`; questions 1–4 in `m001-env-contract-decisions`; question 5 and per-source buying in `m001-combat-design-context`; combat in `m001-combat-decisions-and-quests`; quests in `m001-quest-curation`. The drafts went into their own branch, `env-contract-and-combat-model`, in `m002-commit-and-push`.

@@ -3,11 +3,11 @@
 ## Metadata
 
 - Interaction ID: m001-quest-curation
-- Timestamp CST: 2026-10-27 ~20:16:00 CST (estimated: follows the combat-decisions record, written at about 20:14; the follow-up message arrived during the work; this work's last edit was at 20:24)
+- Timestamp CST: 2026-10-27 20:20:41 CST (from the session transcript's message timestamp, UTC−05:00; corrected 2026-10-28, the original estimate was ~20:16:00)
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS (every env-contract and option-catalog question is now decided; both docs await Caleb's sign-off)
-- Commit: main repo: the commit that adds this record, on branch `env-contract-and-combat-model`
+- Commit: main repo: `846ca33`, the commit that adds this record, on branch `env-contract-and-combat-model`
 
 ## Full Prompt
 

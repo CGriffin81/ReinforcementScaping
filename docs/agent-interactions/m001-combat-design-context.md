@@ -3,11 +3,11 @@
 ## Metadata
 
 - Interaction ID: m001-combat-design-context
-- Timestamp CST: 2026-10-27 ~19:53:00 CST (estimated: follows the env-contract decisions record, written at about 19:51; this work's last edit was at 19:58)
+- Timestamp CST: 2026-10-27 19:56:45 CST (from the session transcript's message timestamp, UTC−05:00; corrected 2026-10-28, the original estimate was ~19:53:00)
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: PARTIAL (two decisions recorded; the combat design is explained and awaits Caleb)
-- Commit: main repo: the commit that adds this record, on branch `env-contract-and-combat-model`
+- Commit: main repo: `846ca33`, the commit that adds this record, on branch `env-contract-and-combat-model`
 
 ## Full Prompt
 
@@ -75,3 +75,4 @@ None. Read-only parsing of the server's NPC and drop configs.
 
 - Caleb decides combat parts A–D.
 - Then build the enemy pool and combat-rate model, fix the item vocabulary, and start simulator v0.
+- **Resolved later** (pointer added 2026-10-28): combat parts A–D in `m001-combat-decisions-and-quests`.
