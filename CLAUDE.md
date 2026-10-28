@@ -63,13 +63,15 @@ work.
   - `RLPlayer` is **treated as a human by every game rule**
     (`isArtificial() == false`). Session plumbing uses
     `Player.hasClientSession()` instead.
-  - Config: `server.tick_ms`, `world.ge_freeze_prices`,
+  - Config: `server.tick_ms`, `server.bind_address`, `world.ge_freeze_prices`,
     `world.ge_frozen_buyer`, `world.ge_frozen_seller`, `world.ge_blocked_items`,
     and the `[rl]` section (`bridge_enabled`, `bridge_port`, `random_events`).
   - `worldprops/rl.conf` is the training config: `default.conf` with the
     bridge on, prices frozen, the frozen-price GE buyer and seller on, the
-    anti-dragon shield blocked on the GE (Duke Horacio only), and random
-    events off for RL characters.
+    anti-dragon shield blocked on the GE (Duke Horacio only), random events
+    off for RL characters, and the game port bound to 127.0.0.1.
+  - Other fork rule changes: Slayer levels are enforced on attack
+    (`NPC.isAttackable`).
 - **GE state:** before running the server for experiments, install the frozen
   2009 GE: `uv run python scripts/install_ge_db.py`. The server must be
   stopped; the old database is backed up. The pipeline is

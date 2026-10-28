@@ -1,8 +1,15 @@
-# Option Catalog (v0.6, Proposed)
+# Option Catalog (v1.0, Signed off)
 
-**Status:** v0.6, 2026-10-28 (the access table, §4.C). Read it together with `docs/env-contract.md`; it replaces v0 and `ROADMAP.md`
-Appendix A. All of its questions are decided: selling quantity, per-source buying, the combat design (§4), and
-quests (§10). It's "Proposed" only until Caleb signs off the whole document.
+**Status:** v1.0, signed off by Caleb on 2026-10-28. Read it together with `docs/env-contract.md`. It replaces v0
+and `ROADMAP.md` Appendix A. All of its questions are decided:
+- selling quantity
+- per-source buying
+- the combat design (§4), including the loot modes (§4.D)
+- death (§5's `reclaim_gravestone`)
+- quests (§10)
+
+The item vocabulary *V* (§9) is chosen by the agreed rule before training, and Caleb checks the list. Any later
+change needs his approval and is logged in `docs/decision-log.md`.
 
 ## 1. How options work
 
@@ -209,7 +216,7 @@ calibrated on the server.
 
 ### D. Looting decided by the agent (decided)
 
-Caleb's rule is that the agent makes looting decisions. **Proposed design: a loot mode the agent sets.** It
+Caleb's rule is that the agent makes looting decisions. **The design, approved by Caleb on 2026-10-28: a loot mode the agent sets.** It
 persists across fights and is shown in the observation:
 
 | Action | What gets picked up from kills |
@@ -234,6 +241,7 @@ The mode starts as `loot_valuable` at spawn.
 | `bank_withdraw_for_<activity>` | walk to the nearest bank; withdraw the inputs one processing activity needs, up to a full inventory. One per §3 activity, so 9 actions. |
 | `drop_<item>` | drop every unit of one vocabulary item from the inventory (dropped items leave net worth) |
 | `drop_misc` | drop every non-vocabulary item |
+| `reclaim_gravestone` | after a death outside the Wilderness: walk back to the gravestone and take back everything in it. Masked unless a gravestone exists and the walk fits in its remaining time (it lasts 200 ticks; env contract §1). |
 
 ## 6. Magic: alchemy
 
@@ -314,12 +322,12 @@ before training, so the action space doesn't change during the study.
 | Processing | 9 |
 | Combat | 30 |
 | Loot mode | 4 |
-| Inventory | 1 + 9 + 61 = 71 |
+| Inventory | 1 + 9 + 61 + 1 (reclaim gravestone) = 72 |
 | Alchemy | 122 |
 | Selling | 122 |
 | Buying | about 60 |
 | Quests | 21 |
-| **Total** | **about 451** |
+| **Total** | **about 452** |
 
 Masking keeps it workable: at any moment only the items actually in the inventory unlock their
 sell / alch / drop actions, typically around 30–80 valid actions. A 20-hour episode now runs to roughly 250–400
@@ -415,4 +423,4 @@ of them, so the agent decides which quests are worth their time.
 - **Real server:** each needs a scripted walkthrough in the executor. A quest that proves broken in 2009Scape is
   dropped from the set and logged.
 
-**Size:** 21 quest actions, about 451 actions in total.
+**Size:** 21 quest actions, about 452 actions in total.

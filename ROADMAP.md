@@ -118,8 +118,8 @@ ReinforcementScaping/
 - [x] Install JDK 11 (Temurin 11.0.32 via winget). Maven isn't needed because the repo ships `Server/mvnw.cmd`.
 - [x] Fork the server: [CGriffin81/2009scape-rl](https://github.com/CGriffin81/2009scape-rl) (private, full upstream history; `master` = upstream `bea45a9e`, our work on `rl`). Linked here as the `server/` submodule.
 - [x] Build the server jar (`Server/target/server-1.0.0-jar-with-dependencies.jar`, ~3 min cold build).
-- [x] Run it against MariaDB (`infra/docker-compose.db.yml`, localhost-only; no longer needed, since auth and account persistence are off). The first launch took 418 s, mostly filling the GE price index in SQLite; built-in bots start ticking right away. The game port 43595 binds to **all interfaces**, so restrict it to localhost before leaving the server up for long stretches.
-- [ ] Install Singleplayer through the Saradomin launcher, for reference play and for watching bots.
+- [x] Run it against MariaDB (`infra/docker-compose.db.yml`, localhost-only; no longer needed, since auth and account persistence are off). The first launch took 418 s, mostly filling the GE price index in SQLite; built-in bots start ticking right away. The game port 43595 bound to **all interfaces**. *Fixed 2026-10-28: `server.bind_address`, which `rl.conf` sets to `127.0.0.1`.*
+- [ ] Install Singleplayer through the Saradomin launcher, for reference play and for watching bots. *Deferred to week 7 (Caleb, 2026-10-28). It's only needed there, to record a replay with the client attached.*
 - [x] Read `core/game/bots/` (`AIPlayer`, `Script`, `ScriptAPI`, `GeneralBotCreator`) and the bundled-script economy helpers.
 - [x] **G1, tick and headless: PASS.** `server.tick_ms` is now configurable and changeable at runtime through the bridge. Measured with 100 ambient bots: 4.9× at 120 ms, 9.5× at 60 ms, 17.5× at 30 ms, 34× at 15 ms (about 2.6 ms of overhead per tick). The "in combat" wall-clock flag is still untested under speedup.
 - [x] **G2, state and actions: PASS.** `content/rl/RLBridge.kt` + `RLCommands.kt` in the fork, and `rlscape/bridge/client.py` here. Spawns a character exactly as it leaves Tutorial Island, reads its full state, and drives authentic interactions: 600 ticks of chopping gave 10 logs and 250 XP. Covered by `scripts/gate_check.py` and `tests/test_bridge_live.py`.
@@ -136,8 +136,10 @@ ReinforcementScaping/
 *Python track*
 - [x] `git init`, and a `uv` project pinned to Python 3.12 (`rlscape` package, pytest).
 - [ ] Add the RL stack when the sim needs it: gymnasium, torch, stable-baselines3, sb3-contrib, morl-baselines, mo-gymnasium, tensorboard, pandas, pyarrow, matplotlib.
-- [~] `docs/env-contract.md` **v0.6 (2026-10-28):** every question decided by Caleb. "Proposed" until he signs it off.
-- [~] `docs/option-catalog.md` **v0.6 (2026-10-28):** about 451 actions. Every question is decided:
+- [x] `docs/env-contract.md` **v1.0, signed off by Caleb on 2026-10-28.** It adds the death rule: respawn and carry
+  on, with a 2-minute gravestone outside the Wilderness.
+- [x] `docs/option-catalog.md` **v1.0, signed off by Caleb on 2026-10-28:** about 452 actions. Every question is
+  decided:
   - no auto-banking
   - Magic and alchemy
   - any-enemy combat through candidate slots and the access table
@@ -145,8 +147,8 @@ ReinforcementScaping/
   - selling all of an item
   - per-source buying
   - the 21-quest set
-
-  "Proposed" until Caleb signs it off. The loot-mode design (§4.D) needs his approval as part of that sign-off.
+  - the four loot modes (§4.D)
+  - `reclaim_gravestone` after a death
 
 **Deliverable:** a `docs/decision-log.md` entry with G1–G3 results and the chosen path: real server + sim, or sim-primary.
 
@@ -222,11 +224,10 @@ ReinforcementScaping/
 
 ## 6. Weekly rhythm
 
-*Not followed so far (as of 2026-10-28): no `wkN` tags and no Monday or Friday entries. Whether to keep it is
-Caleb's call.*
+Trimmed by Caleb on 2026-10-28. The interaction records and the decision log already give a running account, so
+there are no Monday goal entries and no `wkN` tags.
 
-- Monday: write the week's goals in `docs/decision-log.md`.
-- Friday: a 5-line status entry (done, blocked, changed) and a commit tag `wkN`.
+- Friday: a 5-line status entry in `docs/decision-log.md` (done, blocked, changed, next, risks).
 - Each results table goes into `results/summary/` with the exact config hash that produced it.
 
 ---
@@ -275,10 +276,12 @@ Answered Oct 5: due date (Nov 30), division of labor (Claude codes, Caleb review
 Also answered Oct 5:
 - **Promethean AI-assisted code policy:** adapted as `docs/ai-log-requirements.md`.
 - **Remote repo:** GitHub. `CGriffin81/ReinforcementScaping` and the fork `CGriffin81/2009scape-rl` are both private.
-  Making either public is Caleb's call; a public fork has to include its source (AGPLv3).
+  Both stay private for now (Caleb, 2026-10-28). Revisit if the course submission needs public links; a public fork
+  has to include its source (AGPLv3).
 
 Still open:
-1. **Stretch (E7):** choose at the week-5 midpoint. See Appendix B.
+1. **Stretch (E7):** tentatively **A, the LLM planner**: Caleb accepted the recommendation on 2026-10-28. It's
+   confirmed at the week-5 midpoint, and only if E1–E6 are solid by then. See Appendix B.
 
 ---
 

@@ -709,3 +709,36 @@ The interaction records in `docs/agent-interactions/` hold the full context.
   - calibration and verification items
   - binding the game port to localhost
   - citations for the access rows that rest on 2009 knowledge
+
+### User decisions (afternoon, open-questions review)
+Caleb accepted all nine recommendations
+(`m002-open-decisions-accepted`):
+1. **Signed off** `env-contract.md` and `option-catalog.md`, both now
+   **v1.0**. Later changes need his approval and get logged here. The item
+   vocabulary is chosen by the agreed rule, and Caleb checks the list.
+2. **Loot modes approved** (catalog §4.D): four modes the agent sets (all,
+   valuable, vocabulary, none).
+3. **Death:** the character respawns in Lumbridge and the episode carries on.
+   Ported from the server (`DeathTask.getContainers`, `GraveController`,
+   `GraveType`):
+   - the 3 most valuable items by alchemy value are kept (none if skulled,
+     plus one with Protect Item)
+   - outside the Wilderness, everything else goes into a 2-minute gravestone
+     (200 ticks, the free memorial plaque); a new `reclaim_gravestone` option
+     recovers it if the walk back fits in that time
+   - in the Wilderness or when skulled there's no gravestone, and everything
+     else is lost
+   - the catalog grows to about 452 actions
+4. **Open a PR** for `env-contract-and-combat-model`. Caleb merges it after
+   review, and the simulator starts on a fresh branch.
+5. **Weekly rhythm trimmed** to a 5-line Friday status entry here (done,
+   blocked, changed, next, risks). No Monday goal entries or `wkN` tags.
+6. **The game port is bound to localhost.** New fork setting
+   `server.bind_address` (default `0.0.0.0`, as upstream); `rl.conf` sets
+   `127.0.0.1`. Verified: `netstat` shows `127.0.0.1:43595 LISTENING`, and the
+   full suite with the live server gives 39 passed.
+7. **E7 is tentatively A, the LLM planner.** It's confirmed at the week-5
+   midpoint, and only if E1–E6 are solid.
+8. **Singleplayer client:** deferred to week 7, for the replay recording.
+9. **Both repos stay private** for now. Revisit if the course submission
+   needs public links.
