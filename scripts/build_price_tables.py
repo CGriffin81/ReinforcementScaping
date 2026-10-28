@@ -10,6 +10,9 @@ Decisions (Caleb, 2026-10-05):
     (ModernListeners.alchemize): anything tradeable or flagged alchemizable except coins, which is every item
     in this table bar coins (valued at 1).
 
+Decision (Caleb, 2026-10-27): the frozen-price GE buyer (world.ge_frozen_buyer) only buys items with a 2009
+price. The frozen database lists them in its historical_price_items table, which the server's buyer checks.
+
 Inputs:  data/item_definitions.csv (scripts/export_item_definitions.py),
          results/ge_history/sample/*.json (scripts/fetch_ge_history.py),
          data/grandexchange_warmup10h.db (scripts/ge_warmup.py).
@@ -119,12 +122,15 @@ def main() -> None:
     unnoted = {d["id"]: d["unnoted_id"] for d in definitions}
     updated = kept = 0
     with sqlite3.connect(FROZEN_DB) as db:
+        db.execute("CREATE TABLE IF NOT EXISTS historical_price_items(item_id INTEGER PRIMARY KEY)")
+        db.execute("DELETE FROM historical_price_items")
         for (item_id,) in db.execute("SELECT item_id FROM price_index").fetchall():
             ge = history.get(unnoted.get(item_id, item_id), (None,))[0]
             if ge is None:
                 kept += 1
                 continue
             db.execute("UPDATE price_index SET value = ?, total_value = ? WHERE item_id = ?", (ge, ge, item_id))
+            db.execute("INSERT INTO historical_price_items(item_id) VALUES (?)", (item_id,))
             updated += 1
 
     built = datetime.now().astimezone().isoformat(timespec="seconds")
@@ -150,11 +156,13 @@ def main() -> None:
     }, indent=2) + "\n")
     FROZEN_DB.with_suffix(".meta.json").write_text(json.dumps({
         "description": "GE database for real-server episodes: bot stock from the 10 game-hour warm-up, price index "
-                       "replaced by the historical 2009 table. Run with ge_freeze_prices = true so it never moves.",
+                       "replaced by the historical 2009 table. Run with ge_freeze_prices = true so it never moves. "
+                       "historical_price_items lists the rows with a 2009 price; the frozen-price buyer only buys those.",
         "base": str(WARMUP_DB),
         "built": built,
         "price_rows_set_to_2009": updated,
         "price_rows_kept_seeded": kept,
+        "historical_price_items": updated,
     }, indent=2) + "\n")
 
     print(f"2009 prices: {len(history)} items {dict(sorted(months.items()))}")

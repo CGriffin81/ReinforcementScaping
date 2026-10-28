@@ -261,7 +261,18 @@ The interaction records in `docs/agent-interactions/` hold the full context.
   and overwrite that item's bot-stock row. The buyer mirrors the seller's side
   of `exchange()` instead.
 - **Untracked items:** items with no 2009 price still have their seeded
-  (high-alchemy) GE price, so the buyer pays high-alchemy value for those
-  roughly 1,250 rows without a nature rune or Magic 55. Most are obscure for a
-  level-3 progression run, but it can be limited to items with a 2009 price if
-  preferred.
+  (high-alchemy) GE price, so the buyer paid high-alchemy value for those
+  roughly 1,250 rows. **Superseded** by the user decision below.
+
+### User decision (later on 2026-10-27)
+- **The buyer only buys items with a 2009 price.**
+  - The frozen GE database now carries a `historical_price_items` table
+    listing the 6,070 price rows that hold a 2009 price (unnoted and noted
+    ids). It is written by `scripts/build_price_tables.py`.
+  - The buyer (`GrandExchange.sellToFrozenBuyer`) checks it before buying. Any
+    other sell offer stays open until a real buyer appears, which in this
+    world means never; those items can still go to shops or alchemy.
+  - The server creates the table empty when a GE database doesn't have it, so
+    with any other database the buyer buys nothing.
+  - The price tables are unchanged: `prices_v2.csv` and `ge_prices_2009.csv`
+    rebuilt byte-for-byte identical.

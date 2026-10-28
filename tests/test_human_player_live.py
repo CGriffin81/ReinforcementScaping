@@ -6,6 +6,9 @@ and the frozen GE installed (scripts/install_ge_db.py); skipped when the server 
 
 from __future__ import annotations
 
+import csv
+from pathlib import Path
+
 import pytest
 
 from rlscape.bridge import BridgeClient
@@ -13,6 +16,7 @@ from test_bridge_live import bridge_reachable
 
 COINS = 995
 GE = (3165, 3489)
+DATA = Path(__file__).resolve().parent.parent / "data"
 
 pytestmark = pytest.mark.skipif(not bridge_reachable(), reason="RL bridge not running on localhost")
 
@@ -123,6 +127,21 @@ def test_ge_sell_above_the_frozen_price_stays_open(client, character):
     client.debug_teleport(uid, *GE)
     client.wait(3)
     client.ge_offer(uid, item=wooden_shield, amount=1, price=price + 1, sell=True)
+    slots = wait_for_state(client, uid, "COMPLETED", ticks=100)
+    assert slots[0]["completed"] == 0
+
+
+def test_ge_buyer_ignores_items_without_a_2009_price(client, character):
+    """The buyer only takes items listed in the frozen database's historical_price_items table."""
+    empty_oyster = 409
+    with (DATA / "ge_prices_2009.csv").open(newline="") as f:
+        assert empty_oyster not in {int(row["item_id"]) for row in csv.DictReader(f)}, "precondition: no 2009 price"
+    uid = character["uid"]
+    price = {p["id"]: p["value"] for p in client.ge_snapshot()["prices"]}[empty_oyster]
+    client.debug_teleport(uid, *GE)
+    client.debug_give(uid, empty_oyster, 1)
+    client.wait(3)
+    client.ge_offer(uid, item=empty_oyster, amount=1, price=price, sell=True)
     slots = wait_for_state(client, uid, "COMPLETED", ticks=100)
     assert slots[0]["completed"] == 0
 
