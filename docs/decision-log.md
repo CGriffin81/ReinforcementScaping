@@ -899,3 +899,51 @@ committed as `493af16`).
   and all tree counts (the willow tile comes from the `DraynorWillows` bot).
   The server ships no scenery data, so a bridge export of scenery near each
   site is the planned source. Bird nests (1 in 282 logs) aren't modelled yet.
+
+### Built (afternoon): sim v0, mining and fishing
+`m002-sim-v0-mining-and-fishing`. The woodcutting slice was committed first
+(`f2baf2c`).
+- **Mining**, ported from `MiningListener`:
+  - an attempt every 4 ticks (`getDelay`)
+  - success is `Math.random()·100·rate < Math.random()·(1 + level − rock
+    level)·(1 + pickaxe ratio)`, computed exactly as a race between two
+    uniform rolls
+  - every ore empties its rock, which respawns after `getRespawnDuration`
+  - a gem 1 time in 282 (`roll`), uniformly one of four, because
+    `GEM_REWARDS.random()` ignores the frequencies listed beside them
+  - the pickaxe chosen by `getPickaxe`'s priority
+- **Fishing**, ported from `FishingListener`, `FishingOption.rollFish` and
+  `FishingNPC`:
+  - an attempt every 5 ticks
+  - the method's fish are rolled in order with `Fish.getSuccessChance`
+    (linear in level), and the first that passes is caught (rainbow fish only
+    with stripy feathers)
+  - one bait per catch
+  - spots move every `random(200, 390)` ticks among their `FishSpots` tiles,
+    and the angler walks after them
+  - sampled as one geometric draw for any catch and one categorical draw for
+    which fish, with the server's sequential weights; redrawn after a spot
+    move, since geometric waits are memoryless
+- **Shared gathering loop** (`rlscape/sim/gathering.py`): sites of depleting,
+  respawning resources, now used by woodcutting and mining. Woodcutting was
+  refactored onto it, and its 10 tests still pass.
+- **gamedata:**
+  - one parser for the node enums' `switch(identifier & 0xFF)` blocks,
+    across several constructors, with `identifier == N ? a : b` resolved per
+    label. It now covers `WoodcuttingNode`'s farming-tree constructor (ids
+    19–23), which a first draft missed.
+  - new: `rock_types()`, `fish_types()`, `fishing_methods()`,
+    `fish_spot_locations()`
+- **Tests:** `tests/test_sim_gathering.py` (8). Full suite: 43 passed, 14
+  skipped.
+
+### Findings
+- **Sources for the sites:**
+  - from the server: fishing spot tiles (`FishSpots`) and the coal tile (the
+    `CoalMiner` bot's Dwarven Mine zone)
+  - still estimates: the copper, tin and iron tiles, and every rock count
+- **A fresh character** (bronze pickaxe and small net) can chop logs, mine
+  copper and tin, and net shrimp: 10 copper in 282 ticks, or 10 shrimp in
+  444 ticks, walks included.
+- **Speed:** about 5,600 mining and 2,900 fishing decisions/s on one core,
+  reset included.

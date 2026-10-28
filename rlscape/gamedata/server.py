@@ -21,6 +21,10 @@ SLAYER_TASKS = SERVER_CONTENT / "global" / "skill" / "slayer" / "Tasks.java"
 QUESTS = SERVER_CONTENT / "data" / "Quests.kt"
 CHARACTER_DESIGN = SERVER_CONTENT / "region" / "misc" / "tutisland" / "handlers" / "iface" / "CharacterDesign.java"
 WOODCUTTING_NODE = SERVER_CONTENT / "global" / "skill" / "gather" / "woodcutting" / "WoodcuttingNode.java"
+MINING_NODE = SERVER_CONTENT / "global" / "skill" / "gather" / "mining" / "MiningNode.java"
+FISH = SERVER_CONTENT / "global" / "skill" / "fishing" / "Fish.kt"
+FISHING_OPTION = SERVER_CONTENT / "global" / "skill" / "fishing" / "FishingOption.kt"
+FISH_SPOTS = SERVER_CONTENT / "global" / "skill" / "fishing" / "FishSpots.kt"
 SKILLING_TOOL = SERVER_CONTENT / "data" / "skill" / "SkillingTool.java"
 PRICES = REPO / "data" / "prices_v2.csv"
 ITEM_DEFINITIONS = REPO / "data" / "item_definitions.csv"  # scripts/export_item_definitions.py (cache)
@@ -326,25 +330,129 @@ class TreeType:
         return self.depletes and self.identifier in ALWAYS_FALLING_TREES
 
 
+def _identifier_switch(text: str) -> dict[int, dict[str, str]]:
+    """case label -> {field: expression} for a node enum's `switch(identifier & 0xFF)` constructor blocks (there
+    can be several constructors, e.g. WoodcuttingNode's farming-tree one). Consecutive labels share a body, and
+    `identifier == N ? a : b` is resolved for each label."""
+    blocks = []
+    for match in re.finditer(r"switch\s*\(\s*identifier\s*&\s*0xFF\s*\)", text):
+        start = text.index("{", match.end())
+        depth, end = 0, start
+        for end in range(start, len(text)):
+            depth += {"{": 1, "}": -1}.get(text[end], 0)
+            if depth == 0:
+                break
+        blocks.append(text[start:end])
+    out: dict[int, dict[str, str]] = {}
+    for labels, body in re.findall(r"((?:case\s+\d+:\s*)+)(.*?)break;", "\n".join(blocks), re.S):
+        fields = {k: v.strip() for k, v in re.findall(r"(?:this\.)?(\w+)\s*=\s*([^;]+);", body)}
+        for label in map(int, re.findall(r"\d+", labels)):
+            resolved = {}
+            for key, value in fields.items():
+                ternary = re.fullmatch(r"identifier\s*==\s*(\d+)\s*\?\s*(.+?)\s*:\s*(.+)", value)
+                resolved[key] = (ternary.group(2) if int(ternary.group(1)) == label else ternary.group(3)) \
+                    if ternary else value
+            out[label] = resolved
+    return out
+
+
+def _respawn_bounds(expression: str) -> tuple[int, int]:
+    """`min | max << 16` -> (min, max); anything else (respawnRate = -1) -> (-1, -1)."""
+    rate = re.match(r"(\d+)\s*\|\s*(\d+)\s*<<\s*16", expression)
+    return tuple(map(int, rate.groups())) if rate else (-1, -1)
+
+
 @cache
 def tree_types() -> dict[int, TreeType]:
-    """WoodcuttingNode identifier -> TreeType, parsed from the constructor's switch (consecutive case labels share
-    a body)."""
-    text = WOODCUTTING_NODE.read_text(encoding="utf-8")
-    switch = text[text.index("switch(identifier & 0xFF)"):]
+    """WoodcuttingNode identifier -> TreeType, from the constructor's switch."""
     out: dict[int, TreeType] = {}
-    for labels, body in re.findall(r"((?:case\s+\d+:\s*)+)(.*?)break;", switch, re.S):
-        fields = {k: v.strip() for k, v in re.findall(r"(?:this\.)?(\w+)\s*=\s*([^;]+);", body)}
-        if "baseLow" not in fields:
-            continue
-        rate = re.match(r"(\d+)\s*\|\s*(\d+)\s*<<\s*16", fields["respawnRate"])
-        low, high = map(int, rate.groups()) if rate else (-1, -1)
-        for label in re.findall(r"\d+", labels):
-            out[int(label)] = TreeType(int(label), int(fields["reward"]), int(fields["level"]),
-                                       float(fields["experience"]), float(fields["baseLow"]),
-                                       float(fields["baseHigh"]), float(fields["tierModLow"]),
-                                       float(fields["tierModHigh"]), low, high)
+    for label, f in _identifier_switch(WOODCUTTING_NODE.read_text(encoding="utf-8")).items():
+        if "baseLow" in f:
+            out[label] = TreeType(label, int(f["reward"]), int(f["level"]), float(f["experience"]),
+                                  float(f["baseLow"]), float(f["baseHigh"]), float(f["tierModLow"]),
+                                  float(f["tierModHigh"]), *_respawn_bounds(f["respawnRate"]))
     return out
+
+
+@dataclass(frozen=True)
+class RockType:
+    """One MiningNode identifier's parameters (MiningNode's constructor switch)."""
+
+    identifier: int
+    reward: int  # ore item id
+    level: int
+    experience: float
+    rate: float  # MiningListener.checkReward's host roll is uniform on [0, 100 * rate]
+    respawn_min: int
+    respawn_max: int
+
+
+@cache
+def rock_types() -> dict[int, RockType]:
+    """MiningNode identifier -> RockType, from the constructor's switch."""
+    out: dict[int, RockType] = {}
+    for label, f in _identifier_switch(MINING_NODE.read_text(encoding="utf-8")).items():
+        if {"reward", "rate", "level", "experience", "respawnRate"} <= f.keys():
+            out[label] = RockType(label, int(f["reward"]), int(f["level"]), float(f["experience"]),
+                                  float(f["rate"]), *_respawn_bounds(f["respawnRate"]))
+    return out
+
+
+@dataclass(frozen=True)
+class FishType:
+    """A Fish enum constant."""
+
+    name: str
+    item: int  # raw fish item id
+    level: int
+    experience: float
+    low_chance: float  # catch chance at level 1
+    high_chance: float  # catch chance at level 99
+
+    def success_chance(self, level: int) -> float:
+        """Fish.getSuccessChance: linear in level between the two bounds."""
+        return (level - 1.0) * ((self.high_chance - self.low_chance) / (99.0 - 1.0)) + self.low_chance
+
+
+@dataclass(frozen=True)
+class FishingMethod:
+    """A FishingOption enum constant: the tool, the level to use it, the bait each catch uses, and the fish rolled
+    in order (rollFish tries them first to last)."""
+
+    name: str
+    tool: int
+    level: int
+    bait: tuple[int, ...]
+    fish: tuple[str, ...]
+
+
+@cache
+def fish_types() -> dict[str, FishType]:
+    text = FISH.read_text(encoding="utf-8")
+    return {name: FishType(name, int(item), int(level), float(xp), float(low), float(high))
+            for name, item, level, xp, low, high in re.findall(
+                r"^\s*([A-Z_]+)\(Items\.[A-Z0-9_]+?_(\d+),\s*(\d+),\s*([\d.]+),\s*([\d.]+),\s*([\d.]+)\)", text, re.M)}
+
+
+@cache
+def fishing_methods() -> dict[str, FishingMethod]:
+    text = FISHING_OPTION.read_text(encoding="utf-8")
+    out = {}
+    for name, tool, level, bait, fish in re.findall(
+            r"^\s*([A-Z_]+)\(Items\.[A-Z0-9_]+?_(\d+),\s*(\d+),\s*Animation\(\d+\),\s*(null|intArrayOf\(.*?\)),"
+            r"\s*\"\w+\",\s*(.*?)\),?\s*$", text, re.M):
+        out[name] = FishingMethod(name, int(tool), int(level), tuple(map(int, re.findall(r"_(\d+)", bait))),
+                                  tuple(re.findall(r"Fish\.([A-Z_]+)", fish)))
+    return out
+
+
+@cache
+def fish_spot_locations() -> dict[str, tuple[tuple[int, int, int], ...]]:
+    """FishSpots: the tiles each group of fishing spots moves between (FishingNPC.moveSpot)."""
+    text = FISH_SPOTS.read_text(encoding="utf-8")
+    return {name: tuple((int(x), int(y), int(z)) for x, y, z in
+                        re.findall(r"Location\(\s*(\d+),\s*(\d+),\s*(\d+)\s*\)", body))
+            for name, body in re.findall(r"^\s*([A-Z_]+)\(\s*((?:\s*Location\([^)]*\),?)+)\s*\)", text, re.M)}
 
 
 @dataclass(frozen=True)
