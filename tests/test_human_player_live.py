@@ -203,6 +203,16 @@ def test_anti_dragon_shield_is_not_tradeable_on_the_ge(client, character):
         client.ge_offer(uid, item=ANTI_DRAGON_SHIELD, amount=1, price=1, sell=True)
 
 
+def test_slayer_level_blocks_attacks(client, character):
+    """Cave crawlers need Slayer 10 (Tasks.java). A fresh character (Slayer 1) gets the server's warning and no fight."""
+    uid = character["uid"]
+    client.debug_teleport(uid, 2786, 9998)  # Fremennik Slayer Dungeon, among the cave crawlers
+    client.wait(2)
+    client.interact(uid, "Cave crawler", "Attack", is_object=False)
+    client.wait(8)
+    assert client.state(uid)["target"] is None
+
+
 def test_random_events_are_off_for_training(character):
     """rl.conf sets rl.random_events = false, so no AntiMacro timer is attached to the RL character."""
     assert character["random_events"] is False

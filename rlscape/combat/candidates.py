@@ -3,19 +3,14 @@
 Pipeline for each decision:
   1. the enemy pool: every spawned NPC whose cache definition offers "Attack" and whose config stats are believable
      against its cache combat level (`enemy_pool`);
-  2. per pool entry and combat class: the gear check for special damage, the loot the current loot mode keeps, the
+  2. per pool entry and combat class: the Slayer level and the access table (rlscape.combat.access: only the sites the
+     character can reach count), the gear check for special damage, the loot the current loot mode keeps, the
      theoretical rates (rlscape.combat.rates), the retreat-aware danger filter, and the inventory cycle (fighting
      until the drops fill the free slots, then the round trip to the nearest bank);
   3. per combat class: the 3 best monsters by XP/hr and the 3 best by gp/hr (`select_candidates`).
 
 Travel times use straight-line tile distance with a detour factor and an assumed running speed, and the bank list is
 curated (data/banks.csv). All are marked for calibration on the server.
-
-Still to come (option catalog §4.C): the access table (key- and quest-gated areas), Slayer requirements, and quest
-monsters while a quest is underway. Until then the pool assumes every attackable, believable NPC is reachable, and
-the first real-data run shows why that matters: the top gp/hr slots for a fresh character are monsters in gated areas,
-e.g. Blamish snails in Mort Myre (Priest in Peril), Cockroach drones (Stronghold of Player Safety), Scabaras lancers
-(Contact!).
 """
 
 from __future__ import annotations
@@ -25,6 +20,7 @@ from functools import cache
 from math import floor
 from typing import Callable
 
+from rlscape.combat.access import Progress, can_reach, meets_slayer_level
 from rlscape.combat.rates import Fighter, Plan, Rates, combat_rates
 from rlscape.gamedata import server as gd
 
@@ -177,6 +173,7 @@ class Character:
     free_slots: int
     shield_id: int | None
     loot_mode: str = "valuable"
+    progress: Progress = Progress()  # quests, items held and levels, for the access table; default: fresh
 
 
 @dataclass(frozen=True)
@@ -197,8 +194,11 @@ class Candidate:
 
 def evaluate(entry: PoolEntry, fighter: Fighter, plan: Plan, character: Character, duration_ticks: float,
              loot: Callable[[int], bool]) -> Candidate | None:
-    """One monster, one plan: None if the gear check or the danger filter rules it out."""
-    if not has_special_damage_protection(entry.npc, character.shield_id):
+    """One monster, one plan: None if access, the gear check or the danger filter rules it out."""
+    if not meets_slayer_level(entry.npc.id, character.progress):
+        return None
+    sites = [s for s in entry.sites if can_reach(entry.npc.name, s.spawn, character.progress)]
+    if not sites or not has_special_damage_protection(entry.npc, character.shield_id):
         return None
     gp_per_kill, slots_per_kill = loot_per_kill(entry.drops, loot)
     rates = combat_rates(fighter, plan, entry.npc, gp_per_kill)
@@ -210,7 +210,7 @@ def evaluate(entry: PoolEntry, fighter: Fighter, plan: Plan, character: Characte
         fighting = 1.0 if fight_ticks is None else (fight_ticks / (fight_ticks + site.bank_trip_ticks) if fight_ticks > 0 else 0.0)
         return fighting * max(duration_ticks - travel_ticks(character.location, site.spawn), 0.0) / duration_ticks
 
-    site = max(entry.sites, key=share_at)
+    site = max(sites, key=share_at)
     share = share_at(site)
     return Candidate(entry, plan, site, rates, rates.kills_per_hour * share,
                      {skill: xp * share for skill, xp in rates.xp_per_hour.items()}, rates.gp_per_hour * share,

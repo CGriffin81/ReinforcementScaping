@@ -1,0 +1,56 @@
+name,npcs,x1,y1,x2,y2,planes,requires,enforced_by,note
+morytania,,3426,3191,3715,3588,all,quest:PRIEST_IN_PERIL,region/morytania/handlers/MorytaniaArea.kt,The server's own Morytania borders; it sends anyone without Priest in Peril back out.
+morytania_underground,,3426,9591,3715,9988,all,quest:PRIEST_IN_PERIL,reached only through Morytania,"The dungeons under the server's Morytania borders (6400 tiles north): Experiments' cave, the Haunted Mine and others."
+morytania_west_south,,3405,3191,3425,3480,all,quest:PRIEST_IN_PERIL,reached only through Morytania,"East of the River Salve but west of the server's borders (x 3426): Mort Myre's west edge (Blamish snails, ghasts)."
+morytania_west_north,,3405,3500,3425,3588,all,quest:PRIEST_IN_PERIL,reached only through Morytania,The Slayer Tower's west side and the ghouls north of Paterdomus. The temple itself (y 3481-3499) is reachable from the west.
+morytania_west_underground,,3405,9591,3425,9870,all,quest:PRIEST_IN_PERIL,reached only through Morytania,The Haunted Mine's west end.
+barrows,,3520,9664,3583,9727,all,never,minigame,Barrows crypts and tunnels. Minigames stay out of the pool (option catalog 4.C).
+mos_le_harmless,,3650,2920,3860,3070,all,quest:CABIN_FEVER,global/travel/ship/ShipCharter.java (MOS_LE_HARMLESS),The island.
+mos_le_harmless_caves,,3700,9330,3780,9470,all,quest:CABIN_FEVER,reached only through Mos Le'Harmless,Cave horrors here also need Slayer 58 (Tasks.java).
+kalphite_lair,,3460,9472,3520,9532,all,item:954,not enforced by the server,2009: a rope tied at the tunnel entrance.
+sophanem,,3270,2745,3330,2810,all,quest:ICTHLARINS_LITTLE_HELPER,region/desert/sophanem/handlers/SophanemPlugin.java,
+scabaras_and_locusts,Scabaras lancer|Scabaras mage|Scabaras ranger|Scabaras locust|Locust lancer|Locust ranger,,,,,all,quest:CONTACT&started:DEALING_WITH_SCABARAS,region/desert/sophanem/handlers/SophanemPlugin.java (object 20275 needs Contact!),Dealing with Scabaras monsters; that quest needs Contact!.
+player_safety_jail,,3072,3455,3087,3470,0,quest:PLAYER_SAFETY_TEST,region/misthalin/barbvillage/stronghold/playersafety/StrongHoldOfPlayerSafetyListener.kt,The jail where the Player Safety test is taken.
+stronghold_of_player_safety,,3056,4200,3199,4300,all,quest:PLAYER_SAFETY_TEST,region/misthalin/barbvillage/stronghold/playersafety/StrongHoldOfPlayerSafetyListener.kt,"The dungeon, entered after the test. The test is a miniquest, not a quest option, so it stays locked for now."
+west_ardougne,,2430,3265,2557,3340,all,quest:PLAGUE_CITY,region/kandarin/ardougne/westardougne/handlers/MainGatesListener.kt,The main gates need Biohazard; after Plague City the way in is the tunnel from Edmond's garden.
+lighthouse_dungeon,,2500,9990,2550,10050,all,started:HORROR_FROM_THE_DEEP,not enforced outside the quest,Dagannoths under the Lighthouse.
+waterbirth_island,,2490,3710,2560,3780,all,quest:THE_FREMENNIK_TRIALS or coins:1000,region/fremennik/rellekka/dialogue/JarvaldDialogue.kt,"Jarvald's boat: free after the Fremennik Trials, otherwise 1,000 coins (the fee isn't in the rates yet)."
+waterbirth_dungeon,,2430,10100,2560,10180,all,quest:THE_FREMENNIK_TRIALS or coins:1000,region/fremennik/rellekka/dialogue/JarvaldDialogue.kt,Reached through Waterbirth Island.
+ape_atoll,,2690,2690,2815,2815,all,started:MONKEY_MADNESS,not enforced by the server,2009: the glider and the boat to Ape Atoll come with Monkey Madness.
+tourist_trap_mine,,3264,9408,3327,9471,all,started:THE_TOURIST_TRAP,not enforced outside the quest,The Desert Mining Camp's mine (rowdy slaves).
+fremennik_isles,,2300,3780,2430,3910,all,quest:THE_FREMENNIK_TRIALS,region/fremennik/rellekka/handlers/RellekkaListeners.kt,Neitiznot and Jatizso: the ferries need the Fremennik Trials.
+fremennik_isles_caves,,2300,10180,2430,10310,all,quest:THE_FREMENNIK_TRIALS,region/fremennik/rellekka/handlers/RellekkaListeners.kt,The caves under the isles (ice trolls).
+karamja_shipyard,,2940,3010,3010,3070,all,quest:THE_GRAND_TREE,global/travel/ship/ShipCharter.java (SHIPYARD),
+shilo_village,,2817,2940,2880,3010,all,quest:SHILO_VILLAGE,region/karamja/shilo/handlers/ShiloCart.kt,
+undead_ones,Undead one,,,,,all,started:SHILO_VILLAGE,not enforced outside the quest,Rashiliyia's tomb (Shilo Village).
+kharazi_jungle,,2760,2880,2980,2939,all,started:LEGENDS_QUEST,not enforced by the server,2009: the jungle is only entered during Legends' Quest.
+elemental_workshop,,2690,9880,2735,9920,all,started:ELEMENTAL_WORKSHOP_I,not enforced outside the quest,The workshop door needs the battered key.
+shadow_warriors,Shadow warrior,,,,,all,quest:LEGENDS_QUEST,not enforced by the server,The Legends' Guild basement.
+melzars_maze,,2923,3239,2944,3259,all,started:DRAGON_SLAYER,not enforced by the server,The maze key comes from the Guildmaster during Dragon Slayer.
+melzars_maze_basement,,2923,9639,2944,9659,all,started:DRAGON_SLAYER,not enforced by the server,
+crandor,,2810,3220,2880,3310,all,started:DRAGON_SLAYER,not enforced by the server,"Reached by ship during Dragon Slayer, or through the Karamja Volcano wall after it."
+crandor_underground,,2820,9610,2880,9670,all,started:DRAGON_SLAYER,not enforced by the server,
+elvarg,Elvarg,,,,,all,never,fought inside the Dragon Slayer option,"After Dragon Slayer, Elvarg is gone."
+taverley_blue_dragons,,2880,9785,2923,9830,all,item:1590 or level:agility:70,region/asgarnia/taverley/handlers/TaverleyDungeonListeners.kt (BD_GATE),Behind the dusty-key gate or the 70 Agility pipe.
+brimhaven_dungeon,,2625,9410,2750,9600,all,coins:875&item:1351|1349|1353|1361|1355|1357|1359|6739,region/karamja/brimhaven/dialogue/SanibochDialogue.java,"875 coins to Saniboch, and an axe for the vines (the fee isn't in the rates yet)."
+gu_tanoth,City guard|Enclave guard,2490,3010,2590,3070,all,started:WATCHTOWER,not enforced by the server,The ogre city and its enclave (Watchtower).
+dream_mentor,Angry bear|Angry giant rat|Angry goblin|Angry unicorn|Confusion beast|Fear reaper|Hopeless creature,,,,,all,underway:DREAM_MENTOR,not enforced outside the quest,Cyrisus's fears (2009 knowledge; to verify on the server).
+fight_arena,Bouncer|Khazard Ogre|Khazard Scorpion,,,,,all,underway:FIGHT_ARENA,region/kandarin/ardougne/quest/arena/npc,
+temple_of_ikov,Lucien|Guardian of Armadyl,,,,,all,underway:TEMPLE_OF_IKOV,region/kandarin/quest/templeofikov,
+hazeel_cult,Clivet,,,,,all,underway:HAZEEL_CULT,region/kandarin/ardougne/quest/hazeelcult,
+troll_stronghold,Berry|Twig,,,,,all,underway:TROLL_STRONGHOLD,region/asgarnia/burthorpe/quest/trollstronghold,
+biohazard,Mourner (boss),,,,,all,underway:BIOHAZARD,region/kandarin/ardougne/quest/biohazard,
+tree_gnome_village,Khazard commander,,,,,all,underway:TREE_GNOME_VILLAGE,region/kandarin/quest/tree,
+priest_in_peril,Temple guardian,,,,,all,underway:PRIEST_IN_PERIL,not enforced by the server,2009 knowledge: the temple's guard dog.
+entrana,,2800,3320,2880,3400,all,never,not enforced by the server,"2009: the Port Sarim monks won't take weapons or armour to Entrana, and the combat model assumes the character's gear."
+heroes_quest,Entrana firebird,,,,,all,underway:HEROES_QUEST,not enforced by the server,
+tai_bwo_wannai_trio,The Shaikahan,,,,,all,underway:TAI_BWO_WANNAI_TRIO,not enforced by the server,
+yanille_agility_dungeon,Salarin the Twisted,,,,,all,level:agility:67,not enforced by the server,2009 knowledge: the Yanille Agility Dungeon's inner section.
+mighty_banshees,Mighty banshee,,,,,all,level:slayer:15,not enforced by the server,"2009: banshees need Slayer 15. Tasks.java lists only the ordinary banshee (1612), so this row adds the mighty ones."
+ranging_guild,Tower Archer,,,,,all,level:ranged:40,region/kandarin/seers/handlers/RangingGuildPlugin.java,The guild's door needs a static Ranged level of 40.
+mage_arena,Battle mage,,,,,all,level:magic:60,minigame/magearena/KolodionDialogue.java,Kolodion only lets characters with a static Magic level of 60 into the arena.
+trollheim,,2820,3600,2940,3780,all,quest:DEATH_PLATEAU,not enforced by the server,2009 knowledge: the way up past Burthorpe opens with Death Plateau. To verify on the server.
+trollweiss_caves,,2760,10190,2810,10240,all,started:TROLL_ROMANCE,not enforced by the server,2009 knowledge: the ice trolls under Trollweiss. To verify on the server.
+keep_le_faye,,2756,3392,2780,3415,all,started:MERLINS_CRYSTAL,not enforced by the server,2009 knowledge: the renegade knights' keep is entered during Merlin's Crystal.
+phoenix_hideout,Weaponsmaster,,,,,all,started:SHIELD_OF_ARRAV,not enforced by the server,2009 knowledge: the Phoenix Gang's store room in Varrock.
+lumbridge_swamp_caves,,3140,9530,3260,9599,all,item:954,not enforced by the server,"2009: a rope tied at the entrance. 2009 also needed a light source down here; the server has no dark zones, so light isn't modelled."
