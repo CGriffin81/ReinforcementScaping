@@ -120,12 +120,14 @@ ReinforcementScaping/
 *Python track*
 - [x] `git init`, and a `uv` project pinned to Python 3.12 (`rlscape` package, pytest).
 - [ ] Add the RL stack when the sim needs it: gymnasium, torch, stable-baselines3, sb3-contrib, morl-baselines, mo-gymnasium, tensorboard, pandas, pyarrow, matplotlib.
-- [ ] `docs/env-contract.md`: obs fields and normalization, action list, mask semantics, info fields, and the reward vector `[skill, wealth]`.
-- [ ] `docs/option-catalog.md` v0 with ~20–30 options (see [Appendix A](#7-appendix-a-option-catalog-v0-draft)).
+- [~] `docs/env-contract.md` **v0.2 (2026-10-27):** questions 1–4 decided by Caleb; question 5 (selling quantity) open.
+- [~] `docs/option-catalog.md` **v0.2, Proposed (2026-10-27):** about 425 actions, rebuilt around Caleb's decisions (no auto-banking, Magic and alchemy, any-enemy combat through candidate slots, frozen seller plus shops). Open: selling quantity, buy actions per source, the candidate-slot design.
 
 **Deliverable:** a `docs/decision-log.md` entry with G1–G3 results and the chosen path: real server + sim, or sim-primary.
 
 ### Week 2 (Oct 12–18): Surrogate sim v0, environment, baselines (E1)
+
+*Started 2026-10-27 (catching up):* `rlscape/gamedata` (server data loaders) and `rlscape/combat` (formulas ported from the server, plus the rate model), with tests. Next: clean the NPC pool (cache definitions), inventory-aware gp/hr, then the simulator state and options.
 - [ ] `sim/`: per option, check preconditions, sample a duration, apply XP/item/GP deltas and update state. Formulas are ported from the server source; overheads start as placeholders.
 - [ ] `envs/SimEnv`: Gymnasium API, `action_masks()`, `info["duration"]`, `info["reward_vec"]`, and a reward-weight wrapper.
 - [ ] Baselines:
@@ -259,5 +261,7 @@ Only attempted after E1–E6 are solid. Pick at most one.
 | **Compute / cost** | API cost. Roughly 150–300 decisions per 20 h episode × 5 seeds × a few variants is likely tens of dollars with a mid-size model (rough estimate; check current pricing before committing); prompt caching cuts it a lot. Runs fine on this machine. | GPU-heavy. JAX with GPU on Windows needs WSL2 (only the Docker distro is installed now). 8 GB of VRAM is tight; use a small model size. | Many tick-level samples; real-server throughput becomes the bottleneck. | — |
 | **Risk** | Low. Always produces a result, and a negative one is still interesting. Watch for "did the model just recall a guide?", and frame that honestly. | Medium–high. Setup on Windows and tuning can eat the whole week. | High. Very unlikely to finish in one week. | None |
 | **Report value** | High: a vivid contrast in strategy (how the LLM's activity mix compares with PPO's). | Medium–high if it works; an algorithm-comparison result. | High if it works, but it probably won't fit the schedule. | Better polish on the core RQs. |
+
+**Closest prior work:** RuneBench (`docs/resources.md` [18]) benchmarks LLM coding agents on RuneScape skill-XP and gold tasks. rs-sdk [19] shows a tool (MCP) interface and wiki-knowledge setup that option A could follow.
 
 **Recommendation: A (LLM planner).** It's the cheapest, the most likely to finish, and it adds a qualitatively different comparison to RQ1. It needs an Anthropic API key and a small budget (a cap of ~$25–50 is plenty). **B** is the pick if you'd rather keep the project pure-RL and are willing to set up WSL2 Ubuntu early. **C** is best kept as "future work" in the report.

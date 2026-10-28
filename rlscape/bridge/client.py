@@ -63,6 +63,10 @@ class BridgeClient:
         """Every tradeable item: id, name, unnoted_id, value, high/low alch, alchemizable, members, ge_price."""
         return self.request("item_definitions")["items"]
 
+    def npc_definitions(self) -> list[dict[str, Any]]:
+        """Every cache NPC definition: id, name, combat_level (as the client shows it), attackable, size."""
+        return self.request("npc_definitions")["npcs"]
+
     def ge_offer(self, uid: int, item: int, amount: int, price: int, sell: bool = False) -> int:
         """Place a GE offer through the human path (the character must be at the GE); returns its slot."""
         return self.request("ge_offer", uid=uid, item=item, amount=amount, price=price, sell=sell)["slot"]

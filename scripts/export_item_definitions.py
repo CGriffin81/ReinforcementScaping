@@ -1,6 +1,7 @@
 """Export every tradeable item definition from the running server to data/item_definitions.csv.
 
-Includes the values the price tables need (base value, high/low alchemy, alchemizable) and the noted ->
+Includes the values the price tables need (base value, high/low alchemy, alchemizable), whether an item
+stacks in the inventory (the combat model's loot-slot count), and the noted ->
 unnoted mapping, straight from the 530 cache the server loads. The ``ge_price_at_export`` column records what
 the server's GE quoted at export time and is informational only.
 
@@ -15,7 +16,7 @@ from pathlib import Path
 from rlscape.bridge import BridgeClient
 
 OUT = Path("data/item_definitions.csv")
-FIELDS = ["id", "name", "unnoted_id", "value", "high_alch", "low_alch", "alchemizable", "members"]
+FIELDS = ["id", "name", "unnoted_id", "value", "high_alch", "low_alch", "alchemizable", "members", "stackable"]
 
 
 def main() -> None:

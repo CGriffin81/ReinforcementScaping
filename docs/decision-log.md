@@ -276,3 +276,308 @@ The interaction records in `docs/agent-interactions/` hold the full context.
     with any other database the buyer buys nothing.
   - The price tables are unchanged: `prices_v2.csv` and `ge_prices_2009.csv`
     rebuilt byte-for-byte identical.
+
+### User decision (schedule, 2026-10-27)
+- **Keep the original roadmap and make up the lost time.** The agent had
+  proposed re-baselining the remaining five weeks, dropping E7 and making E4
+  optional; that was declined. The week dates in `ROADMAP.md` stand. On
+  2026-10-27 (calendar week 4), the week-1 environment interface and option
+  catalog were the next open items, followed by all of week 2 onward.
+
+### Proposed (awaiting Caleb)
+- `docs/env-contract.md` v0. Five decisions are listed there: banking inside
+  activity loops, a fixed option duration (15 minutes; 5 and 45 for E5), no
+  Magic training in v0, melee only, and two sell options.
+- `docs/option-catalog.md` v0 (53 actions). Its **blocking** question: the
+  frozen GE bot stock holds almost no gear, tools or food (145 stocked items;
+  only 3 bronze axes, 45 feathers, 1 steel full helm, 2 battleaxes), so GE
+  buy options would rarely fill. The agent recommends a frozen-price seller,
+  the mirror of the frozen buyer.
+
+### Related work reviewed (2026-10-27)
+- **RuneBench and rs-sdk** (Max Bittker; `docs/resources.md` [18], [19]).
+  They are LLM-agent tooling and a benchmark for LostCity 2004scape: a
+  different game version and engine, with a faster XP curve. **Agent
+  recommendation:**
+  - Use them as **related work and design references**: RuneBench is the
+    closest prior work on agents in RuneScape, measuring skill-XP and gold
+    tasks, and the reference point for E7 option A. rs-sdk's
+    effect-verifying high-level actions with typed `success` / `reason`
+    results are the pattern for our option executor.
+  - Do **not** use them as the environment or compare numbers with them
+    directly.
+  - Don't copy RuneBench code: its README claims MIT but the repo has no
+    LICENSE file. rs-sdk is MIT.
+- `docs/resources.md` was created as the project's running reference list,
+  continuing the proposal's numbering.
+
+### User decision (gear sourcing, 2026-10-27)
+- **Gear, tools and food come from a frozen-price GE seller and from shops.**
+  This answers the option catalog's blocking question with option (c),
+  rather than the agent's recommendation (a).
+  - **Seller:** implemented in the fork as `world.ge_frozen_seller` (on in
+    `rl.conf`, off in `default.conf`), `GrandExchange.buyFromFrozenSeller`.
+    After real sell offers and bot stock have matched a player's buy offer,
+    it fills the rest at the frozen index price from unlimited supply. It has
+    the buyer's limits: frozen market only, items with a 2009 price only, and
+    never below the index. Overpayment is refunded, as `exchange()` does with
+    an older sell offer.
+  - **Shops:** the catalog now lists the authentic nearby shops for each
+    item: Bob's axes, Nurmof's pickaxes, Zeke's scimitars, Gerrant's fishing
+    supplies, and Lumbridge general store. Full armour sets and food stay
+    GE-only, because no shop in reach sells them in usable form. Shops with
+    150,000+ stock (including dragon scimitars) look like 2009Scape
+    additions and are excluded.
+
+### Findings
+- **Shops versus the 2009 GE price:** shops are cheaper for cheap tools (fly
+  rod 5 vs 77, lobster pot 20 vs 70, hammer 1 vs 13). The 2009 GE is cheaper
+  for weapons, armour and high-tier pickaxes (steel scimitar 400 vs 200, rune
+  pickaxe 32,000 vs 19,100). So the choice of source is a genuine
+  price-versus-travel trade-off. This raises a new catalog question:
+  separate actions per source, or an executor rule.
+- **GE offers outlive the character that placed them.** In testing, an
+  earlier test's unfilled sell offer filled a later test's buy offer as an
+  ordinary player-to-player trade. That confirms `ServerEnv.reset` must
+  reinstall the GE database every episode, as the env contract already says.
+- **Revised recommendation (env-contract question 5):** sell by category, not
+  "sell all produce". Selling everything would also sell the ores and raw
+  fish meant for smelting and cooking, which breaks processing chains.
+
+### User decisions (env contract, 2026-10-27)
+1. **No banking inside activities.** Activities stop when the inventory is
+   full. Banking, dropping, selling and alching are the agent's choices,
+   because sometimes dropping beats walking to a bank. This overrides the
+   agent's recommendation.
+2. **Activity duration:** *D* = 15 game-minutes by default; 5 and 45 for E5.
+   Accepted.
+3. **Magic and High Level Alchemy are in v0**, because sometimes alching
+   beats banking or selling. This overrides the agent's recommendation.
+4. **Ranged and Magic combat are in**, and the agent should be able to fight
+   **any enemy in the game**, choosing on theoretical gp/hr and XP/hr. This
+   overrides the agent's melee-only recommendation.
+5. **Selling:** Caleb asked why selling wouldn't be per item in quantities
+   of 1 / 10 / X / all. The agent dropped the category idea and explained that
+   the open point is only the number of actions. Still open.
+
+### Agent design proposals that follow from those (Proposed; option catalog v0.2)
+- **Combat candidate slots.**
+  - The enemy pool comes from server data: 4,044 NPC configs with combat
+    stats, spawns and 444 drop tables; reachable monsters only.
+  - Each decision, the combat-rate model rates every enemy for each class.
+    The 3 best by XP/hr and the 3 best by gp/hr fill fixed slots, after
+    filtering out enemies whose expected damage would outrun the food held.
+  - That's 30 combat actions in all: melee 6 × 3 styles, ranged 6, magic 6.
+    Each slot's rates are in the observation.
+- **Explicit inventory management:** `bank_deposit`, a
+  `bank_withdraw_for_<activity>` per processing activity, and `drop_<item>`.
+  The observation separates inventory from bank.
+- **Item vocabulary *V*** ≈ 60, plus a "misc" bucket, so per-item actions
+  stay finite even though monsters drop thousands of item types.
+- **Selling quantity:** recommend "all of the item in the inventory". With
+  frozen prices and explicit banking it loses no control, and it keeps about
+  425 actions instead of about 900 for 1 / 10 / all.
+
+### Note on scope (not a re-plan)
+- The decisions above roughly triple decisions per episode (about 80–150 →
+  250–400) and grow the action space from 67 to about 425. Masking keeps the
+  valid actions at any moment around 30–80. Training will be slower per
+  episode. The simulator's ≥ 20k decisions/s target and early sanity runs
+  (week 3) will show whether that's a problem.
+
+### User decisions (later on 2026-10-27)
+- **Selling: per item, all of that item in the inventory.** This takes the
+  agent's recommendation. The action space stays at about 425 instead of
+  about 900. Partial quantities are handled through banking.
+- **Separate buy actions for GE and shops.** This takes the agent's
+  recommendation. The agent learns the price-versus-travel trade-off.
+- **Combat design:** Caleb asked for more context. Option catalog §10 now
+  explains each part with real monster stats and drops from the server data
+  (chicken, cow, goblin, man, Al-Kharid warrior, hill giant, moss giant,
+  green dragon). It adds a fourth part that follows from "no auto-banking":
+  the loot rule (recommended: coins, runes, arrows, vocabulary items, and
+  anything worth ≥ 100 gp). Pending.
+
+### User decisions (combat design, 2026-10-27)
+- **A. Slots:** 3 best by XP/hr + 3 best by gp/hr for each of melee, ranged
+  and magic. Accepted as proposed.
+- **B. Danger filter:** accepted, **plus a gear check for special damage
+  types**, such as dragonfire. A monster only qualifies if the character has
+  the required protection: an anti-dragon shield for dragons. Monsters that
+  block a combat style are ruled out for that class. Poison goes into the
+  damage estimate. The anti-dragon shield was added to the buy options (GE).
+- **C. Context-driven enemy pool:** monsters reachable because of held items
+  (keys) or quest progress must be available, and an agent on a quest must
+  be able to complete it. Implemented as an access table (area →
+  item / quest / level requirement), checked every decision.
+- **D. Looting is the agent's decision.** Agent's proposed design: a
+  persistent loot mode set by 4 actions (all / valuable / vocabulary / none),
+  shown in the observation. Alternatives: per-combat loot variants (120
+  combat actions) or per-kill decisions.
+
+### New open question (raised by decision C)
+- **Are quests agent options?** 2009Scape implements about 70 quests.
+  Rewards read from the quest code include Waterfall Quest at 13,750 Attack +
+  13,750 Strength XP, Fight Arena at 12,175 Attack + 2,175 Thieving, and Tree
+  Gnome Village at 11,450 Attack. Each quest needs a scripted server
+  walkthrough and a simulator macro-option.
+- **Agent recommendation:** a curated set of 4 low-risk quests (Waterfall
+  Quest, Doric's Quest, Witch's Potion, Cook's Assistant). Fight Arena and
+  Tree Gnome Village are later candidates; both end in fights against
+  level-100+ monsters.
+
+### User decisions (quests, 2026-10-27)
+- **Every quest should eventually be completable by the agents.** This is
+  a long-term requirement. The server implements 70 quests worth 132 quest
+  points.
+- **For this stage, curate quests that reach 32 quest points**, the
+  requirement for Dragon Slayer.
+- **Dragon Slayer unlocks rune platebodies and d'hide bodies** (Caleb). The
+  server confirms it: `ItemQuestRequirementListener` locks every rune
+  platebody, including trimmed and god versions, and the green d'hide body,
+  including trimmed. Blue, red and black d'hide bodies aren't locked. The
+  rune tier of `buy_armour_*` now has a Dragon Slayer precondition.
+
+### Findings
+- **Quest points don't gate using the anti-dragon shield.** It has no equip
+  requirement (`item_configs.json`), it's tradeable, and its January 2009
+  price is 301 gp, so the frozen seller sells it. 32 quest points unlocks
+  *starting* Dragon Slayer (via the Champions' Guild). While Dragon Slayer is
+  underway, Duke Horacio gives the shield free. Raised with Caleb; the
+  shield stays buyable, as it was in 2009.
+- **The server's equip rules can depend on quests**
+  (`ItemQuestRequirementListener`). The simulator's equip rules must read the
+  same table.
+
+### Agent curation (option catalog v0.4 §10)
+- **Exactly 32 QP, no skill requirements and no hard fights:** Cook's
+  Assistant 1, Romeo & Juliet 5, Goblin Diplomacy 5, Ernest the Chicken 4,
+  Prince Ali Rescue 3, Druidic Ritual 4 (animated armour nearby is a risk),
+  Sheep Herder 4, Murder Mystery 3, Pirate's Treasure 2, Doric's Quest 1.
+- **Plus** Waterfall Quest (1 QP) for 13,750 Attack + 13,750 Strength XP.
+- **Backups:** Witch's Potion, Imp Catcher, The Restless Ghost, Rune
+  Mysteries, Sheep Shearer, Monk's Friend, Black Knights' Fortress, Vampire
+  Slayer, Demon Slayer.
+- **Next goal:** Dragon Slayer.
+- Each quest is one action. Whether each is fully completable in 2009Scape
+  is verified while its executor script is written.
+
+### User decisions (later on 2026-10-27)
+- **The quest set includes the backups, Waterfall Quest and Dragon Slayer:**
+  21 quests worth 50 quest points in total. Any 32 of those points open
+  Dragon Slayer.
+- **The anti-dragon shield is only obtainable from Duke Horacio**, once
+  Dragon Slayer is underway or after it's complete if the shield was lost.
+  This reverses the agent's earlier choice to leave it buyable.
+  - Implemented as a new fork setting, `world.ge_blocked_items`.
+    `PriceIndex.canTrade` refuses listed ids, so they can't be offered on the
+    GE in either direction, the frozen seller can't sell them, and bots can't
+    stock them. `rl.conf` sets `"1540,1541"`; `default.conf` sets `""`.
+  - Other sources checked: no authentic shop or drop table has the shield,
+    and there's no ground spawn. The only shop listing it is "Magic
+    Emporium" (id 185, 150,000 stock), which has no NPC attached and is among
+    the inauthentic shops the catalog already excludes.
+  - The valuation table still prices the shield at its January 2009 value
+    (301 gp, `prices_v2`). It's a small net-worth gain when the Duke hands it
+    over. It can be set to 0 if Duke-only items shouldn't carry a GE value.
+
+### User decision (2026-10-27, evening)
+- **The anti-dragon shield's value is 0.** Implemented in
+  `scripts/build_price_tables.py`, which reads `ge_blocked_items` from
+  `rl.conf` so the server rule is the single source of truth. GE-blocked
+  items get no GE term in the valuation and are left off the frozen buyer's
+  list (6,068 rows listed). Only the two shield rows of `prices_v2.csv`
+  changed.
+- **Start building.** First module: game data plus the combat-rate model.
+
+### Built
+- `rlscape/gamedata/server.py` reads items (bonuses, attack speed,
+  requirements), NPCs (stats, styles, immunities), drop tables (with the
+  server's roll rules) and spawns from the fork's configs, plus values from
+  `prices_v2`.
+- `rlscape/combat/formulas.py` ports the server's swing handlers line by
+  line: hit chance, player and NPC attack and defence rolls, melee / ranged
+  max hits, and the modern spells' max hits. All 16 spell levels and base XP
+  values were checked against the server.
+- `rlscape/combat/rates.py` gives kills/hr, XP/hr per skill, gp/hr, damage
+  taken per hour (mean and variance), and the danger filter.
+- Tests: `tests/test_combat_formulas.py` checks hand-computed values,
+  including 99 Strength max hits of 11 with no bonus and 19 with a rune
+  scimitar. `tests/test_gamedata.py` checks the real configs. 11 passed.
+- Rating all 2,120 spawned NPC types takes 26 ms, fast enough to recompute
+  candidates every decision.
+
+### Findings from running the model on real data (need decisions or fixes)
+- **Placeholder NPC stats:** 911 of 2,120 spawned NPC types have exactly
+  attack / strength / defence 1, 10 HP and no bonuses. That includes real
+  monsters (ice trolls, goblin variants, guards), and the server fights with
+  those values. Unfiltered, ice trolls rank at 130k gp/hr for a level-1
+  character with food.
+- **Non-attackable NPCs are in the pool.** Configs with lifepoints include
+  pickpocket and random-event NPCs (Master Farmer, Frog 2689). Attackability
+  lives in the cache definitions (the "Attack" option), which the Python
+  side doesn't read yet.
+- **gp/hr ignores inventory capacity.** For example, undead chickens show
+  36.7k gp/hr of drops, but 3 drops per kill fill 28 slots in about 9 kills.
+  With no auto-banking, candidate gp/hr needs the inventory-fill and
+  bank-trip cycle.
+- **The danger filter as decided is strict.** With expected damage over the
+  full 15 minutes + 2σ ≤ HP + food, a fresh character with its starter food
+  passes only 7 NPC types. Even cows deal about 75 damage over 15 minutes to
+  a level-1 character, because the filter assumes the fight runs the full
+  duration. Combat options already end on low HP and no food, though.
+  Raised with Caleb.
+
+### User decisions (2026-10-27, night)
+- **Apply the planned fixes:** export cache NPC definitions and clean the
+  enemy pool; make gp/hr inventory-aware; add the dragonfire gear check.
+- **Danger filter: retreat-aware** (option (b)), replacing the full-duration
+  version (a).
+  - A monster qualifies if two of its max hits stay below half the
+    character's max HP (no burst from the retreat point).
+  - And the damage taken during one kill + 2σ fits in the HP above half plus
+    the food carried.
+  - `Rates.passes_retreat_filter`. A fresh character with starter food now
+    passes cows: a 13 HP budget against about 7 ± 2.3 taken per kill.
+
+### Built
+- **Fork bridge:** `item_definitions` gained `stackable`. The new
+  `npc_definitions` returns every cache NPC definition (name, cache combat
+  level, "Attack" option, size). Exported to `data/item_definitions.csv`
+  (only the new column added; 3,755 stackable) and `data/npc_definitions.csv`
+  (7,887 named NPCs, 2,717 attackable).
+- `rlscape/combat/candidates.py`:
+  - **Enemy pool:** attackable in the cache, stats believable against the
+    cache combat level, unkillable dummies 4474 / 7891 excluded. 1,058
+    entries, 403 distinct monsters.
+  - **Sites:** one per map region, each with its nearest bank from the
+    curated `data/banks.csv` (20 banks, approximate, to verify).
+  - **Loot modes and the inventory cycle:** stackables, including summoning
+    charms, cost no slot.
+  - **Dragonfire / wyvern gear check:** ids from the server's NPC classes.
+  - **Selection:** 3 best by XP/hr + 3 best by gp/hr per class, with
+    duplicate names merged.
+- `rlscape/combat/rates.py`: per-kill damage moments and the retreat-aware
+  filter.
+- Tests: `tests/test_candidates.py` (7), with 18 passing across the combat and
+  game-data tests.
+
+### Findings
+- **Most of the placeholder-stat NPCs** (911 of 2,120 spawned) **aren't
+  attackable**: bankers, shopkeepers. Among attackable spawned NPCs, only 11
+  carry the placeholder signature. The "believable stats" rule flags 124, most
+  of them stats far weaker than the cache level (e.g. zombies at levels 90–100
+  with stats worth about 10).
+- **The access table is the next blocker.** With gating not yet modelled, a
+  fresh character's top gp/hr slots are monsters in gated areas: Cockroach
+  drones (Stronghold of Player Safety), undead chickens and cows and Blamish
+  snails (Morytania, behind Priest in Peril), Scabaras lancers (Contact!). The
+  drop values themselves check out against the server's tables.
+- **Cows have spawns in Zanaris** (Lost City), whose coordinates don't follow
+  the 6,400-tile dungeon offset. Another case for the access table.
+- **A fresh character's XP slots look right** (Rat, Man, Ram). From Lumbridge,
+  the cows chosen are Lumbridge's (a 22-tick walk, a 113-tick bank trip).
+- **Corrected a test-input slip:** 15 game-minutes is 1,500 ticks, not 9,000.
+- **Ranking cost:** 60–100 ms for every monster and plan. That's fine for the
+  server, but the simulator will need caching by character state.
+- **Poison** damage isn't in the estimate yet (catalog §4.B says so).

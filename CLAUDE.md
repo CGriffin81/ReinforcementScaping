@@ -15,6 +15,8 @@ validated on a local 2009Scape server.
   in `ROADMAP.md`. It's the authoritative status, so check it against today's
   date.
 - Decisions and findings are logged chronologically in `docs/decision-log.md`.
+- External references (papers, code, data sources, related work) are listed in `docs/resources.md`,
+  numbered to continue the proposal's bibliography. Add a resource there when the project starts using it.
 
 Fixed decisions: every episode starts from a fresh level-3 character; training
 episodes are 20 game-hours with checkpoints every 2 game-hours; combat is in
@@ -62,11 +64,12 @@ work.
     (`isArtificial() == false`). Session plumbing uses
     `Player.hasClientSession()` instead.
   - Config: `server.tick_ms`, `world.ge_freeze_prices`,
-    `world.ge_frozen_buyer`, and the `[rl]` section (`bridge_enabled`,
-    `bridge_port`, `random_events`).
+    `world.ge_frozen_buyer`, `world.ge_frozen_seller`, `world.ge_blocked_items`,
+    and the `[rl]` section (`bridge_enabled`, `bridge_port`, `random_events`).
   - `worldprops/rl.conf` is the training config: `default.conf` with the
-    bridge on, prices frozen, the frozen-price GE buyer on, and random events
-    off for RL characters.
+    bridge on, prices frozen, the frozen-price GE buyer and seller on, the
+    anti-dragon shield blocked on the GE (Duke Horacio only), and random
+    events off for RL characters.
 - **GE state:** before running the server for experiments, install the frozen
   2009 GE: `uv run python scripts/install_ge_db.py`. The server must be
   stopped; the old database is backed up. The pipeline is
