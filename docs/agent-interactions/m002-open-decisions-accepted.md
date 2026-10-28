@@ -55,7 +55,10 @@ The prompt (2026-10-28 14:09:49 CST):
     - repos stay private
   - `CLAUDE.md`: `server.bind_address`; the `rl.conf` description; the Slayer rule change
   - `decision-log.md`: all nine decisions
-- **Committed, pushed and opened the PR** (decision 4). Caleb merges it after review.
+- **Committed, pushed and opened PR #4** (decision 4) for the commits made since PR #3. Caleb merges it after review.
+  While opening it, `gh pr list` showed that Caleb had already merged PRs #2 and #3 from this branch, so
+  recommendation 4 ("open a PR") rested on the audit's mistake. The audit record, `m002-commit-and-push` and
+  the decision log were corrected in the same PR.
 
 ## Documentation Changes
 

@@ -33,7 +33,8 @@ no record. Everything below comes from that session's commands and their output.
   - filled in the `Commit:` field of the ten records that still said "uncommitted"
   - made one commit, `846ca33` (38 files, including the submodule bump to `1223914`), and pushed it with upstream
     tracking
-- **No PR was opened.** Caleb asked for commit and push only.
+- **No PR was opened by Claude.** Caleb asked for commit and push only. Caleb then opened and merged PR #2 from this
+  branch himself (merged 2026-10-27 21:25:55 CST).
 
 ## Documentation Changes
 
@@ -66,4 +67,5 @@ None new. This interaction committed the work recorded in `m001-env-contract-and
 
 ## Follow-Up
 
-- Open a PR for `env-contract-and-combat-model` (still pending on 2026-10-28).
+- ~~Open a PR for `env-contract-and-combat-model`.~~ Done by Caleb: PR #2, merged 2026-10-27 21:25:55 CST. The first
+  version of this record (written 2026-10-28) wrongly called it pending; corrected the same day.

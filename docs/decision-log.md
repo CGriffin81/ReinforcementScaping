@@ -742,3 +742,10 @@ Caleb accepted all nine recommendations
 8. **Singleplayer client:** deferred to week 7, for the replay recording.
 9. **Both repos stay private** for now. Revisit if the course submission
    needs public links.
+- **Correction (same afternoon):** PRs #2 and #3 from
+  `env-contract-and-combat-model` had already been merged by Caleb
+  (2026-10-27 21:25:55 and 2026-10-28 13:54:12 CST). The audit's "a PR is
+  still open" item, and recommendation 4 built on it, were wrong, because the
+  audit never checked GitHub. The commits since #3 (the doc fixes, these
+  decisions, and this correction) go in PR #4. Lesson: check `gh pr list`
+  before reporting PR state.

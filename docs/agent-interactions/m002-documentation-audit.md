@@ -89,3 +89,7 @@ None. (A read-only script parsed the session transcript for prompt timestamps.)
 ## Follow-Up
 
 - Caleb decides whether to apply the doc fixes, and answers the decisions listed in the chat summary.
+- **Correction (2026-10-28, found while opening a PR in `m002-open-decisions-accepted`):** the audit didn't check
+  GitHub. Its open item "a PR for `env-contract-and-combat-model`" was wrong. Caleb had merged PR #2 (2026-10-27
+  21:25:55 CST) and PR #3 (2026-10-28 13:54:12 CST, a minute before this audit) from that branch. Only the commits
+  made after PR #3 needed a new PR (#4).
