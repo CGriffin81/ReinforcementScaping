@@ -1,7 +1,8 @@
-# Environment Contract (v1.0, Signed off)
+# Environment Contract (v1.1, Signed off)
 
-**Status:** v1.0, signed off by Caleb on 2026-10-28. v1.0 adds the death rule (§1) to v0.6. Any later change needs Caleb's
-approval and is logged in `docs/decision-log.md`.
+**Status:** v1.1, approved by Caleb on 2026-10-28. It adds the simulation decisions to v1.0: five more trainable
+skills (§5), event-level sampling, the ambient-bots setting, and the calibration gate and characters (§7). v1.0 added
+the death rule (§1) to v0.6. Any later change needs Caleb's approval and is logged in `docs/decision-log.md`.
 
 Both backends implement this contract exactly: `SimEnv` (the surrogate simulator) and `ServerEnv` (2009Scape
 through the bridge). Any policy, baseline or logger written against it runs on either one.
@@ -61,7 +62,7 @@ roughly [0, 1].
 | Part | Size | Encoding |
 |---|---|---|
 | Time | 2 | elapsed / horizon; remaining / horizon |
-| Skills | 2 × 15 | level / 99 and fractional progress to the next level, for the in-scope skills (§5) |
+| Skills | 2 × 20 | level / 99 and fractional progress to the next level, for the 19 trainable skills plus Slayer (§5). The v1 skills read 1 in sim v0. |
 | Total level | 1 | total level (all 24 skills) / 2376 |
 | Hitpoints, prayer | 2 | current / max |
 | Wealth | 2 | log1p(coins) / log1p(10M); log1p(net worth) / log1p(10M) |
@@ -90,13 +91,21 @@ option catalog.
 - **Shaping (E5 only):** F = γ^τ Φ(s′) − Φ(s), with Φ(terminal) = 0. Off by default.
 - **Reported metrics** (not rewards): total level and net worth at each 2-hour checkpoint, undiscounted.
 
-## 5. In-scope skills (v0.2)
+## 5. In-scope skills (v1.1)
 
-Attack, Strength, Defence, Hitpoints, Ranged, Magic, Prayer, Slayer (requirement checks only, no tasks),
-Woodcutting, Mining, Smithing, Fishing, Cooking, Firemaking, Thieving.
+**Trainable (19):**
+- from sim v0 (14): Attack, Strength, Defence, Hitpoints, Ranged, Magic, Prayer, Woodcutting, Mining, Smithing,
+  Fishing, Cooking, Firemaking, Thieving
+- added in sim v1, before E2 (5): Fletching, Crafting, Agility, Herblore, Runecrafting (Caleb, 2026-10-28).
+  Herblore needs Druidic Ritual and Runecrafting needs Rune Mysteries, both in the quest set. Agility levels also
+  open the Agility shortcuts in the access table.
 
-Magic and Ranged are trainable (decided). Magic trains through combat spells and alchemy. The other skills
-count toward total level but have no options.
+**Requirement checks only:** Slayer. There are no tasks, so it stays at 1 and Slayer-locked monsters stay out.
+
+**Out of scope:** Farming, Construction, Summoning, Hunter. Each is a whole system (growth timers, the player-owned
+house, familiars, traps). They stay at 1 and still count toward total level. The report lists this as a limitation.
+
+Magic trains through combat spells and alchemy.
 
 ## 6. `info` fields (every step)
 
@@ -121,16 +130,47 @@ for every step.
   - seeded `numpy.random.Generator`; same seed and same actions give the same trajectory
   - option effects come from the server's formulas (skilling, combat, drop tables) plus calibrated
     overheads (travel, banking, GE and shop trips)
+  - **event-level sampling** (Caleb, 2026-10-28). Outcomes are sampled per event, not per tick and not as
+    averages:
+    - resources gathered over N ticks: one binomial draw
+    - each kill's duration and damage taken
+    - each drop roll
+    - eating and death checked kill by kill
+  - resource depletion and respawn come from the server's data. Competition from other players isn't modelled,
+    because ambient bots are off on the server too.
+  - **staged:** sim v0 has every family except quests and the five v1 skills. Sim v1 adds the 21 quests and those
+    skills before E2.
   - target ≥ 20k decisions per second across `SubprocVecEnv` workers
 - **`ServerEnv`:**
   - `reset` reinstalls the frozen GE database. This is required, not optional: GE offers outlive the
     character that placed them, and in testing one test's offer filled the next test's.
   - then start the server with `rl.conf` and spawn through the bridge
   - one RL character per world for validation (E6)
-  - not seedable (world randomness, ambient bots); reported as such
+  - **ambient bots off** for calibration and E6 alike (Caleb, 2026-10-28). The gap then measures the model, not
+    crowding.
+  - not seedable (world randomness); reported as such
   - options run through human-path actions only, never `debug_*`
 - **Parity test:** the same scripted option sequence runs on both backends. The per-option XP, item, coin and
   duration distributions are compared; that's the sim-to-real gap (E6).
+- **Calibration and the gate before E2** (Caleb, 2026-10-28):
+  - **The gate:** each calibrated option's mean XP/hr, gp/hr and duration must be within **±20%** of the server's.
+    Misses get one round of patching; anything still outside is listed as a known gap in the report.
+  - **Bands:** calibration characters come in 11 bands: fresh, 11, 21, 31, 41, 51, 61, 71, 81, 91, 99.
+  - **Skills:** the trainable skills (§5) are set to the band level, the rest stay at 1. Fresh means all 1s with
+    10 Hitpoints.
+  - **Gear:** non-fresh characters spawn with the starter kit and 100 gp × total level, and buy their own gear on
+    the GE. They buy the best their levels and quests allow, in this priority: the tool for the option being
+    calibrated, then the weapon, then armour by defence per gp.
+  - **Quests,** cumulative by band:
+    - fresh: none
+    - 11–21: Cook's Assistant, Sheep Shearer, Rune Mysteries, Romeo & Juliet
+    - 31–41: adds the rest of the 32-quest-point route
+    - 51 and up: all 21, including Dragon Slayer
+  - **Setup only:** stats and quests are set by calibration-only bridge commands (`debug_set_levels`,
+    `debug_complete_quest`), never exposed to the agent. Each unlock that a debug-completed quest grants (rune
+    platebody, Crandor, the Duke's shield) is live-tested before it's relied on.
+  - **Runs:** each option is calibrated at the bands where it's unlocked, about 10 runs each. Parallel calibration
+    characters never share a spot.
 
 ## 8. Combat-rate model
 
@@ -187,3 +227,12 @@ These are *theoretical* rates (expected values). The real server measures the ac
 11. **Looting is four loot modes the agent sets** (option catalog §4.D), approved as proposed.
 
 Caleb signed off both documents on 2026-10-28 (v1.0).
+
+### Decided (Caleb, 2026-10-28, simulation review): v1.1
+12. **Event-level sampling** in the simulator (§7).
+13. **Staging:** quests and the five new skills arrive in sim v1, before E2.
+14. **Five more trainable skills:** Fletching, Crafting, Agility, Herblore, Runecrafting (§5), for 19 in all.
+15. **Ambient bots off** on the server for calibration and E6 (§7).
+16. **The sim-to-server gate** before E2 is ±20%, and the calibration characters are as described in §7.
+17. **The scripted-guide baseline** (E1) is drafted by Claude from archived 2009 guides, cited in `docs/resources.md`,
+    and reviewed by Caleb before E1 runs.

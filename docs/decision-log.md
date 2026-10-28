@@ -778,3 +778,76 @@ Caleb accepted all nine recommendations
   `ge-frozen-buyer-random-events` were deleted locally and on GitHub, after
   checking both were fully merged into `main` (PRs #4 and #1). The submodule
   bump goes on `sync-upstream-2009scape`.
+
+### User decisions (afternoon, simulation review)
+`m002-simulation-decisions`. Three rounds of questions. The env contract and
+option catalog are now v1.1.
+
+**Simulator:**
+1. **Event-level sampling** (recommended). Sampled per event:
+   - resources gathered over N ticks: one binomial draw
+   - each kill's duration and damage
+   - each drop roll
+   - eating and death checked kill by kill
+
+   Rejected: expected values only (no risk) and tick-level simulation (too
+   slow for 20k decisions/s).
+2. **Staging** (recommended): sim v0 covers everything except the quests;
+   all 21 quests come in sim v1, before E2.
+3. **Five more trainable skills.** Caleb asked why only 14 skills were
+   trainable. Claude explained that it had scoped the list itself on Oct 5,
+   from the proposal's examples, and never asked; sign-off only accepted it
+   implicitly. Total level sums all 24 skills, and untouched skills give
+   the cheapest early levels. Decision: **add Fletching, Crafting, Agility,
+   Herblore and Runecrafting in sim v1**, for 19 trainable. Farming,
+   Construction, Summoning, Hunter and Slayer tasks stay out, as a stated
+   limitation.
+
+**Server:**
+4. **Ambient bots off** for calibration and E6 (recommended).
+
+**Calibration:**
+5. **The gate:** ±20% on mean XP/hr, gp/hr and duration per calibrated
+   option (recommended), with one patch round; residual gaps are reported.
+6. **Calibration characters,** Caleb's own design, refined over two rounds.
+   Claude flagged blind spots before the second round:
+   - untrainable skills
+   - gear
+   - bands that can't be reached
+   - grid size
+   - side effects of debug-completed quests
+   - self-crowding
+   - testing only the diagonal
+
+   The design:
+   - **Bands:** fresh, 11, 21, 31, 41, 51, 61, 71, 81, 91, 99. Caleb kept
+     all 11, though Claude noted 81–99 can't be reached in 20 hours.
+   - **Skills:** trainable skills at the band, the rest at 1.
+   - **Gear:** non-fresh characters get the starter kit and
+     100 gp × total level, and buy their own gear on the GE.
+   - **Quests,** cumulative: 11–21 the four starter quests; 31–41 adds the
+     rest of the 32-quest-point route; 51+ all 21, including Dragon Slayer.
+
+**Baselines:**
+7. **Scripted-guide baseline** (recommended): Claude drafts it from archived
+   2009 guides, cites them, and Caleb reviews it before E1.
+
+**Agent defaults (reversible; Caleb can object):**
+- **Calibration runs:** each option at the bands where it's unlocked, about
+  10 runs each; parallel characters never share a spot.
+- **Buying rule for calibration characters:** the tool for the calibrated
+  option, then the weapon, then armour by defence per gp, within level and
+  quest requirements.
+- **Ported from the server:** resource depletion and respawn, HP regeneration,
+  and eating. Travel stays on the current model until calibration.
+- **Speed:** candidate ranking is exact, made fast with caching and
+  vectorisation, not approximated.
+- **GE purchases** are collected to the bank, which matches the server
+  executor's path.
+- **The RL stack** is installed when SimEnv is wired up: CPU PyTorch for PPO,
+  CUDA later only if Envelope Q or the stretch needs it.
+
+**For Caleb to review later:**
+- the item vocabulary list
+- the scripted-guide routine
+- the five new skills' options (catalog v1.2)

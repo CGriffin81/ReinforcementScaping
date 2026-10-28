@@ -155,15 +155,22 @@ ReinforcementScaping/
 ### Week 2 (Oct 12–18): Surrogate sim v0, environment, baselines (E1)
 
 *Started 2026-10-27 (catching up):* `rlscape/gamedata` (server data loaders) and `rlscape/combat` (formulas ported from the server, plus the rate model), with tests. Then the cleaned NPC pool (cache definitions), inventory-aware gp/hr and the retreat-aware filter. *2026-10-28:* the access table (gated areas, quest-only NPCs, Slayer levels). Next: the simulator state and options.
-- [ ] `sim/`: per option, check preconditions, sample a duration, apply XP/item/GP deltas and update state. Formulas are ported from the server source; overheads start as placeholders.
+- [ ] `sim/` v0: per option, check preconditions, sample outcomes, apply XP/item/GP deltas and update state. Formulas are ported from the server source; overheads start as placeholders. Decided 2026-10-28:
+  - **event-level sampling**
+  - **every family except quests and the five v1 skills**, which come in sim v1 before E2
+  - the item vocabulary list is drafted for Caleb to check
 - [ ] `envs/SimEnv`: Gymnasium API, `action_masks()`, `info["duration"]`, `info["reward_vec"]`, and a reward-weight wrapper.
 - [ ] Baselines:
   - random (masked)
   - greedy XP/hr and greedy GP/hr (one-step lookahead on expected rates at the current state)
-  - scripted guide routine (hand-written from a 2009-era training guide)
+  - scripted guide routine: Claude drafts it from archived 2009 guides, cites them in `docs/resources.md`, and Caleb reviews it before E1 runs
 - [ ] `eval/` harness: any policy × N seeds produces metrics at game-time checkpoints every 2 h (2, 4, …, 20), written to parquet with bootstrap 95% CIs.
 - [ ] Tests: masks are always respected, GP and item counts never go negative, the same seed gives the same trajectory, plus a sim speed benchmark.
-- [ ] Server: `scripts/calibrate.py` runs each option K times through the bridge and logs duration, XP, item and GP distributions.
+- [ ] Server: `scripts/calibrate.py` runs each option K times through the bridge and logs duration, XP, item and GP distributions. Decided 2026-10-28 (env contract §7):
+  - ambient bots off
+  - 11 bands of calibration characters, fresh to 99, with graded quests, buying their own gear with 100 gp × total level
+  - about 10 runs per option at each band where it's unlocked
+  - calibration-only `debug_set_levels` and `debug_complete_quest` commands
 
 **Exit:** E1 table on the sim with CIs, and calibration runs started.
 
@@ -174,7 +181,10 @@ ReinforcementScaping/
   1. PPO solves a 3-option toy catalog with a known optimum.
   2. PPO beats random on the full catalog.
   3. Small hyperparameter sweep at w = (0.5, 0.5).
-- [ ] Sim v1: fold in the calibration data (real duration distributions, travel and bank overheads).
+- [ ] Sim v1, before E2:
+  - fold in the calibration data (real duration distributions, travel and bank overheads)
+  - add the 21 quests and the five new skills (Fletching, Crafting, Agility, Herblore, Runecrafting)
+  - pass the **±20% sim-to-server gate** on mean XP/hr, gp/hr and duration per calibrated option, with one patch round; residual gaps are reported
 - [ ] **E2:** weightings (1,0), (.75,.25), (.5,.5), (.25,.75), (0,1) × 5 seeds.
 
 **Exit:** first learning curves, with E2 running.

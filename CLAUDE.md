@@ -20,7 +20,12 @@ validated on a local 2009Scape server.
 
 Fixed decisions: every episode starts from a fresh level-3 character; training
 episodes are 20 game-hours with checkpoints every 2 game-hours; combat is in
-scope.
+scope. Simulator (2026-10-28):
+- event-level sampling
+- quests and five more skills (Fletching, Crafting, Agility, Herblore,
+  Runecrafting) arrive in sim v1, before E2
+- ambient bots off on the server for calibration and E6
+- a ±20% sim-to-server gate before E2 (env contract §7)
 
 ## Collaboration mode
 

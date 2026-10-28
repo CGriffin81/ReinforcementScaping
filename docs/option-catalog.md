@@ -1,7 +1,8 @@
-# Option Catalog (v1.0, Signed off)
+# Option Catalog (v1.1, Signed off)
 
-**Status:** v1.0, signed off by Caleb on 2026-10-28. Read it together with `docs/env-contract.md`. It replaces v0
-and `ROADMAP.md` Appendix A. All of its questions are decided:
+**Status:** v1.1, 2026-10-28. It adds five more trainable skills for sim v1 (§3.5). Their options are still to be
+specified and get Caleb's review before sim v1 is built. Read it together with `docs/env-contract.md`. It replaces v0
+and `ROADMAP.md` Appendix A. All of its v1.0 questions are decided:
 - selling quantity
 - per-source buying
 - the combat design (§4), including the loot modes (§4.D)
@@ -74,6 +75,22 @@ These work from the inventory and run until the inputs run out. They happen at t
 | `cook_fish` | Cooking level for the fish | raw fish | cooked fish (with burn chance) |
 | `burn_logs` | tinderbox, Firemaking level | logs | — |
 | `bury_bones` | — | bones / big bones | — |
+
+## 3.5 Skills added for sim v1 (Caleb, 2026-10-28)
+
+Fletching, Crafting, Agility, Herblore and Runecrafting become trainable in sim v1, before E2 (env contract §5). Their
+options are **to be specified** (catalog v1.2, for Caleb's review), following the same rules as §2–§3: preconditions,
+inputs, a fixed duration *D*, server formulas, and calibration. The likely shape:
+
+| Skill | Likely options | Notes |
+|---|---|---|
+| Fletching | cut logs into bows and arrow shafts, string bows, make arrows | processing, like Smithing; a classic 2009 money-maker |
+| Crafting | tan hides into leather, make leather armour, spin flax, cut gems | processing; uses cowhides from combat |
+| Agility | course laps (Gnome Stronghold, Draynor, …) | a gathering-like activity with no product; levels open the access table's shortcuts |
+| Herblore | clean herbs, make potions | needs Druidic Ritual; herbs come from drops (vocabulary) |
+| Runecrafting | craft runes at an altar from essence | needs Rune Mysteries; essence from mining |
+
+These add roughly 15–25 actions and some vocabulary items; §9 is updated when they're specified.
 
 ## 4. Combat: candidate slots
 
