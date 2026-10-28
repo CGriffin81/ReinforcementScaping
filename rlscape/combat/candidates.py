@@ -1,0 +1,251 @@
+"""Combat candidate slots (option catalog §4): which monsters the agent is offered, recomputed every decision.
+
+Pipeline for each decision:
+  1. the enemy pool: every spawned NPC whose cache definition offers "Attack" and whose config stats are believable
+     against its cache combat level (`enemy_pool`);
+  2. per pool entry and combat class: the gear check for special damage, the loot the current loot mode keeps, the
+     theoretical rates (rlscape.combat.rates), the retreat-aware danger filter, and the inventory cycle (fighting
+     until the drops fill the free slots, then the round trip to the nearest bank);
+  3. per combat class: the 3 best monsters by XP/hr and the 3 best by gp/hr (`select_candidates`).
+
+Travel times use straight-line tile distance with a detour factor and an assumed running speed, and the bank list is
+curated (data/banks.csv). All are marked for calibration on the server.
+
+Still to come (option catalog §4.C): the access table (key- and quest-gated areas), Slayer requirements, and quest
+monsters while a quest is underway. Until then the pool assumes every attackable, believable NPC is reachable, and
+the first real-data run shows why that matters: the top gp/hr slots for a fresh character are monsters in gated areas,
+e.g. Blamish snails in Mort Myre (Priest in Peril), Cockroach drones (Stronghold of Player Safety), Scabaras lancers
+(Contact!).
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from functools import cache
+from math import floor
+from typing import Callable
+
+from rlscape.combat.rates import Fighter, Plan, Rates, combat_rates
+from rlscape.gamedata import server as gd
+
+# Special damage (option catalog §4.B), from the server's NPC classes and ContentAPI.hasDragonfireShieldProtection.
+DRAGONFIRE_NPCS = frozenset({
+    941, 4677, 4678, 4679, 4680,  # green dragons      (ChromaticDragonNPC)
+    55, 4681, 4682, 4683, 4684,   # blue dragons
+    53, 4669, 4670, 4671, 4672,   # red dragons
+    54, 4673, 4674, 4675, 4676,   # black dragons
+    8629,                         # lava dragon
+    1590, 1591, 1592, 3590,       # bronze / iron / steel dragons (MetalDragonNPC)
+    50,                           # King Black Dragon  (KingBlackDragonNPC)
+    742,                          # Elvarg             (ElvargNPC)
+})
+ANTI_DRAGON_SHIELD, DRAGONFIRE_SHIELDS, ELEMENTAL_SHIELD, MIND_SHIELD = 1540, frozenset({11283, 11284}), 2890, 9731
+DRAGONFIRE_PROTECTION = DRAGONFIRE_SHIELDS | {ANTI_DRAGON_SHIELD}
+WYVERN_PROTECTION = DRAGONFIRE_SHIELDS | {ELEMENTAL_SHIELD, MIND_SHIELD}
+
+# Movement. Calibrate all of these on the server.
+RUN_TILES_PER_TICK = 1.5  # effective speed: running, with run energy running out now and then
+PATH_DETOUR = 1.3  # walking paths are longer than straight lines
+UNDERGROUND_Y_OFFSET = 6400  # dungeons sit 6400 tiles north of the surface they lie under
+LEVEL_CHANGE_TICKS = 12  # stairs or ladders, per change of plane or underground
+BANKING_TICKS = 8  # opening a booth and depositing
+
+# Training dummies can't be killed: CombatSwingHandler.adjustBattleState fully restores 4474 and 7891 and gives 0.1x XP.
+UNKILLABLE_NPCS = frozenset({4474, 7891})
+
+LOOT_MODES = ("all", "valuable", "vocabulary", "none")
+VALUABLE_GP = 100
+COMBAT_CLASSES = ("melee", "ranged", "magic")
+
+
+def _surface(x: int, y: int) -> tuple[int, int, bool]:
+    if y >= UNDERGROUND_Y_OFFSET:
+        return x, y - UNDERGROUND_Y_OFFSET, True
+    return x, y, False
+
+
+def travel_ticks(a: tuple[int, int, int], b: tuple[int, int, int]) -> float:
+    """Ticks to get from tile a to tile b: straight-line distance with a detour factor, plus stairs and ladders."""
+    ax, ay, a_under = _surface(a[0], a[1])
+    bx, by, b_under = _surface(b[0], b[1])
+    distance = max(abs(ax - bx), abs(ay - by))
+    level_changes = (a[2] != b[2]) + (a_under != b_under)
+    return distance * PATH_DETOUR / RUN_TILES_PER_TICK + level_changes * LEVEL_CHANGE_TICKS
+
+
+def config_combat_level(npc: gd.Npc) -> int:
+    """The combat level npc_configs.json's stats imply (the 2009 formula, prayer 0)."""
+    base = 0.25 * (npc.defence + npc.hitpoints)
+    style = max(0.325 * (npc.attack + npc.strength), 0.325 * floor(1.5 * npc.ranged), 0.325 * floor(1.5 * npc.magic))
+    return floor(base + style)
+
+
+def stats_believable(npc: gd.Npc, definition: gd.NpcDefinition) -> bool:
+    """Config stats much weaker than the cache combat level are placeholders (many NPCs carry attack / strength /
+    defence 1 and 10 HP). The server fights with them, so leaving those NPCs in would let the agent farm, say,
+    level-90 zombies with level-10 stats. Calibrated on the data: flags 124 of 1,184 attackable spawned NPCs."""
+    return config_combat_level(npc) >= definition.combat_level / 2 - 2
+
+
+@dataclass(frozen=True)
+class Site:
+    """One place an NPC spawns (one per 64x64 map region), with the nearest bank to it."""
+
+    spawn: tuple[int, int, int]
+    bank: gd.Bank
+    bank_trip_ticks: float  # walk to the bank, bank, walk back
+
+
+@dataclass(frozen=True)
+class PoolEntry:
+    npc: gd.Npc
+    definition: gd.NpcDefinition
+    sites: tuple[Site, ...]
+    drops: gd.DropTable | None
+
+
+@cache
+def enemy_pool(members: bool = True) -> tuple[PoolEntry, ...]:
+    """Every NPC the agent could fight, as far as server data can tell (see the module docstring for what's next)."""
+    definitions, drops, spawns = gd.npc_definitions(), gd.drop_tables(), gd.spawns()
+    bank_list = [b for b in gd.banks() if members or not b.members]
+    pool = []
+    for npc in gd.npcs().values():
+        definition = definitions.get(npc.id)
+        if npc.id not in spawns or definition is None or not definition.attackable:
+            continue
+        if npc.id in UNKILLABLE_NPCS or "dummy" in npc.name.lower():
+            continue
+        if not stats_believable(npc, definition):
+            continue
+        by_region: dict[tuple[int, int, int], Site] = {}
+        for spawn in spawns[npc.id]:
+            region = (spawn[0] >> 6, spawn[1] >> 6, spawn[2])
+            trip, bank = min(((travel_ticks(spawn, (b.x, b.y, b.plane)), b) for b in bank_list), key=lambda t: t[0])
+            site = Site(spawn, bank, 2 * trip + BANKING_TICKS)
+            if region not in by_region or site.bank_trip_ticks < by_region[region].bank_trip_ticks:
+                by_region[region] = site
+        pool.append(PoolEntry(npc, definition, tuple(by_region.values()), drops.get(npc.id)))
+    return tuple(pool)
+
+
+def loot_rule(mode: str, vocabulary: frozenset[int] = frozenset()) -> Callable[[int], bool]:
+    """What a loot mode picks up (option catalog §4.D). Stackables (coins, runes, arrows, ...) cost no new slot."""
+    values, stackable = gd.item_values(), gd.stackable_items()
+    if mode == "all":
+        return lambda item: True
+    if mode == "valuable":
+        return lambda item: item in stackable or item in vocabulary or values.get(item, 0) >= VALUABLE_GP
+    if mode == "vocabulary":
+        return lambda item: item in stackable or item in vocabulary
+    if mode == "none":
+        return lambda item: False
+    raise ValueError(f"unknown loot mode {mode!r}")
+
+
+def loot_per_kill(drops: gd.DropTable | None, loot: Callable[[int], bool]) -> tuple[float, float]:
+    """(gp, new inventory slots) per kill for the items the loot rule keeps."""
+    if drops is None:
+        return 0.0, 0.0
+    values, stackable = gd.item_values(), gd.stackable_items()
+    gp = slots = 0.0
+    for item, count in drops.expected_items().items():
+        if loot(item):
+            gp += count * values.get(item, 0)
+            if item not in stackable:
+                slots += count
+    return gp, slots
+
+
+def has_special_damage_protection(npc: gd.Npc, shield_id: int | None) -> bool:
+    """The gear check for special damage (Caleb's addition to the danger filter)."""
+    if npc.id in DRAGONFIRE_NPCS:
+        return shield_id in DRAGONFIRE_PROTECTION
+    if "wyvern" in npc.name.lower():
+        return shield_id in WYVERN_PROTECTION
+    return True
+
+
+@dataclass(frozen=True)
+class Character:
+    """What the candidate ranking needs to know about the character right now."""
+
+    location: tuple[int, int, int]
+    max_hp: int
+    current_hp: float
+    food_healing: float  # total healing of the food in the inventory
+    free_slots: int
+    shield_id: int | None
+    loot_mode: str = "valuable"
+
+
+@dataclass(frozen=True)
+class Candidate:
+    entry: PoolEntry
+    plan: Plan
+    site: Site  # where to fight it, chosen for the best rate from the character's location
+    rates: Rates  # raw fighting rates, before banking and travel
+    kills_per_hour: float  # over the option's duration, with bank trips and the walk there
+    xp_per_hour: dict[str, float]
+    gp_per_hour: float
+    travel_ticks: float  # from the character's location to the monster
+
+    @property
+    def total_xp_per_hour(self) -> float:
+        return sum(self.xp_per_hour.values())
+
+
+def evaluate(entry: PoolEntry, fighter: Fighter, plan: Plan, character: Character, duration_ticks: float,
+             loot: Callable[[int], bool]) -> Candidate | None:
+    """One monster, one plan: None if the gear check or the danger filter rules it out."""
+    if not has_special_damage_protection(entry.npc, character.shield_id):
+        return None
+    gp_per_kill, slots_per_kill = loot_per_kill(entry.drops, loot)
+    rates = combat_rates(fighter, plan, entry.npc, gp_per_kill)
+    if rates is None or not rates.passes_retreat_filter(character.max_hp, character.current_hp, character.food_healing):
+        return None
+    fight_ticks = character.free_slots / slots_per_kill * rates.ticks_per_kill if slots_per_kill > 0 else None
+
+    def share_at(site: Site) -> float:
+        fighting = 1.0 if fight_ticks is None else (fight_ticks / (fight_ticks + site.bank_trip_ticks) if fight_ticks > 0 else 0.0)
+        return fighting * max(duration_ticks - travel_ticks(character.location, site.spawn), 0.0) / duration_ticks
+
+    site = max(entry.sites, key=share_at)
+    share = share_at(site)
+    return Candidate(entry, plan, site, rates, rates.kills_per_hour * share,
+                     {skill: xp * share for skill, xp in rates.xp_per_hour.items()}, rates.gp_per_hour * share,
+                     travel_ticks(character.location, site.spawn))
+
+
+def select_candidates(pool: tuple[PoolEntry, ...], plans: dict[str, tuple[Fighter, list[Plan]]], character: Character,
+                      duration_ticks: float, k: int = 3,
+                      vocabulary: frozenset[int] = frozenset()) -> dict[str, list[Candidate]]:
+    """For each available combat class: the k best monsters by XP/hr, then the k best by gp/hr (option catalog §4.A).
+
+    `plans` maps a class to the fighter as equipped for it and the plans to consider (melee: its training styles;
+    ranged: e.g. rapid; magic: the best spell the runes allow). A class missing from `plans` is unavailable (no bow
+    and arrows, no runes). Monsters are ranked by their best plan, and different NPC ids sharing a name count as one
+    monster, so the slots name distinct monsters.
+    """
+    loot = loot_rule(character.loot_mode, vocabulary)
+    out: dict[str, list[Candidate]] = {}
+    for combat_class, (fighter, class_plans) in plans.items():
+        best: dict[str, tuple[Candidate, Candidate]] = {}  # name -> (best by XP, best by gp)
+        for entry in pool:
+            for plan in class_plans:
+                candidate = evaluate(entry, fighter, plan, character, duration_ticks, loot)
+                if candidate is None:
+                    continue
+                name = entry.npc.name
+                by_xp, by_gp = best.get(name, (candidate, candidate))
+                if candidate.total_xp_per_hour > by_xp.total_xp_per_hour:
+                    by_xp = candidate
+                if candidate.gp_per_hour > by_gp.gp_per_hour:
+                    by_gp = candidate
+                best[name] = (by_xp, by_gp)
+        xp_slots = sorted((pair[0] for pair in best.values()), key=lambda c: c.total_xp_per_hour, reverse=True)[:k]
+        taken = {c.entry.npc.name for c in xp_slots}
+        gp_slots = sorted((pair[1] for name, pair in best.items() if name not in taken),
+                          key=lambda c: c.gp_per_hour, reverse=True)[:k]
+        out[combat_class] = xp_slots + gp_slots
+    return out

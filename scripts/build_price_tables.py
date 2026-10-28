@@ -13,6 +13,10 @@ Decisions (Caleb, 2026-10-05):
 Decision (Caleb, 2026-10-27): the frozen-price GE buyer (world.ge_frozen_buyer) only buys items with a 2009
 price. The frozen database lists them in its historical_price_items table, which the server's buyer checks.
 
+Decision (Caleb, 2026-10-27): items the GE refuses to trade (rl.conf's world.ge_blocked_items, e.g. the
+anti-dragon shield, which only Duke Horacio gives out) get no GE term in the valuation and stay off the
+historical list. The anti-dragon shield is therefore valued at 0.
+
 Inputs:  data/item_definitions.csv (scripts/export_item_definitions.py),
          results/ge_history/sample/*.json (scripts/fetch_ge_history.py),
          data/grandexchange_warmup10h.db (scripts/ge_warmup.py).
@@ -38,6 +42,7 @@ WARMUP_DB = Path("data/grandexchange_warmup10h.db")
 GE_2009 = Path("data/ge_prices_2009.csv")
 VALUATION = Path("data/prices_v2.csv")
 FROZEN_DB = Path("data/grandexchange_2009_frozen.db")
+RL_CONF = Path("server/Server/worldprops/rl.conf")
 
 COINS = 995
 NATURE_RUNE = 561
@@ -61,6 +66,15 @@ def historical_price(points: list[dict]) -> tuple[int, int, str] | None:
     month = min(by_month)
     prices = by_month[month]
     return round(statistics.median(prices)), len(prices), f"{TARGET_YEAR}-{month:02d}"
+
+
+def ge_blocked_items() -> set[int]:
+    """world.ge_blocked_items from rl.conf, so the server's rule is the single source of truth."""
+    for line in RL_CONF.read_text(encoding="utf-8").splitlines():
+        key, _, value = line.partition("=")
+        if key.strip() == "ge_blocked_items":
+            return {int(part) for part in value.strip().strip('"').split(",") if part.strip()}
+    return set()
 
 
 def load_definitions() -> list[dict]:
@@ -96,6 +110,7 @@ def main() -> None:
         months[month] += 1
 
     nature = history[NATURE_RUNE][0]
+    blocked = ge_blocked_items()
     counts = defaultdict(int)
     with VALUATION.open("w", newline="") as f:
         out = csv.writer(f)
@@ -103,24 +118,28 @@ def main() -> None:
                       "ge_price_2009", "value", "source"])
         for d in definitions:
             ge = history.get(d["unnoted_id"], (None,))[0]
+            is_blocked = d["id"] in blocked or d["unnoted_id"] in blocked
+            ge_term = None if is_blocked else ge
             alch_net = d["high_alch"] - nature  # every row is tradeable, so the spell accepts it
             if d["unnoted_id"] == COINS:
                 value, source = 1, "coins"
             else:
-                candidates = {k: v for k, v in (("high_alch", alch_net), ("ge_2009", ge)) if v is not None}
+                candidates = {k: v for k, v in (("high_alch", alch_net), ("ge_2009", ge_term)) if v is not None}
                 if candidates:
                     source, value = max(candidates.items(), key=lambda kv: kv[1])
                     if value < 0:
                         value, source = 0, "floor_0"
                 else:
                     value, source = 0, "none"
+                if is_blocked and source != "high_alch":
+                    source = "ge_blocked"
             counts[source] += 1
             out.writerow([d["id"], d["name"], d["unnoted_id"], d["high_alch"],
                           alch_net, ge, value, source])
 
     shutil.copyfile(WARMUP_DB, FROZEN_DB)
     unnoted = {d["id"]: d["unnoted_id"] for d in definitions}
-    updated = kept = 0
+    updated = kept = listed = 0
     with sqlite3.connect(FROZEN_DB) as db:
         db.execute("CREATE TABLE IF NOT EXISTS historical_price_items(item_id INTEGER PRIMARY KEY)")
         db.execute("DELETE FROM historical_price_items")
@@ -130,7 +149,9 @@ def main() -> None:
                 kept += 1
                 continue
             db.execute("UPDATE price_index SET value = ?, total_value = ? WHERE item_id = ?", (ge, ge, item_id))
-            db.execute("INSERT INTO historical_price_items(item_id) VALUES (?)", (item_id,))
+            if item_id not in blocked:
+                db.execute("INSERT INTO historical_price_items(item_id) VALUES (?)", (item_id,))
+                listed += 1
             updated += 1
 
     built = datetime.now().astimezone().isoformat(timespec="seconds")
@@ -152,6 +173,7 @@ def main() -> None:
         "built": built,
         "items": len(definitions),
         "value_source_counts": dict(counts),
+        "ge_blocked_items": sorted(blocked),
         "supersedes": "data/prices_v1.csv (seeded high-alchemy values) for valuing wealth",
     }, indent=2) + "\n")
     FROZEN_DB.with_suffix(".meta.json").write_text(json.dumps({
@@ -162,7 +184,8 @@ def main() -> None:
         "built": built,
         "price_rows_set_to_2009": updated,
         "price_rows_kept_seeded": kept,
-        "historical_price_items": updated,
+        "historical_price_items": listed,
+        "ge_blocked_items_excluded": sorted(blocked),
     }, indent=2) + "\n")
 
     print(f"2009 prices: {len(history)} items {dict(sorted(months.items()))}")

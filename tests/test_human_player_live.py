@@ -1,6 +1,6 @@
 """Integration tests for the RL character being treated as a human player, and for the frozen GE.
 
-Needs the forked server running with worldprops/rl.conf (frozen prices, frozen-price buyer, no random events)
+Needs the forked server running with worldprops/rl.conf (frozen prices, frozen-price buyer and seller, no random events)
 and the frozen GE installed (scripts/install_ge_db.py); skipped when the server is down.
 """
 
@@ -11,10 +11,11 @@ from pathlib import Path
 
 import pytest
 
-from rlscape.bridge import BridgeClient
+from rlscape.bridge import BridgeClient, BridgeError
 from test_bridge_live import bridge_reachable
 
 COINS = 995
+ANTI_DRAGON_SHIELD = 1540
 GE = (3165, 3489)
 DATA = Path(__file__).resolve().parent.parent / "data"
 
@@ -134,8 +135,7 @@ def test_ge_sell_above_the_frozen_price_stays_open(client, character):
 def test_ge_buyer_ignores_items_without_a_2009_price(client, character):
     """The buyer only takes items listed in the frozen database's historical_price_items table."""
     empty_oyster = 409
-    with (DATA / "ge_prices_2009.csv").open(newline="") as f:
-        assert empty_oyster not in {int(row["item_id"]) for row in csv.DictReader(f)}, "precondition: no 2009 price"
+    assert empty_oyster not in historical_ids(), "precondition: no 2009 price"
     uid = character["uid"]
     price = {p["id"]: p["value"] for p in client.ge_snapshot()["prices"]}[empty_oyster]
     client.debug_teleport(uid, *GE)
@@ -144,6 +144,63 @@ def test_ge_buyer_ignores_items_without_a_2009_price(client, character):
     client.ge_offer(uid, item=empty_oyster, amount=1, price=price, sell=True)
     slots = wait_for_state(client, uid, "COMPLETED", ticks=100)
     assert slots[0]["completed"] == 0
+
+
+def historical_ids() -> set[int]:
+    with (DATA / "ge_prices_2009.csv").open(newline="") as f:
+        return {int(row["item_id"]) for row in csv.DictReader(f)}
+
+
+def test_frozen_seller_supplies_items_bot_stock_lacks_and_refunds_overpayment(client, character):
+    """rl.conf's ge_frozen_seller fills buy offers at the frozen 2009 price when bot stock has none."""
+    steel_scimitar = 1325
+    assert steel_scimitar in historical_ids(), "precondition: has a 2009 price"
+    assert bot_stock_of(client, steel_scimitar) == 0, "precondition: bot stock has none"
+    uid = character["uid"]
+    price = {p["id"]: p["value"] for p in client.ge_snapshot()["prices"]}[steel_scimitar]
+    client.debug_teleport(uid, *GE)
+    client.debug_give(uid, COINS, price + 100)
+    client.wait(3)
+    before = client.state(uid)
+
+    client.ge_offer(uid, item=steel_scimitar, amount=1, price=price + 50)
+    slots = wait_for_state(client, uid, "COMPLETED")
+    assert slots[0]["completed"] == 1
+    client.ge_collect(uid)
+    client.wait(1)
+    after = client.state(uid)
+
+    assert amount_of(after, steel_scimitar) == 1
+    assert amount_of(before, COINS) - amount_of(after, COINS) == price  # offered price + 50, refunded 50
+
+
+def test_frozen_seller_ignores_items_without_a_2009_price(client, character):
+    # Not the Empty oyster: the buyer test leaves an unfilled sell offer for it, which a buy offer here would
+    # match as an ordinary player-to-player trade. GE offers outlive the character that placed them.
+    cup_of_tea = 712
+    assert cup_of_tea not in historical_ids(), "precondition: no 2009 price"
+    assert bot_stock_of(client, cup_of_tea) == 0, "precondition: bot stock has none"
+    uid = character["uid"]
+    price = {p["id"]: p["value"] for p in client.ge_snapshot()["prices"]}[cup_of_tea]
+    client.debug_teleport(uid, *GE)
+    client.debug_give(uid, COINS, price + 100)
+    client.wait(3)
+    client.ge_offer(uid, item=cup_of_tea, amount=1, price=price)
+    slots = wait_for_state(client, uid, "COMPLETED", ticks=100)
+    assert slots[0]["completed"] == 0
+
+
+def test_anti_dragon_shield_is_not_tradeable_on_the_ge(client, character):
+    """rl.conf blocks the anti-dragon shield (and its note) on the GE: it only comes from Duke Horacio."""
+    uid = character["uid"]
+    client.debug_teleport(uid, *GE)
+    client.debug_give(uid, COINS, 1000)
+    client.debug_give(uid, ANTI_DRAGON_SHIELD, 1)
+    client.wait(3)
+    with pytest.raises(BridgeError, match="can't be traded on the GE"):
+        client.ge_offer(uid, item=ANTI_DRAGON_SHIELD, amount=1, price=500)
+    with pytest.raises(BridgeError, match="can't be traded on the GE"):
+        client.ge_offer(uid, item=ANTI_DRAGON_SHIELD, amount=1, price=1, sell=True)
 
 
 def test_random_events_are_off_for_training(character):
