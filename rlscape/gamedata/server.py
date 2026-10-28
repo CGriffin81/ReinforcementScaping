@@ -25,6 +25,8 @@ MINING_NODE = SERVER_CONTENT / "global" / "skill" / "gather" / "mining" / "Minin
 FISH = SERVER_CONTENT / "global" / "skill" / "fishing" / "Fish.kt"
 FISHING_OPTION = SERVER_CONTENT / "global" / "skill" / "fishing" / "FishingOption.kt"
 FISH_SPOTS = SERVER_CONTENT / "global" / "skill" / "fishing" / "FishSpots.kt"
+PICKPOCKETS = SERVER_CONTENT / "global" / "skill" / "thieving" / "Pickpockets.kt"
+CONSUMABLES = SERVER_CONTENT / "data" / "consumables" / "Consumables.java"
 SKILLING_TOOL = SERVER_CONTENT / "data" / "skill" / "SkillingTool.java"
 PRICES = REPO / "data" / "prices_v2.csv"
 ITEM_DEFINITIONS = REPO / "data" / "item_definitions.csv"  # scripts/export_item_definitions.py (cache)
@@ -444,6 +446,58 @@ def fishing_methods() -> dict[str, FishingMethod]:
         out[name] = FishingMethod(name, int(tool), int(level), tuple(map(int, re.findall(r"_(\d+)", bait))),
                                   tuple(re.findall(r"Fish\.([A-Z_]+)", fish)))
     return out
+
+
+@dataclass(frozen=True)
+class LootItem:
+    """A WeightedItem: an item, an amount range, a weight, and whether it always drops."""
+
+    item: int
+    min_amount: int
+    max_amount: int
+    weight: float
+    always: bool
+
+
+@dataclass(frozen=True)
+class PickpocketTarget:
+    """A Pickpockets enum constant."""
+
+    name: str
+    npc_ids: tuple[int, ...]
+    level: int
+    low: float  # getSkillSuccessChance bounds
+    high: float
+    experience: float
+    stun_damage_min: int  # RandomFunction.random(min, max) on a failed attempt
+    stun_damage_max: int
+    stun_ticks: int
+    loot: tuple[LootItem, ...]
+
+
+@cache
+def pickpocket_targets() -> dict[str, PickpocketTarget]:
+    text = PICKPOCKETS.read_text(encoding="utf-8")
+    out = {}
+    for name, ids, level, low, high, xp, dmin, dmax, stun, table in re.findall(
+            r"^\s*([A-Z_]+)\(intArrayOf\((.*?)\),\s*(\d+),\s*([\d.]+),\s*([\d.]+),\s*([\d.]+),\s*(\d+),\s*(\d+),"
+            r"\s*(\d+),\s*WeightBasedTable\.create\((.*?)\)\s*\),?\s*$", text, re.M | re.S):
+        loot = tuple(LootItem(int(i), int(lo), int(hi), float(w), always == "true") for i, lo, hi, w, always in
+                     re.findall(r"WeightedItem\(\s*(?:Items\.[A-Z0-9_]+?_)?(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,"
+                                r"\s*([\d.]+)\s*(?:,\s*(true|false))?\s*\)", table))
+        out[name] = PickpocketTarget(name, tuple(map(int, re.findall(r"(?:NPCs\.[A-Z0-9_]+?_)?(\d+)", ids))),
+                                     int(level), float(low), float(high), float(xp), int(dmin), int(dmax),
+                                     int(stun), loot)
+    return out
+
+
+@cache
+def food_healing() -> dict[int, int]:
+    """Item id -> hitpoints healed, for Consumables' single-bite foods (`new Food(new int[] {id}, new
+    HealingEffect(n))`). Multi-bite foods (pizzas, cakes, pies) aren't included yet."""
+    text = CONSUMABLES.read_text(encoding="utf-8")
+    return {int(item): int(heal) for item, heal in re.findall(
+        r"new Food\(new int\[\]\s*\{\s*(\d+)\s*\},\s*new HealingEffect\((\d+)\)\)", text)}
 
 
 @cache

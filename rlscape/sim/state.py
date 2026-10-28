@@ -29,6 +29,7 @@ class CharacterState:
     location: tuple[int, int, int] = SPAWN
     loot_mode: str = "valuable"
     progress: Progress = Progress()
+    regen_counter: int = 0  # ticks into the current hitpoint-regeneration cycle (rlscape.sim.health)
 
     @classmethod
     def fresh(cls) -> CharacterState:
@@ -43,6 +44,9 @@ class CharacterState:
 
     def level(self, skill: str) -> int:
         return level_for_xp(self.xp[SKILL_INDEX[skill]])
+
+    def max_hp(self) -> int:
+        return self.level("hitpoints")
 
     def total_level(self) -> int:
         return sum(level_for_xp(x) for x in self.xp)

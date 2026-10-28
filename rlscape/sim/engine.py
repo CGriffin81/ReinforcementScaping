@@ -11,6 +11,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from rlscape.sim.health import regenerate
 from rlscape.sim.options import COMPLETED, HORIZON, Option
 from rlscape.sim.skills import SKILLS
 from rlscape.sim.state import CharacterState
@@ -63,6 +64,8 @@ class Simulator:
         result = option.run(state, self.rng, budget)
         if not 1 <= result.ticks <= budget:
             raise RuntimeError(f"option {option.id!r} took {result.ticks} ticks with a budget of {budget}")
+        if not result.regenerated:
+            regenerate(state, result.ticks)
         state.tick += result.ticks
         truncated = state.tick >= self.horizon_ticks
         termination = HORIZON if truncated and result.termination == COMPLETED else result.termination

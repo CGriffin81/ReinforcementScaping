@@ -116,8 +116,8 @@ def test_lure_fishing_uses_a_feather_per_fish_and_stops_without_them():
 
 
 @needs_server
-def test_fresh_character_can_chop_mine_copper_and_tin_and_net_shrimp():
+def test_fresh_character_can_chop_mine_copper_and_tin_net_shrimp_and_pickpocket():
     sim = Simulator(build_catalog())
     sim.reset(seed=0)
     available = {o.id for o, ok in zip(sim.options, sim.action_mask()) if ok}
-    assert available == {"wc_logs", "mine_copper", "mine_tin", "fish_shrimp"}
+    assert available == {"wc_logs", "mine_copper", "mine_tin", "fish_shrimp", "pickpocket_men"}

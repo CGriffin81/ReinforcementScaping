@@ -23,6 +23,7 @@ HORIZON = "horizon"  # set by the engine, never by an option
 class OptionResult:
     ticks: int  # game time the option took, travel included; never more than the budget it was given
     termination: str
+    regenerated: bool = False  # the option applied hitpoint regeneration itself; otherwise the engine does
 
 
 class Option(ABC):

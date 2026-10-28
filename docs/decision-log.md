@@ -947,3 +947,42 @@ committed as `493af16`).
   444 ticks, walks included.
 - **Speed:** about 5,600 mining and 2,900 fishing decisions/s on one core,
   reset included.
+
+### Built (late afternoon): sim v0, pickpocketing and hitpoints
+`m002-sim-v0-pickpocketing`. The mining and fishing slice was committed first
+(`ae0cb7e`).
+- **Pickpocketing** (`pickpocket_men`), ported from `ThievingListeners` and
+  `Pickpockets`:
+  - success when `randomDouble(1, 100) <= getSkillSuccessChance(low, high,
+    level)`, i.e. p = (T − 1) / 99
+  - a success gives 3 coins and 8 XP with a 2-tick lock
+  - a failure gives a 5-tick stun and `random(1, 1)` = 1 damage
+  - sampled as runs of successes ended by a failure, one geometric draw each
+  - the site is the server's Man spawn nearest the spawn point, (3230, 3238)
+- **Hitpoints** (`rlscape/sim/health.py`), shared with combat later:
+  - regeneration from `SkillRestore`: one HP every **101** ticks (its check
+    is `++ >= 100`), on a cycle carried across options
+  - eating from `ConsumableListener` (2 ticks per bite) with heal amounts
+    from `Consumables` (102 single-bite foods)
+  - the retreat rule: eat at or below half HP, cheapest food first, and stop
+    when the food runs out
+  - the engine applies regeneration for options that don't handle HP
+    themselves
+- **gamedata:** `pickpocket_targets()` (17 targets with loot tables) and
+  `food_healing()`.
+- **Tests:** `tests/test_sim_thieving.py` (8). Full suite: 51 passed, 14
+  skipped.
+
+### Findings
+- **A fresh character** pickpockets 27 times (81 coins, Thieving 1→4), eats
+  its shrimp and bread, and stops out of food at half HP after 135 ticks. The
+  option is then masked until HP regenerates or food is bought, which is the
+  first real economy and health trade-off the agent meets.
+- **Speed:** about 1,500 decisions/s on one core for a full 15-minute option
+  (about 150 events). That's about 24k/s across 16 workers, so it's the
+  first family near the target; vectorising it is the fallback.
+- **Death** isn't modelled yet. Pickpocketing men can't kill (1 damage, stop
+  at half HP), and the option raises if a hit ever would. The death rule
+  arrives with combat.
+- **Only fixed, always-dropping, stackable loot** is modelled. Targets with
+  weighted or non-stackable loot raise until their table rules are ported.
