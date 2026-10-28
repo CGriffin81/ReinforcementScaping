@@ -9,7 +9,7 @@ and `ROADMAP.md` Appendix A. All of its questions are decided:
 - quests (§10)
 
 The item vocabulary *V* (§9) is chosen by the agreed rule before training, and Caleb checks the list. Any later
-change needs his approval and is logged in `docs/decision-log.md`.
+change needs Caleb's approval and is logged in `docs/decision-log.md`.
 
 ## 1. How options work
 

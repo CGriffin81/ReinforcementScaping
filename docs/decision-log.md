@@ -714,7 +714,7 @@ The interaction records in `docs/agent-interactions/` hold the full context.
 Caleb accepted all nine recommendations
 (`m002-open-decisions-accepted`):
 1. **Signed off** `env-contract.md` and `option-catalog.md`, both now
-   **v1.0**. Later changes need his approval and get logged here. The item
+   **v1.0**. Later changes need Caleb's approval and get logged here. The item
    vocabulary is chosen by the agreed rule, and Caleb checks the list.
 2. **Loot modes approved** (catalog §4.D): four modes the agent sets (all,
    valuable, vocabulary, none).

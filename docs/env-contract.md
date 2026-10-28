@@ -1,6 +1,6 @@
 # Environment Contract (v1.0, Signed off)
 
-**Status:** v1.0, signed off by Caleb on 2026-10-28. v1.0 adds the death rule (§1) to v0.6. Any later change needs his
+**Status:** v1.0, signed off by Caleb on 2026-10-28. v1.0 adds the death rule (§1) to v0.6. Any later change needs Caleb's
 approval and is logged in `docs/decision-log.md`.
 
 Both backends implement this contract exactly: `SimEnv` (the surrogate simulator) and `ServerEnv` (2009Scape

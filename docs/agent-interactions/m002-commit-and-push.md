@@ -34,7 +34,7 @@ no record. Everything below comes from that session's commands and their output.
   - made one commit, `846ca33` (38 files, including the submodule bump to `1223914`), and pushed it with upstream
     tracking
 - **No PR was opened by Claude.** Caleb asked for commit and push only. Caleb then opened and merged PR #2 from this
-  branch himself (merged 2026-10-27 21:25:55 CST).
+  branch (merged 2026-10-27 21:25:55 CST).
 
 ## Documentation Changes
 
