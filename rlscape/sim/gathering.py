@@ -11,13 +11,12 @@ from __future__ import annotations
 import heapq
 from collections.abc import Callable
 from dataclasses import dataclass
-from math import ceil
 
 import numpy as np
 
+from rlscape.sim.movement import walk
 from rlscape.sim.options import COMPLETED, INVENTORY_FULL, OptionResult
 from rlscape.sim.state import CharacterState
-from rlscape.travel import travel_ticks
 
 MAX_PLAYERS = 2000  # ServerConstants.MAX_PLAYERS
 PLAYERS_ONLINE = 1  # the RL character alone: ambient bots are off for calibration and E6 (env contract §7)
@@ -41,10 +40,9 @@ def gather_depleting(state: CharacterState, rng: np.random.Generator, budget: in
                      respawn: int) -> OptionResult:
     """Run one gathering option at a depleting site. `chance` is the per-attempt success probability, `collect`
     adds the reward and XP, `depletes` says whether this success used the resource up."""
-    elapsed = ceil(travel_ticks(state.location, site.tile))
-    if elapsed >= budget:
+    elapsed = walk(state, site.tile, budget)
+    if elapsed is None:
         return OptionResult(budget, COMPLETED)
-    state.location = site.tile
     standing, regrowing = site.resources, []  # regrowing: ticks (from the option's start) when depleted ones return
     while True:
         while regrowing and regrowing[0] <= elapsed:

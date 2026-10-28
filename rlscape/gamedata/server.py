@@ -27,6 +27,11 @@ FISHING_OPTION = SERVER_CONTENT / "global" / "skill" / "fishing" / "FishingOptio
 FISH_SPOTS = SERVER_CONTENT / "global" / "skill" / "fishing" / "FishSpots.kt"
 PICKPOCKETS = SERVER_CONTENT / "global" / "skill" / "thieving" / "Pickpockets.kt"
 CONSUMABLES = SERVER_CONTENT / "data" / "consumables" / "Consumables.java"
+SMITHING = SERVER_CONTENT / "global" / "skill" / "smithing"
+COOKABLE_ITEMS = SERVER_CONTENT / "global" / "skill" / "cooking" / "CookableItems.java"
+LOGS = SERVER_CONTENT / "global" / "skill" / "firemaking" / "Log.java"
+BONES = SERVER_CONTENT / "global" / "skill" / "prayer" / "Bones.kt"
+STATIONS = REPO / "data" / "stations.csv"  # curated furnaces, anvils and ranges; see the file's "check" column
 SKILLING_TOOL = SERVER_CONTENT / "data" / "skill" / "SkillingTool.java"
 PRICES = REPO / "data" / "prices_v2.csv"
 ITEM_DEFINITIONS = REPO / "data" / "item_definitions.csv"  # scripts/export_item_definitions.py (cache)
@@ -498,6 +503,118 @@ def food_healing() -> dict[int, int]:
     text = CONSUMABLES.read_text(encoding="utf-8")
     return {int(item): int(heal) for item, heal in re.findall(
         r"new Food\(new int\[\]\s*\{\s*(\d+)\s*\},\s*new HealingEffect\((\d+)\)\)", text)}
+
+
+@dataclass(frozen=True)
+class SmeltedBar:
+    """A smelting Bar enum constant: level, experience, the bar, and the ores one bar takes."""
+
+    name: str
+    level: int
+    experience: float
+    product: int
+    ores: tuple[tuple[int, int], ...]  # (item, amount)
+
+
+@cache
+def smelted_bars() -> dict[str, SmeltedBar]:
+    text = (SMITHING / "smelting" / "Bar.java").read_text(encoding="utf-8")
+    out = {}
+    for name, level, xp, items in re.findall(r"^\s*([A-Z_]+)\((\d+),\s*([\d.]+),\s*(new Item\(.*?)\),?\s*$", text, re.M):
+        stacks = [(int(i), int(n or 1)) for i, n in re.findall(r"new Item\(\s*(\d+)\s*(?:,\s*(\d+))?\s*\)", items)]
+        out[name] = SmeltedBar(name, int(level), float(xp), stacks[0][0], tuple(stacks[1:]))
+    return out
+
+
+@dataclass(frozen=True)
+class Smithable:
+    """A Bars enum constant joined with its SmithingType and BarType."""
+
+    name: str
+    bar: int  # bar item id
+    kind: str  # SmithingType name, e.g. TYPE_PLATEBODY
+    product: int
+    level: int
+    bars: int  # bars used per item
+    amount: int  # items made per action
+    experience_per_bar: float  # BarType experience
+
+
+@cache
+def smithables() -> dict[str, Smithable]:
+    types = {name: (int(bars), int(amount)) for name, bars, amount in re.findall(
+        r"^\s*(TYPE_[A-Z_]+)\(\s*(\d+)\s*,.*?,\s*(\d+)\s*\),?\s*;?\s*$",
+        (SMITHING / "SmithingType.java").read_text(encoding="utf-8"), re.M)}
+    bar_types = {name: (int(bar), float(xp)) for name, bar, xp in re.findall(
+        r"^\s*([A-Z_]+)\(\s*(\d+)\s*,\s*([\d.]+)\s*,\s*\"", (SMITHING / "BarType.java").read_text(encoding="utf-8"), re.M)}
+    out = {}
+    for name, bar_type, kind, product, level in re.findall(
+            r"^\s*([A-Z_]+)\(BarType\.([A-Z_]+),\s*SmithingType\.(TYPE_[A-Z_]+),\s*(\d+),\s*(\d+)\)",
+            (SMITHING / "Bars.java").read_text(encoding="utf-8"), re.M):
+        if kind in types and bar_type in bar_types:
+            bar, xp = bar_types[bar_type]
+            out[name] = Smithable(name, bar, kind, int(product), int(level), *types[kind], xp)
+    return out
+
+
+@dataclass(frozen=True)
+class Cookable:
+    """A CookableItems enum constant: burn bounds on a fire and on a range, and the Lumbridge castle range's own."""
+
+    name: str
+    cooked: int
+    raw: int
+    burnt: int
+    level: int
+    experience: float
+    fire: tuple[int, int]  # (low, high) for getSkillSuccessChance
+    range: tuple[int, int]
+    lumbridge_range: tuple[int, int]  # CookableItems.lumbridgeRangeValues, else the range bounds
+
+
+@cache
+def cookables() -> dict[int, Cookable]:
+    """Raw item id -> Cookable."""
+    text = COOKABLE_ITEMS.read_text(encoding="utf-8")
+    lumbridge = {int(item): (int(low), int(high)) for item, low, high in re.findall(
+        r"lumbridgeRangeValues\.put\(Items\.[A-Z0-9_]+?_(\d+),\s*new int\[\]\s*\{\s*(\d+)\s*,\s*(\d+)\s*\}\)", text)}
+    out = {}
+    for name, cooked, raw, burnt, level, xp, low, high, rlow, rhigh in re.findall(
+            r"^\s*([A-Z_]+)\((\d+),\s*(\d+),\s*(\d+),\s*(\d+),\s*([\d.]+),\s*(\d+),\s*(\d+),\s*(\d+),\s*(\d+)\)", text, re.M):
+        raw_id, range_bounds = int(raw), (int(rlow), int(rhigh))
+        out[raw_id] = Cookable(name, int(cooked), raw_id, int(burnt), int(level), float(xp), (int(low), int(high)),
+                               range_bounds, lumbridge.get(raw_id, range_bounds))
+    return out
+
+
+@cache
+def log_types() -> dict[int, tuple[int, float]]:
+    """Log item id -> (Firemaking level, experience), from the firemaking Log enum."""
+    return {int(item): (int(level), float(xp)) for item, level, xp in re.findall(
+        r"^\s*[A-Z_]+\((\d+),\s*(\d+),\s*\d+,\s*\d+,\s*([\d.]+),\s*\d+\)", LOGS.read_text(encoding="utf-8"), re.M)}
+
+
+@cache
+def bone_experience() -> dict[int, float]:
+    """Bone item id -> Prayer experience for burying it (Bones enum)."""
+    return {int(item): float(xp) for item, xp in re.findall(
+        r"^\s*[A-Z_0-9]+\(Items\.[A-Z0-9_]+?_(\d+),\s*([\d.]+)", BONES.read_text(encoding="utf-8"), re.M)}
+
+
+@dataclass(frozen=True)
+class Station:
+    kind: str  # furnace, anvil, range
+    name: str
+    tile: tuple[int, int, int]
+    object: int | None  # scenery id when the server treats this one specially (the Lumbridge range, 114)
+    requires: str  # access requirement grammar (rlscape.combat.access), empty for none
+
+
+@cache
+def stations() -> tuple[Station, ...]:
+    with STATIONS.open(newline="", encoding="utf-8") as f:
+        return tuple(Station(r["kind"], r["name"], (int(r["x"]), int(r["y"]), int(r["plane"])),
+                             int(r["object"]) if r["object"] else None, r["requires"]) for r in csv.DictReader(f))
 
 
 @cache

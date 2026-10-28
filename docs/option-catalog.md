@@ -40,7 +40,7 @@ The world is members-enabled (`rl.conf`), so members areas are allowed.
 | `falador` | Falador and the Dwarven Mine | Falador east bank | coal (`CoalMiner`), furnace |
 | `barbarian_village` | Barbarian Village | Edgeville | fly fishing; barbarians |
 | `edgeville` | Edgeville and its dungeon | Edgeville bank | yews; hill giants around (3118, 9845) behind the brass-key door, *verify access* |
-| `al_kharid` | Al Kharid | Al Kharid bank | warriors around (3284, 3172); toll gate, *verify cost* |
+| `al_kharid` | Al Kharid | Al Kharid bank | warriors around (3284, 3172); toll gate: 10 gp from the inventory each way, free after Prince Ali Rescue (server), modelled in `rlscape/sim/movement.py`; without the coins, the walk goes round the fence (*verify route*) |
 | `catherby` | Catherby (members) | Catherby bank | lobsters (`LobsterCatcher`); range |
 
 Combat targets (§4) can be anywhere reachable. Their travel times come from the same region graph, extended to

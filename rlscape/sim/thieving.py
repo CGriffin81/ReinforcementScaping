@@ -16,12 +16,11 @@ non-stackable loot come later. The site is the server's Man spawn nearest the Lu
 
 from __future__ import annotations
 
-from math import ceil
-
 import numpy as np
 
 from rlscape.gamedata import server as gd
 from rlscape.sim.health import EAT_TICKS, eat_one, foods_held, regenerate, retreat_hp
+from rlscape.sim.movement import walk
 from rlscape.sim.options import COMPLETED, INVENTORY_FULL, OUT_OF_FOOD, Option, OptionResult
 from rlscape.sim.skills import MAX_XP, SKILL_INDEX
 from rlscape.sim.state import SPAWN, CharacterState
@@ -75,10 +74,9 @@ class Pickpocket(Option):
         state.xp[thieving] = min(state.xp[thieving] + self.target.experience * successes, MAX_XP)
 
     def run(self, state: CharacterState, rng: np.random.Generator, budget: int) -> OptionResult:
-        elapsed = ceil(travel_ticks(state.location, self.tile))
-        if elapsed >= budget:
+        elapsed = walk(state, self.tile, budget)
+        if elapsed is None:
             return OptionResult(budget, COMPLETED)
-        state.location = self.tile
         regenerate(state, elapsed)
         target = self.target
         while True:

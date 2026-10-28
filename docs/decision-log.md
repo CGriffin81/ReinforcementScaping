@@ -986,3 +986,77 @@ committed as `493af16`).
   arrives with combat.
 - **Only fixed, always-dropping, stackable loot** is modelled. Targets with
   weighted or non-stackable loot raise until their table rules are ported.
+
+### Built (late afternoon): sim v0, processing
+`m002-sim-v0-processing`. The pickpocketing slice was committed first
+(`32f4ed3`). Catalog §3's nine options, ported from the server's pulses:
+- **Smelting** (`SmeltingPulse`, `smelting.Bar`):
+  - a bar every 5 ticks; the ores are used either way
+  - iron succeeds half the time (`nextBool`)
+  - XP only on success (bronze 6.2, iron 12.5, steel 17.5)
+- **Smithing** (`SmithingPulse`, `Bars`, `SmithingType`, `BarType`):
+  - an item every 4 ticks after a first tick, with a hammer
+  - each item uses its type's bars and gives the bar type's XP per bar
+  - "best item" means the most bars per item the level and bars allow, then
+    the most valuable per bar; leftover bars go into the next best that fits
+  - dart tips and claws only after The Tourist Trap and Death Plateau, as
+    the pulse checks
+- **Cooking** (`StandardCookingPulse`, `CookableItems`):
+  - an item every 5 ticks on a range
+  - burnt if `randomDouble(100) > getSkillSuccessChance`, with the range's
+    bounds; the Lumbridge castle range (object 114) needs Cook's Assistant
+    and has its own bounds
+  - anything `CookableItems` turns into food is cooked
+- **Firemaking** (`FireMakingPulse`, `firemaking.Log`):
+  - a light attempt every 3 ticks with the server's ceil formula against
+    `random(99)`
+  - a log lit within 2 ticks of the last fire lights at once
+    (`setLastFire`), so a line of fires rolls only for the first log
+- **Burying bones** (`BoneBuryListener`, `Bones`): a bone every 2 ticks.
+- **Stations:** `data/stations.csv` (new, curated) with 4 furnaces, 2 anvils
+  and 3 ranges. Three tiles come from server code (the Lumbridge and
+  Edgeville furnaces, the Varrock south-east anvil, all from diary checks);
+  the rest are estimates. An option uses the nearest station the character
+  can reach.
+- **gamedata:** `smelted_bars()`, `smithables()` (all 157 `Bars` entries),
+  `cookables()` (with `lumbridgeRangeValues`), `log_types()`,
+  `bone_experience()`, `stations()`.
+- **Tests:** `tests/test_sim_processing.py` (9). Full suite: 60 passed, 14
+  skipped.
+
+### Findings (need calibration)
+- **Firemaking is very fast.** Because of the 2-tick relight, 10 normal logs
+  burn in 21 ticks (400 XP), about 114k Firemaking XP/hr even at level 1, and
+  willows would give about 160k/hr. That is the server's code as written,
+  ported faithfully. It's the first thing to check on the server
+  (`CHAIN_TICKS`), because if it holds, burning logs will dominate the skill
+  reward.
+- **Cooking without Cook's Assistant goes to Al Kharid's range.** The Al
+  Kharid toll gate (10 gp, or Prince Ali Rescue) isn't modelled, and the
+  range tiles are estimates.
+- **Fresh characters can't smith yet:** the starter kit has no hammer, so
+  buying one is the first economy dependency.
+
+### User decisions (late afternoon, after the processing slice)
+`m002-al-kharid-toll`.
+- **Firemaking's speed is normal** (Caleb). In 2009 it was seen as a
+  do-nothing skill that unlocks nothing, and burned logs give nothing back.
+  The model already reflects that: logs leave the inventory with no product,
+  so net worth falls by their value and the wealth reward charges for it.
+  No calibration flag.
+- **Model the 10 gp Al Kharid toll** (Caleb). Built in
+  `rlscape/sim/movement.py`, and every option now walks through it:
+  - the server's rules (`TollGateOptionPlugin`, `BorderGuardDialogue`): 10
+    coins from the inventory each time the gate is passed, in either
+    direction; free once Prince Ali Rescue is past stage 50, counted here as
+    complete
+  - a walk uses the gate when one end is inside Al Kharid and the other is
+    west of the fence, south of its north end
+  - without 10 coins in the inventory, the walk goes round the fence's north
+    end instead (as players did via the Al Kharid mine): slower, never
+    stranded
+  - nearest-station choices count the route, detours included
+  - the fence line and its north end are estimates to verify on the server
+- **Tests:** `tests/test_sim_movement.py` (6). Full suite: 66 passed, 14
+  skipped.
+- Work pauses for a few hours after this commit.

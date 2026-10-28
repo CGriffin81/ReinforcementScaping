@@ -19,6 +19,7 @@ from math import ceil
 import numpy as np
 
 from rlscape.gamedata import server as gd
+from rlscape.sim.movement import walk
 from rlscape.sim.options import COMPLETED, INPUTS_EXHAUSTED, INVENTORY_FULL, Option, OptionResult
 from rlscape.sim.skills import MAX_XP, SKILL_INDEX
 from rlscape.sim.state import CharacterState
@@ -58,10 +59,9 @@ class Fishing(Option):
 
     def run(self, state: CharacterState, rng: np.random.Generator, budget: int) -> OptionResult:
         spot = self.spots[0]
-        elapsed = ceil(travel_ticks(state.location, spot))
-        if elapsed >= budget:
+        elapsed = walk(state, spot, budget)
+        if elapsed is None:
             return OptionResult(budget, COMPLETED)
-        state.location = spot
         next_move = elapsed + int(rng.integers(0, rng.integers(*SPOT_MOVE_TICKS)))  # partway through a cycle
         fishing = SKILL_INDEX["fishing"]
         while True:
