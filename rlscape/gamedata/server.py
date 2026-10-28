@@ -19,6 +19,9 @@ SERVER_CONFIGS = REPO / "server" / "Server" / "data" / "configs"
 SERVER_CONTENT = REPO / "server" / "Server" / "src" / "main" / "content"
 SLAYER_TASKS = SERVER_CONTENT / "global" / "skill" / "slayer" / "Tasks.java"
 QUESTS = SERVER_CONTENT / "data" / "Quests.kt"
+CHARACTER_DESIGN = SERVER_CONTENT / "region" / "misc" / "tutisland" / "handlers" / "iface" / "CharacterDesign.java"
+WOODCUTTING_NODE = SERVER_CONTENT / "global" / "skill" / "gather" / "woodcutting" / "WoodcuttingNode.java"
+SKILLING_TOOL = SERVER_CONTENT / "data" / "skill" / "SkillingTool.java"
 PRICES = REPO / "data" / "prices_v2.csv"
 ITEM_DEFINITIONS = REPO / "data" / "item_definitions.csv"  # scripts/export_item_definitions.py (cache)
 NPC_DEFINITIONS = REPO / "data" / "npc_definitions.csv"  # scripts/export_npc_definitions.py (cache)
@@ -280,3 +283,86 @@ def slayer_levels() -> dict[int, int]:
 def quest_names() -> frozenset[str]:
     """The server's Quests enum names (content/data/Quests.kt), the vocabulary for quest requirements."""
     return frozenset(re.findall(r"^\s+([A-Z_0-9]+)\(\"", QUESTS.read_text(encoding="utf-8"), re.M))
+
+
+@cache
+def starter_kit() -> tuple[tuple[tuple[int, int], ...], tuple[tuple[int, int], ...]]:
+    """(inventory, bank) as (item id, amount): what a character leaves Tutorial Island with. CharacterDesign's
+    STARTER_PACK and STARTER_BANK, which the bridge's `spawn` also gives."""
+    text = CHARACTER_DESIGN.read_text(encoding="utf-8")
+
+    def items(name: str) -> tuple[tuple[int, int], ...]:
+        body = re.search(rf"{name}\s*=\s*new Item\[\]\s*\{{(.*?)\}};", text, re.S).group(1)
+        return tuple((int(i), int(n)) for i, n in re.findall(r"new Item\(\s*(\d+)\s*,\s*(\d+)\s*\)", body))
+
+    return items("STARTER_PACK"), items("STARTER_BANK")
+
+
+# WoodcuttingListener.rollDepletion: these tree identifiers fall after every log; every other tree falls 1 time in 8.
+ALWAYS_FALLING_TREES = frozenset({1, 2, 3, 4, 6})
+
+
+@dataclass(frozen=True)
+class TreeType:
+    """One WoodcuttingNode identifier's parameters (WoodcuttingNode's constructor switch)."""
+
+    identifier: int
+    reward: int  # log item id
+    level: int
+    experience: float
+    base_low: float
+    base_high: float
+    tier_mod_low: float
+    tier_mod_high: float
+    respawn_min: int  # ticks; getRespawnDuration scales between min and max by the share of player slots in use
+    respawn_max: int  # both -1 for a tree that never falls (respawnRate = -1)
+
+    @property
+    def depletes(self) -> bool:
+        return self.respawn_min > 0  # rollDepletion only runs when getRespawnRate() > 0
+
+    @property
+    def always_falls(self) -> bool:
+        return self.depletes and self.identifier in ALWAYS_FALLING_TREES
+
+
+@cache
+def tree_types() -> dict[int, TreeType]:
+    """WoodcuttingNode identifier -> TreeType, parsed from the constructor's switch (consecutive case labels share
+    a body)."""
+    text = WOODCUTTING_NODE.read_text(encoding="utf-8")
+    switch = text[text.index("switch(identifier & 0xFF)"):]
+    out: dict[int, TreeType] = {}
+    for labels, body in re.findall(r"((?:case\s+\d+:\s*)+)(.*?)break;", switch, re.S):
+        fields = {k: v.strip() for k, v in re.findall(r"(?:this\.)?(\w+)\s*=\s*([^;]+);", body)}
+        if "baseLow" not in fields:
+            continue
+        rate = re.match(r"(\d+)\s*\|\s*(\d+)\s*<<\s*16", fields["respawnRate"])
+        low, high = map(int, rate.groups()) if rate else (-1, -1)
+        for label in re.findall(r"\d+", labels):
+            out[int(label)] = TreeType(int(label), int(fields["reward"]), int(fields["level"]),
+                                       float(fields["experience"]), float(fields["baseLow"]),
+                                       float(fields["baseHigh"]), float(fields["tierModLow"]),
+                                       float(fields["tierModHigh"]), low, high)
+    return out
+
+
+@dataclass(frozen=True)
+class SkillingTool:
+    """A SkillingTool enum constant. `ordinal` is its position in the enum, which WoodcuttingListener.checkReward
+    multiplies into the success bounds."""
+
+    name: str
+    item: int
+    level: int
+    ratio: float
+    ordinal: int
+
+
+@cache
+def skilling_tools() -> dict[str, SkillingTool]:
+    text = SKILLING_TOOL.read_text(encoding="utf-8")
+    constants = re.findall(r"^\s*([A-Z_0-9]+)\(\s*(?:Items\.[A-Z0-9_]+_)?(\d+)\s*,\s*(\d+)\s*,\s*([\d.]+)D?", text,
+                           re.M)
+    return {name: SkillingTool(name, int(item), int(level), float(ratio), i)
+            for i, (name, item, level, ratio) in enumerate(constants)}

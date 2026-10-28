@@ -851,3 +851,51 @@ option catalog are now v1.1.
 - the item vocabulary list
 - the scripted-guide routine
 - the five new skills' options (catalog v1.2)
+
+### Built (afternoon): sim v0, first slice
+`m002-sim-v0-core-and-woodcutting`, on branch `sim-v0` (the merged
+`sync-upstream-2009scape` branch deleted first; the simulation-decision docs
+committed as `493af16`).
+- `rlscape/sim/`:
+  - `skills.py`: the 24 skills in the server's order; XP and levels from
+    `Skills.getExperienceByLevel`, line for line; the skill measure that
+    r_skill rewards
+  - `state.py`: the character, with inventory stacking rules, bank,
+    equipment, location, access progress and net worth
+  - `options.py`: the option interface and the termination reasons
+  - `engine.py`: `Simulator.reset` and `step`, which handle the time budget
+    (D or what's left of the horizon), truncation, the reward vector, every
+    contract `info` field and checkpoints
+  - `woodcutting.py`: the first family
+- **Woodcutting,** ported from `WoodcuttingListener`:
+  - a swing every 3 ticks, succeeding with `getSkillSuccessChance` over the
+    tree's bounds plus the axe's enum ordinal (halved for black)
+  - normal trees fall after every log, others 1 time in 8
+  - respawns from `getRespawnDuration` with one player online
+  - the axe chosen by `SkillingTool.getHatchet`'s priority
+  - sampled log by log: one geometric draw of swings per log, one Bernoulli
+    for the fall; the level is re-read after every log
+- **New gamedata parsers,** reading the server source:
+  - `starter_kit()` from `CharacterDesign`
+  - `tree_types()` from `WoodcuttingNode`'s switch, including fall-through
+    labels and the never-falling `respawnRate = -1`
+  - `skilling_tools()` from `SkillingTool` (all 36 constants, so the
+    ordinals are right)
+- **Refactor:** `rlscape/travel.py` now holds the travel model shared by
+  combat and gathering; `candidates` imports it.
+- **Dependency:** `numpy` (2.5.4) added, the first piece of the RL stack.
+- **Tests:** `tests/test_sim.py` (10). Full suite: 35 passed, 14 skipped.
+
+### Findings
+- A fresh character fills its 10 free slots with logs in 197 ticks (walk
+  included) and reaches Woodcutting 3. That matches the server's G2 gate,
+  which gave the same 10 logs and 250 XP. The 18-item starter kit leaves only
+  10 free slots, so banking or dropping starter items comes up early for the
+  agent.
+- **Speed:** about 5,700 woodcutting decisions/s on one core, reset
+  included, so roughly 90k/s across 16 workers against the 20k target.
+  Combat ranking is the expected bottleneck.
+- **Still estimates:** the Lumbridge, Draynor-oak and Edgeville-yew tiles
+  and all tree counts (the willow tile comes from the `DraynorWillows` bot).
+  The server ships no scenery data, so a bridge export of scenery near each
+  site is the planned source. Bird nests (1 in 282 logs) aren't modelled yet.

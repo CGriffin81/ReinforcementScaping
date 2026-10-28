@@ -9,7 +9,7 @@ Pipeline for each decision:
      until the drops fill the free slots, then the round trip to the nearest bank);
   3. per combat class: the 3 best monsters by XP/hr and the 3 best by gp/hr (`select_candidates`).
 
-Travel times use straight-line tile distance with a detour factor and an assumed running speed, and the bank list is
+Travel times (rlscape.travel) use straight-line tile distance with a detour factor and an assumed running speed, and the bank list is
 curated (data/banks.csv). All are marked for calibration on the server.
 """
 
@@ -23,6 +23,7 @@ from typing import Callable
 from rlscape.combat.access import Progress, can_reach, meets_slayer_level
 from rlscape.combat.rates import Fighter, Plan, Rates, combat_rates
 from rlscape.gamedata import server as gd
+from rlscape.travel import BANKING_TICKS, travel_ticks
 
 # Special damage (option catalog §4.B), from the server's NPC classes and ContentAPI.hasDragonfireShieldProtection.
 DRAGONFIRE_NPCS = frozenset({
@@ -39,34 +40,12 @@ ANTI_DRAGON_SHIELD, DRAGONFIRE_SHIELDS, ELEMENTAL_SHIELD, MIND_SHIELD = 1540, fr
 DRAGONFIRE_PROTECTION = DRAGONFIRE_SHIELDS | {ANTI_DRAGON_SHIELD}
 WYVERN_PROTECTION = DRAGONFIRE_SHIELDS | {ELEMENTAL_SHIELD, MIND_SHIELD}
 
-# Movement. Calibrate all of these on the server.
-RUN_TILES_PER_TICK = 1.5  # effective speed: running, with run energy running out now and then
-PATH_DETOUR = 1.3  # walking paths are longer than straight lines
-UNDERGROUND_Y_OFFSET = 6400  # dungeons sit 6400 tiles north of the surface they lie under
-LEVEL_CHANGE_TICKS = 12  # stairs or ladders, per change of plane or underground
-BANKING_TICKS = 8  # opening a booth and depositing
-
 # Training dummies can't be killed: CombatSwingHandler.adjustBattleState fully restores 4474 and 7891 and gives 0.1x XP.
 UNKILLABLE_NPCS = frozenset({4474, 7891})
 
 LOOT_MODES = ("all", "valuable", "vocabulary", "none")
 VALUABLE_GP = 100
 COMBAT_CLASSES = ("melee", "ranged", "magic")
-
-
-def _surface(x: int, y: int) -> tuple[int, int, bool]:
-    if y >= UNDERGROUND_Y_OFFSET:
-        return x, y - UNDERGROUND_Y_OFFSET, True
-    return x, y, False
-
-
-def travel_ticks(a: tuple[int, int, int], b: tuple[int, int, int]) -> float:
-    """Ticks to get from tile a to tile b: straight-line distance with a detour factor, plus stairs and ladders."""
-    ax, ay, a_under = _surface(a[0], a[1])
-    bx, by, b_under = _surface(b[0], b[1])
-    distance = max(abs(ax - bx), abs(ay - by))
-    level_changes = (a[2] != b[2]) + (a_under != b_under)
-    return distance * PATH_DETOUR / RUN_TILES_PER_TICK + level_changes * LEVEL_CHANGE_TICKS
 
 
 def config_combat_level(npc: gd.Npc) -> int:

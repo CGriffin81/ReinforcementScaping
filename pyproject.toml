@@ -3,7 +3,9 @@ name = "rlscape"
 version = "0.1.0"
 description = "Hierarchical RL for skill and wealth accumulation in 2009Scape (CS898BG project)"
 requires-python = ">=3.12,<3.13"
-dependencies = []
+dependencies = [
+    "numpy>=2.5.4",
+]
 
 [dependency-groups]
 dev = ["pytest>=8"]
