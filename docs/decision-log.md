@@ -749,3 +749,32 @@ Caleb accepted all nine recommendations
   audit never checked GitHub. The commits since #3 (the doc fixes, these
   decisions, and this correction) go in PR #4. Lesson: check `gh pr list`
   before reporting PR state.
+
+### User decision (afternoon, repositories)
+- **Merge upstream 2009Scape and clean up the branches**
+  (`m002-upstream-sync-and-branch-cleanup`), after a check of both repos
+  found everything in sync except local `main` (fast-forwarded) and found
+  upstream 8 commits ahead.
+- **Upstream sync:** fork `master` moved to upstream `f279da8`, and merged into
+  `rl` as `1f8665b`, which is clean because none of the 8 commits touch files
+  changed on `rl`. Relevant to the project:
+  - the ranged-ammunition drop-pile fix (`GroundItemManager`)
+  - five repaired map areas in the cache (4 LFS files)
+  - the rest is minor: poisoned dragon darts and arrows, a Gnomecopter deposit
+    box, a blurite crossbow fix, dart feathers, brewing offline catch-up, and
+    a house-amulet menu
+- **Validated on the merged build:**
+  - full suite with the live server: 39 passed
+  - gates: G1 34.3× at 15 ms; G2 10 logs and 250 XP
+  - the game port is still `127.0.0.1:43595`
+  - re-exporting the item and NPC definitions left `data/` byte-identical
+    (7,324 items, 7,887 NPCs), so the cache update changed no game data the
+    model uses
+- **Pushing needed every intermediate LFS object:** fetching only the tip's
+  objects left one version of `main_file_cache.dat2` missing, and the push
+  was rejected. `git lfs fetch --all upstream` fixed it (6 objects, 184 MB
+  uploaded). CLAUDE.md now says so.
+- **Branches:** `env-contract-and-combat-model` and
+  `ge-frozen-buyer-random-events` were deleted locally and on GitHub, after
+  checking both were fully merged into `main` (PRs #4 and #1). The submodule
+  bump goes on `sync-upstream-2009scape`.

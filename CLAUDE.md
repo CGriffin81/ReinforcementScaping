@@ -54,10 +54,14 @@ work.
   Maven comes from the repo's `server/Server/mvnw.cmd` wrapper.
 - `server/` is a **git submodule** pointing to the fork
   https://github.com/CGriffin81/2009scape-rl, branch `rl` (AGPLv3; upstream
-  is https://gitlab.com/2009scape/2009scape). In the fork, `master` = upstream
-  `bea45a9e` and our changes live on `rl`. All server modifications go in the
-  fork and are committed there first; then this repo's submodule pointer is
-  bumped.
+  is https://gitlab.com/2009scape/2009scape). In the fork, `master` mirrors
+  upstream (synced to `f279da8` on 2026-10-28, merged into `rl`) and our
+  changes live on `rl`. All server modifications go in the fork and are
+  committed there first; then this repo's submodule pointer is bumped.
+  Sync upstream again only with Caleb's approval. Claude's recommendation is
+  to keep the server version fixed once calibration starts. When syncing,
+  run `git lfs fetch --all upstream` before pushing, or the push is rejected
+  for missing cache objects.
 - Our server code is `Server/src/main/content/rl/`: `RLBridge.kt` (transport),
   `RLCommands.kt` (commands), and `RLPlayer.kt` (the agent's character).
   - `RLPlayer` is **treated as a human by every game rule**
