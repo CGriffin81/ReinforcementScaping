@@ -14,7 +14,8 @@ items by high-alchemy value are kept (no skull in training; Protect Item isn't m
 rest goes into a gravestone for 200 ticks, which reclaim_gravestone recovers by walking back in time; in the
 Wilderness the rest is lost. Items in a gravestone aren't counted in net worth until recovered.
 
-Melee only so far; ranged (ammunition) and magic (runes per cast) come next, as do the candidate-slot actions.
+Melee only so far; ranged (ammunition) and magic (runes per cast) come next. The candidate-slot actions that
+start fights are in rlscape.sim.slots.
 """
 
 from __future__ import annotations
@@ -131,17 +132,22 @@ def die(state: CharacterState, now: int) -> None:
 
 def fight(state: CharacterState, rng: np.random.Generator, budget: int, entry: PoolEntry, plan: Plan, site: Site,
           loot: Callable[[int], bool]) -> OptionResult:
+    npc, stackable, kills = entry.npc, gd.stackable_items(), 0
+
+    def done(ticks: int, termination: str, regenerated: bool = True) -> OptionResult:
+        detail = {"target": npc.id, "target_name": npc.name, "style": plan.style, "site": site.spawn, "kills": kills}
+        return OptionResult(ticks, termination, regenerated, detail)
+
     elapsed = walk(state, site.spawn, budget)
     if elapsed is None:
-        return OptionResult(budget, COMPLETED)
+        return done(budget, COMPLETED, regenerated=False)
     regenerate(state, elapsed)
     wielding = wield_best(state, plan.combat_class)
     elapsed = min(elapsed + wielding, budget)
-    npc, stackable = entry.npc, gd.stackable_items()
     while True:
         if state.hp <= retreat_hp(state):
             if not eat_one(state):
-                return OptionResult(elapsed, OUT_OF_FOOD, regenerated=True)
+                return done(max(elapsed, 1), OUT_OF_FOOD)
             continue
         fighter = fighter_for(state)
         chance, max_hit, speed, _, xp_per_damage = player_offence(fighter, plan, npc)
@@ -171,20 +177,21 @@ def fight(state: CharacterState, rng: np.random.Generator, budget: int, entry: P
                 regenerate(state, fought)
                 if ended == DIED:
                     die(state, state.tick + elapsed)
-                return OptionResult(max(elapsed, 1), ended, regenerated=True)
+                return done(max(elapsed, 1), ended)
         step = ticks + eating + OVERHEAD_TICKS_PER_KILL
         if elapsed + step > budget:
             regenerate(state, budget - elapsed)
-            return OptionResult(budget, COMPLETED, regenerated=True)
+            return done(budget, COMPLETED)
         elapsed += step
         regenerate(state, step)
         _gain(state, xp_per_damage, npc.hitpoints)
+        kills += 1
         for item, amount in roll_drops(entry.drops, rng):
             if loot(item):
                 state.add(item, amount)
         if state.free_slots() == 0 and any(loot(i) and i not in stackable for i, _ in (entry.drops.expected_items()
                                                                                        .items() if entry.drops else ())):
-            return OptionResult(elapsed, INVENTORY_FULL, regenerated=True)
+            return done(elapsed, INVENTORY_FULL)
 
 
 class ReclaimGravestone(Option):

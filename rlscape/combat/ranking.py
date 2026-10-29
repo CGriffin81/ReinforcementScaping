@@ -27,7 +27,7 @@ from rlscape.combat.candidates import (
     loot_per_kill,
     loot_rule,
 )
-from rlscape.combat.rates import EAT_BELOW_FRACTION, ESCAPE_ATTACKS, Fighter, Plan, combat_rates
+from rlscape.combat.rates import EAT_BELOW_FRACTION, ESCAPE_ATTACKS, Fighter, Plan, Rates, combat_rates
 from rlscape.travel import LEVEL_CHANGE_TICKS, PATH_DETOUR, RUN_TILES_PER_TICK, UNDERGROUND_Y_OFFSET
 
 
@@ -93,6 +93,11 @@ class CandidateRanker:
     @lru_cache(maxsize=64)
     def _protected(self, shield_id: int | None) -> np.ndarray:
         return np.array([has_special_damage_protection(e.npc, shield_id) for e in self.pool])
+
+    def rates(self, fighter: Fighter, plan: Plan) -> tuple[Rates | None, ...]:
+        """The raw fighting rates per pool entry for one fighter and plan (None where the plan can't hurt the monster),
+        from the same cache the ranking uses."""
+        return self._plan_rates(fighter, plan).rates
 
     # --- per decision ------------------------------------------------------------------------------------------------
 

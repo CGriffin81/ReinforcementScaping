@@ -13,6 +13,8 @@ from rlscape.combat.access import (
     can_reach,
     meets_slayer_level,
     parse_requirement,
+    relevant,
+    unlocked_rules,
 )
 from rlscape.combat.candidates import Character, enemy_pool, select_candidates
 from rlscape.combat.rates import Fighter, Plan
@@ -97,3 +99,24 @@ def test_fresh_character_is_offered_reachable_monsters_only():
     names = {c.entry.npc.name for c in select_candidates(enemy_pool(), plans, lumbridge, 1500)["melee"]}
     assert "Cow" in names
     assert not names & {"Cockroach drone", "Undead chicken", "Undead cow"}  # the gated gp/hr slots before the table
+
+
+def test_reduced_progress_keeps_access_and_merges_what_access_ignores():
+    progress = [Progress(), Progress(coins=900, items_held=frozenset({1351, 995, 1511})),
+                Progress(coins=1000, levels=(("agility", 70), ("woodcutting", 50)), items_held=frozenset({954})),
+                Progress(quests_underway=frozenset({"DRAGON_SLAYER"}), levels=(("slayer", 15),))]
+    for p in progress:
+        assert unlocked_rules(relevant(p)) == unlocked_rules(p)
+        assert relevant(p).level("slayer") == p.level("slayer")
+    assert relevant(Progress(coins=900, items_held=frozenset({1511}))) == relevant(Progress(coins=950))  # logs, coins
+
+
+@needs_data
+def test_state_access_counts_banked_items_and_coins():
+    from rlscape.sim.state import COINS, CharacterState
+
+    state = CharacterState.fresh()  # holds a bronze axe, one of Brimhaven's vine-cutting axes
+    state.bank[COINS] = 900  # Saniboch's fee is 875
+    assert "brimhaven_dungeon" in unlocked_rules(state.access_progress())
+    state.bank[COINS] = 800
+    assert "brimhaven_dungeon" not in unlocked_rules(state.access_progress())

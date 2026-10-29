@@ -1226,3 +1226,81 @@ approval".
   errors). Full suite: 96 passed, 14 skipped.
 - **Next:** the 30 combat-slot actions and the 4 loot-mode actions on top of
   the ranker, then ranged and magic fights.
+
+## 2026-10-29
+
+### Committed: economy, melee combat and fast ranking
+Caleb: "Commit this and keep going with the combat-slot actions." Commit
+`59d7a31` on `sim-v0` (not pushed) holds cooking on fires, inventory,
+alchemy and selling, melee combat, the drop-model fixes and the fast
+ranker, with their records. `m002-combat-slot-actions`.
+
+### Built: the combat-slot and loot-mode actions
+`m002-combat-slot-actions`.
+- **`rlscape/sim/slots.py`:**
+  - `CombatSlots` ranks once per state with the shared `CandidateRanker`
+    and serves all 30 slot actions: their mask entries and their runs.
+    - The fighter is the character after the fight's own wielding step
+      (`wield_best` on a copy), so the ranking sees the gear the fight
+      uses.
+    - The ranking is cached on a fingerprint of everything it reads (tick,
+      location, HP, XP, inventory, equipment, bank, loot mode, quests). The
+      run after a mask check fights the candidate the mask showed.
+  - `FightSlot`: ids `fight_<class>_<xp|gp><n>[_<style>]`, in the order
+    melee slot by slot (accurate, aggressive, defensive), then ranged, then
+    magic. Ranged and magic stay masked until those fights are built.
+  - `SetLootMode`: `loot_all`, `loot_valuable`, `loot_vocabulary`,
+    `loot_none`.
+  - The catalog now has 71 actions: combat sits between processing and
+    inventory, as in option catalog §9.
+- **Access sees the whole state.** `CharacterState.access_progress()` adds
+  items held (inventory, bank, worn), levels and coins to the quests.
+  `access.relevant` reduces it to what the access table checks: the items
+  and skills the rules name, and coins rounded down to the highest
+  threshold reached. Access is unchanged, and the ranker's per-progress
+  cache keeps hitting as items come and go.
+- **`info["option"]`** now carries a fight's `target`, `target_name`,
+  `style`, `site` and `kills`, as env contract §6 asks. This is through a
+  new `OptionResult.detail`.
+- **Speed:**
+  - The first mask fills the caches (0.3 s per process).
+  - After that, a decision costs a median of 1.1 ms for the mask and
+    0.6 ms for the step.
+  - Level-ups that change the fighter cost about 20 ms once (rates for the
+    3 styles over 1,058 monsters).
+  - Three random 20-hour episodes biased to combat ran 382 fights with no
+    errors. The fights ended 162 out of food, 159 on time, 58 with a full
+    inventory and 3 at the horizon.
+- **Tests:**
+  - `tests/test_sim_slots.py` (6):
+    - the ids and their order
+    - the slots equal the reference ranking for a hand-built armed
+      character
+    - per-style masking matches the filter, and bites with little food
+    - a slot fights its monster with the chosen style
+    - the loot mode is set by its action and used by fights
+    - the slots follow the character
+  - Two access tests in `tests/test_access.py`.
+  - Full suite: 104 passed, 14 skipped.
+
+### Agent choices (reversible; for Caleb's review)
+- **A melee style is masked when it fails the retreat-aware filter on its
+  own.** The slot's monster is ranked by its best style, but the filter is
+  what makes starting a fight safe, so it's applied per action. With little
+  food this often leaves one or two of the three styles.
+- **Choosing the current loot mode is masked,** so the action is never a
+  no-op. Setting a mode takes 1 tick, the minimum per decision.
+- **Access counts coins and items in the bank as well as on hand.** This
+  follows the access table's own "held" wording. There's no action to
+  withdraw coins yet, so counting only coins on hand would lock Brimhaven
+  and Waterbirth after any deposit. The fees still aren't charged.
+- **Dragons only reach a slot if the shield the fight will wear protects.**
+  The fight wears the best shield by defence, so a character holding a
+  better shield as well as the anti-dragon shield won't see dragons. The
+  ranking and the fight agree, which is conservative. Shield choice per
+  target belongs with the quests slice, the only source of the shield.
+
+### Next
+Ranged fights (a bow, arrows in the ammunition slot, arrows used and
+dropped) and magic fights (the best spell the runes allow, runes per cast),
+which unmask the 12 ranged and magic slots. Then the Gymnasium layer.

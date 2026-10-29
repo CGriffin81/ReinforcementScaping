@@ -132,3 +132,29 @@ def meets_slayer_level(npc_id: int, progress: Progress) -> bool:
 def can_reach(npc_name: str, spawn: tuple[int, int, int], progress: Progress) -> bool:
     """True if every access rule covering this NPC at this spawn is unlocked."""
     return rules_at(npc_name, spawn) <= unlocked_rules(progress)
+
+
+@cache
+def _looked_at() -> tuple[frozenset[int], frozenset[str], tuple[int, ...]]:
+    """The items, skills and coin thresholds the access table's requirements mention (Slayer always counts)."""
+    items, skills, coins = set(), {"slayer"}, {0}
+    for rule in access_rules():
+        for terms in rule.requires.alternatives:
+            for term in terms:
+                if term[0] == "item":
+                    items.update(int(item) for item in term[1].split("|"))
+                elif term[0] == "level":
+                    skills.add(term[1])
+                elif term[0] == "coins":
+                    coins.add(int(term[1]))
+    return frozenset(items), frozenset(skills), tuple(sorted(coins))
+
+
+def relevant(progress: Progress) -> Progress:
+    """The same progress with only what access looks at: the items and skills the rules mention, and coins rounded
+    down to the highest threshold they reach. Access is unchanged, and the many states that differ only in items or
+    levels access ignores share one value, so caches keyed on it keep hitting."""
+    items, skills, thresholds = _looked_at()
+    return Progress(progress.quests_complete, progress.quests_underway, progress.items_held & items,
+                    tuple((s, n) for s, n in progress.levels if s in skills),
+                    max(t for t in thresholds if t <= progress.coins))

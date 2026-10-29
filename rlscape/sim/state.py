@@ -6,9 +6,9 @@ one slot however many there are, every other item one slot each. Net worth uses 
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
-from rlscape.combat.access import Progress
+from rlscape.combat.access import Progress, relevant
 from rlscape.gamedata import server as gd
 from rlscape.sim.skills import SKILL_INDEX, SKILLS, XP_FOR_LEVEL, level_for_xp, skill_measure
 
@@ -86,6 +86,13 @@ class CharacterState:
 
     def coins(self) -> int:
         return self.inventory.get(COINS, 0) + self.bank.get(COINS, 0)
+
+    def access_progress(self) -> Progress:
+        """`progress` holds the quests; access also looks at the items held (inventory, bank or worn), levels and
+        coins, taken from the state as it is now, then reduced to what the access table checks."""
+        held = frozenset(self.inventory) | frozenset(self.bank) | frozenset(self.equipment.values())
+        levels = tuple((skill, level) for skill in SKILLS if (level := self.level(skill)) > 1)
+        return relevant(replace(self.progress, items_held=held, levels=levels, coins=self.coins()))
 
     def net_worth(self) -> float:
         values = gd.item_values()

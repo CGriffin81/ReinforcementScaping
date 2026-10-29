@@ -24,6 +24,7 @@ class OptionResult:
     ticks: int  # game time the option took, travel included; never more than the budget it was given
     termination: str
     regenerated: bool = False  # the option applied hitpoint regeneration itself; otherwise the engine does
+    detail: dict | None = None  # merged into info["option"]: for combat, the target and style (env contract §6)
 
 
 class Option(ABC):

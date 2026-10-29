@@ -76,7 +76,7 @@ class Simulator:
         info = {
             "duration": result.ticks,
             "reward_vec": (state.skill_measure() - measure, (state.net_worth() - worth) / WEALTH_SCALE),
-            "option": {"id": option.id, "action": action},
+            "option": {"id": option.id, "action": action, **(result.detail or {})},
             "termination": termination,
             "game_ticks": state.tick,
             "total_level": state.total_level(),

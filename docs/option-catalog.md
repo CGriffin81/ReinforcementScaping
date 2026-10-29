@@ -106,6 +106,9 @@ the current stats, gear, food and ammunition.
 - Melee slots also choose a training style (Attack / Strength / Defence). That gives 30 combat actions: melee 6
   × 3, ranged 6, magic 6.
 - Ranged needs a bow and arrows. Magic autocasts the best combat spell the runes held allow.
+- **Ids (sim v0, `rlscape/sim/slots.py`):** `fight_<class>_<xp|gp><n>[_<style>]`, e.g.
+  `fight_melee_xp1_accurate` or `fight_magic_gp3`. A melee style is masked when it fails the filter below on its own
+  (agent choice, 2026-10-29; reversible). Ranged and magic slots stay masked until those fights are built.
 
 ### B. Retreat-aware danger filter with a special-damage gear check (decided)
 
@@ -248,7 +251,8 @@ everything when the bank is close, only valuables far from one. The alternatives
 - loot variants of every combat action (30 → 120 combat actions)
 - a separate decision after every kill (thousands of decisions per episode)
 
-The mode starts as `loot_valuable` at spawn.
+The mode starts as `loot_valuable` at spawn. Setting a mode takes 1 tick, and the current mode is masked, so the action
+is never a no-op (agent choice, 2026-10-29).
 
 ## 5. Inventory management
 
