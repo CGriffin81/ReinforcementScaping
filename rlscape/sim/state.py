@@ -30,6 +30,8 @@ class CharacterState:
     loot_mode: str = "valuable"
     progress: Progress = Progress()
     regen_counter: int = 0  # ticks into the current hitpoint-regeneration cycle (rlscape.sim.health)
+    dropped: dict[int, int] = field(default_factory=dict)  # dropped during the current step (the engine reports it)
+    gravestone: object | None = None  # rlscape.sim.combat.Gravestone after a death outside the Wilderness
 
     @classmethod
     def fresh(cls) -> CharacterState:
@@ -70,6 +72,13 @@ class CharacterState:
         if added:
             self.inventory[item] = self.inventory.get(item, 0) + added
         return added
+
+    def take(self, item: int, amount: int = 1, container: dict[int, int] | None = None) -> None:
+        """Remove `amount` of an item from the inventory (or another container); the caller checks it's there."""
+        container = self.inventory if container is None else container
+        container[item] -= amount
+        if container[item] == 0:
+            del container[item]
 
     def holds(self, item: int) -> bool:
         """In the inventory or worn (SkillingTool.checkTool looks in both)."""

@@ -1060,3 +1060,169 @@ committed as `493af16`).
 - **Tests:** `tests/test_sim_movement.py` (6). Full suite: 66 passed, 14
   skipped.
 - Work pauses for a few hours after this commit.
+
+### User correction (late afternoon): cooking on fires
+`m002-cooking-on-fires`.
+- **Caleb: most food doesn't need a range; it cooks on a fire the player
+  lights.** The server agrees:
+  - `StandardCookingPulse` handles fires: 4 ticks an item instead of 5, with
+    each food's fire bounds
+  - `CookingRewrite` requires a range only for bread dough, uncooked cake
+    and barley
+- **Built:** `cook_fish` now lights a fire where the character stands when
+  it holds a tinderbox and a log it can light:
+  - it burns the cheapest such log with the firemaking roll and gains its
+    Firemaking XP
+  - the fire lasts `Log.life` ticks (180+), which outlasts a full inventory
+  - it cooks there at the fire rate and bounds
+  - range-only food, or everything when no fire can be made, still goes to
+    the nearest range
+- **gamedata:** `log_fire_ticks()`.
+- **Effect:** at the Draynor fishing spot, 10 raw shrimp now cook in 44 ticks
+  with no walk and no toll; the range route took over 95 ticks plus the toll.
+  Fishing then cooking on the spot, the classic 2009 loop, is now cheap, and
+  logs gain a use beyond burning or selling.
+- **Tests:** 3 more in `tests/test_sim_processing.py`. Full suite: 69
+  passed, 14 skipped.
+
+### Built (evening): sim v0, inventory, alchemy and selling
+`m002-sim-v0-inventory-and-selling`. Caleb: "Continue work on the project.
+Try to avoid things that need my approval for now." So nothing is committed
+or pushed, nothing changes in the fork, and the item vocabulary stays out of
+the catalog.
+- `rlscape/sim/economy.py` (catalog §5–§7):
+  - **`bank_deposit`:** walk to the nearest bank and deposit everything except
+    tools, food, ammunition, runes and fishing bait; banknotes go in as their
+    items
+  - **`bank_withdraw_for_<activity>`** (9): the activity's tool if missing,
+    then its inputs in proportion up to a full inventory; for cooking, one log
+    as well to make a fire
+  - **`drop_<item>` / `drop_misc`:** dropped items leave net worth and are
+    reported in `items_delta["dropped"]`
+  - **alchemy** from `ModernListeners.alchemize`: low (Magic 21, 3 fire + 1
+    nature, 31 XP) and high (Magic 55, 5 fire + 1 nature, 65 XP), 5 ticks a
+    cast, the export's alchemy values, fire staves (`MagicStaff.FIRE_RUNE`)
+    replacing fire runes
+  - **`sell_ge_*`:** the frozen buyer pays the 2009 price for items that have
+    one, and GE-blocked items never sell
+  - **`sell_store_*`:** the nearest general store pays `Shop.getGPSell`'s low
+    alchemy minus 3% of value per unit of overstock (at most 10), unit by
+    unit, never below 1 coin
+- **Vocabulary handling:** `build_catalog(vocabulary=...)` builds the per-item
+  actions for any vocabulary. The default is empty, so the catalog carries
+  only the misc actions until Caleb checks V. "Misc" means outside V and
+  never coins or what banking keeps.
+- **gamedata:** `alchemy_values()`, `unnoted_ids()`, `fire_staves()`,
+  `ge_prices_2009()`, `item_base_values()`. `data/stations.csv` gains 4
+  general stores (estimates).
+- **Engine:** reports drops; "completed" now also means a one-shot option
+  finished.
+- **Tests:** `tests/test_sim_economy.py` (12). Full suite: 81 passed, 14
+  skipped.
+
+### Agent choices (reversible; for Caleb's review)
+- Fishing bait is kept on deposit along with the catalog's list, treated as
+  an activity's ammunition.
+- A general store is assumed to start each sale at its normal stock;
+  player-sold stock drains back between visits on the server.
+- Timings to calibrate: 1 tick per unit dropped, 8 ticks per GE trip, 3 ticks
+  per store sale.
+- **Buying isn't built.** The catalog fixes its groups and sources, but the
+  concrete actions ("best affordable food, up to 100", which tiers), where
+  purchases land (inventory or bank), and whether bought gear is wielded are
+  design calls for Caleb. A draft comes for his review.
+
+### Built (evening): sim v0, combat part 1 (melee fights, drops, death)
+`m002-sim-v0-combat-melee`, continuing under "avoid things that need my
+approval".
+- **Two fixes to the drop model, both bringing it in line with the server**
+  (they change the candidate rates slightly):
+  - **Amounts exclude the upper bound.** `WeightedItem.getItem` draws
+    `random(min, max)`, which never returns max, so the mean is
+    (min + max − 1) / 2; it was (min + max) / 2. That affects 882 entries.
+  - **Placeholder ids aren't items.** 477 entries point to sub-tables: the
+    rare drop table (31), herbs, gems, seeds, clues (`SPECIAL_DROP_SLOTS`).
+    They had counted as items and as inventory slots; they now count as
+    nothing until the sub-tables are ported, which understates some
+    monsters' loot.
+- **`rlscape/sim/equipment.py`:**
+  - a fighter's bonuses come from what's worn
+  - `wield_best` puts on the best weapon for the combat class (scored as
+    (attack + 64)(strength + 64) / speed for melee, matching the server's
+    formulas) and the best armour per slot
+  - equip requirements from the item configs and quest locks from
+    `ItemQuestRequirementListener` are respected (134 items: rune
+    platebodies and green d'hide bodies need Dragon Slayer, the dragon
+    scimitar Monkey Madness, ...); a two-handed weapon empties the shield
+    slot
+- **`rlscape/sim/combat.py`:**
+  - **`fight`:** walk, wield, then kills until the budget, a full inventory,
+    out of food, or death. Each kill samples its cumulative-damage sequence
+    (one vectorised draw), and the monster's swings resolve one by one with
+    eating (3 ticks of attack delay a bite) and the retreat rule (2 escape
+    swings). A retreat or death mid-kill charges the time fought and the
+    XP for the damage dealt. XP is 4/damage to the style skill and 1.33 to
+    Hitpoints; drops go through the loot mode.
+  - **`roll_drops`:** `WeightBasedTable.roll`.
+  - **`die`:** your death rule, ported from `DeathTask`, `GraveController`
+    and `GraveType`: keep the 3 highest high-alchemy items, the rest into a
+    200-tick gravestone (or lost in the Wilderness, whose borders are
+    `WildernessZone`'s five rectangles), and respawn at full HP at rl.conf's
+    `home_location` (3222, 3218).
+  - **`reclaim_gravestone`:** available only while the walk beats the
+    timer; the engine clears expired gravestones.
+- **gamedata:** `equip_quest_locks()`. The rate model's offence helpers are
+  now public (`player_offence`, `npc_offence`).
+- **Tests:** `tests/test_sim_combat.py` (9). Full suite: 90 passed, 14
+  skipped.
+
+### Findings
+- **Sampled kill times match the rate model:** 135.5 against 134.1 fighting
+  ticks per cow for a fresh character.
+- **A fresh character can't sustain cows.** The server's formulas give cows
+  a 52% chance of hitting it, about 7 damage per kill, so with 10 HP and
+  the starter food it manages about 1.6 cows before stopping out of food,
+  in every one of 200 runs, with no deaths. A level-30 fighter fills its
+  inventory with hides in about 300 ticks.
+
+### Agent choices (reversible; for Caleb's review)
+- Combat options wield the best gear carried automatically (1 tick an item,
+  to calibrate).
+- Quest locks that only check "underway" are read as "complete".
+- Protect Item isn't modelled, and stacks count as one unit when choosing
+  the 3 kept items.
+- Items that don't fit when reclaiming a gravestone are left behind.
+
+### Still to come in combat
+- Ranged (arrows in the ammunition slot, ammunition use) and magic (runes per
+  cast).
+- The candidate-slot actions. Ranking takes 60–100 ms and the mask needs it
+  every step, so this needs vectorising and caching first.
+- The four loot-mode actions; poison; respawn waits; the sub-tables.
+
+### Built (evening): fast candidate ranking
+`m002-fast-candidate-ranking`.
+- **Profiling** one full ranking (3 classes, 5 plans, 1,058 pool entries)
+  took 89 ms:
+  - about half went to `loot_per_kill` rebuilding each monster's
+    expected-drop dictionary on every call
+  - about a fifth went to `combat_rates`
+  - neither changes as the character moves
+- **`rlscape/combat/ranking.py` (`CandidateRanker`):**
+  - **cached:** rates per (fighter, plan), loot per (loot mode,
+    vocabulary), access and Slayer per progress, and the gear check per
+    shield
+  - **vectorised over all sites with numpy:** walking time, the
+    inventory-cycle share, the filters, best site per monster, best plan,
+    one per name, and the 3 + 3 picks
+  - `candidates.select_candidates` stays as the reference
+- **Result:** about 1.3 ms per full ranking with a new location every call,
+  about 70× faster. The ranking matches the reference exactly (ids, values,
+  sites, training styles) in 18 of 18 cases across six characters,
+  including all-zero gp ties, an underground start and no food. The
+  reference's tie order (names first seen valid in pool order) is
+  reproduced.
+- **Tests:** `tests/test_ranking.py` (6 parametrised cases, warnings as
+  errors). Full suite: 96 passed, 14 skipped.
+- **Next:** the 30 combat-slot actions and the 4 loot-mode actions on top of
+  the ranker, then ranged and magic fights.

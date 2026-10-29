@@ -11,10 +11,13 @@ Server mechanics:
   previous one (after a first tick); each item uses its type's bars and gives the bar type's experience per bar.
   The option makes the "best" item the level and bars allow: the most bars per item (the most experience per action),
   then the most valuable per bar. Leftover bars go into the next best item that fits.
-- cooking (StandardCookingPulse, CookableItems): on a range, an item every 5 ticks (after a first tick); burnt if
-  randomDouble(100) > getSkillSuccessChance(low, high, level), with the range's bounds. The Lumbridge castle range
-  (object 114) needs Cook's Assistant and has its own bounds. Experience only if the food isn't burnt. Anything
-  CookableItems turns into food is cooked: fish, meat, bread.
+- cooking (StandardCookingPulse, CookableItems, CookingRewrite): an item every 4 ticks on a fire or 5 on a range
+  (after a first tick); burnt if randomDouble(100) > getSkillSuccessChance(low, high, level), with the fire's or the
+  range's bounds. Most food cooks on any fire, so with a tinderbox and a log the option lights one where the
+  character stands (the firemaking roll, the log's experience, a fire lasting Log.life ticks) and cooks there; bread
+  dough, cake and barley need a range (CookingRewrite), as does everything when no fire can be made. The Lumbridge
+  castle range (object 114) needs Cook's Assistant and has its own bounds. Experience only if the food isn't burnt.
+  Anything CookableItems turns into food is cooked: fish, meat, bread.
 - firemaking (FireMakingPulse, firemaking.Log): with a tinderbox, a light attempt every 3 ticks that succeeds if
   ceil((L*50 - req*15) / req / 3 * 4) >= random(99), with L = level + 1; then a step aside. A log lit within 2 ticks
   of the last fire lights at once (setLastFire = now + 2), so after the first log each one in the line costs only the
@@ -42,6 +45,8 @@ HAMMER, TINDERBOX = 2347, 590
 SMELT_TICKS = 5  # SmeltingPulse: a bar when ++ticks % 5 == 0
 SMITH_TICKS = 4  # SmithingPulse: setDelay(4)
 RANGE_TICKS = 5  # StandardCookingPulse: 5 on a range, 4 on a fire
+FIRE_TICKS = 4
+RANGE_ONLY = frozenset({2307, 1889, 6006})  # CookingRewrite: bread dough, uncooked cake, barley
 FIRST_TICK = 1  # smithing and cooking pulses spend their first tick setting the delay
 LIGHT_TICKS = 3  # FireMakingPulse: an attempt when ++ticks % 3 == 0
 CHAIN_TICKS = 2  # one step plus the next log's use, inside the 2-tick relight window; calibrate
@@ -140,6 +145,10 @@ class Smith(Option):
 
 
 class Cook(Option):
+    """Cooks on a fire it lights where the character stands when it can (a tinderbox and a log it can light), the way
+    players cooked their catch on the spot; range-only food (bread dough, cake, barley), or everything when no fire
+    can be made, goes to the nearest range."""
+
     family = "processing"
 
     def __init__(self, option_id: str):
@@ -147,20 +156,59 @@ class Cook(Option):
         foods = gd.food_healing()
         self.cookables = {raw: c for raw, c in gd.cookables().items() if c.cooked in foods}
 
-    def _next_raw(self, state: CharacterState) -> gd.Cookable | None:
+    def _next_raw(self, state: CharacterState, on_fire: bool = False) -> gd.Cookable | None:
         level = state.level("cooking")
-        return next((c for raw, c in self.cookables.items() if state.inventory.get(raw, 0) > 0 and c.level <= level),
-                    None)
+        return next((c for raw, c in self.cookables.items() if state.inventory.get(raw, 0) > 0 and c.level <= level
+                     and not (on_fire and raw in RANGE_ONLY)), None)
+
+    def _fire_log(self, state: CharacterState) -> int | None:
+        """The cheapest log the character can light, if it has a tinderbox."""
+        if state.inventory.get(TINDERBOX, 0) == 0:
+            return None
+        level, logs, values = state.level("firemaking"), gd.log_types(), gd.item_values()
+        lightable = [item for item in state.inventory if item in logs and logs[item][0] <= level]
+        return min(lightable, key=lambda item: (values.get(item, 0), logs[item][0]), default=None)
 
     def available(self, state: CharacterState) -> bool:
-        return self._next_raw(state) is not None and nearest_station(state, "range") is not None
+        can_fire = self._fire_log(state) is not None and self._next_raw(state, on_fire=True) is not None
+        return self._next_raw(state) is not None and (can_fire or nearest_station(state, "range") is not None)
+
+    def _cook_one(self, state: CharacterState, rng: np.random.Generator, food: gd.Cookable,
+                  bounds: tuple[int, int]) -> None:
+        _remove(state, food.raw)
+        if rng.random() < skill_success_chance(*bounds, state.level("cooking")):
+            state.add(food.cooked)
+            _gain(state, "cooking", food.experience)
+        else:
+            state.add(food.burnt)
 
     def run(self, state: CharacterState, rng: np.random.Generator, budget: int) -> OptionResult:
+        elapsed = 0
+        log = self._fire_log(state)
+        if log is not None and self._next_raw(state, on_fire=True) is not None:
+            log_level, xp = gd.log_types()[log]
+            elapsed = LIGHT_TICKS * int(rng.geometric(light_chance(state.level("firemaking"), log_level)))
+            if elapsed >= budget:
+                return OptionResult(budget, COMPLETED)
+            _remove(state, log)
+            _gain(state, "firemaking", xp)
+            fire_out = elapsed + gd.log_fire_ticks()[log]  # 180+ ticks: one fire outlasts a full inventory
+            elapsed = min(elapsed + FIRST_TICK, budget)
+            while (food := self._next_raw(state, on_fire=True)) is not None:
+                if elapsed + FIRE_TICKS > budget:
+                    return OptionResult(budget, COMPLETED)
+                if elapsed + FIRE_TICKS > fire_out:
+                    break
+                elapsed += FIRE_TICKS
+                self._cook_one(state, rng, food, food.fire)
+            if self._next_raw(state) is None:
+                return OptionResult(elapsed, INPUTS_EXHAUSTED)
         station = nearest_station(state, "range")
-        elapsed = _walk_to(state, station, budget)
-        if elapsed is None:
-            return OptionResult(budget, COMPLETED)
-        elapsed = min(elapsed + FIRST_TICK, budget)
+        walked = None if station is None else _walk_to(state, station, budget - elapsed)
+        if walked is None:
+            return OptionResult(max(elapsed, 1) if station is None else budget,
+                                INPUTS_EXHAUSTED if station is None else COMPLETED)
+        elapsed = min(elapsed + walked + FIRST_TICK, budget)
         while True:
             food = self._next_raw(state)
             if food is None:
@@ -168,13 +216,7 @@ class Cook(Option):
             if elapsed + RANGE_TICKS > budget:
                 return OptionResult(budget, COMPLETED)
             elapsed += RANGE_TICKS
-            low, high = food.lumbridge_range if station.object == 114 else food.range
-            _remove(state, food.raw)
-            if rng.random() < skill_success_chance(low, high, state.level("cooking")):
-                state.add(food.cooked)
-                _gain(state, "cooking", food.experience)
-            else:
-                state.add(food.burnt)
+            self._cook_one(state, rng, food, food.lumbridge_range if station.object == 114 else food.range)
 
 
 def light_chance(level: int, log_level: int) -> float:

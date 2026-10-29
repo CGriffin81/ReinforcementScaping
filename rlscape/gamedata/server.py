@@ -95,7 +95,20 @@ class DropEntry:
 
     @property
     def mean_amount(self) -> float:
-        return (self.min_amount + self.max_amount) / 2
+        """WeightedItem.getItem draws RandomFunction.random(min, max), which never returns max (unless min == max)."""
+        if self.max_amount <= self.min_amount:
+            return float(self.min_amount)
+        return (self.min_amount + self.max_amount - 1) / 2
+
+    @property
+    def special(self) -> bool:
+        return self.item_id in SPECIAL_DROP_SLOTS
+
+
+# WeightBasedTable's placeholder ids that stand for a sub-table, not an item: the rare drop table (31), clue scrolls
+# (1, 5733, 12070), CELEDT (799), and the uncommon seed, herb, gem, rare seed and allotment seed tables (14422-14430).
+# Their sub-tables aren't modelled yet, so they count as nothing (understating some monsters' loot).
+SPECIAL_DROP_SLOTS = frozenset({31, 1, 5733, 12070, 799, 14422, 14424, 14426, 14428, 14430})
 
 
 @dataclass
@@ -111,12 +124,12 @@ class DropTable:
         """Expected count of each item per kill."""
         expected: dict[int, float] = {}
         for entry in self.guaranteed:
-            if entry.item_id:
+            if entry.item_id and not entry.special:
                 expected[entry.item_id] = expected.get(entry.item_id, 0.0) + entry.mean_amount
         for table in (self.main, self.charm, self.tertiary):
             total = sum(e.weight for e in table)
             for entry in table:
-                if entry.item_id and total > 0:
+                if entry.item_id and not entry.special and total > 0:
                     expected[entry.item_id] = expected.get(entry.item_id, 0.0) + entry.weight / total * entry.mean_amount
         return expected
 
@@ -590,8 +603,19 @@ def cookables() -> dict[int, Cookable]:
 @cache
 def log_types() -> dict[int, tuple[int, float]]:
     """Log item id -> (Firemaking level, experience), from the firemaking Log enum."""
-    return {int(item): (int(level), float(xp)) for item, level, xp in re.findall(
-        r"^\s*[A-Z_]+\((\d+),\s*(\d+),\s*\d+,\s*\d+,\s*([\d.]+),\s*\d+\)", LOGS.read_text(encoding="utf-8"), re.M)}
+    return {item: (level, xp) for item, (level, xp, _) in _logs().items()}
+
+
+@cache
+def log_fire_ticks() -> dict[int, int]:
+    """Log item id -> how long its fire burns, in ticks (Log.life, passed to SceneryBuilder.add)."""
+    return {item: life for item, (_, _, life) in _logs().items()}
+
+
+@cache
+def _logs() -> dict[int, tuple[int, float, int]]:
+    return {int(item): (int(level), float(xp), int(life)) for item, level, life, xp in re.findall(
+        r"^\s*[A-Z_]+\((\d+),\s*(\d+),\s*(\d+),\s*\d+,\s*([\d.]+),\s*\d+\)", LOGS.read_text(encoding="utf-8"), re.M)}
 
 
 @cache
@@ -599,6 +623,65 @@ def bone_experience() -> dict[int, float]:
     """Bone item id -> Prayer experience for burying it (Bones enum)."""
     return {int(item): float(xp) for item, xp in re.findall(
         r"^\s*[A-Z_0-9]+\(Items\.[A-Z0-9_]+?_(\d+),\s*([\d.]+)", BONES.read_text(encoding="utf-8"), re.M)}
+
+
+@cache
+def alchemy_values() -> dict[int, tuple[int, int]]:
+    """Item id -> (high alchemy, low alchemy) coins, for the items the export lists (tradeable items; the server
+    refuses to alch untradeable ones unless flagged alchemizable)."""
+    with ITEM_DEFINITIONS.open(newline="") as f:
+        return {int(r["id"]): (int(r["high_alch"]), int(r["low_alch"])) for r in csv.DictReader(f)}
+
+
+@cache
+def ge_prices_2009() -> dict[int, int]:
+    """Item id -> the frozen 2009 GE price the frozen buyer pays and the frozen seller charges, for items that have
+    one and aren't GE-blocked (data/prices_v2.csv)."""
+    with PRICES.open(newline="") as f:
+        return {int(r["item_id"]): int(r["ge_price_2009"]) for r in csv.DictReader(f)
+                if r["ge_price_2009"] and r["source"] != "ge_blocked"}
+
+
+@cache
+def item_base_values() -> dict[int, int]:
+    """Item id -> ItemDefinition value, which shop prices are built from."""
+    with ITEM_DEFINITIONS.open(newline="") as f:
+        return {int(r["id"]): int(r["value"]) for r in csv.DictReader(f)}
+
+
+@cache
+def unnoted_ids() -> dict[int, int]:
+    """Item id -> its unnoted id (a banknote's real item), for the exported items."""
+    with ITEM_DEFINITIONS.open(newline="") as f:
+        return {int(r["id"]): int(r["unnoted_id"]) for r in csv.DictReader(f)}
+
+
+@cache
+def fire_staves() -> frozenset[int]:
+    """Staves that stand in for fire runes (MagicStaff.FIRE_RUNE)."""
+    text = (SERVER_CONTENT.parent / "core" / "game" / "node" / "entity" / "combat" / "spell" / "MagicStaff.java").read_text(
+        encoding="utf-8")
+    numbers = re.search(r"FIRE_RUNE\(([^)]*)\)", text).group(1)
+    return frozenset(map(int, re.findall(r"\d+", numbers)[1:]))  # the first number is the rune itself
+
+
+@cache
+def equip_quest_locks() -> dict[int, str]:
+    """Item id -> the quest it can't be worn without, from ItemQuestRequirementListener's onEquip blocks (e.g.
+    Dragon Slayer for rune platebodies and green d'hide bodies). A block that only checks a quest is underway is
+    read as needing it complete."""
+    text = (SERVER_CONTENT / "global" / "handlers" / "item" / "ItemQuestRequirementListener.kt").read_text(
+        encoding="utf-8")
+    ids = lambda body: [int(i) for i in re.findall(r"(?:Items\.[A-Z0-9_]+?_)?(\d+)", body)]  # noqa: E731
+    arrays = {name: ids(body) for name, body in re.findall(r"private val (\w+) = intArrayOf\((.*?)\)", text, re.S)}
+    out: dict[int, str] = {}
+    for block in re.split(r"(?=onEquip\()", text)[1:]:
+        arg = re.match(r"onEquip\(([^)]*)\)", block).group(1).strip()
+        quest = re.search(r"Quests\.([A-Z_]+)", block)
+        if quest:
+            for item in arrays.get(arg, ids(arg) if arg not in arrays else []):
+                out.setdefault(item, quest.group(1))
+    return out
 
 
 @dataclass(frozen=True)

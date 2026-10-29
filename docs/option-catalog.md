@@ -72,7 +72,7 @@ These work from the inventory and run until the inputs run out. They happen at t
 |---|---|---|---|
 | `smelt_bronze` / `smelt_iron` / `smelt_steel` | Smithing 1 / 15 / 30 | copper + tin / iron ore / iron ore + 2 coal | bars (iron 50% success) |
 | `smith_bronze` / `smith_iron` / `smith_steel` | Smithing level for the best item the bars allow, hammer | bars | the best smithable item for the bars held: platebody, platelegs, etc. |
-| `cook_fish` | Cooking level for the fish | raw fish | cooked fish (with burn chance) |
+| `cook_fish` | Cooking level for the food | raw food | cooked food (with burn chance), on a fire lit where the character stands when it holds a tinderbox and a log it can light, otherwise at the nearest range; bread dough, cake and barley always need a range |
 | `burn_logs` | tinderbox, Firemaking level | logs | — |
 | `bury_bones` | — | bones / big bones | — |
 

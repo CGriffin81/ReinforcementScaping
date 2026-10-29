@@ -9,7 +9,7 @@ import numpy as np
 
 from rlscape.sim.state import CharacterState
 
-COMPLETED = "completed"  # the option used its whole time budget (D, or what's left before the horizon)
+COMPLETED = "completed"  # a one-shot option finished, or an activity used its whole time budget
 INVENTORY_FULL = "inventory_full"
 INPUTS_EXHAUSTED = "inputs_exhausted"
 OUT_OF_FOOD = "out_of_food"

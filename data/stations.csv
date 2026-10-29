@@ -8,3 +8,7 @@ anvil,Varrock west,3188,3426,0,,,estimate near the VarrockSmither bot's anvil; v
 range,Lumbridge Castle,3211,3215,0,114,quest:COOKS_ASSISTANT,"estimate; StandardCookingPulse: object 114 needs Cook's Assistant and has its own burn bounds"
 range,Al Kharid,3273,3180,0,,,estimate; verify (the Al Kharid toll gate is modelled in rlscape/sim/movement.py)
 range,Catherby,2817,3443,0,,,estimate; verify
+general_store,Lumbridge,3212,3246,0,,,estimate; verify
+general_store,Varrock,3217,3415,0,,,estimate; verify
+general_store,Falador,2955,3388,0,,,estimate; verify
+general_store,Al Kharid,3315,3180,0,,,estimate; verify

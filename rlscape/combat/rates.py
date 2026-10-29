@@ -81,7 +81,7 @@ class Rates:
         return self.damage_taken_per_kill + sigmas * sqrt(self.damage_taken_variance_per_kill) <= budget
 
 
-def _player_offence(fighter: Fighter, plan: Plan, npc: Npc) -> tuple[float, int, float, float, dict[str, float]]:
+def player_offence(fighter: Fighter, plan: Plan, npc: Npc) -> tuple[float, int, float, float, dict[str, float]]:
     """(hit chance, max hit, attack interval in ticks, mean damage per attack, XP per point of damage by skill)."""
     if plan.combat_class == "melee":
         attack_type = max((STAB, SLASH, CRUSH), key=lambda i: fighter.bonuses[i])
@@ -118,7 +118,7 @@ def _player_offence(fighter: Fighter, plan: Plan, npc: Npc) -> tuple[float, int,
     return chance, max_hit, speed, mean, xp
 
 
-def _npc_offence(fighter: Fighter, plan: Plan, npc: Npc) -> tuple[float, int, float, float]:
+def npc_offence(fighter: Fighter, plan: Plan, npc: Npc) -> tuple[float, int, float, float]:
     """(hit chance, max hit, mean, variance) of one NPC attack on the player."""
     player_style = plan.style if plan.combat_class != "magic" else f.ACCURATE
     if npc.combat_style == "melee":
@@ -144,7 +144,7 @@ def combat_rates(fighter: Fighter, plan: Plan, npc: Npc, gp_per_kill: float,
     """Rates for fighting `npc` with `plan`, or None if the plan can't hurt it (immune to the class, or 0 damage)."""
     if npc.protect_style == plan.combat_class:
         return None
-    chance, max_hit, speed, mean_damage, xp_per_damage = _player_offence(fighter, plan, npc)
+    chance, max_hit, speed, mean_damage, xp_per_damage = player_offence(fighter, plan, npc)
     damage_per_tick = mean_damage / speed
     if damage_per_tick <= 0:
         return None
@@ -153,7 +153,7 @@ def combat_rates(fighter: Fighter, plan: Plan, npc: Npc, gp_per_kill: float,
     kills = TICKS_PER_HOUR / ticks_per_kill
     damage_dealt = kills * npc.hitpoints
 
-    npc_chance, npc_max, npc_mean, npc_variance = _npc_offence(fighter, plan, npc)
+    npc_chance, npc_max, npc_mean, npc_variance = npc_offence(fighter, plan, npc)
     npc_attacks_per_kill = ticks_fighting / npc.attack_speed
     npc_attacks_per_hour = kills * npc_attacks_per_kill
     if plan.combat_class == "magic":

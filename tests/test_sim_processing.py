@@ -133,3 +133,31 @@ def test_processing_masks_follow_the_inputs():
     assert not Smelt("s", "STEEL").available(character({453: 1, IRON_ORE: 1}, smithing=30))
     assert not Smelt("s", "STEEL").available(character({453: 2, IRON_ORE: 1}, smithing=29))
     assert SMELT_TICKS == 5
+
+
+@needs_server
+def test_cooking_lights_a_fire_where_the_character_stands():
+    state = character({TINDERBOX: 1, LOGS: 2, RAW_SHRIMPS: 10, 995: 20})
+    spot = state.location = (3085, 3230, 0)  # the Draynor fishing spot
+    result = Cook("cook_fish").run(state, np.random.default_rng(6), 10_000)
+    assert state.location == spot and state.inventory[995] == 20  # no walk, no toll
+    assert state.inventory[LOGS] == 1 and state.xp[SKILL_INDEX["firemaking"]] == 40.0  # one fire, lit on the spot
+    assert state.inventory.get(SHRIMPS, 0) + state.inventory.get(BURNT_SHRIMP, 0) == 10
+    assert result.ticks == LIGHT_TICKS + 1 + 10 * 4  # a normal log always lights at level 1; 4 ticks a fish on a fire
+
+
+@needs_server
+def test_range_only_food_still_goes_to_a_range():
+    state = character({TINDERBOX: 1, LOGS: 1, 2307: 3, RAW_SHRIMPS: 2})  # bread dough needs a range
+    state.location = (3085, 3230, 0)
+    Cook("cook_fish").run(state, np.random.default_rng(7), 10_000)
+    assert 2307 not in state.inventory and RAW_SHRIMPS not in state.inventory
+    assert state.inventory.get(LOGS, 0) == 0  # the shrimps were cooked on a fire first
+    assert state.location in {s.tile for s in gd.stations() if s.kind == "range"}
+
+
+@needs_server
+def test_without_a_tinderbox_and_log_cooking_uses_a_range():
+    state = character({LOGS: 1, RAW_SHRIMPS: 2})
+    Cook("cook_fish").run(state, np.random.default_rng(8), 10_000)
+    assert state.inventory[LOGS] == 1 and state.location in {s.tile for s in gd.stations() if s.kind == "range"}

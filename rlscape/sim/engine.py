@@ -61,6 +61,9 @@ class Simulator:
         xp, inventory, bank = list(state.xp), dict(state.inventory), dict(state.bank)
 
         budget = min(self.activity_ticks, self.horizon_ticks - tick)
+        state.dropped = {}
+        if state.gravestone is not None and state.tick >= state.gravestone.expires_at:
+            state.gravestone = None  # crumbled: its items are gone
         result = option.run(state, self.rng, budget)
         if not 1 <= result.ticks <= budget:
             raise RuntimeError(f"option {option.id!r} took {result.ticks} ticks with a budget of {budget}")
@@ -81,7 +84,7 @@ class Simulator:
             "coins": state.coins(),
             "xp_gained": {SKILLS[i]: state.xp[i] - xp[i] for i in range(len(SKILLS)) if state.xp[i] != xp[i]},
             "items_delta": {"inventory": _delta(state.inventory, inventory), "bank": _delta(state.bank, bank),
-                            "dropped": {}},
+                            "dropped": dict(state.dropped)},
         }
         # Checkpoints crossed during the option, measured at its end (options last at most D, so the lag is small).
         crossed = range(tick // CHECKPOINT_TICKS + 1, state.tick // CHECKPOINT_TICKS + 1)
