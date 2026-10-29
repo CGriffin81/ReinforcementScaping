@@ -26,6 +26,8 @@ class CharacterState:
     inventory: dict[int, int]
     bank: dict[int, int]
     equipment: dict[int, int] = field(default_factory=dict)  # equipment slot -> item id
+    # equipment slot -> amount, for worn stacks (arrows or bolts in the quiver, a thrown weapon); others hold one
+    worn_amounts: dict[int, int] = field(default_factory=dict)
     location: tuple[int, int, int] = SPAWN
     loot_mode: str = "valuable"
     progress: Progress = Progress()
@@ -80,6 +82,19 @@ class CharacterState:
         if container[item] == 0:
             del container[item]
 
+    def worn(self, slot: int) -> int:
+        """How many of the item in an equipment slot are worn; 0 for an empty slot."""
+        return self.worn_amounts.get(slot, 1) if slot in self.equipment else 0
+
+    def use_worn(self, slot: int, amount: int) -> None:
+        """Use up `amount` from a worn stack; the slot empties when it runs out."""
+        left = self.worn(slot) - amount
+        if left > 0:
+            self.worn_amounts[slot] = left
+        else:
+            del self.equipment[slot]
+            self.worn_amounts.pop(slot, None)
+
     def holds(self, item: int) -> bool:
         """In the inventory or worn (SkillingTool.checkTool looks in both)."""
         return self.inventory.get(item, 0) > 0 or item in self.equipment.values()
@@ -100,5 +115,5 @@ class CharacterState:
         for container in (self.inventory, self.bank):
             for item, amount in container.items():
                 worth += amount * (1 if item == COINS else values.get(item, 0))
-        worth += sum(values.get(item, 0) for item in self.equipment.values())
+        worth += sum(self.worn(slot) * values.get(item, 0) for slot, item in self.equipment.items())
         return worth

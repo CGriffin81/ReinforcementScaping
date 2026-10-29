@@ -25,7 +25,7 @@ def rates_with(npc_max_hit: int, damage_per_kill: float, variance_per_kill: floa
     return Rates(kills_per_hour=1, xp_per_hour={}, gp_per_hour=0, damage_taken_per_hour=0,
                  damage_taken_variance_per_hour=0, hit_chance=0.5, max_hit=1, npc_hit_chance=0.5,
                  npc_max_hit=npc_max_hit, ticks_per_kill=10, damage_taken_per_kill=damage_per_kill,
-                 damage_taken_variance_per_kill=variance_per_kill)
+                 damage_taken_variance_per_kill=variance_per_kill, attacks_per_kill=5)
 
 
 def test_retreat_filter_rejects_a_burst_from_half_hp():

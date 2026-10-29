@@ -82,7 +82,8 @@ def test_wielding_picks_the_best_wearable_gear():
     assert state.equipment[4] == RUNE_PLATEBODY
     ranged = CharacterState.fresh()
     wield_best(ranged, "ranged")
-    assert ranged.equipment == {3: 841}  # a two-handed shortbow leaves the shield off
+    assert ranged.equipment == {3: 841, 13: 882}  # the shortbow (two-handed: no shield) and bronze arrows
+    assert ranged.worn(13) == 25 and 882 not in ranged.inventory
 
 
 @needs_server

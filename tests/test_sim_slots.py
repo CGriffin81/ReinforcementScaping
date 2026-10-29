@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from math import inf
+
 import pytest
 
 from rlscape.combat import formulas as f
@@ -12,12 +14,13 @@ from rlscape.gamedata import server as gd
 from rlscape.sim import Simulator, build_catalog
 from rlscape.sim.equipment import fighter_for, wield_best
 from rlscape.sim.skills import SKILL_INDEX, XP_FOR_LEVEL
-from rlscape.sim.slots import MELEE_STYLES, CombatSlots, combat_options
+from rlscape.sim.slots import MELEE_STYLES, RANGED_STYLES, CombatSlots, combat_options
 from rlscape.sim.state import SPAWN, CharacterState
 
 needs_data = pytest.mark.skipif(not (gd.SERVER_CONFIGS.exists() and gd.NPC_DEFINITIONS.exists()),
                                 reason="server submodule or data/npc_definitions.csv missing")
 SHRIMPS, BREAD, BRONZE_SWORD, WOODEN_SHIELD = 315, 2309, 1277, 1171
+SHORTBOW, BRONZE_ARROW, MIND_RUNE = 841, 882, 558
 
 
 def trained(level: int) -> CharacterState:
@@ -41,25 +44,49 @@ def test_thirty_slot_actions_and_four_loot_modes():
     assert ids[30:] == ["loot_all", "loot_valuable", "loot_vocabulary", "loot_none"]
 
 
+def armed_by_hand(worn: dict[int, int], stacks: dict[int, int] = {}) -> CharacterState:  # noqa: B006
+    state = CharacterState.fresh()
+    for slot, item in worn.items():
+        state.inventory.pop(item)
+    state.equipment, state.worn_amounts = dict(worn), dict(stacks)
+    return state
+
+
 @needs_data
 def test_slots_are_the_reference_ranking_for_the_character_as_armed():
     sim = Simulator(build_catalog())
     state = sim.reset(seed=0)
-    fight = next(o for o in sim.options if o.family == "combat")
-    slots = [fight.slots.candidate(state, "melee", i) for i in range(6)]
-    # By hand: the fight wields the bronze sword and wooden shield (two slots freed: 18 used -> 12 free), 10 HP,
-    # 8 HP of starter food, the valuable loot mode; fresh access.
-    armed = CharacterState.fresh()
-    armed.inventory.pop(BRONZE_SWORD), armed.inventory.pop(WOODEN_SHIELD)
-    armed.equipment = {3: BRONZE_SWORD, 5: WOODEN_SHIELD}
-    character = Character(SPAWN, 10, 10, 8, 12, WOODEN_SHIELD, "valuable", Progress())
-    plans = {"melee": (fighter_for(armed), [Plan("melee", s) for s in MELEE_STYLES])}
-    reference = select_candidates(enemy_pool(), plans, character, 1500)["melee"]
-    assert [(c.entry.npc.id, c.site.spawn, c.plan.style) for c in slots] == \
-           [(c.entry.npc.id, c.site.spawn, c.plan.style) for c in reference]
+    slots = next(o for o in sim.options if o.family == "combat").slots
+    # By hand, for each class: what its fight wields from the starter kit, the free slots that leaves (18 used at
+    # spawn), 10 HP, 8 HP of starter food, the valuable loot mode, and fresh access.
+    melee = armed_by_hand({3: BRONZE_SWORD, 5: WOODEN_SHIELD})  # 12 free
+    ranged = armed_by_hand({3: SHORTBOW, 13: BRONZE_ARROW}, {13: 25})  # two-handed, so no shield; 12 free
+    magic = armed_by_hand({5: WOODEN_SHIELD})  # no staff in the kit; wind strike (25 air, 15 mind runes); 11 free
+    # Ammunition: unlimited for melee; 25 arrows of which 4 in 5 land and are picked back up: 125 shots in
+    # expectation; 15 casts of wind strike (the mind runes run out first).
+    cases = {"melee": (melee, 12, WOODEN_SHIELD, [Plan("melee", s) for s in MELEE_STYLES], inf),
+             "ranged": (ranged, 12, None, [Plan("ranged", s) for s in RANGED_STYLES], 25 / (1 / 5)),
+             "magic": (magic, 11, WOODEN_SHIELD, [Plan("magic", "wind_strike")], 15)}
+    for combat_class, (armed, free, shield, plans, attacks) in cases.items():
+        character = Character(SPAWN, 10, 10, 8, free, shield, "valuable", Progress(), attacks)
+        reference = select_candidates(enemy_pool(), {combat_class: (fighter_for(armed), plans)}, character,
+                                      1500)[combat_class]
+        ours = [slots.candidate(state, combat_class, i) for i in range(len(reference))]
+        assert len(reference) == 6
+        assert [(c.entry.npc.id, c.site.spawn, c.plan.style) for c in ours] ==                [(c.entry.npc.id, c.site.spawn, c.plan.style) for c in reference]
     mask = dict(zip(ids_of(sim), sim.action_mask()))
     assert all(mask[f"fight_melee_{k}{n}_{s}"] for k in ("xp", "gp") for n in (1, 2, 3) for s in MELEE_STYLES)
-    assert not any(mask[f"fight_{c}_{k}{n}"] for c in ("ranged", "magic") for k in ("xp", "gp") for n in (1, 2, 3))
+    assert all(mask[f"fight_{c}_{k}{n}"] for c in ("ranged", "magic") for k in ("xp", "gp") for n in (1, 2, 3))
+
+
+@needs_data
+def test_ranged_and_magic_slots_close_without_a_kit_or_runes():
+    state = CharacterState.fresh()
+    for item in (SHORTBOW, MIND_RUNE):
+        state.inventory.pop(item)
+    slots = CombatSlots()
+    assert slots.candidate(state, "melee", 0) is not None
+    assert slots.candidate(state, "ranged", 0) is None and slots.candidate(state, "magic", 0) is None
 
 
 @needs_data

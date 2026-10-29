@@ -62,6 +62,7 @@ class Rates:
     ticks_per_kill: float
     damage_taken_per_kill: float
     damage_taken_variance_per_kill: float
+    attacks_per_kill: float  # what a kill costs in arrows or casts
 
     def passes_retreat_filter(self, max_hp: int, current_hp: float, food_healing: float, sigmas: float = 2.0) -> bool:
         """Retreat-aware danger filter (Caleb, 2026-10-27; option catalog §4.B).
@@ -177,4 +178,5 @@ def combat_rates(fighter: Fighter, plan: Plan, npc: Npc, gp_per_kill: float,
         ticks_per_kill=ticks_per_kill,
         damage_taken_per_kill=npc_attacks_per_kill * npc_mean,
         damage_taken_variance_per_kill=npc_attacks_per_kill * npc_variance,
+        attacks_per_kill=ticks_fighting / speed,
     )

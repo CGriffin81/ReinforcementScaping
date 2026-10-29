@@ -108,7 +108,16 @@ the current stats, gear, food and ammunition.
 - Ranged needs a bow and arrows. Magic autocasts the best combat spell the runes held allow.
 - **Ids (sim v0, `rlscape/sim/slots.py`):** `fight_<class>_<xp|gp><n>[_<style>]`, e.g.
   `fight_melee_xp1_accurate` or `fight_magic_gp3`. A melee style is masked when it fails the filter below on its own
-  (agent choice, 2026-10-29; reversible). Ranged and magic slots stay masked until those fights are built.
+  (agent choice, 2026-10-29; reversible).
+- **Ranged and magic in sim v0 (2026-10-29):**
+  - A ranged slot is open while the character has a kit: a bow or crossbow with ammunition it accepts, a thrown
+    weapon, or a crystal bow. It is ranked by the best of accurate, rapid and longrange.
+  - A magic slot uses the highest-level elemental spell the Magic level allows and the runes pay for.
+  - Each shot uses one arrow. The arrows that land are picked back up when the loot mode takes arrows. Each cast
+    pays its runes, and a worn elemental staff stands in for its own.
+  - Fights end `out_of_ammo`, and a candidate's rates are capped by how long the ammunition lasts.
+  - **Agent choice (reversible):** spells are cast by hand at the autocast rate, so magic doesn't need a staff. The
+    server's autocast does, and the starter kit has none.
 
 ### B. Retreat-aware danger filter with a special-damage gear check (decided)
 

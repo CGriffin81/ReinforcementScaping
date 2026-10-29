@@ -1304,3 +1304,93 @@ ranker, with their records. `m002-combat-slot-actions`.
 Ranged fights (a bow, arrows in the ammunition slot, arrows used and
 dropped) and magic fights (the best spell the runes allow, runes per cast),
 which unmask the 12 ranged and magic slots. Then the Gymnasium layer.
+
+### Committed: the combat-slot actions
+Caleb: "Commit this and keep going with ranged and magic." Commit `bac2124`
+on `sim-v0` (not pushed). `m002-ranged-and-magic`.
+
+### Built: ranged and magic fights
+`m002-ranged-and-magic`.
+- **Read the server first:**
+  - `RangeSwingHandler`: one shot per attack, the landing chance, rapid's
+    1-tick saving
+  - `ranged_weapon_configs.json` via `RangedConfigLoader`
+  - `MagicSwingHandler`; `MagicSpell.addExperience` (the base XP on every
+    cast, splash or hit)
+  - `CombatPulse` (players cast every 5 ticks); `MagicSpell.meetsRequirements`
+    (runes from the inventory; staves stand in)
+  - the elemental spell registrations, `MagicStaff`, `Runes`
+- **Server data parsed** (`rlscape/gamedata/server.py`):
+  - `combat_spells` (16 spells; levels and XP match `formulas.SPELLS`)
+  - `staff_runes`, `rune_ids`, `ranged_weapons`
+- **Worn stacks:** `CharacterState.worn_amounts` holds arrows and bolts in
+  the quiver and thrown weapons, with `worn()` and `use_worn()`. Net worth and
+  death count them in full; wielding 25 arrows would otherwise have read as
+  a wealth loss.
+- **Gear** (`rlscape/sim/equipment.py`):
+  - ranged kits: a bow or crossbow with ammunition it accepts, a thrown
+    weapon (its own ammunition), or a crystal bow
+  - the best kit by damage per tick; stacks go on whole and top up
+  - thrown weapons ignore the quiver's ranged strength, as in the server
+  - **Fixed:** wielding a two-handed weapon with a full inventory could
+    make the shield vanish, since `state.add` silently drops what doesn't
+    fit. Now nothing is wielded without room for what comes off.
+- **Fights** (`rlscape/sim/combat.py`):
+  - **Ranged:** one shot from the worn stack per attack. A shot lands with
+    1 − 1/⌊5·(1 + Ranged/100)⌋ (4 in 5 at level 1) and is picked back up when
+    the loot mode takes arrows.
+  - **Magic:** runes paid per cast (a worn elemental staff stands in for its
+    own), and the spell's base XP on every cast.
+  - **Ending:** `out_of_ammo`, charging the attacks made.
+- **Ammunition in the ranking:**
+  - A candidate's share of the option is now capped by how long the arrows
+    or runes last (`Character.attacks_held`, `Rates.attacks_per_kill`), in
+    both the reference and the fast ranker, as catalog §4.A's "current ...
+    ammunition" asks.
+  - Without the cap, Ram topped a fresh character's magic slots at
+    8,760 XP/hr though the 15 starter casts last 75 ticks. With it, the slots
+    are rats, gnome children and men at about 590 XP/hr over the option.
+  - The fast ranker still matches the reference in all 8 cases, including
+    two new ones with finite ammunition.
+- **Slots:**
+  - Ranged slots rank the accurate, rapid and longrange styles; magic slots
+    use the best spell.
+  - Each class is ranked for the character armed for it: its own gear,
+    shield and free slots.
+- **Checks:**
+  - **Fresh character:** a ranged fight on rats made 20 kills, and the 25
+    arrows lasted 490 ticks. A magic fight cast 15 wind strikes (110.5 Magic
+    XP).
+  - **Random stress:** four random 20-hour episodes ran with no errors.
+  - **Speed:** the mask takes a median of 1.2 ms (p95 26 ms, from level-ups
+    over three classes).
+- **Tests:**
+  - `tests/test_sim_ranged_magic.py` (10).
+  - The slot test now checks all three classes against the reference.
+  - Two finite-ammunition ranker cases.
+  - Full suite: 117 passed, 14 skipped.
+
+### Agent choices (reversible; for Caleb's review)
+- **Magic doesn't need a staff.** Spells are cast by hand at the autocast
+  rate. The server's autocast needs a staff, and the starter kit has none,
+  so otherwise magic would wait for buying. The catalog's "autocasts" is
+  annotated.
+- **Arrows that land are picked straight back up** when the loot mode takes
+  arrows. The pick-up time sits in the per-kill overhead (to calibrate).
+  With `loot_none`, every shot is gone.
+- **A magic fight keeps one spell.** When its runes run out the option ends,
+  and the next ranking picks the next spell the runes allow.
+- **The dark bow and chinchompas are never wielded** for ranged (two hits
+  per attack; multi-target).
+- **Magic gear:** the fight wields the weapon with the best magic attack
+  bonus (a bronze dagger's +1 beats nothing) and armour by defence, ignoring
+  armour's magic penalties.
+
+### Known gaps
+- gp/hr still doesn't subtract the arrows and runes used.
+- The kill in progress when the time budget ends earns nothing and uses no
+  ammunition (as for melee).
+
+### Next
+Buying (needs Caleb's review) keeps ranged and magic going after the starter
+arrows and runes. Then the Gymnasium layer.

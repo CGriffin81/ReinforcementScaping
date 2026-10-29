@@ -181,10 +181,11 @@ from `drop_tables.json`, and spawns from `npc_spawns.json`.
 | Quantity | How it's computed |
 |---|---|
 | Kills/hr | from hit chance and max hit against the NPC's defence and HP, plus a fixed 6-tick overhead per kill for finding and reaching the next target. **Respawn waits aren't modelled yet.** |
-| XP/hr | combat XP and Hitpoints XP for the chosen style |
+| XP/hr | combat XP and Hitpoints XP for the chosen style, plus the spell's base XP on every magic cast |
 | gp/hr | expected value (`prices_v2`) of the drops the loot mode keeps × kills/hr. **Not yet subtracted:** consumables used (food, arrows, runes) and entry fees (Brimhaven, Waterbirth). |
 | Risk | expected damage per kill, and the monster's max hit, against HP above the retreat point and the food held (the retreat-aware filter) |
 | Inventory and travel | kills continue until the looted drops fill the free slots, then a bank trip; the walk to the monster is taken out of the duration (*D* = 15 game-minutes = 1,500 ticks) |
+| Ammunition | fighting stops when the arrows or runes run out. Arrows that land and are picked back up stretch the arrows held; melee and crystal bows are unlimited. |
 
 These are *theoretical* rates (expected values). The real server measures the actual ones during calibration
 (E6).

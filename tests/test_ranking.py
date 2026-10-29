@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import warnings
+from math import inf
 
 import pytest
 
@@ -28,19 +29,21 @@ def summary(candidates) -> list:
 
 
 @needs_data
-@pytest.mark.parametrize("level,location,mode,food", [
-    (1, (3222, 3218, 0), "valuable", 8),
-    (30, (3212, 3424, 0), "all", 120),
-    (60, (2809, 3436, 0), "valuable", 200),
-    (90, (3093, 3493, 0), "none", 300),  # every gp/hr is 0: ties must break as in the reference
-    (45, (3087, 9900, 0), "vocabulary", 60),  # underground
-    (75, (2650, 3300, 0), "valuable", 0),  # no food: the retreat filter bites
+@pytest.mark.parametrize("level,location,mode,food,attacks", [
+    (1, (3222, 3218, 0), "valuable", 8, inf),
+    (30, (3212, 3424, 0), "all", 120, inf),
+    (60, (2809, 3436, 0), "valuable", 200, inf),
+    (90, (3093, 3493, 0), "none", 300, inf),  # every gp/hr is 0: ties must break as in the reference
+    (45, (3087, 9900, 0), "vocabulary", 60, inf),  # underground
+    (75, (2650, 3300, 0), "valuable", 0, inf),  # no food: the retreat filter bites
+    (1, (3222, 3218, 0), "valuable", 8, 15),  # the starter runes: 15 casts cap every candidate's fighting time
+    (40, (3212, 3424, 0), "all", 100, 300),  # a few hundred arrows: the cap bites only for the slow kills
 ])
-def test_fast_ranking_equals_the_reference(level, location, mode, food):
+def test_fast_ranking_equals_the_reference(level, location, mode, food, attacks):
     items = gd.items()
     bonuses = tuple(map(sum, zip(*(items[i].bonuses for i in ((1277, 1171) if level == 1 else (1333, 1201, 1127))))))
     plans = plans_for(level, bonuses)
-    character = Character(location, max(10, level), max(10, level), food, 20, 1201, mode)
+    character = Character(location, max(10, level), max(10, level), food, 20, 1201, mode, attacks_held=attacks)
     pool = enemy_pool()
     with warnings.catch_warnings():
         warnings.simplefilter("error")  # no NaN or division warnings from the vectorised path

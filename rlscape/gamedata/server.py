@@ -33,6 +33,8 @@ LOGS = SERVER_CONTENT / "global" / "skill" / "firemaking" / "Log.java"
 BONES = SERVER_CONTENT / "global" / "skill" / "prayer" / "Bones.kt"
 STATIONS = REPO / "data" / "stations.csv"  # curated furnaces, anvils and ranges; see the file's "check" column
 SKILLING_TOOL = SERVER_CONTENT / "data" / "skill" / "SkillingTool.java"
+COMBAT_SPELL_DIR = SERVER_CONTENT.parent / "core" / "game" / "node" / "entity" / "combat" / "spell"
+MODERN_SPELLS = SERVER_CONTENT / "global" / "skill" / "magic" / "modern"
 PRICES = REPO / "data" / "prices_v2.csv"
 ITEM_DEFINITIONS = REPO / "data" / "item_definitions.csv"  # scripts/export_item_definitions.py (cache)
 NPC_DEFINITIONS = REPO / "data" / "npc_definitions.csv"  # scripts/export_npc_definitions.py (cache)
@@ -657,12 +659,77 @@ def unnoted_ids() -> dict[int, int]:
 
 
 @cache
+def staff_runes() -> dict[int, frozenset[int]]:
+    """Rune id -> the staves that stand in for it (MagicStaff: air, water, earth, fire)."""
+    text = (COMBAT_SPELL_DIR / "MagicStaff.java").read_text(encoding="utf-8")
+    out = {}
+    for body in re.findall(r"^\s*[A-Z]+_RUNE\(([^)]*)\)", text, re.M):
+        rune, *staves = map(int, re.findall(r"\d+", body))  # the first number is the rune itself
+        out[rune] = frozenset(staves) - {rune}
+    return out
+
+
+@cache
 def fire_staves() -> frozenset[int]:
     """Staves that stand in for fire runes (MagicStaff.FIRE_RUNE)."""
-    text = (SERVER_CONTENT.parent / "core" / "game" / "node" / "entity" / "combat" / "spell" / "MagicStaff.java").read_text(
-        encoding="utf-8")
-    numbers = re.search(r"FIRE_RUNE\(([^)]*)\)", text).group(1)
-    return frozenset(map(int, re.findall(r"\d+", numbers)[1:]))  # the first number is the rune itself
+    return staff_runes()[554]
+
+
+@cache
+def rune_ids() -> dict[str, int]:
+    """Runes enum constant name (AIR_RUNE, ...) -> item id."""
+    text = (COMBAT_SPELL_DIR / "Runes.java").read_text(encoding="utf-8")
+    return {name: int(item) for name, item in re.findall(r"([A-Z_]+_RUNE)\((\d+)\)", text)}
+
+
+@dataclass(frozen=True)
+class CombatSpell:
+    name: str  # e.g. wind_strike, as in rlscape.combat.formulas.SPELLS
+    level: int
+    experience: float  # given on every cast, hit or splash (MagicSpell.addExperience)
+    runes: dict[int, int]  # rune id -> amount per cast
+
+
+ELEMENT_NAMES = {"Air": "wind", "Water": "water", "Earth": "earth", "Fire": "fire"}
+
+
+@cache
+def combat_spells() -> dict[str, CombatSpell]:
+    """The modern elemental combat spells, from the SpellBook.MODERN.register calls in AirSpell, WaterSpell,
+    EarthSpell and FireSpell."""
+    runes, out = rune_ids(), {}
+    for element, prefix in ELEMENT_NAMES.items():
+        text = (MODERN_SPELLS / f"{element}Spell.java").read_text(encoding="utf-8")
+        for kind, level, xp, args in re.findall(
+                rf"new {element}Spell\(SpellType\.(\w+),\s*(\d+),\s*([\d.]+),(.*?)\)\);", text):
+            cost = {runes[name]: int(n) for name, n in re.findall(r"Runes\.([A-Z_]+)\.getItem\((\d+)\)", args)}
+            name = f"{prefix}_{kind.lower()}"
+            out[name] = CombatSpell(name, int(level), float(xp), cost)
+    return out
+
+
+@dataclass(frozen=True)
+class RangedWeapon:
+    item: int
+    ammo_slot: int  # 13: arrows or bolts in the quiver; 3: thrown, the weapon stack is its own ammunition
+    weapon_type: str  # Weapon.WeaponType: DEFAULT, CROSSBOW, DOUBLE_SHOT, THROWN, DEGRADING, STAFF, CHINCHOMPA
+    drop_ammo: bool  # fired ammunition can land on the ground (RangeSwingHandler.useAmmo)
+    ammunition: tuple[int, ...]
+
+
+WEAPON_TYPES = ("DEFAULT", "CROSSBOW", "DOUBLE_SHOT", "THROWN", "DEGRADING", "STAFF", "CHINCHOMPA")
+
+
+@cache
+def ranged_weapons() -> dict[int, RangedWeapon]:
+    """RangedConfigLoader: ranged_weapon_configs.json (drop_ammo is Kotlin's toBoolean, so only "true" is true)."""
+    out = {}
+    for raw in json.loads((SERVER_CONFIGS / "ranged_weapon_configs.json").read_text(encoding="utf-8")):
+        item = int(raw["itemId"])
+        out.setdefault(item, RangedWeapon(item, int(raw["ammo_slot"]), WEAPON_TYPES[int(raw["weapon_type"])],
+                                          raw["drop_ammo"].strip().lower() == "true",
+                                          tuple(int(a) for a in raw["ammunition"].split(","))))
+    return out
 
 
 @cache

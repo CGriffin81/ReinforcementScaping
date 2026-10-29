@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from functools import cache
-from math import floor
+from math import floor, inf
 from typing import Callable
 
 from rlscape.combat.access import Progress, can_reach, meets_slayer_level
@@ -153,6 +153,7 @@ class Character:
     shield_id: int | None
     loot_mode: str = "valuable"
     progress: Progress = Progress()  # quests, items held and levels, for the access table; default: fresh
+    attacks_held: float = inf  # the shots or casts the ammunition or runes allow, for the class being ranked
 
 
 @dataclass(frozen=True)
@@ -184,10 +185,12 @@ def evaluate(entry: PoolEntry, fighter: Fighter, plan: Plan, character: Characte
     if rates is None or not rates.passes_retreat_filter(character.max_hp, character.current_hp, character.food_healing):
         return None
     fight_ticks = character.free_slots / slots_per_kill * rates.ticks_per_kill if slots_per_kill > 0 else None
+    ammo_share = character.attacks_held / rates.attacks_per_kill * rates.ticks_per_kill / duration_ticks
 
     def share_at(site: Site) -> float:
         fighting = 1.0 if fight_ticks is None else (fight_ticks / (fight_ticks + site.bank_trip_ticks) if fight_ticks > 0 else 0.0)
-        return fighting * max(duration_ticks - travel_ticks(character.location, site.spawn), 0.0) / duration_ticks
+        walking = max(duration_ticks - travel_ticks(character.location, site.spawn), 0.0) / duration_ticks
+        return min(fighting * walking, ammo_share)  # the option ends when the ammunition does
 
     site = max(sites, key=share_at)
     share = share_at(site)

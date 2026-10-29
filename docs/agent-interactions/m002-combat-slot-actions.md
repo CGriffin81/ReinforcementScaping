@@ -8,8 +8,7 @@
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS (the commit is made; the 30 slot actions and 4 loot-mode actions are built and tested, with ranged
   and magic slots masked until those fights exist)
-- Commit: the earlier work is main repo `59d7a31` (branch `sim-v0`); the slot actions are in the commit that adds
-  this record (its SHA can only be filled in by a later commit)
+- Commit: the earlier work is main repo `59d7a31`; the slot actions are `bac2124` (branch `sim-v0`)
 
 ## Full Prompt
 

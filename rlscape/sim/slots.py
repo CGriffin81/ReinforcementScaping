@@ -4,9 +4,10 @@ Every decision, the candidate ranker (rlscape.combat.ranking) picks for each com
 XP/hr and then the 3 best by gp/hr, for the character as it is right now. One CombatSlots object does that once per
 state and serves all 30 slot actions, both their mask entries and their runs (and, later, the observation's
 candidate features):
-- the fighter is the character as it will be after the fight's own wielding step (equipment.wield_best, run on a
-  copy), so the ranking sees the gear the fight will use;
+- the fighter is the character as it will be after the fight's own wielding step for that class
+  (equipment.wield_best, run on a copy), so the ranking sees the gear the fight will use;
 - the access table sees state.access_progress(): quests, items held, levels and coins;
+- a candidate's share of the option is capped by how long the ammunition or runes last (_attacks_held);
 - the ranking is cached on a fingerprint of everything it reads, so the 30 mask entries cost one ranking, and the
   run that follows a mask check fights exactly the candidate the mask showed.
 
@@ -14,7 +15,9 @@ Actions, with ids fight_<class>_<xp|gp><n>[_<style>]:
 - melee: 6 slots × 3 training styles (accurate → Attack, aggressive → Strength, defensive → Defence). A slot's
   monster is ranked by its best style. A style is masked if it fails the retreat-aware filter (§4.B) on its own,
   because the filter is what makes starting a fight safe (an agent choice; reversible);
-- ranged and magic: 6 slots each, masked until those fights exist (a bow and arrows; runes per cast).
+- ranged: 6 slots, ranked by the best of the accurate, rapid and longrange styles; open while the character has a
+  ranged kit (equipment.ranged_kits);
+- magic: 6 slots for the best spell the Magic level and runes allow (combat.best_spell); open while there is one.
 
 Loot modes (loot_<mode>) set what fights pick up. Setting one takes LOOT_MODE_TICKS. The current mode is masked, so
 the action is never a no-op.
@@ -25,6 +28,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import replace
 from functools import cache
+from math import inf
 
 import numpy as np
 
@@ -32,15 +36,17 @@ from rlscape.combat import formulas as f
 from rlscape.combat.candidates import COMBAT_CLASSES, LOOT_MODES, Candidate, Character, enemy_pool, loot_rule
 from rlscape.combat.ranking import CandidateRanker
 from rlscape.combat.rates import Plan
-from rlscape.sim.combat import fight
+from rlscape.gamedata import server as gd
+from rlscape.sim.combat import arrow_land_chance, best_spell, casts_held, fight
 from rlscape.sim.engine import ACTIVITY_TICKS
-from rlscape.sim.equipment import SHIELD, fighter_for, wield_best
+from rlscape.sim.equipment import SHIELD, WEAPON, fighter_for, ranged_ready, wield_best
 from rlscape.sim.health import food_healing_held
 from rlscape.sim.options import COMPLETED, Option, OptionResult
 from rlscape.sim.state import CharacterState
 
 K = 3  # monsters per list: 3 by XP/hr, then 3 by gp/hr
 MELEE_STYLES = (f.ACCURATE, f.AGGRESSIVE, f.DEFENSIVE)
+RANGED_STYLES = (f.ACCURATE, f.RAPID, f.LONGRANGE)
 LOOT_MODE_TICKS = 1  # changing a setting; the engine needs at least one tick per decision
 
 
@@ -60,7 +66,8 @@ def _pool_index() -> dict[int, int]:
 def _fingerprint(state: CharacterState) -> tuple:
     """Everything the ranking reads from the state."""
     return (state.tick, state.location, state.hp, tuple(state.xp), tuple(state.inventory.items()),
-            tuple(state.equipment.items()), tuple(state.bank.items()), state.loot_mode, state.progress)
+            tuple(state.equipment.items()), tuple(state.worn_amounts.items()), tuple(state.bank.items()),
+            state.loot_mode, state.progress)
 
 
 class CombatSlots:
@@ -87,21 +94,55 @@ class CombatSlots:
         return loot_rule(state.loot_mode, self.vocabulary)
 
     def _rank(self, state: CharacterState) -> None:
-        ranker = shared_ranker()
-        armed = replace(state, inventory=dict(state.inventory), equipment=dict(state.equipment))
-        wield_best(armed, "melee")
-        fighter = fighter_for(armed)
-        character = Character(state.location, state.max_hp(), state.hp, food_healing_held(state), armed.free_slots(),
-                              armed.equipment.get(SHIELD), state.loot_mode, state.access_progress())
-        self._slots = ranker.select({"melee": (fighter, [Plan("melee", s) for s in MELEE_STYLES])}, character,
-                                    self.duration_ticks, K, self.vocabulary)
-        self._styles = []
+        """Rank each class for the character armed for it: its own gear, shield and free slots."""
+        ranker, progress, food = shared_ranker(), state.access_progress(), food_healing_held(state)
+        self._slots, self._styles, fighters = {}, [], {}
+        for combat_class in COMBAT_CLASSES:
+            armed = replace(state, inventory=dict(state.inventory), equipment=dict(state.equipment),
+                            worn_amounts=dict(state.worn_amounts))
+            wield_best(armed, combat_class)
+            plans = _plans(armed, combat_class)
+            if not plans:
+                continue
+            fighters[combat_class] = fighter = fighter_for(armed)
+            character = Character(state.location, state.max_hp(), state.hp, food, armed.free_slots(),
+                                  armed.equipment.get(SHIELD), state.loot_mode, progress,
+                                  _attacks_held(armed, plans[0], self.loot(state)))
+            self._slots[combat_class] = ranker.select({combat_class: (fighter, plans)}, character, self.duration_ticks,
+                                                      K, self.vocabulary)[combat_class]
+        fighter = fighters["melee"]
         for candidate in self._slots["melee"]:
             i = _pool_index()[candidate.entry.npc.id]
             self._styles.append(frozenset(
                 s for s in MELEE_STYLES
                 if (r := ranker.rates(fighter, Plan("melee", s))[i]) is not None
-                and r.passes_retreat_filter(character.max_hp, character.current_hp, character.food_healing)))
+                and r.passes_retreat_filter(state.max_hp(), state.hp, food)))
+
+
+def _attacks_held(armed: CharacterState, plan: Plan, loot) -> float:
+    """The attacks the armed character's ammunition allows, in expectation: casts the runes pay for; worn arrows,
+    bolts or thrown weapons, stretched by the shots that land and are picked back up (as rlscape.sim.combat fights
+    them); unlimited for melee and crystal bows."""
+    if plan.combat_class == "magic":
+        return casts_held(armed, plan.style)
+    if plan.combat_class == "ranged":
+        ranged = gd.ranged_weapons()[armed.equipment[WEAPON]]
+        if ranged.weapon_type == "DEGRADING":
+            return inf
+        stack, ammo = armed.worn(ranged.ammo_slot), armed.equipment[ranged.ammo_slot]
+        recovered = arrow_land_chance(armed.level("ranged")) if ranged.drop_ammo and loot(ammo) else 0.0
+        return stack / (1 - recovered)
+    return inf
+
+
+def _plans(armed: CharacterState, combat_class: str) -> list[Plan]:
+    """The plans a class is ranked with, for the character as armed for it; none if it can't fight that way."""
+    if combat_class == "melee":
+        return [Plan("melee", s) for s in MELEE_STYLES]
+    if combat_class == "ranged":
+        return [Plan("ranged", s) for s in RANGED_STYLES] if ranged_ready(armed) else []
+    spell = best_spell(armed)
+    return [Plan("magic", spell)] if spell else []
 
 
 class FightSlot(Option):

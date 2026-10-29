@@ -4,7 +4,8 @@ The ranking runs every decision, because the combat slots are part of the action
 has to be cheap. What makes it slow in the reference is recomputing, for every monster, things that rarely change:
 its expected loot (per loot mode) and its fighting rates (per fighter and plan). Here those are cached, and what does
 change from step to step is vectorised over every site of every monster with numpy:
-- walking time from the character to each site, and the share of the option left for fighting after bank trips;
+- walking time from the character to each site, and the share of the option left for fighting after bank trips,
+  capped by how long the ammunition or runes last;
 - the access table and Slayer levels (cached per progress), the special-damage gear check (cached per shield), and
   the retreat-aware filter (per HP and food);
 - the best site per monster, the best plan per monster, one entry per monster name, then the k best by XP/hr and
@@ -41,6 +42,7 @@ class _PlanRates:
     damage_per_kill: np.ndarray
     damage_sd_per_kill: np.ndarray
     npc_max_hit: np.ndarray
+    attacks_per_kill: np.ndarray
     rates: tuple  # the scalar Rates (or None) per monster, to build the chosen Candidates
 
 
@@ -72,7 +74,8 @@ class CandidateRanker:
         col = lambda f: np.array([f(r) if r is not None else nan for r in rates])  # noqa: E731
         return _PlanRates(col(lambda r: r.kills_per_hour), col(lambda r: sum(r.xp_per_hour.values())),
                           col(lambda r: r.ticks_per_kill), col(lambda r: r.damage_taken_per_kill),
-                          col(lambda r: np.sqrt(r.damage_taken_variance_per_kill)), col(lambda r: r.npc_max_hit), rates)
+                          col(lambda r: np.sqrt(r.damage_taken_variance_per_kill)), col(lambda r: r.npc_max_hit),
+                          col(lambda r: r.attacks_per_kill), rates)
 
     @lru_cache(maxsize=64)
     def _loot(self, mode: str, vocabulary: frozenset[int]) -> tuple[np.ndarray, np.ndarray]:
@@ -147,7 +150,9 @@ class CandidateRanker:
                     site_fight = fight_ticks[self.site_entry]
                     fighting = np.where(np.isinf(site_fight), 1.0,
                                         np.where(site_fight > 0, site_fight / (site_fight + self.site_trip), 0.0))
-                    share = np.where(reach & valid[self.site_entry], fighting * walk_share, -np.inf)
+                    ammo_share = character.attacks_held / r.attacks_per_kill * r.ticks_per_kill / duration_ticks
+                    share = np.where(reach & valid[self.site_entry],
+                                     np.minimum(fighting * walk_share, ammo_share[self.site_entry]), -np.inf)
                     site_share, site_index = self._best_site(share)
                     ok = valid & (site_share > -np.inf)
                     values = {"xp": np.where(ok, r.xp_per_hour * site_share, -np.inf),
