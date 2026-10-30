@@ -1394,3 +1394,147 @@ on `sim-v0` (not pushed). `m002-ranged-and-magic`.
 ### Next
 Buying (needs Caleb's review) keeps ranged and magic going after the starter
 arrows and runes. Then the Gymnasium layer.
+
+### Committed: ranged and magic
+Caleb: "Commit this and draft the buying actions for my review." Commit
+`8eb9486` on `sim-v0` (not pushed). `m002-buying-draft`.
+
+### Drafted: the buying actions, for Caleb's review
+`docs/buying-draft.md`; `m002-buying-draft`. Nothing is built.
+- **Server mechanics read for it:**
+  - The frozen GE seller fills a buy at once, at the 2009 price, from
+    unlimited supply, for items with a 2009 price. There are no buy limits.
+  - `ge_collect` takes items as banknotes when they don't fit.
+  - Shop prices climb from 100% to 130% of value as stock runs down, and the
+    whole purchase needs the coins in the inventory. Stock restocks by 1 unit
+    per 100 ticks and is shared (`personalized_shops = false`).
+- **The proposal:**
+  - 51 GE actions and 37 shop actions (66 if the shops that never beat the
+    GE are trimmed), with lots, masks, wearing on purchase and a banking-rule
+    change.
+  - Nine questions for Caleb, each with a recommendation.
+- **Findings:**
+  - The buy list alone has 67 items, more than V's estimated 60, so V grows.
+  - Smithing needs a hammer, which the starter kit lacks. Until buying
+    exists, one comes only from drops (316 monsters, guards among them). The
+    default `loot_valuable` mode skips it, since a hammer is worth 1 gp.
+  - The server's item configs swap skill and level in the "requirements" of
+    the fishing rod and fly rod (`{5,10}`, `{20,10}`). It's harmless: rods
+    can't be worn, and fishing levels come from the fishing code.
+
+### Decided: most of the buying questions (Caleb)
+`docs/buying-draft.md` §4; `m002-buying-decisions`. Nothing is built.
+- **Decisions:**
+  - Q1: as recommended, a buy gets as many as the coins allow, up to a lot.
+  - Q2: shop purchases land in the inventory as items. GE purchases arrive
+    as banknotes unless it's a single item.
+  - Q4: buys that aren't upgrades are masked.
+  - Q5: armour as pieces, not sets. With sets, rune armour would wait for
+    Dragon Slayer, though only the platebody needs it.
+  - Q7: every shop action is kept.
+  - Q8: processing inputs can be bought.
+  - Q9: shop stock is tracked within an episode, and selling uses it.
+- **Open for discussion:** Q3 (gear) and Q6 (food), explained in the
+  draft's §5 and §6.
+- **Findings:**
+  - Banking already strands gear without buying. A deposit banks unworn
+    gear, and no action takes gear out, so the starter kit's first deposit
+    loses the bow (after melee) or the sword and shield (after ranged). My
+    revised Q3 recommendation fixes the deposit rule instead of wearing gear
+    on purchase.
+  - My draft's food tiers included two fish that other fish beat outright.
+    Cod heals as much as trout for less, and monkfish heals more than
+    swordfish for less. Corrected tiers: mackerel, tuna, monkfish, shark.
+  - Q2's banknotes need a way to take GE food out of the bank, and lots for
+    banknoted buys, since free slots no longer cap them. Both are proposed in
+    the draft.
+  - The server's GE lets a player collect as items or as banknotes, so Q2 is
+    the human path. The bridge's `ge_collect` needs a fork change to choose
+    banknotes.
+
+### Decided: gear withdrawals, food tiers and lots; GE collection fixed on the fork
+Caleb, on the buying draft; `m002-ge-banknotes`. The simulator side isn't built.
+- **Decisions:**
+  - Q3a, option (b): deposits are unchanged, and `bank_withdraw_gear_<class>`
+    (melee, ranged, magic) takes a class's best gear out of the bank.
+  - Q3b, as a principle: gear goes on when it suits the task. Caleb's example:
+    no metal armour for tasks with a lot of running, since it drains run
+    energy.
+  - Q6: four GE food tiers (mackerel, tuna, monkfish, shark), plus Wydin's
+    bread.
+  - Lots for banknoted GE buys: 100 for food, 1,000 for processing inputs.
+  - "Make the change(s) as appropriate to make sure that GE purchasing acts
+    normally": the go-ahead for the fork change below.
+- **Fork change** (`RLCommands.kt`, uncommitted):
+  - `ge_collect` collects as Q2 decided: more than one of an item that has a
+    banknote as banknotes; a single item, coins, runes or arrows as items.
+  - **Bug found and fixed:** offers placed back to back could get the same
+    slot, so the second replaced the first. A new offer reaches the
+    character's records only when the GE worker thread writes it, and until
+    then its slot looked free. The bridge now remembers the slots it has
+    handed out.
+  - A new live test covers both.
+- **Findings for Q3b** (the mechanism is still Caleb's call; draft §5):
+  - The simulator has no run energy or weight, so gear costs nothing outside
+    combat, and Agility would do nothing.
+  - The server's weight penalty is mild. Running drains 1% faster per kg, and
+    full plate is about 27 kg, which makes long trips about 4% slower. A full
+    inventory of ore (about 63 kg) weighs more than the armour.
+  - The server character never runs: no bridge command turns run on, so it
+    walks at 1 tile a tick while the simulator assumes running at 1.5. The
+    ±20% gate would catch this in travel times.
+- **Still open:** the Q3b mechanism, and how GE food comes out of the bank.
+
+### Decided: run energy and weight, and food withdrawals; buying built in sim v0
+Caleb: "3b should sue option a. Make the bank_withdraw_<food> actions per
+tier." `m002-buying-sim`. Uncommitted.
+- **Decisions:**
+  - Q3b, option (a): the simulator models run energy and weight (drain by
+    weight, restore by Agility), the agent gets `bank_deposit_worn`, and a
+    bridge command turns run on so the server character runs as a person
+    would. I read choosing (a) as the go-ahead for that run-toggle fork
+    change; it comes with the energy change, not yet built.
+  - Food: one `bank_withdraw_<food>` per GE tier (mackerel, tuna, monkfish,
+    shark).
+- **Built in sim v0** (`rlscape/sim/buying.py`, `rlscape/sim/shops.py`):
+  - 113 buy actions (76 GE, 37 shop), 3 gear withdrawals and 4 food
+    withdrawals.
+  - Shop stock, prices and restocking from `Shop.kt`, tracked within an
+    episode (Q9). General-store sales now use the same stock: a store's own
+    stock for items it sells, otherwise the player stock all general stores
+    share, which the server clears every 3 hours.
+  - Processing withdrawals now bank banknotes of their inputs first, so GE
+    inputs need no separate deposit.
+- **Option catalog v1.2:** §8 now holds the buying decisions, which replace
+  the draft's table; §1, §5, §7 and §9 are updated. `docs/buying-draft.md`
+  is marked superseded.
+- **Agent choices** (reversible, listed in `buying.py`):
+  - For the upgrade check, "held" means usable now, wherever it is.
+  - The coins withdrawn are just the shortfall. A shop trip's bank stop is
+    the bank with the shortest walk overall.
+  - No shield is withdrawn behind a two-handed weapon.
+  - Restocks and the player-stock clear run on episode ticks. The server's
+    phase is arbitrary.
+- **Found:**
+  - **Mithril bars can't be processed in sim v0.** There's no
+    `smith_mithril` activity, so bought mithril bars can only be sold.
+    That's my draft's mistake. Options: add `smith_mithril` (Smithing 50,
+    one more processing action), or drop `buy_ge_2359`.
+  - Zeke's shop is listed twice in `shops.json` (ids 135 and 150).
+    `Shops.startup` maps the shopkeeper to the later one, so the sim uses
+    150.
+- **Next:** run energy and weight (3b), then the Gymnasium layer.
+
+### Decided: `smith_mithril`; buying committed
+Caleb: "Add smith_mithril and commit this." `m002-smith-mithril`.
+- **Decision:** add `smith_mithril` (my recommendation), not drop
+  `buy_ge_2359`. Bought mithril bars can now be smithed.
+- **Built:** `Smith("smith_mithril", "MITHRIL")` and its
+  `bank_withdraw_for_smith_mithril`, by the same rules as the other three
+  tiers. Smithing 50 makes daggers; the bigger items open with the level.
+  Mithril bars come only from the GE, since sim v0 has no mithril ore or
+  smelting.
+- **Option catalog v1.2:** §3, §5 and §9 (about 514 actions).
+- **Committed:** the fork's GE banknote change first, then this repo (the
+  submodule pointer, buying, `smith_mithril` and their records).
+- **Next:** run energy and weight (3b), then the Gymnasium layer.

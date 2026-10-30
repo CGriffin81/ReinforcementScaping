@@ -58,9 +58,9 @@ def kit_score(weapon: int, ammo: int | None) -> float:
     return (attack + 64) * (strength + 64) / (items[weapon].attack_speed or UNARMED_SPEED)
 
 
-def ranged_kits(state: CharacterState) -> list[tuple[int, int | None]]:
-    """(weapon, ammunition) pairs the character can fire with, from what it carries or wears."""
-    weapons, held = gd.ranged_weapons(), set(state.inventory) | set(state.equipment.values())
+def ranged_kits(state: CharacterState, also: frozenset[int] = frozenset()) -> list[tuple[int, int | None]]:
+    """(weapon, ammunition) pairs the character can fire with, from what it carries or wears (plus `also`)."""
+    weapons, held = gd.ranged_weapons(), set(state.inventory) | set(state.equipment.values()) | also
     kits: list[tuple[int, int | None]] = []
     for weapon in sorted(held):
         ranged = weapons.get(weapon)

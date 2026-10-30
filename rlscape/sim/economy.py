@@ -9,7 +9,8 @@ Mechanics:
   runes and fishing bait (the catalog's list, with bait counted as an activity's ammunition). Banknotes go in as
   their items. Banking costs BANKING_TICKS (rlscape.travel; calibrate).
 - bank_withdraw_for_<activity>: walk to the nearest bank and withdraw what one processing activity needs, up to a
-  full inventory: its tool if it isn't held (hammer, tinderbox), then its inputs in the right proportions.
+  full inventory: its tool if it isn't held (hammer, tinderbox), then its inputs in the right proportions. Banknotes
+  of the inputs held (from GE buys) are banked first, as a player would at the booth.
 - drop_<item> / drop_misc: drop every unit; dropped items leave net worth (env contract §4). DROP_TICKS a unit, a
   stack at once; calibrate.
 - alchemy (ModernListeners.alchemize): low alchemy needs Magic 21, 3 fire runes and a nature rune and gives 31 XP;
@@ -30,6 +31,7 @@ from rlscape.sim.health import foods_held
 from rlscape.sim.movement import route_ticks, walk
 from rlscape.sim.options import COMPLETED, INPUTS_EXHAUSTED, Option, OptionResult
 from rlscape.sim.processing import HAMMER, TINDERBOX
+from rlscape.sim.shops import PLAYER_STOCK, set_stock, stock
 from rlscape.sim.skills import MAX_XP, SKILL_INDEX
 from rlscape.sim.state import COINS, CharacterState
 from rlscape.travel import BANKING_TICKS
@@ -61,13 +63,35 @@ def nearest_bank(state: CharacterState) -> gd.Bank:
     return min(gd.banks(), key=lambda b: route_ticks(state, (b.x, b.y, b.plane)))
 
 
-def _bank_trip(state: CharacterState, budget: int) -> int | None:
+def bank_trip(state: CharacterState, budget: int) -> int | None:
     """Walk to the nearest bank and open it; the ticks taken, or None if the budget runs out first."""
     bank = nearest_bank(state)
     walked = walk(state, (bank.x, bank.y, bank.plane), budget)
     if walked is None or walked + BANKING_TICKS > budget:
         return None
     return walked + BANKING_TICKS
+
+
+def bank_notes(state: CharacterState, items: Iterable[int]) -> None:
+    """At the booth: bank the banknotes held of these items, which go in as the items."""
+    noted = gd.noted_ids()
+    for item in items:
+        note = noted.get(item)
+        if note in state.inventory:
+            amount = state.inventory[note]
+            state.take(note, amount)
+            state.bank[item] = state.bank.get(item, 0) + amount
+
+
+def banked_or_noted(state: CharacterState, item: int) -> int:
+    """Units in the bank, plus banknotes held that a withdrawal banks first."""
+    return state.bank.get(item, 0) + state.inventory.get(gd.noted_ids().get(item), 0)
+
+
+def note_slots(state: CharacterState, items: Iterable[int]) -> int:
+    """Inventory slots that banking these items' banknotes frees."""
+    noted = gd.noted_ids()
+    return sum(1 for item in items if noted.get(item) in state.inventory)
 
 
 class BankDeposit(Option):
@@ -80,7 +104,7 @@ class BankDeposit(Option):
         return any(not kept_on_deposit(item) for item in state.inventory)
 
     def run(self, state: CharacterState, rng: np.random.Generator, budget: int) -> OptionResult:
-        ticks = _bank_trip(state, budget)
+        ticks = bank_trip(state, budget)
         if ticks is None:
             return OptionResult(budget, COMPLETED)
         unnoted = gd.unnoted_ids()
@@ -106,6 +130,7 @@ WITHDRAW_RECIPES = {
     "smith_bronze": ((HAMMER,), ((2349, 1),)),
     "smith_iron": ((HAMMER,), ((2351, 1),)),
     "smith_steel": ((HAMMER,), ((2353, 1),)),
+    "smith_mithril": ((HAMMER,), ((2359, 1),)),
     "cook_fish": ((TINDERBOX,), "raw_food"),
     "burn_logs": ((TINDERBOX,), "logs"),
     "bury_bones": ((), "bones"),
@@ -124,25 +149,30 @@ class BankWithdraw(Option):
         return {"raw_food": _raw_foods(), "logs": frozenset(gd.log_types()),
                 "bones": frozenset(gd.bone_experience())}[self.inputs]
 
+    def _input_items(self) -> frozenset[int]:
+        return self._interchangeable() if isinstance(self.inputs, str) else frozenset(i for i, _ in self.inputs)
+
     def available(self, state: CharacterState) -> bool:
         if isinstance(self.inputs, str):
-            in_bank = any(state.bank.get(item, 0) > 0 for item in self._interchangeable())
+            in_bank = any(banked_or_noted(state, item) > 0 for item in self._interchangeable())
             need = 1
         else:
-            in_bank = all(state.bank.get(item, 0) >= amount for item, amount in self.inputs)
+            in_bank = all(banked_or_noted(state, item) >= amount for item, amount in self.inputs)
             need = sum(amount for _, amount in self.inputs)
         missing_tools = sum(1 for tool in self.tools if not state.holds(tool))
         tools_ok = all(state.holds(tool) or state.bank.get(tool, 0) > 0 for tool in self.tools)
-        return in_bank and tools_ok and state.free_slots() >= need + missing_tools
+        free = state.free_slots() + note_slots(state, self._input_items())
+        return in_bank and tools_ok and free >= need + missing_tools
 
     def _withdraw(self, state: CharacterState, item: int, amount: int) -> None:
         state.take(item, amount, state.bank)
         state.add(item, amount)
 
     def run(self, state: CharacterState, rng: np.random.Generator, budget: int) -> OptionResult:
-        ticks = _bank_trip(state, budget)
+        ticks = bank_trip(state, budget)
         if ticks is None:
             return OptionResult(budget, COMPLETED)
+        bank_notes(state, self._input_items())
         for tool in self.tools:
             if not state.holds(tool) and state.bank.get(tool, 0) > 0:
                 self._withdraw(state, tool, 1)
@@ -276,10 +306,17 @@ def _real(item: int) -> int:
 
 def store_sale_value(item: int, units: int, already_overstocked: int = 0) -> int:
     """Shop.sell for coins: the first unit at getGPSell's price, each further one with one more unit of overstock.
-    For items a general store doesn't stock, overstock is the count already sold to it. Never below 1 coin a unit."""
+    `already_overstocked` is the store's stock of the item less its normal amount (rlscape.sim.shops; the player
+    stock's normal is 0); below normal, a unit sells at the full price. Never below 1 coin a unit."""
     real = _real(item)
     base, value = gd.alchemy_values().get(real, (0, 0))[1], gd.item_base_values().get(real, 0)
-    return sum(max(round(base - value * OVERSTOCK_STEP * min(already_overstocked + k, 10)), 1) for k in range(units))
+    return sum(max(round(base - value * OVERSTOCK_STEP * min(max(already_overstocked + k, 0), 10)), 1)
+               for k in range(units))
+
+
+def general_store(name: str) -> gd.Shop:
+    """The shops.json entry for a general store in data/stations.csv."""
+    return next(s for s in gd.shops().values() if s.title == f"{name} General Store")
 
 
 class SellGE(Option):
@@ -314,7 +351,9 @@ class SellGE(Option):
 
 
 class SellStore(Option):
-    """Walk to the nearest general store and sell every unit of the targets at low-alchemy value minus overstock."""
+    """Walk to the nearest general store and sell every unit of the targets at low-alchemy value minus overstock.
+    The overstock is the store's tracked stock (rlscape.sim.shops): its own stock for items it sells, otherwise the
+    player stock all general stores share."""
 
     family = "selling"
 
@@ -336,10 +375,15 @@ class SellStore(Option):
         walked = walk(state, store.tile, budget)
         if walked is None or walked + STORE_TICKS > budget:
             return OptionResult(budget, COMPLETED)
+        shop, now = general_store(store.name), state.tick + walked
         for item in self._targets(state):
-            amount = state.inventory[item]
+            amount, real = state.inventory[item], _real(item)
+            key = shop.id if real in shop.stock else PLAYER_STOCK
+            normal = shop.stock[real][0] if key == shop.id else 0
+            held = stock(state, key, real, now)
             state.take(item, amount)
-            state.add(COINS, store_sale_value(item, amount))
+            state.add(COINS, store_sale_value(item, amount, held - normal))
+            set_stock(state, key, real, held + amount, now)
         return OptionResult(walked + STORE_TICKS, COMPLETED)
 
 

@@ -7,8 +7,7 @@
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS (the commit is made; ranged and magic fights are built and tested, and their slots are open)
-- Commit: the slot actions are main repo `bac2124`; ranged and magic are in the commit that adds this record
-  (branch `sim-v0`; its SHA can only be filled in by a later commit)
+- Commit: the slot actions are main repo `bac2124`; ranged and magic are `8eb9486` (branch `sim-v0`)
 
 ## Full Prompt
 

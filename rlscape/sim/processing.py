@@ -286,4 +286,5 @@ def processing_options() -> list[Option]:
     """Catalog §3, in order."""
     return [Smelt("smelt_bronze", "BRONZE"), Smelt("smelt_iron", "IRON"), Smelt("smelt_steel", "STEEL"),
             Smith("smith_bronze", "BRONZE"), Smith("smith_iron", "IRON"), Smith("smith_steel", "STEEL"),
+            Smith("smith_mithril", "MITHRIL"),
             Cook("cook_fish"), BurnLogs("burn_logs"), BuryBones("bury_bones")]

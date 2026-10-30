@@ -1,8 +1,10 @@
-# Option Catalog (v1.1, Signed off)
+# Option Catalog (v1.2, Signed off)
 
-**Status:** v1.1, 2026-10-28. It adds five more trainable skills for sim v1 (§3.5). Their options are still to be
-specified and get Caleb's review before sim v1 is built. Read it together with `docs/env-contract.md`. It replaces v0
-and `ROADMAP.md` Appendix A. All of its v1.0 questions are decided:
+**Status:** v1.2, 2026-10-30. It replaces §8's buying table with Caleb's buying decisions (2026-10-29 and 30): the
+buy actions, the gear and food withdrawals (§5), and run energy and weight for travel. It also adds `smith_mithril`
+(§3), so bought mithril bars can be smithed. v1.1 (2026-10-28) added five more trainable skills for sim v1 (§3.5).
+Their options are still to be specified and get Caleb's review before sim v1 is built. Read it together with
+`docs/env-contract.md`. It replaces v0 and `ROADMAP.md` Appendix A. All of its v1.0 questions are decided:
 - selling quantity
 - per-source buying
 - the combat design (§4), including the loot modes (§4.D)
@@ -18,7 +20,8 @@ change needs Caleb's approval and is logged in `docs/decision-log.md`.
   running out, out of food or ammunition, death, or the horizon. They never bank (decided). When the
   inventory is full, gathering options are masked until the agent banks, drops, sells, alchs or processes.
 - **Economy and inventory options** run once: travel if needed, then the transaction.
-- **Travel** between regions is part of every option's duration.
+- **Travel** between regions is part of every option's duration. It will depend on run energy, weight and Agility
+  (decided 2026-10-30, §8; not built yet).
 - **Preconditions** make up the action mask: levels, tools, items in the inventory, coins, location
   requirements.
 - **Verify** marks a location or access detail to confirm on the server during calibration.
@@ -71,7 +74,7 @@ These work from the inventory and run until the inputs run out. They happen at t
 | Id | Preconditions | Inventory inputs | Output |
 |---|---|---|---|
 | `smelt_bronze` / `smelt_iron` / `smelt_steel` | Smithing 1 / 15 / 30 | copper + tin / iron ore / iron ore + 2 coal | bars (iron 50% success) |
-| `smith_bronze` / `smith_iron` / `smith_steel` | Smithing level for the best item the bars allow, hammer | bars | the best smithable item for the bars held: platebody, platelegs, etc. |
+| `smith_bronze` / `smith_iron` / `smith_steel` / `smith_mithril` | Smithing level for the best item the bars allow (mithril: 50), hammer | bars | the best smithable item for the bars held: platebody, platelegs, etc. Mithril bars come from the GE (§8); sim v0 has no mithril ore or smelting. |
 | `cook_fish` | Cooking level for the food | raw food | cooked food (with burn chance), on a fire lit where the character stands when it holds a tinderbox and a log it can light, otherwise at the nearest range; bread dough, cake and barley always need a range |
 | `burn_logs` | tinderbox, Firemaking level | logs | — |
 | `bury_bones` | — | bones / big bones | — |
@@ -79,7 +82,7 @@ These work from the inventory and run until the inputs run out. They happen at t
 ## 3.5 Skills added for sim v1 (Caleb, 2026-10-28)
 
 Fletching, Crafting, Agility, Herblore and Runecrafting become trainable in sim v1, before E2 (env contract §5). Their
-options are **to be specified** (catalog v1.2, for Caleb's review), following the same rules as §2–§3: preconditions,
+options are **to be specified** (in a later catalog version, for Caleb's review), following the same rules as §2–§3: preconditions,
 inputs, a fixed duration *D*, server formulas, and calibration. The likely shape:
 
 | Skill | Likely options | Notes |
@@ -268,7 +271,10 @@ is never a no-op (agent choice, 2026-10-29).
 | Id | Effect |
 |---|---|
 | `bank_deposit` | walk to the nearest bank; deposit everything except tools, worn equipment, food, ammunition and runes |
-| `bank_withdraw_for_<activity>` | walk to the nearest bank; withdraw the inputs one processing activity needs, up to a full inventory. One per §3 activity, so 9 actions. |
+| `bank_withdraw_for_<activity>` | walk to the nearest bank; withdraw the inputs one processing activity needs, up to a full inventory. Banknotes of the inputs held (from GE buys) are banked first. One per §3 activity, so 10 actions. |
+| `bank_withdraw_gear_<class>` | melee, ranged, magic: walk to the nearest bank; withdraw the gear that beats what the character carries for that combat class (the weapon, for ranged with its ammunition, then armour, the biggest defence gain first), up to the free slots. Fights put it on from the inventory. 3 actions (§8). |
+| `bank_withdraw_<food>` | one per GE food tier (mackerel, tuna, monkfish, shark): walk to the nearest bank, bank the banknotes held of that food, and withdraw it into the free slots. 4 actions (§8). |
+| `bank_deposit_worn` | walk to the nearest bank; bank the worn gear (§8; decided 2026-10-30, built with run energy) |
 | `drop_<item>` | drop every unit of one vocabulary item from the inventory (dropped items leave net worth) |
 | `drop_misc` | drop every non-vocabulary item |
 | `reclaim_gravestone` | after a death outside the Wilderness: walk back to the gravestone and take back everything in it. Masked unless a gravestone exists and the walk fits in its remaining time (it lasts 200 ticks; env contract §1). |
@@ -291,45 +297,125 @@ Per item, selling **all of that item in the inventory** (decided). To keep some 
 | Id | Effect |
 |---|---|
 | `sell_ge_<item>`, `sell_ge_misc` | walk to the GE; sell; the frozen buyer pays the 2009 price for items that have one |
-| `sell_store_<item>`, `sell_store_misc` | walk to the nearest general store; sell at low-alchemy value minus overstock |
+| `sell_store_<item>`, `sell_store_misc` | walk to the nearest general store; sell at low-alchemy value minus overstock. Overstock is tracked within an episode (§8): the store's own stock for items it sells, otherwise the player stock every general store shares, which the server clears every 3 hours. |
 
 ## 8. Buying
 
-Gear, tools and food come from the frozen-price GE seller and from shops (decided). There is a **separate action per
-source** wherever a nearby authentic shop stocks the item (decided), so the agent learns the price-versus-travel
-trade-off.
+Decided by Caleb, 2026-10-27 to 2026-10-30 (`docs/decision-log.md`); built in sim v0 (`rlscape/sim/buying.py`),
+except run energy and weight (below).
 
-| Group | Items | Sources |
+**Sources** (from the fork's code):
+- **GE** (`buy_ge_<item>`): the frozen seller fills a buy at once, at the 2009 price, from unlimited supply. The
+  server has no buy limits. Only items with a 2009 price can be bought; every item below has one.
+- **Shops** (`buy_shop_<item>`): a separate action wherever a nearby authentic shop stocks the item (decided), so the
+  agent learns the price-versus-travel trade-off.
+  - **Price:** ⌈value × m / 100⌉ a unit, with m rising from 100% at normal stock to 130% when sold out; each further
+    unit of a purchase is priced at one less in stock.
+  - **Stock:** shared (`personalized_shops = false`) and tracked within an episode (Q9). It restocks 1 unit per 100
+    ticks.
+  - **Paying:** the coins for the whole purchase must be in the inventory.
+
+**Actions** (113 buys; all kept, Q7):
+
+| Group | Items | GE | Shop | Lot |
+|---|---|---|---|---|
+| Axes | iron, steel, mithril, adamant, rune | all | Bob's (Lumbridge): iron, steel | 1 |
+| Pickaxes | iron, steel, mithril, adamant, rune | all | Nurmof's (Dwarven Mine): all | 1 |
+| Fishing | fishing rod, fly rod, harpoon, lobster pot; bait; feathers | all | Gerrant's (Port Sarim): all | 1; 200 bait or feathers |
+| Hammer | hammer (smithing needs one; the starter kit has none) | yes | Lumbridge general store | 1 |
+| Scimitars | iron, steel, mithril, adamant, rune | all | Zeke's (Al Kharid): iron, steel, mithril | 1 |
+| Armour pieces (Q5) | iron to rune: full helm, platebody, platelegs, kiteshield | all 20 | none | 1 |
+| Bows | oak, willow, maple shortbow | all | Lowe's (Varrock): all | 1 |
+| Arrows | bronze, iron, steel, mithril, adamant | all | Lowe's: all | 100 |
+| Runes | air, water, earth, fire, mind, chaos, death, nature | all | Aubury's (Varrock): all but nature | 100 |
+| Staves | staff of air, water, earth, fire | all | Zaff's (Varrock): all | 1 |
+| Food (Q6) | mackerel, tuna, monkfish, shark; bread | the 4 fish | Wydin's (Port Sarim): bread | 100 |
+| Processing inputs (Q8) | raw trout, lobster, swordfish; oak, willow, maple, yew logs; iron, steel, mithril bars | all 10 | none | 1,000 |
+
+That's 76 GE actions and 37 shop actions. Every bought item joins the vocabulary *V* (§9), so its sell, alch and
+drop actions exist.
+
+**How a buy works:**
+- **Amount (Q1):** as many as the coins allow, up to the lot. A shop buy is also capped by its stock and the free
+  slots.
+- **Paying:** coins in the inventory pay first. If they're short, the trip starts with a bank stop to withdraw the
+  rest. The GE has bankers beside it, so there the stop costs only the banking time.
+- **Where purchases land (Q2):**
+  - Shops: in the inventory, as items.
+  - GE: banknotes for more than one of an item that has a banknote. A single item, or a stack (runes, arrows, bait,
+    feathers), comes as itself; a single item with no room comes as a banknote.
+  - Banknotes can't be eaten or worn. The withdrawals (§5) bank them and take out the items.
+- **Timing:** the walk, plus 8 ticks at the GE or 3 at a shop (the selling constants; calibrate).
+- **Mask (Q4):** a buy is open only when all of these hold:
+  - **Affordable:** at least one unit, with the coins in the inventory and the bank.
+  - **Usable now:** gear and weapons meet their wear requirements, including quest locks; axes and pickaxes meet
+    their skill level; arrows meet their Ranged level.
+  - **An upgrade** (gear, tools, bows and weapons only): better than anything held and usable now for that role,
+    whether worn, in the inventory or in the bank. A fishing tool, the hammer or a staff is open unless the same
+    item is held.
+  - **Room:** a free inventory slot, unless the purchase stacks onto one held.
+  - **Shops only:** in stock.
+- **Armour as pieces (Q5):** the rune full helm, platelegs and kiteshield can be bought at Defence 40; only the rune
+  platebody waits for Dragon Slayer.
+
+**Food (Q6):** four GE tiers and bread.
+
+| Food | Heals | 2009 GE price | gp per HP | Heals fully once max HP is at least |
+|---|---|---|---|---|
+| Mackerel | 6 | 10 | 1.7 | 12 |
+| Tuna | 10 | 79 | 7.9 | 20 |
+| Monkfish | 16 | 327 | 20.4 | 32 |
+| Shark | 20 | 845 | 42.3 | 40 |
+| Bread (Wydin's) | 5 | about 12 | 2.4 | 10 |
+
+- No other fish heals as much as a tier for less per HP.
+- The trade-off is gold against HP per slot. Doubling the HP per trip (tuna to shark) costs about 10× the gold.
+- The sim eats at half the maximum HP and healing stops at the maximum, so the useful size grows with Hitpoints.
+
+**Gear and the task (Q3):**
+- **Withdrawals (3a):** deposits are unchanged, so `bank_deposit` banks unworn gear. `bank_withdraw_gear_<class>`
+  (§5) takes a class's best gear back out, and fights put it on from the inventory.
+- **Run energy and weight (3b, decided 2026-10-30; not built yet):** gear goes on when it suits the task. For
+  example, no metal armour for tasks with a lot of running. The sim gets the server's run energy:
+  - **Drain:** each running tick drains 0.55 × (1 + kg / 100)% energy. Running covers 2 tiles a tick; walking
+    covers 1.
+  - **Restore:** each tick not running restores 0.6 × 100 / (175 − Agility)%.
+  - **Weight:** worn items, plus one of each inventory slot's item.
+  - Energy goes in the character state and the observation, and travel runs while energy lasts.
+  - `bank_deposit_worn` (§5) lets the agent leave armour in the bank. Taking it off into the inventory wouldn't help,
+    because the inventory's weight counts too.
+  - On the server, a bridge command turns run on, as a person would. The server character currently walks.
+  - Full plate (about 27 kg) makes long trips about 4% slower; a full inventory of ore weighs more (about 63 kg).
+
+**Shops used** (`server/Server/data/configs/shops.json`):
+
+| Shop (region) | Bought here | Example: shop price at normal stock vs 2009 GE |
 |---|---|---|
-| Woodcutting / mining tools | axes and pickaxes, steel to rune | GE; Bob's (steel axe), Nurmof's (pickaxes) |
-| Melee | scimitars steel to rune; armour sets iron to rune (the **rune set needs Dragon Slayer** for its platebody) | GE; Zeke's (steel and mithril scimitars) |
-| Ranged | shortbows (normal / oak / willow / maple); arrows (bronze to adamant) in 100s; leather and studded body | GE; Varrock's archery shop (*verify*) |
-| Magic | air / water / earth / fire / mind / chaos / nature runes in 100s; elemental staves | GE; Varrock's rune shop (*verify*) |
-| Fishing | fly rod + 1,000 feathers; lobster pot | GE; Gerrant's |
-| Supplies | food (best affordable, up to 100); hammer; tinderbox | GE; general store (hammer, tinderbox) |
+| Bob's Brilliant Axes (lumbridge) | iron, steel axes | iron axe 56 vs **28** |
+| Nurmof's Pickaxe Shop (Dwarven Mine) | iron to rune pickaxes | iron **140** vs 209; rune 32,000 vs **19,100** |
+| Gerrant's Fishy Business (Port Sarim) | rods, harpoon, lobster pot, bait, feathers | fly rod **5** vs 77; lobster pot **20** vs 70 |
+| Lumbridge General Store | hammer | hammer **1** vs 13 |
+| Zeke's Superior Scimitars (al_kharid) | iron, steel, mithril scimitars | steel 400 vs **200** |
+| Lowe's Archery Emporium (Varrock) | shortbows, arrows | bows and arrows up to about 2× the GE |
+| Aubury's Rune Shop (Varrock) | runes but nature | up to about 2× the GE |
+| Zaff's staff shop (Varrock) | elemental staves | up to about 2× the GE |
+| Wydin's Food Store (Port Sarim) | bread | bread **12** vs 25 |
 
-### Shops used (from `server/Server/data/configs/shops.json`)
-
-Shops sell at 100–130% of an item's base value. The price rises toward 130% as their stock runs down. "2009 GE"
-is what the frozen seller charges.
-
-| Shop (region) | Sells | Example: shop price vs 2009 GE |
-|---|---|---|
-| Bob's Brilliant Axes (lumbridge) | bronze pickaxe; bronze / iron / steel axes | steel axe 200–260 vs **100** |
-| Nurmof's Pickaxe Shop (falador, Dwarven Mine) | bronze to rune pickaxes | steel **500**–650 vs 576; rune 32,000+ vs **19,100** |
-| Zeke's Superior Scimitars (al_kharid) | bronze to mithril scimitars | steel 400+ vs **200**; mithril 1,040+ vs **522** |
-| Gerrant's Fishy Business (Port Sarim, near draynor) | small net, fly rod, lobster pot, harpoon, feathers | fly rod **5** vs 77; lobster pot **20** vs 70; feathers 6 vs 6 |
-| Lumbridge General Store (lumbridge) | hammer, tinderbox | hammer **1** vs 13 |
-
-**Bold** marks the cheaper source. The pattern is consistent: shops win for cheap tools, the 2009 GE wins for
-weapons, armour and high-tier pickaxes. So which source to use is a real trade-off between price and travel
-time.
+**Bold** marks the cheaper source. Shops win for cheap tools and bread; the GE wins for weapons, armour, runes,
+arrows and high-tier pickaxes.
 
 **Not used:**
-- Shops that sell pieces of armour sets: Horvik's, Louie's, Peksa's and Cassie's. Assembling a set takes four
-  stops, and Cassie's has no iron or steel kiteshields in stock.
+- Shops that sell pieces of armour sets: Horvik's, Louie's, Peksa's and Cassie's.
 - Three shops with stock of 150,000+, including dragon scimitars ("Delicious Goods", "Armour & Supplies",
   "The Fairy's Culinary Goods"). They look like 2009Scape additions, not 2009 content.
+- Shops behind quests, guild levels or members-only cities: the Magic Guild's store, the Fishing Guild's shop,
+  Lletya, Ali's runes.
+- Ranged and magic armour (leather, studded, coif, wizard robes): fights choose armour by defence for every combat
+  class, so they'd never be worn over plate. They need class-aware armour choice first.
+
+**Server side:** GE buys use the bridge's `ge_offer` and `ge_collect`, which collects as Q2 decided (fork change,
+2026-10-29). Shop buys, putting gear on, bank withdrawals and the run toggle each need a bridge command through the
+player's path: fork changes, each with Caleb's go-ahead.
 
 ## 9. Item vocabulary and size
 
@@ -349,15 +435,15 @@ before training, so the action space doesn't change during the study.
 | Group | Actions |
 |---|---|
 | Gathering | 11 |
-| Processing | 9 |
+| Processing | 10 |
 | Combat | 30 |
 | Loot mode | 4 |
-| Inventory | 1 + 9 + 61 + 1 (reclaim gravestone) = 72 |
+| Inventory | 1 + 10 + 61 + 1 (reclaim gravestone) + 3 gear + 4 food + 1 (deposit worn) = 81 |
 | Alchemy | 122 |
 | Selling | 122 |
-| Buying | about 60 |
+| Buying | 113 |
 | Quests | 21 |
-| **Total** | **about 452** |
+| **Total** | **about 514** |
 
 Masking keeps it workable: at any moment only the items actually in the inventory unlock their
 sell / alch / drop actions, typically around 30–80 valid actions. A 20-hour episode now runs to roughly 250–400

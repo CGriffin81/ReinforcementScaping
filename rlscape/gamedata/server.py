@@ -795,3 +795,43 @@ def skilling_tools() -> dict[str, SkillingTool]:
                            re.M)
     return {name: SkillingTool(name, int(item), int(level), float(ratio), i)
             for i, (name, item, level, ratio) in enumerate(constants)}
+
+
+@dataclass(frozen=True)
+class Shop:
+    """A shops.json entry as Shops.startup parses it: stock is '{item,amount,restockRate}-...', the rate defaulting
+    to 100 ticks."""
+
+    id: int
+    title: str
+    npcs: tuple[int, ...]
+    general: bool
+    currency: int
+    stock: dict[int, tuple[int, int]]  # item -> (normal amount, restock rate in ticks)
+
+    def tile(self) -> tuple[int, int, int] | None:
+        """Where its first shopkeeper with a spawn stands."""
+        return next((spawns()[npc][0] for npc in self.npcs if npc in spawns()), None)
+
+
+@cache
+def shops() -> dict[int, Shop]:
+    out = {}
+    for raw in json.loads((SERVER_CONFIGS / "shops.json").read_text(encoding="utf-8")):
+        stock: dict[int, tuple[int, int]] = {}
+        for item, amount, *rate in re.findall(r"\{(\d+),(-?\d+|inf)(?:,(\d+))?\}", raw["stock"]):
+            normal = -1 if amount == "inf" else int(amount)
+            if int(item) in stock:  # Shops.parseStock adds a repeated item's amount to the first entry
+                stock[int(item)] = (stock[int(item)][0] + normal, stock[int(item)][1])
+            else:
+                stock[int(item)] = (normal, int(rate[0]) if rate and rate[0] else 100)
+        npcs = tuple(int(n) for n in raw["npcs"].split(",") if n.strip())
+        out[int(raw["id"])] = Shop(int(raw["id"]), raw["title"], npcs, raw["general_store"] == "true",
+                                   int(raw["currency"]), stock)
+    return out
+
+
+@cache
+def noted_ids() -> dict[int, int]:
+    """Item id -> its banknote, for the exported items that have one."""
+    return {real: note for note, real in unnoted_ids().items() if note != real}

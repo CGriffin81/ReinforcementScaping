@@ -34,6 +34,8 @@ class CharacterState:
     regen_counter: int = 0  # ticks into the current hitpoint-regeneration cycle (rlscape.sim.health)
     dropped: dict[int, int] = field(default_factory=dict)  # dropped during the current step (the engine reports it)
     gravestone: object | None = None  # rlscape.sim.combat.Gravestone after a death outside the Wilderness
+    # (shop, item) -> (amount, tick it was set), for shop stock the character has moved (rlscape.sim.shops)
+    shop_stock: dict[tuple[int, int], tuple[int, int]] = field(default_factory=dict)
 
     @classmethod
     def fresh(cls) -> CharacterState:
