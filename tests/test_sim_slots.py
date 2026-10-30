@@ -16,6 +16,7 @@ from rlscape.sim.equipment import fighter_for, wield_best
 from rlscape.sim.skills import SKILL_INDEX, XP_FOR_LEVEL
 from rlscape.sim.slots import MELEE_STYLES, RANGED_STYLES, CombatSlots, combat_options
 from rlscape.sim.state import SPAWN, CharacterState
+from rlscape.vocabulary import vocabulary
 
 needs_data = pytest.mark.skipif(not (gd.SERVER_CONFIGS.exists() and gd.NPC_DEFINITIONS.exists()),
                                 reason="server submodule or data/npc_definitions.csv missing")
@@ -70,12 +71,15 @@ def test_slots_are_the_reference_ranking_for_the_character_as_armed():
     for combat_class, (armed, free, shield, plans, attacks) in cases.items():
         character = Character(SPAWN, 10, 10, 8, free, shield, "valuable", Progress(), attacks)
         reference = select_candidates(enemy_pool(), {combat_class: (fighter_for(armed), plans)}, character,
-                                      1500)[combat_class]
+                                      1500, vocabulary=frozenset(vocabulary()))[combat_class]  # the catalog's V
         ours = [slots.candidate(state, combat_class, i) for i in range(len(reference))]
         assert len(reference) == 6
         assert [(c.entry.npc.id, c.site.spawn, c.plan.style) for c in ours] ==                [(c.entry.npc.id, c.site.spawn, c.plan.style) for c in reference]
     mask = dict(zip(ids_of(sim), sim.action_mask()))
-    assert all(mask[f"fight_melee_{k}{n}_{s}"] for k in ("xp", "gp") for n in (1, 2, 3) for s in MELEE_STYLES)
+    for i in range(6):  # each melee style is open exactly when it passes the filter, and every slot has one
+        open_styles = [s for s in MELEE_STYLES if mask[f"fight_melee_{'xp' if i < 3 else 'gp'}{i % 3 + 1}_{s}"]]
+        assert open_styles == [s for s in MELEE_STYLES if slots.candidate(state, "melee", i, s) is not None]
+        assert open_styles
     assert all(mask[f"fight_{c}_{k}{n}"] for c in ("ranged", "magic") for k in ("xp", "gp") for n in (1, 2, 3))
 
 

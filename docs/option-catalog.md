@@ -426,31 +426,42 @@ arrows and high-tier pickaxes.
 
 ## 9. Item vocabulary and size
 
-**Vocabulary *V*:** the items this catalog produces or consumes, plus the most valuable common drops from the
-enemy pool. That's about 60 items:
-- logs, ores, bars, smithed items
-- raw and cooked fish
-- bones, big bones, hides, feathers
-- arrows and runes
-- the top drops by expected gp/hr
+**Vocabulary *V*:** the items this catalog produces or consumes, every item the agent can buy (§8), and the most
+valuable common drops from the enemy pool.
+
+**Decided (Caleb, 2026-10-30): 156 items,** frozen in `data/vocabulary.csv` (`rlscape/vocabulary.py`). It's the
+catalog's default. `docs/vocabulary-draft.md` shows how the rule was applied and lists the items. The readings
+Caleb accepted:
+- **"Common" drops** are worth at least 1,000 gp/hr in some fight the agent would be offered and drop in at least
+  20 of the sweep's fights: 50 drops.
+- **Smithed products** that no other group names stay misc: 29 items, sold or alched in bulk.
+- **Burnt food** stays out.
+
+The groups: 18 gathered, 12 processed (bars and cooked food), 15 smithed items that can also be bought or drop, 4
+consumed, 57 more bought, and the 50 drops. Noted items count as their items; coins are never in *V*. All 156 have
+a 2009 GE price and can be alched.
 
 Every other item is **misc**. It still counts in net worth, and is handled by the `*_misc` actions. *V* is fixed
-before training, so the action space doesn't change during the study.
+before training, so the action space doesn't change during the study. Sim v1's five skills and quests will add
+items; *V* is revisited when they're specified.
 
-**Size (with *V* ≈ 60 and selling as "all in the inventory"):**
+**Size (*V* = 156, selling as "all in the inventory"):**
 
 | Group | Actions |
 |---|---|
-| Gathering | 11 |
+| Gathering and thieving | 12 |
 | Processing | 10 |
 | Combat | 30 |
 | Loot mode | 4 |
-| Inventory | 1 + 10 + 61 + 1 (reclaim gravestone) + 3 gear + 4 food + 1 (deposit worn) = 81 |
-| Alchemy | 122 |
-| Selling | 122 |
+| Inventory | 2 deposits + 10 processing withdrawals + 157 drops (156 + misc) + 1 reclaim gravestone + 3 gear + 4 food = 177 |
+| Alchemy | 314 (high and low, 157 each) |
+| Selling | 314 (GE and store, 157 each) |
 | Buying | 113 |
-| Quests | 21 |
-| **Total** | **about 514** |
+| **Total in sim v0** | **974** |
+| Quests (sim v1) | 21 |
+
+Each *V* item adds 7 observation features: its inventory and bank counts, and its 5 actions' mask entries (env
+contract §3).
 
 Masking keeps it workable: at any moment only the items actually in the inventory unlock their
 sell / alch / drop actions, typically around 30–80 valid actions. A 20-hour episode now runs to roughly 250–400

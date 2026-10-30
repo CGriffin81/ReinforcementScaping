@@ -8,7 +8,7 @@
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS (run energy committed; `SimEnv` and the observation encoder built and tested)
 - Commit: run energy is fork `f5844bb` (branch `rl`) and main repo `1b9b9b4` (branch `sim-v0`); the Gymnasium layer
-  is the main repo commit that adds this record (its SHA can only be filled in by a later commit)
+  is main repo `44ad628`
 
 ## Full Prompt
 

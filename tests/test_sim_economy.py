@@ -112,8 +112,8 @@ def test_alchemy_needs_the_level_and_runes_unless_a_fire_staff_is_wielded():
 
 
 @needs_server
-def test_catalog_has_only_misc_actions_until_the_vocabulary_is_approved():
-    ids = [o.id for o in build_catalog()]
+def test_an_empty_vocabulary_leaves_only_the_misc_actions():
+    ids = [o.id for o in build_catalog(vocabulary=())]
     assert "drop_misc" in ids and "high_alch_misc" in ids and not any(i.startswith("drop_") and i != "drop_misc"
                                                                       for i in ids)
     assert f"high_alch_{LOGS}" in [o.id for o in build_catalog(vocabulary=[LOGS])]

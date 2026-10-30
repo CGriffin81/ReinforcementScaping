@@ -22,6 +22,7 @@ from gymnasium import spaces
 from rlscape.envs.encoding import ObsEncoder
 from rlscape.sim import build_catalog
 from rlscape.sim.engine import ACTIVITY_TICKS, HORIZON_TICKS, Simulator
+from rlscape.vocabulary import vocabulary as default_vocabulary
 
 DEFAULT_REWARD_WEIGHTS = (0.5, 0.5)
 
@@ -36,10 +37,10 @@ class OptionSpec:
 class SimEnv(gym.Env):
     metadata = {"render_modes": []}
 
-    def __init__(self, vocabulary: Iterable[int] = (), activity_ticks: int = ACTIVITY_TICKS,
+    def __init__(self, vocabulary: Iterable[int] | None = None, activity_ticks: int = ACTIVITY_TICKS,
                  horizon_ticks: int = HORIZON_TICKS, reward_weights: tuple[float, float] = DEFAULT_REWARD_WEIGHTS,
                  preference_in_obs: bool = False):
-        vocabulary = tuple(vocabulary)
+        vocabulary = default_vocabulary() if vocabulary is None else tuple(vocabulary)  # the catalog's V by default
         self.options = build_catalog(vocabulary, activity_ticks)
         self.sim = Simulator(self.options, activity_ticks, horizon_ticks)
         self.encoder = ObsEncoder(self.options, vocabulary, horizon_ticks, preference_in_obs)

@@ -14,12 +14,14 @@ from rlscape.sim.slots import combat_options
 from rlscape.sim.state import CharacterState
 from rlscape.sim.thieving import pickpocket_options
 from rlscape.sim.woodcutting import woodcutting_options
+from rlscape.vocabulary import vocabulary as default_vocabulary
 
 
-def build_catalog(vocabulary: Iterable[int] = (), activity_ticks: int = ACTIVITY_TICKS) -> list[Option]:
+def build_catalog(vocabulary: Iterable[int] | None = None, activity_ticks: int = ACTIVITY_TICKS) -> list[Option]:
     """The sim v0 action list, in action-id order (option catalog §2–§8 so far). The per-item actions come from
-    `vocabulary`; the catalog's V awaits Caleb's check, so the default is empty (misc actions only). The combat
-    slots are ranked for options of `activity_ticks`, which should match the Simulator's."""
+    `vocabulary`: by default the catalog's V (rlscape.vocabulary); an empty one leaves only the misc actions. The
+    combat slots are ranked for options of `activity_ticks`, which should match the Simulator's."""
+    vocabulary = default_vocabulary() if vocabulary is None else tuple(vocabulary)
     return [*woodcutting_options(), *mining_options(), *fishing_options(), *pickpocket_options(),
             *processing_options(), *combat_options(vocabulary, activity_ticks), *inventory_options(vocabulary),
             ReclaimGravestone(), *selling_options(vocabulary), *buying_options()]

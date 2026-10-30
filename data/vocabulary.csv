@@ -1,0 +1,157 @@
+item_id,name,groups
+317,Raw shrimps,consumed;gathered
+321,Raw anchovies,consumed;gathered
+331,Raw salmon,consumed;gathered
+335,Raw trout,bought;consumed;gathered
+377,Raw lobster,bought;consumed;gathered
+436,Copper ore,consumed;gathered
+438,Tin ore,consumed;gathered
+440,Iron ore,consumed;drop;gathered
+453,Coal,consumed;drop;gathered
+1511,Logs,gathered
+1515,Yew logs,bought;gathered
+1519,Willow logs,bought;gathered
+1521,Oak logs,bought;gathered
+1617,Uncut diamond,gathered
+1619,Uncut ruby,gathered
+1621,Uncut emerald,gathered
+1623,Uncut sapphire,gathered
+10138,Raw rainbow fish,consumed;gathered
+315,Shrimps,processed
+319,Anchovies,processed
+329,Salmon,processed
+333,Trout,processed
+373,Swordfish,processed
+379,Lobster,processed
+2140,Cooked chicken,processed
+2142,Cooked meat,processed
+2349,Bronze bar,consumed;processed
+2351,Iron bar,bought;consumed;processed
+2353,Steel bar,bought;consumed;drop;processed
+10136,Rainbow fish,processed
+1067,Iron platelegs,bought;smithed
+1115,Iron platebody,bought;smithed
+1119,Steel platebody,bought;smithed
+1121,Mithril platebody,bought;smithed
+1159,Mithril full helm,bought;smithed
+1181,Mithril sq shield,drop;smithed
+1197,Mithril kiteshield,bought;smithed
+1267,Iron pickaxe,bought;smithed
+1269,Steel pickaxe,bought;smithed
+1273,Mithril pickaxe,bought;smithed
+1299,Mithril longsword,drop;smithed
+1311,Steel 2h sword,drop;smithed
+1353,Steel axe,bought;smithed
+1355,Mithril axe,bought;smithed
+1424,Steel mace,drop;smithed
+371,Raw swordfish,bought;consumed
+2132,Raw beef,consumed;drop
+2138,Raw chicken,consumed;drop
+2359,Mithril bar,bought;consumed
+301,Lobster pot,bought
+307,Fishing rod,bought
+309,Fly fishing rod,bought
+311,Harpoon,bought
+313,Fishing bait,bought
+314,Feather,bought;drop
+355,Mackerel,bought
+361,Tuna,bought
+385,Shark,bought
+554,Fire rune,bought;drop
+555,Water rune,bought;drop
+556,Air rune,bought;drop
+557,Earth rune,bought;drop
+558,Mind rune,bought;drop
+560,Death rune,bought;drop
+561,Nature rune,bought;drop
+562,Chaos rune,bought;drop
+843,Oak shortbow,bought
+849,Willow shortbow,bought
+853,Maple shortbow,bought
+882,Bronze arrow,bought
+884,Iron arrow,bought
+886,Steel arrow,bought;drop
+888,Mithril arrow,bought;drop
+890,Adamant arrow,bought;drop
+1069,Steel platelegs,bought
+1071,Mithril platelegs,bought
+1073,Adamant platelegs,bought
+1079,Rune platelegs,bought
+1123,Adamant platebody,bought
+1127,Rune platebody,bought
+1153,Iron full helm,bought;drop
+1157,Steel full helm,bought;drop
+1161,Adamant full helm,bought
+1163,Rune full helm,bought
+1191,Iron kiteshield,bought
+1193,Steel kiteshield,bought
+1199,Adamant kiteshield,bought
+1201,Rune kiteshield,bought
+1271,Adamant pickaxe,bought
+1275,Rune pickaxe,bought
+1323,Iron scimitar,bought
+1325,Steel scimitar,bought
+1329,Mithril scimitar,bought
+1331,Adamant scimitar,bought
+1333,Rune scimitar,bought
+1349,Iron axe,bought
+1357,Adamant axe,bought
+1359,Rune axe,bought
+1381,Staff of air,bought;drop
+1383,Staff of water,bought
+1385,Staff of earth,bought;drop
+1387,Staff of fire,bought
+1517,Maple logs,bought
+2309,Bread,bought
+2347,Hammer,bought
+7946,Monkfish,bought
+199,Grimy guam,drop
+201,Grimy marrentill,drop
+203,Grimy tarromin,drop
+205,Grimy harralander,drop
+207,Grimy ranarr,drop
+209,Grimy irit,drop
+211,Grimy avantoe,drop
+213,Grimy kwuarm,drop
+215,Grimy cadantine,drop
+217,Grimy dwarf weed,drop
+225,Limpwurt root,drop
+235,Unicorn horn dust,drop
+237,Unicorn horn,drop
+526,Bones,drop
+532,Big bones,drop
+563,Law rune,drop
+564,Cosmic rune,drop
+565,Blood rune,drop
+1077,Black platelegs,drop
+1125,Black platebody,drop
+1141,Steel med helm,drop
+1147,Rune med helm,drop
+1165,Black full helm,drop
+1179,Black sq shield,drop
+1195,Black kiteshield,drop
+1237,Bronze spear,drop
+1243,Mithril spear,drop
+1283,Black sword,drop
+1285,Mithril sword,drop
+1295,Steel longsword,drop
+1313,Black 2h sword,drop
+1363,Iron battleaxe,drop
+1448,Mind talisman,drop
+1739,Cowhide,drop
+1987,Grapes,drop
+2485,Grimy lantadyme,drop
+2859,Wolf bones,drop
+5288,Papaya tree seed,drop
+5295,Ranarr seed,drop
+5296,Toadflax seed,drop
+5299,Kwuarm seed,drop
+5300,Snapdragon seed,drop
+5301,Cadantine seed,drop
+5302,Lantadyme seed,drop
+5303,Dwarf weed seed,drop
+5304,Torstol seed,drop
+5320,Sweetcorn seed,drop
+5321,Watermelon seed,drop
+5323,Strawberry seed,drop
+5504,Strawberry,drop
