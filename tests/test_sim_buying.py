@@ -10,6 +10,7 @@ from rlscape.gamedata import server as gd
 from rlscape.sim import build_catalog
 from rlscape.sim.buying import (
     FOOD_TIERS,
+    BankWithdrawForSale,
     LUMBRIDGE_STORE,
     BankWithdrawFood,
     BankWithdrawGear,
@@ -18,7 +19,7 @@ from rlscape.sim.buying import (
     buying_options,
     is_upgrade,
 )
-from rlscape.sim.economy import STORE_TICKS, BankDeposit, BankWithdraw, SellStore, store_sale_value
+from rlscape.sim.economy import STORE_TICKS, BankDeposit, BankWithdraw, SellGE, SellStore, store_sale_value
 from rlscape.sim.equipment import wield_best
 from rlscape.sim.movement import TOLL
 from rlscape.sim.processing import Smith
@@ -43,12 +44,12 @@ def character(inventory: dict[int, int], bank: dict[int, int] | None = None, **l
 
 
 @needs_server
-def test_the_catalog_has_113_buys_and_7_withdrawals():
+def test_the_catalog_has_113_buys_and_9_withdrawals():
     ids = [o.id for o in buying_options()]
     assert sum(i.startswith("buy_ge_") for i in ids) == 76 and sum(i.startswith("buy_shop_") for i in ids) == 37
     assert [i for i in ids if i.startswith("bank_withdraw")] == [
         "bank_withdraw_gear_melee", "bank_withdraw_gear_ranged", "bank_withdraw_gear_magic",
-        *(f"bank_withdraw_{food}" for food in FOOD_TIERS)]
+        *(f"bank_withdraw_{food}" for food in FOOD_TIERS), "bank_withdraw_food", "bank_withdraw_for_sale"]
     assert len(set(ids)) == len(ids) and set(ids) <= {o.id for o in build_catalog()}
     assert all(o.item in gd.ge_prices_2009() for o in buying_options() if isinstance(o, BuyGE))
 
@@ -196,3 +197,20 @@ def test_bought_mithril_bars_can_be_smithed():
     result = Smith("smith_mithril", "MITHRIL").run(state, RNG, 10_000)
     assert result.termination == "inputs_exhausted" and state.inventory[dagger] == 26
     assert state.xp[SKILL_INDEX["smithing"]] == XP_FOR_LEVEL[50] + 26 * 50.0
+
+
+@needs_server
+def test_withdrawing_for_sale_takes_produce_as_banknotes_and_keeps_what_the_character_uses():
+    logs, iron_ore, rune_scimitar, bronze_axe = 1511, 440, 1333, 1351
+    bank = {logs: 300, iron_ore: 100, IRON_SCIMITAR: 1, rune_scimitar: 1, SHARK: 20, bronze_axe: 1, AIR: 500, COINS: 99}
+    state = character({}, bank, attack=40)
+    option = BankWithdrawForSale()
+    assert option.available(state)
+    option.run(state, RNG, 10_000)
+    notes = gd.noted_ids()
+    assert state.inventory == {notes[logs]: 300, notes[iron_ore]: 100, notes[IRON_SCIMITAR]: 1}  # one slot a stack
+    # kept: the scimitar it would fight with, food, the tool, runes and coins
+    assert state.bank == {rune_scimitar: 1, SHARK: 20, bronze_axe: 1, AIR: 500, COINS: 99}
+    assert not option.available(state)
+    SellGE(logs).run(state, RNG, 10_000)  # a per-item sell takes the banknotes too
+    assert notes[logs] not in state.inventory and state.inventory[COINS] == 300 * gd.ge_prices_2009()[logs]

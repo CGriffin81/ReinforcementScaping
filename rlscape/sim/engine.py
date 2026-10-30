@@ -66,6 +66,8 @@ class Simulator:
         if state.gravestone is not None and state.tick >= state.gravestone.expires_at:
             state.gravestone = None  # crumbled: its items are gone
         result = option.run(state, self.rng, budget)
+        if option.task is not None:
+            state.task = option.task
         if not 1 <= result.ticks <= budget:
             raise RuntimeError(f"option {option.id!r} took {result.ticks} ticks with a budget of {budget}")
         if not result.regenerated:

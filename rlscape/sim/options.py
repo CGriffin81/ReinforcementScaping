@@ -33,6 +33,7 @@ class Option(ABC):
 
     id: str
     family: str
+    task: str | None = None  # the activity's task, for bank_deposit's kit (rlscape.sim.kits); None for the rest
 
     @abstractmethod
     def available(self, state: CharacterState) -> bool:

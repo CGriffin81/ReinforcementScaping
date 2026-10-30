@@ -82,6 +82,7 @@ class Smelt(Option):
 
     def __init__(self, option_id: str, bar: str):
         self.id = option_id
+        self.task = f"processing:{option_id}"
         self.bar = gd.smelted_bars()[bar]
 
     def _has_ores(self, state: CharacterState) -> bool:
@@ -113,6 +114,7 @@ class Smith(Option):
 
     def __init__(self, option_id: str, bar_type: str):
         self.id = option_id
+        self.task = f"processing:{option_id}"
         bar = gd.smelted_bars()[bar_type].product
         self.items = [s for s in gd.smithables().values() if s.bar == bar]
         self.bar = bar
@@ -153,6 +155,7 @@ class Cook(Option):
 
     def __init__(self, option_id: str):
         self.id = option_id
+        self.task = f"processing:{option_id}"
         foods = gd.food_healing()
         self.cookables = {raw: c for raw, c in gd.cookables().items() if c.cooked in foods}
 
@@ -230,6 +233,7 @@ class BurnLogs(Option):
 
     def __init__(self, option_id: str):
         self.id = option_id
+        self.task = f"processing:{option_id}"
 
     def _next_log(self, state: CharacterState) -> tuple[int, int, float] | None:
         level, logs = state.level("firemaking"), gd.log_types()
@@ -261,6 +265,7 @@ class BuryBones(Option):
 
     def __init__(self, option_id: str):
         self.id = option_id
+        self.task = f"processing:{option_id}"
 
     def _next_bone(self, state: CharacterState) -> int | None:
         bones = gd.bone_experience()

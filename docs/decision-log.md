@@ -1799,3 +1799,134 @@ The baselines and total XP were committed first, as main repo `43887df`.
   greedy wealth episode about 89 s, and a random one about 6 s.
 - **Next:** the scripted-guide baseline, which Claude drafts from archived
   2009 guides, with citations, for Caleb's review.
+
+### Drafted: the scripted-guide baseline; a fight-mask fix
+Caleb: "Commit this and keep going with the scripted guide". `m002-scripted-guide`.
+The eval harness was committed first, as main repo `3714afa`.
+- **Sources:** the RuneScape Wiki's training pages as of January 2009
+  (revisions with stable links, resources [22]–[26]): Woodcutting, Fishing,
+  melee and the Mining article. No January 2009 page orders the skills, so
+  the schedule is Claude's proposal.
+- **Draft:** `docs/scripted-guide-draft.md`, built as
+  `rlscape/baselines/guide.py` (`ScriptedGuidePolicy`, run as
+  `scripted_guide`). It's not in `e1_baselines()` until Caleb has reviewed
+  it.
+  - Methods by level come from the guides.
+  - The schedule is lowest skill first, over Attack, Strength, Defence,
+    Woodcutting, Mining and Fishing.
+  - Upgrades: the tool, then the scimitar, then armour.
+  - Produce is sold only when it pays for the next upgrade.
+- **10 seeds × 20 hours (sim v0, uncalibrated):** total level 233 [230,
+  236], total XP 152k, net worth 23k. Random gives 192 levels and 9k.
+- **Sim fix (agent choice, reversible):** fight slots are masked while HP is
+  at or below the retreat point with no food. Before, every such fight
+  retreated before its first swing, and a policy could loop on 1-tick
+  fights. Random's numbers move a little (184 → 192 levels at hour 20), so
+  the preliminary E1 table above predates this fix.
+- **Found, for Caleb (Q2 of the draft):** nothing in the catalog withdraws
+  banked produce to sell it; `bank_withdraw_for_<activity>` covers
+  processing inputs only. Net worth doesn't need selling, but buying gear
+  needs coins.
+- **Caleb, during the turn:** "The agents must be flagged as members. Do the
+  agents know how to tick-manipulate for skilling and prayer flicking?"
+  - **Members:** they are. 2009Scape has no per-player membership: the world
+    setting `members = true` (`rl.conf`) covers every character, the
+    agent's included, and no per-player members check exists in the server
+    source. The sim includes members areas, banks and monsters.
+  - **Prayer flicking:** it works on this server and makes prayer free.
+    `Prayer.tick()` drains only on even counts of consecutive prayer ticks,
+    and the count resets when no prayer is on. Neither the sim nor the
+    planned executor uses prayers in combat yet, so the agents don't pray
+    or flick.
+  - **Tick manipulation:** options run the server's standard delays (for
+    example woodcutting's 3-tick `Clocks.SKILLING`). Whether an item
+    interaction can shorten the skilling clock on 2009Scape is unverified;
+    that needs a live test.
+  - Both are decisions for Caleb; options are in `m002-scripted-guide`.
+- **Next:** Caleb's review of the draft (Q1–Q4) and of the two technique
+  questions.
+
+### Decided: a withdraw-to-sell action; found: inventories clog with kept items
+Caleb: "1. Why is it only selecting from those skills? 2. Add a withdraw to sell
+action. 3. Is your recommendation here only for initial evaluation? I want the
+real agents to be able to utilize any skill. 4. Do you think we'll be able to
+get level 99 fishing in the time allowed?" `m002-withdraw-for-sale`.
+- **Decision (Q2 of the scripted-guide draft):** add a withdraw-to-sell
+  action.
+- **Built:**
+  - **`bank_withdraw_for_sale`** (catalog §5; `rlscape/sim/buying.py`):
+    walk to the nearest bank and take out produce as banknotes, most
+    valuable stacks first, up to the free slots. Produce is what
+    `bank_deposit` banks, apart from the gear the character would fight
+    in, and apart from items that neither note nor stack.
+  - **Per-item sells** (`sell_ge_<item>`, `sell_store_<item>`) now sell the
+    item's banknotes too. Before, a vocabulary item's banknotes couldn't be
+    sold at all.
+  - The catalog is now 975 actions, and the observation 1,573 features.
+  - **The guide funds upgrades from the bank,** and buys the best
+    affordable tier rather than only the best usable one.
+- **Answers:**
+  - **Q1 and Q3:** the six skills are only the scripted guide's scope. The
+    agents' action space has every sim v0 option (all 14 trainable skills'
+    activities, combat in all three classes, buying, selling), and sim v1
+    adds five skills and quests.
+  - **Q4:** no. Level 99 needs 13,034,431 XP. Sim v0's fly fishing
+    (powerfishing, uncalibrated) gives about 16k XP/hr at level 20 and
+    32–36k from level 50. That's about 365 game-hours from 20 to 99, and 20
+    hours of nothing but fly fishing from 20 reaches about level 68.
+- **Found, for Caleb:** inventories clog with what `bank_deposit` keeps.
+  "Tools stay" keeps every tool, including obsolete axes and pickaxes;
+  ammunition stays even with no weapon to fire it (bolts from drops); food
+  stays in every amount. On seed 1 the guide reached Attack 22 holding 28
+  kept items, so nothing could be banked, bought or gathered. Agents can
+  reach the same state. Recommended: keep only the best usable tool of each
+  kind, and only ammunition that fits a held weapon, and bank the rest. It
+  changes a signed-off catalog rule, so it waits for Caleb.
+
+### Decided: the guide review; deposits keep the task's kit (built)
+Caleb, in reply to the guide draft and `m002-withdraw-for-sale`: "1. Widen the
+guide. 2. Deposit all items that are not suitable to the task at hand. 3. Go
+after lowest skill for schedule. 4. For scope, include more skills. I think
+Thieving, specifically will be a great money maker early on. 5. Offer the
+different paths as gp/hr or xp/hr for the agents to choose from. 6. We will
+implement prayer flicking and 3-tick woodcutting if they can be used."
+Clarified in a follow-up question: deposits use the last activity's kit;
+paths become skilling slots (XP/hr and gp/hr per skill, with rates in the
+observation); prayer flicking and tick manipulation get a live test first,
+which should also cover 2-tick woodcutting and fishing and mining; thieving
+gets the pickpocket targets and the stalls. `m002-task-kits`.
+- **Built (this slice): deposits by task.**
+  - Every activity option names its task (`Option.task`), and the engine
+    records the last one in `state.task`.
+  - `bank_deposit` keeps that task's kit (`rlscape/sim/kits.py`) and banks
+    the rest.
+  - New: `bank_withdraw_for_<task>` for gathering (woodcutting, mining and
+    the three fishing methods), and `bank_withdraw_food` for any food.
+  - The task is a new 11-way observation part (env contract v1.4, decision
+    20). The catalog is now 981 actions, and the observation 1,590 features.
+  - Tests cover each task's kit, the withdrawals, and a bug they caught:
+    the withdrawal ranked tools by level, so an iron axe never beat a bronze
+    one; it now uses the server's tool priority.
+- **The guide with kit deposits** (10 seeds × 20 hours): total level 306,
+  total XP 211k, net worth 353k. Before, it was 233, 152k and 23k, stuck in
+  steel by the clog. Random: 190, 86k, 10k.
+- **Tick manipulation, from the server source** (Caleb pointed to the OSRS
+  wiki's tick manipulation page, which shows the mechanism: an action
+  resets the skilling timer):
+  - **Woodcutting:** rolls whenever `Clocks.SKILLING` is ready. A roll
+    every 3 ticks is already 2009Scape's default. `delayClock` overwrites
+    the clock, and burying a bone sets it to 2 ticks (`BoneBuryListener`).
+    So chopping, burying a bone on the same tick and clicking the tree again
+    may give 2-tick woodcutting. Live test needed.
+  - **Mining:** each start waits the full `getDelay` before its first roll,
+    and no shared timer exists, so no manipulation is possible.
+  - **Fishing:** `FishingPulse`'s first pulse only sets a 5-tick delay, so
+    restarting adds delay. No manipulation is possible.
+  - **Prayer flicking:** it avoids drain, by the code. Whether flicked
+    protection is up on an NPC's hit tick needs a live test.
+- **Remaining slices, in order:**
+  1. thieving targets and stalls
+  2. the wider guide
+  3. skilling slots
+  4. the live tests, which need bridge commands for item options and prayer
+     toggles (fork changes)

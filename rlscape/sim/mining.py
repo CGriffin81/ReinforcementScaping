@@ -52,6 +52,7 @@ def best_pickaxe(state: CharacterState) -> gd.SkillingTool | None:
 
 class Mining(Option):
     family = "gathering"
+    task = "mining"
 
     def __init__(self, option_id: str, rock_identifier: int, site: Site):
         self.id = option_id

@@ -36,6 +36,7 @@ class Fishing(Option):
     def __init__(self, option_id: str, method: str, spots: str):
         self.id = option_id
         self.method = gd.fishing_methods()[method]
+        self.task = f"fishing:{method}"
         self.spots = gd.fish_spot_locations()[spots]
 
     def _has_bait(self, state: CharacterState) -> bool:

@@ -1,6 +1,8 @@
 # Environment Contract (v1.3, Signed off)
 
-**Status:** v1.3, 2026-10-30. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
+**Status:** v1.4, 2026-10-30. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
+- **v1.4** (2026-10-30) adds the last task to the observation (§3), because Caleb's deposit rule makes what a
+  deposit keeps depend on it.
 - **v1.3** (2026-10-30, Caleb) adds total XP to the reported metrics (§4, §6).
 - **v1.2** (the same day) adds run energy and weight to the observation (§3) and the run rule to the backends
   (§7), from Caleb's buying decision Q3b (option catalog §8).
@@ -77,6 +79,7 @@ roughly [0, 1].
 | Region | R | one-hot over the catalog's regions |
 | Combat candidates | C × 5 | for each candidate slot: XP/hr, gp/hr, expected damage taken per hour vs food held, travel minutes, Slayer / level eligibility (option catalog §4) |
 | Loot mode | 4 | one-hot: all / valuable / vocabulary / none (option catalog §4.D) |
+| Task | 11 | one-hot: the last activity's task (none, woodcutting, mining, the three fishing methods, thieving, processing, the three combat classes), which decides what `bank_deposit` keeps (option catalog §5) |
 | Access | A | 0/1 per access rule (`data/access_areas.csv`, A = 55 today; `access.unlocked_rules`): unlocked by quests, items held, levels or coins (option catalog §4.C) |
 | Quests | Q × 3 + 1 | stage one-hot (not started / underway / complete) per curated quest; quest points / 32 |
 | Mask | N | the action mask |
@@ -88,7 +91,7 @@ option catalog.
 **As built** (`rlscape/envs/encoding.py`, 2026-10-30): E = 11 roles (weapons for melee, ranged and magic,
 ammunition, head, body, legs, shield, axe, pickaxe, fishing gear), R = 12 (the catalog's 11 regions and
 "elsewhere"), C = 18 slots (6 per combat class). The encoder's docstring lists how each part is scaled. With the
-catalog as built (974 actions, *V* = 156) the vector has 1,572 features.
+catalog as built (981 actions, *V* = 156) the vector has 1,590 features.
 
 **Left out on purpose:** GE prices. They're frozen, so a price snapshot would be a constant.
 
@@ -264,3 +267,8 @@ Caleb signed off both documents on 2026-10-28 (v1.0).
 19. **The skill reward stays level-based, and total XP is reported** (§4): each skill's XP up to level 99's. Caleb's
     reason: some levels are breakpoints worth climbing to, and a level-only view undervalues the higher skills
     that reach them. E1's greedy XP/hr baseline maximises the same capped total.
+
+### Decided (Caleb, 2026-10-30, the guide review): v1.4
+20. **Deposits keep the task's kit** (option catalog §5): a deposit banks everything that isn't suitable to the task
+    at hand, the last activity. So that a deposit's outcome is visible to the policy, the last task is part of the
+    observation (§3).

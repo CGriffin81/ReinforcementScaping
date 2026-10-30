@@ -19,6 +19,9 @@ Actions, with ids fight_<class>_<xp|gp><n>[_<style>]:
   ranged kit (equipment.ranged_kits);
 - magic: 6 slots for the best spell the Magic level and runes allow (combat.best_spell); open while there is one.
 
+A slot is also masked while HP is at or below the retreat point with no food held: the fight would retreat before
+its first swing, so the action would do nothing but pass a tick (found by the scripted guide, 2026-10-30).
+
 Loot modes (loot_<mode>) set what fights pick up. Setting one takes LOOT_MODE_TICKS. The current mode is masked, so
 the action is never a no-op.
 """
@@ -40,7 +43,7 @@ from rlscape.gamedata import server as gd
 from rlscape.sim.combat import arrow_land_chance, best_spell, casts_held, fight
 from rlscape.sim.engine import ACTIVITY_TICKS
 from rlscape.sim.equipment import SHIELD, WEAPON, fighter_for, ranged_ready, wield_best
-from rlscape.sim.health import food_healing_held
+from rlscape.sim.health import food_healing_held, foods_held, retreat_hp
 from rlscape.sim.options import COMPLETED, Option, OptionResult
 from rlscape.sim.state import CharacterState
 
@@ -153,9 +156,12 @@ class FightSlot(Option):
 
     def __init__(self, slots: CombatSlots, combat_class: str, index: int, style: str | None = None):
         self.slots, self.combat_class, self.index, self.style = slots, combat_class, index, style
+        self.task = f"combat:{combat_class}"
         self.id = f"fight_{combat_class}_{'xp' if index < K else 'gp'}{index % K + 1}" + (f"_{style}" if style else "")
 
     def available(self, state: CharacterState) -> bool:
+        if state.hp <= retreat_hp(state) and not foods_held(state):
+            return False  # the fight would retreat before its first swing (rlscape.sim.combat.fight)
         return self.slots.candidate(state, self.combat_class, self.index, self.style) is not None
 
     def run(self, state: CharacterState, rng: np.random.Generator, budget: int) -> OptionResult:

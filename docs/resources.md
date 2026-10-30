@@ -78,6 +78,22 @@ and is credited where used.
     Reinforcement Learning Environments. arXiv:2407.17032. https://github.com/Farama-Foundation/Gymnasium (MIT)
     — **Used:** `SimEnv` (`rlscape/envs/`) implements its `Env` API, version 1.4.0, as the env contract's
     interface (§2), so SB3 and sb3-contrib agents can drive it. Added 2026-10-30.
+22. **RuneScape Wiki. "Free-to-play Woodcutting training",** revision 890919 (2009-01-29).
+    https://runescape.wiki/w/Free-to-play_Woodcutting_training?oldid=890919 (CC BY-NC-SA 3.0) — **Used:** the
+    scripted-guide baseline's woodcutting methods and axes (`docs/scripted-guide-draft.md`). Added 2026-10-30.
+23. **RuneScape Wiki. "Free-to-play Fishing training",** revision 886593 (2009-01-27).
+    https://runescape.wiki/w/Free-to-play_Fishing_training?oldid=886593 (CC BY-NC-SA 3.0) — **Used:** the
+    scripted guide's fishing methods, gear and cooking for food. Added 2026-10-30.
+24. **RuneScape Wiki. "Free-to-play melee training",** revision 898754 (2009-01-30).
+    https://runescape.wiki/w/Free-to-play_melee_training?oldid=898754 (CC BY-NC-SA 3.0) — **Used:** the scripted
+    guide's monsters by level band, weapon and armour tiers, and drops to collect. Added 2026-10-30.
+25. **RuneScape Wiki. "Mining",** revision 899733 (2009-01-31).
+    https://runescape.wiki/w/Mining?oldid=899733 (CC BY-NC-SA 3.0) — **Used:** the scripted guide's rocks by level
+    and pickaxes. Added 2026-10-30.
+26. **RuneScape Wiki. "Money making guide",** revision 899155 (2009-01-30).
+    https://runescape.wiki/w/Money_making_guide?oldid=899155 (CC BY-NC-SA 3.0) — consulted for the scripted guide.
+    Its free-to-play part only links subpages whose January 2009 text isn't in the wiki's history, so nothing is
+    taken from it. Added 2026-10-30.
 
 ## Planned (named in ROADMAP.md, not used yet)
 

@@ -270,11 +270,14 @@ is never a no-op (agent choice, 2026-10-29).
 
 | Id | Effect |
 |---|---|
-| `bank_deposit` | walk to the nearest bank; deposit everything except tools, worn equipment, food, ammunition and runes |
+| `bank_deposit` | walk to the nearest bank; deposit everything that isn't the kit of the task at hand, the last activity the character did (Caleb, 2026-10-30; `rlscape/sim/kits.py`). Worn items stay worn. The kits: the best usable axe or pickaxe; a fishing method's tool and bait; food for thieving; a processing activity's tools and inputs; for a fight, food, what the class's fight would wear from the inventory, and runes for magic. With no task yet, everything goes. |
+| `bank_withdraw_for_<task>` (gathering) | woodcutting, mining, fish_shrimp, fish_fly, fish_lobster: walk to the nearest bank and take out the task's kit: the best usable axe or pickaxe if none as good is held, or the fishing method's tool and all its bait. 5 actions. |
+| `bank_withdraw_food` | walk to the nearest bank and take out food, the best healing first, into the free slots, whatever it is (cooked catches as well as the four GE tiers) |
 | `bank_withdraw_for_<activity>` | walk to the nearest bank; withdraw the inputs one processing activity needs, up to a full inventory. Banknotes of the inputs held (from GE buys) are banked first. One per §3 activity, so 10 actions. |
 | `bank_withdraw_gear_<class>` | melee, ranged, magic: walk to the nearest bank; withdraw the gear that beats what the character carries for that combat class (the weapon, for ranged with its ammunition, then armour, the biggest defence gain first), up to the free slots. Fights put it on from the inventory. 3 actions (§8). |
 | `bank_withdraw_<food>` | one per GE food tier (mackerel, tuna, monkfish, shark): walk to the nearest bank, bank the banknotes held of that food, and withdraw it into the free slots. 4 actions (§8). |
 | `bank_deposit_worn` | walk to the nearest bank; bank the worn gear (the banker's "deposit worn items"), except what `bank_deposit` keeps (tools, ammunition), so a worn axe or pickaxe stays on. Masked unless something else is worn (§8). |
+| `bank_withdraw_for_sale` | walk to the nearest bank and take out produce to sell, as banknotes (the bank's withdraw-as-note setting), so each item's stack fits in one slot, the most valuable stacks first, up to the free slots. Produce is what `bank_deposit` banks, apart from the gear the character would take out to fight (`bank_withdraw_gear_<class>`) and items that neither note nor stack. Caleb, 2026-10-30. |
 | `drop_<item>` | drop every unit of one vocabulary item from the inventory (dropped items leave net worth) |
 | `drop_misc` | drop every non-vocabulary item |
 | `reclaim_gravestone` | after a death outside the Wilderness: walk back to the gravestone and take back everything in it. Masked unless a gravestone exists and the walk fits in its remaining time (it lasts 200 ticks; env contract §1). |
@@ -296,7 +299,7 @@ Per item, selling **all of that item in the inventory** (decided). To keep some 
 
 | Id | Effect |
 |---|---|
-| `sell_ge_<item>`, `sell_ge_misc` | walk to the GE; sell; the frozen buyer pays the 2009 price for items that have one |
+| `sell_ge_<item>`, `sell_ge_misc` | walk to the GE; sell; the frozen buyer pays the 2009 price for items that have one. A per-item sell also sells the item's banknotes. |
 | `sell_store_<item>`, `sell_store_misc` | walk to the nearest general store; sell at low-alchemy value minus overstock. Overstock is tracked within an episode (§8): the store's own stock for items it sells, otherwise the player stock every general store shares, which the server clears every 3 hours. |
 
 ## 8. Buying
@@ -453,11 +456,11 @@ items; *V* is revisited when they're specified.
 | Processing | 10 |
 | Combat | 30 |
 | Loot mode | 4 |
-| Inventory | 2 deposits + 10 processing withdrawals + 157 drops (156 + misc) + 1 reclaim gravestone + 3 gear + 4 food = 177 |
+| Inventory | 2 deposits + 10 processing withdrawals + 5 gathering-kit withdrawals + 157 drops (156 + misc) + 1 reclaim gravestone + 3 gear + 4 food tiers + 1 any food + 1 for sale = 184 |
 | Alchemy | 314 (high and low, 157 each) |
 | Selling | 314 (GE and store, 157 each) |
 | Buying | 113 |
-| **Total in sim v0** | **974** |
+| **Total in sim v0** | **981** |
 | Quests (sim v1) | 21 |
 
 Each *V* item adds 7 observation features: its inventory and bank counts, and its 5 actions' mask entries (env

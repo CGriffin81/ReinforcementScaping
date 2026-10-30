@@ -32,6 +32,7 @@ import numpy as np
 import pandas as pd
 
 from rlscape.baselines import GreedyPolicy, Policy, RandomPolicy
+from rlscape.baselines.guide import ScriptedGuidePolicy
 from rlscape.envs.sim_env import SimEnv
 from rlscape.eval.rollout import play
 
@@ -42,6 +43,7 @@ POLICIES: dict[str, Callable[[], Policy]] = {
     "greedy_xp": lambda: GreedyPolicy("xp"),
     "greedy_wealth": lambda: GreedyPolicy("wealth"),
     "greedy_skill": lambda: GreedyPolicy("skill"),
+    "scripted_guide": ScriptedGuidePolicy,  # draft, awaiting Caleb's review (docs/scripted-guide-draft.md)
 }
 N_BOOT = 10_000
 

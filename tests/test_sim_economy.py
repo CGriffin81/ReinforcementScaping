@@ -45,6 +45,7 @@ def test_banking_keeps_tools_food_ammunition_runes_and_bait():
 @needs_server
 def test_deposit_banks_products_and_turns_notes_into_items():
     state = character({1351: 1, LOGS: 5, LOGS_NOTE: 20, COINS: 40}, {LOGS: 1})
+    state.task = "woodcutting"  # the axe is its kit
     result = BankDeposit().run(state, np.random.default_rng(0), 10_000)
     assert state.inventory == {1351: 1} and state.bank == {LOGS: 26, COINS: 40}
     assert result.ticks >= BANKING_TICKS and result.termination == "completed"
@@ -141,3 +142,34 @@ def test_general_stores_pay_low_alchemy_less_overstock():
     state = character({RUNE_SCIMITAR: 2})
     SellStore(RUNE_SCIMITAR).run(state, np.random.default_rng(8), 10_000)
     assert state.inventory == {COINS: store_sale_value(RUNE_SCIMITAR, 2)}
+
+
+@needs_server
+def test_deposit_keeps_only_the_kit_of_the_task_at_hand():
+    bronze_axe, iron_axe, bronze_pickaxe, shrimps, iron_scimitar = 1351, 1349, 1265, 315, 1323
+    held = {bronze_axe: 1, iron_axe: 1, bronze_pickaxe: 1, shrimps: 5, iron_scimitar: 1, LOGS: 3}
+    expected = {None: {}, "woodcutting": {iron_axe: 1}, "mining": {bronze_pickaxe: 1}, "thieving": {shrimps: 5},
+                "combat:melee": {iron_scimitar: 1, shrimps: 5}}
+    for task, kept in expected.items():
+        state = character(dict(held))
+        state.task = task
+        BankDeposit().run(state, np.random.default_rng(0), 10_000)
+        assert state.inventory == kept, task  # the obsolete bronze axe and the food go unless the task needs them
+
+
+@needs_server
+def test_kit_withdrawals_bring_back_a_gathering_tool_and_any_food():
+    from rlscape.sim.buying import BankWithdrawAnyFood
+    from rlscape.sim.economy import BankWithdrawKit
+
+    bronze_axe, iron_axe, rune_axe, shrimps, trout, feathers, fly_rod = 1351, 1349, 1359, 315, 333, 314, 309
+    state = character({bronze_axe: 1}, {iron_axe: 1, rune_axe: 1, shrimps: 5, trout: 3, feathers: 500, fly_rod: 1})
+    option = BankWithdrawKit("woodcutting", "woodcutting")
+    option.run(state, np.random.default_rng(0), 10_000)
+    assert state.inventory == {bronze_axe: 1, iron_axe: 1}  # rune needs Woodcutting 41
+    assert not option.available(state)
+    BankWithdrawKit("fish_fly", "fishing:LURE").run(state, np.random.default_rng(0), 10_000)
+    assert state.inventory[fly_rod] == 1 and state.inventory[feathers] == 500
+    state.inventory.update({LOGS: 21})  # 3 free slots
+    BankWithdrawAnyFood().run(state, np.random.default_rng(0), 10_000)
+    assert state.inventory[trout] == 3 and shrimps not in state.inventory  # the best healing first

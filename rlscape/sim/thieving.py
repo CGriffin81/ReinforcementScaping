@@ -49,6 +49,7 @@ def nearest_spawn(npc_ids: tuple[int, ...], origin: tuple[int, int, int]) -> tup
 
 class Pickpocket(Option):
     family = "gathering"
+    task = "thieving"
 
     def __init__(self, option_id: str, target: str, tile: tuple[int, int, int]):
         self.id = option_id

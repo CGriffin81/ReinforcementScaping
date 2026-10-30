@@ -18,6 +18,7 @@ Parts, in order (sizes for vocabulary V, A access rules, N actions):
 | region | 12 | one-hot: the catalog's 11 regions, or elsewhere |
 | combat_candidates | 18 × 5 | per slot: XP/hr, gp/hr, damage per hour vs HP and food, travel, open |
 | loot_mode | 4 | one-hot |
+| task | 11 | one-hot: the last activity's task, which decides what bank_deposit keeps (rlscape.sim.kits) |
 | access | A | 0/1 per access rule (data/access_areas.csv order) |
 | quests | 21 × 3 + 1 | not started / underway / complete per quest; quest points / 32 |
 | mask | N | the action mask |
@@ -93,6 +94,8 @@ REGIONS = {
 }
 REGION_RADIUS = 60  # tiles (Chebyshev)
 CANDIDATE_FEATURES = ("xp_per_hour", "gp_per_hour", "damage_vs_food", "travel", "open")
+TASKS = ("none", "woodcutting", "mining", "fishing:SMALL_NET", "fishing:LURE", "fishing:LOBSTER_CAGE", "thieving",
+         "processing", "combat:melee", "combat:ranged", "combat:magic")
 QUEST_STAGES = ("not_started", "underway", "complete")
 
 
@@ -206,6 +209,7 @@ class ObsEncoder:
             Part("region", (*REGIONS, "elsewhere")),
             Part("combat_candidates", tuple(f"{s}_{f}" for s in slot_names for f in CANDIDATE_FEATURES)),
             Part("loot_mode", tuple(f"loot_{m}" for m in LOOT_MODES)),
+            Part("task", tuple(f"task_{t}" for t in TASKS)),
             Part("access", tuple(f"access_{r}" for r in self.rules)),
             Part("quests", (*(f"{q}_{s}" for q in QUEST_SET for s in QUEST_STAGES), "quest_points")),
             Part("mask", tuple(f"mask_{o.id}" for o in options)),
@@ -240,6 +244,7 @@ class ObsEncoder:
         obs[p["region"].start + region_of(state.location)] = 1.0
         obs[p["combat_candidates"]] = self._candidates(state)
         obs[p["loot_mode"].start + LOOT_MODES.index(state.loot_mode)] = 1.0
+        obs[p["task"].start + TASKS.index(_task_key(state.task))] = 1.0
         obs[p["access"]] = self._access(state)
         obs[p["quests"]] = _quests(state)
         obs[p["mask"]] = mask
@@ -281,6 +286,12 @@ class ObsEncoder:
             unlocked = unlocked_rules(progress)
             self._unlocked[progress] = [float(rule in unlocked) for rule in self.rules]
         return self._unlocked[progress]
+
+
+def _task_key(task: str | None) -> str:
+    if task is None:
+        return "none"
+    return "processing" if task.startswith("processing:") else task
 
 
 def _skill(xp: float) -> tuple[float, float]:

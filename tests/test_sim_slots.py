@@ -153,3 +153,17 @@ def test_slots_follow_the_character():
     state.location = (2809, 3436, 0)  # Catherby
     at_catherby = [(c.entry.npc.id, c.site.spawn) for c in (slots.candidate(state, "melee", i) for i in range(6))]
     assert at_lumbridge != at_catherby
+
+
+@needs_data
+def test_fights_close_at_the_retreat_point_without_food():
+    sim = Simulator(build_catalog())
+    state = sim.reset(seed=0)
+    fights = [o for o in sim.options if o.family == "combat"]
+    state.hp = 5  # half of 10: a fight would retreat before its first swing
+    food = {item: n for item, n in state.inventory.items() if item in gd.food_healing()}
+    for item in food:
+        state.inventory.pop(item)
+    assert not any(o.available(state) for o in fights)
+    state.inventory.update(food)  # with food it eats and fights on
+    assert any(o.available(state) for o in fights)

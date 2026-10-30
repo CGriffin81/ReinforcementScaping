@@ -38,7 +38,8 @@ from __future__ import annotations
 import numpy as np
 
 from rlscape.gamedata import server as gd
-from rlscape.sim.economy import GE_TICKS, GE_TILE, STORE_TICKS, bank_notes, bank_trip, banked_or_noted
+from rlscape.sim.economy import (GE_TICKS, GE_TILE, STORE_TICKS, bank_notes, bank_trip, banked_or_noted,
+                                 kept_on_deposit)
 from rlscape.sim.equipment import (
     ARMOUR_SLOTS,
     SHIELD,
@@ -318,7 +319,76 @@ class BankWithdrawFood(Option):
         return OptionResult(ticks, COMPLETED)
 
 
+class BankWithdrawAnyFood(Option):
+    """bank_withdraw_food: walk to the nearest bank and take out food into the free slots, the best healing first,
+    whatever it is (cooked catches as well as the four GE tiers). A deposit banks food unless the task is a fight or
+    thieving (rlscape.sim.kits), so this brings it back for one."""
+
+    family = "inventory"
+
+    def __init__(self, option_id: str = "bank_withdraw_food"):
+        self.id = option_id
+
+    def available(self, state: CharacterState) -> bool:
+        heals = gd.food_healing()
+        return state.free_slots() > 0 and any(banked_or_noted(state, food) > 0 for food in heals)
+
+    def run(self, state: CharacterState, rng: np.random.Generator, budget: int) -> OptionResult:
+        ticks = bank_trip(state, budget)
+        if ticks is None:
+            return OptionResult(budget, COMPLETED)
+        heals = gd.food_healing()
+        bank_notes(state, tuple(heals))
+        for food in sorted((f for f in heals if state.bank.get(f, 0) > 0), key=lambda f: -heals[f]):
+            take = min(state.bank[food], state.free_slots())
+            if take == 0:
+                break
+            state.take(food, take, state.bank)
+            state.add(food, take)
+        return OptionResult(ticks, COMPLETED)
+
+
+class BankWithdrawForSale(Option):
+    """bank_withdraw_for_sale (Caleb, 2026-10-30): walk to the nearest bank and take out produce to sell, as
+    banknotes (the bank's withdraw-as-note setting), so each item's whole stack fits in one slot; the most valuable
+    stacks first, up to the free slots. The sell actions then sell the banknotes.
+
+    Produce is what bank_deposit banks (so not tools, food, ammunition or runes), apart from the gear the character
+    would take out to fight (gear_to_withdraw, for each class), and apart from items that neither note nor stack,
+    which would need a slot each."""
+
+    family = "inventory"
+
+    def __init__(self, option_id: str = "bank_withdraw_for_sale"):
+        self.id = option_id
+
+    @staticmethod
+    def produce(state: CharacterState) -> list[int]:
+        """The banked items this takes out, in the order it takes them."""
+        keep = {item for combat_class in GEAR_CLASSES for item in gear_to_withdraw(state, combat_class)}
+        notes, stackable, values = gd.noted_ids(), gd.stackable_items(), gd.item_values()
+        items = [i for i in state.bank if i != COINS and not kept_on_deposit(i) and i not in keep
+                 and (i in notes or i in stackable)]
+        return sorted(items, key=lambda i: (-values.get(i, 0) * state.bank[i], i))
+
+    def available(self, state: CharacterState) -> bool:
+        notes = gd.noted_ids()
+        return any(state.free_slots() > 0 or notes.get(i, i) in state.inventory for i in self.produce(state))
+
+    def run(self, state: CharacterState, rng: np.random.Generator, budget: int) -> OptionResult:
+        ticks = bank_trip(state, budget)
+        if ticks is None:
+            return OptionResult(budget, COMPLETED)
+        notes = gd.noted_ids()
+        for item in self.produce(state):
+            added = state.add(notes.get(item, item), state.bank[item])  # a stack: all of it or none
+            if added:
+                state.take(item, added, state.bank)
+        return OptionResult(ticks, COMPLETED)
+
+
 def buying_options() -> list[Option]:
-    """Catalog §8: the GE buys, the shop buys, then the gear and food withdrawals."""
+    """Catalog §8: the GE buys, the shop buys, then the gear and food withdrawals and the withdrawal for sale."""
     return [*(BuyGE(item) for item in GE_ITEMS), *(BuyShop(item) for item in SHOP_ITEMS),
-            *(BankWithdrawGear(c) for c in GEAR_CLASSES), *(BankWithdrawFood(food) for food in FOOD_TIERS)]
+            *(BankWithdrawGear(c) for c in GEAR_CLASSES), *(BankWithdrawFood(food) for food in FOOD_TIERS),
+            BankWithdrawAnyFood(), BankWithdrawForSale()]

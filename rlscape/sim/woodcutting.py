@@ -66,6 +66,7 @@ def best_hatchet(state: CharacterState) -> gd.SkillingTool | None:
 
 class Woodcutting(Option):
     family = "gathering"
+    task = "woodcutting"
 
     def __init__(self, option_id: str, tree_identifier: int, site: Site):
         self.id = option_id

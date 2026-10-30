@@ -7,8 +7,7 @@
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS (baselines committed; the eval harness built and tested; a preliminary E1 run done)
-- Commit: the baselines and total XP are main repo `43887df` (branch `sim-v0`); the harness is the main repo commit
-  that adds this record (its SHA can only be filled in by a later commit)
+- Commit: the baselines and total XP are main repo `43887df` (branch `sim-v0`); the harness is main repo `3714afa`
 
 ## Full Prompt
 

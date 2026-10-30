@@ -31,12 +31,14 @@ import numpy as np
 
 from rlscape.gamedata import server as gd
 from rlscape.sim.health import foods_held
+from rlscape.sim.kits import GATHERING_TOOLS, kit
 from rlscape.sim.movement import route_ticks, walk
 from rlscape.sim.options import COMPLETED, INPUTS_EXHAUSTED, Option, OptionResult
 from rlscape.sim.processing import HAMMER, TINDERBOX
 from rlscape.sim.shops import PLAYER_STOCK, set_stock, stock
 from rlscape.sim.skills import MAX_XP, SKILL_INDEX
 from rlscape.sim.state import COINS, CharacterState
+from rlscape.sim.woodcutting import best_tool
 from rlscape.travel import BANKING_TICKS
 
 DROP_TICKS = 1  # per unit dropped (a stack drops at once); calibrate
@@ -104,19 +106,69 @@ class BankDeposit(Option):
         self.id = option_id
 
     def available(self, state: CharacterState) -> bool:
-        return any(not kept_on_deposit(item) for item in state.inventory)
+        keep = kit(state, state.task)
+        return any(item not in keep for item in state.inventory)
 
     def run(self, state: CharacterState, rng: np.random.Generator, budget: int) -> OptionResult:
         ticks = bank_trip(state, budget)
         if ticks is None:
             return OptionResult(budget, COMPLETED)
-        unnoted = gd.unnoted_ids()
+        keep, unnoted = kit(state, state.task), gd.unnoted_ids()
         for item, amount in list(state.inventory.items()):
-            if not kept_on_deposit(item):
+            if item not in keep:
                 state.take(item, amount)
                 real = unnoted.get(item, item)
                 state.bank[real] = state.bank.get(real, 0) + amount
         return OptionResult(ticks, COMPLETED)
+
+
+class BankWithdrawKit(Option):
+    """bank_withdraw_for_<task> for a gathering task: walk to the nearest bank and take out its kit (rlscape.sim.kits):
+    for woodcutting and mining, the best axe or pickaxe the level allows, if none as good is held; for a fishing
+    method, its tool and all of its bait or feathers."""
+
+    family = "inventory"
+
+    def __init__(self, key: str, task: str):
+        self.id, self.kit_task = f"bank_withdraw_for_{key}", task
+
+    def _wanted(self, state: CharacterState) -> list[tuple[int, int]]:
+        """(item, amount) to take out of the bank."""
+        kind, _, method = self.kit_task.partition(":")
+        if kind in GATHERING_TOOLS:
+            priority, held = GATHERING_TOOLS[kind], best_tool(state, GATHERING_TOOLS[kind], kind)
+            rank = lambda tool: priority.index(tool.name)  # SkillingTool's order: best first
+            best = next((tool for tool in _banked_tools(state, kind) if held is None or rank(tool) < rank(held)), None)
+            return [(best.item, 1)] if best is not None else []
+        fishing = gd.fishing_methods()[method]
+        wanted = [(fishing.tool, 1)] if not state.inventory.get(fishing.tool) and state.bank.get(fishing.tool) else []
+        return wanted + [(bait, state.bank[bait]) for bait in fishing.bait if state.bank.get(bait, 0) > 0]
+
+    def available(self, state: CharacterState) -> bool:
+        wanted = self._wanted(state)
+        new_slots = sum(1 for item, _ in wanted if item not in state.inventory)
+        return bool(wanted) and new_slots <= state.free_slots()
+
+    def run(self, state: CharacterState, rng: np.random.Generator, budget: int) -> OptionResult:
+        ticks = bank_trip(state, budget)
+        if ticks is None:
+            return OptionResult(budget, COMPLETED)
+        for item, amount in self._wanted(state):
+            added = state.add(item, amount)
+            if added:
+                state.take(item, added, state.bank)
+        return OptionResult(ticks, COMPLETED)
+
+
+def _banked_tools(state: CharacterState, skill: str) -> list[gd.SkillingTool]:
+    """Banked tools for a gathering skill that its level allows, best first."""
+    tools, level = gd.skilling_tools(), state.level(skill)
+    return [tools[name] for name in GATHERING_TOOLS[skill]
+            if level >= tools[name].level and state.bank.get(tools[name].item, 0) > 0]
+
+
+GATHERING_KITS = {"woodcutting": "woodcutting", "mining": "mining", "fish_shrimp": "fishing:SMALL_NET",
+                  "fish_fly": "fishing:LURE", "fish_lobster": "fishing:LOBSTER_CAGE"}  # withdrawal key -> task
 
 
 class BankDepositWorn(Option):
@@ -311,6 +363,7 @@ def inventory_options(vocabulary: Iterable[int] = ()) -> list[Option]:
     empty vocabulary only the misc actions exist."""
     v = frozenset(vocabulary)
     return [BankDeposit(), BankDepositWorn(), *(BankWithdraw(activity) for activity in WITHDRAW_RECIPES),
+            *(BankWithdrawKit(key, task) for key, task in GATHERING_KITS.items()),
             *(Drop(item) for item in sorted(v)), DropMisc(v),
             *(Alch(True, item) for item in sorted(v)), *(Alch(False, item) for item in sorted(v)),
             Alch(True, vocabulary=v), Alch(False, vocabulary=v)]
@@ -326,6 +379,12 @@ OVERSTOCK_STEP = 0.03  # Shop.getGPSell: value * 0.03 off per unit of overstock,
 
 def _real(item: int) -> int:
     return gd.unnoted_ids().get(item, item)
+
+
+def _item_and_note(item: int) -> list[int]:
+    """A per-item sell action sells the item and its banknotes (from GE buys or bank_withdraw_for_sale)."""
+    note = gd.noted_ids().get(item)
+    return [item] if note is None else [item, note]
 
 
 def store_sale_value(item: int, units: int, already_overstocked: int = 0) -> int:
@@ -355,8 +414,8 @@ class SellGE(Option):
 
     def _targets(self, state: CharacterState) -> list[int]:
         prices = gd.ge_prices_2009()
-        candidates = [self.item] if self.item is not None else [i for i in state.inventory if is_misc(_real(i),
-                                                                                                     self.vocabulary)]
+        candidates = _item_and_note(self.item) if self.item is not None else [
+            i for i in state.inventory if is_misc(_real(i), self.vocabulary)]
         return [i for i in candidates if state.inventory.get(i, 0) > 0 and _real(i) in prices]
 
     def available(self, state: CharacterState) -> bool:
@@ -387,8 +446,8 @@ class SellStore(Option):
 
     def _targets(self, state: CharacterState) -> list[int]:
         tradeable = gd.alchemy_values()
-        candidates = [self.item] if self.item is not None else [i for i in state.inventory if is_misc(_real(i),
-                                                                                                     self.vocabulary)]
+        candidates = _item_and_note(self.item) if self.item is not None else [
+            i for i in state.inventory if is_misc(_real(i), self.vocabulary)]
         return [i for i in candidates if state.inventory.get(i, 0) > 0 and _real(i) in tradeable]
 
     def available(self, state: CharacterState) -> bool:
