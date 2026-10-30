@@ -7,8 +7,7 @@
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS (the Gymnasium layer committed; the item vocabulary drafted for Caleb's check)
-- Commit: the Gymnasium layer is main repo `44ad628` (branch `sim-v0`); the vocabulary draft is the main repo commit
-  that adds this record (its SHA can only be filled in by a later commit)
+- Commit: the Gymnasium layer is main repo `44ad628` (branch `sim-v0`); the vocabulary draft is main repo `cf050ed`
 
 ## Full Prompt
 

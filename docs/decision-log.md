@@ -1677,3 +1677,82 @@ baselines". `m002-baselines`.
   - option catalog §9: the decision and the real action counts
   - the draft marked accepted
   - env contract §3's as-built note
+
+### Built: the random and greedy baselines (E1)
+Same interaction (`m002-baselines`). *V* was committed first, as main repo
+`cf050ed`.
+- **`rlscape/baselines`:**
+  - `RandomPolicy`: uniform over the masked actions.
+  - `GreedyPolicy(objective)`: one-step lookahead on expected rates at the
+    current state, as the ROADMAP describes.
+    - Each allowed option runs twice on a copy of the character, with the
+      policy's own random numbers, so the episode itself is untouched.
+    - It takes the best mean gain per mean game tick.
+    - Objectives: `skill` (r_skill), `wealth` (net worth, GP/hr) and `xp`
+      (raw XP summed over skills, XP/hr).
+- **`rlscape/eval/rollout.py`:** `play(env, policy, seed)` plays one
+  episode and collects the contract's metrics and checkpoints. The multi-seed
+  harness comes next.
+- **`SimEnv.observe()`** is now public, for tests and setup that edit the
+  state directly.
+- **Agent choices** (reversible):
+  - When nothing gains, greedy banks (`bank_deposit`) if it can, otherwise
+    takes the least bad option. Without that rule, a myopic policy stalls
+    at a full inventory.
+  - Greedy never picks loot-mode actions. They gain nothing themselves, so
+    switching back and forth would waste decisions.
+  - Two lookahead samples per option.
+- **First 20-hour episodes** (seed 0; one seed, so indicative only):
+
+  | Baseline | Total level | Net worth | Decisions | Wall time |
+  |---|---|---|---|---|
+  | random | 183 | 6,702 | 430 | 3 s |
+  | greedy skill | 236 | 5,981 | 136 | 10 s |
+  | greedy wealth | 94 | 1,006,944 | 1,090 | 67 s |
+  | greedy XP | 160 | 1,139 | 1,182 | 87 s |
+
+- **Found:**
+  - **Greedy on raw XP ends below random on total level.** It piles its
+    XP into firemaking and woodcutting (cut, burn, repeat), while greedy on
+    r_skill spreads its XP and mostly fights. The E1 "greedy XP/hr" should
+    probably be the r_skill version, the quantity the skill objective
+    measures; that's for Caleb.
+  - **Greedy wealth mines and banks:** copper ore at first, then iron. The
+    frozen January 2009 prices value copper ore at 72 gp and iron ore at
+    99 gp, so a fresh character's best immediate money is mining. It makes
+    over a million gp of net worth in 20 hours, a strong bar for H1 to
+    beat.
+- **Next:**
+  - the eval harness (seeds, parquet, bootstrap CIs)
+  - then the scripted-guide baseline, which Claude drafts from archived
+    2009 guides for Caleb's review
+
+### Decided: E1's greedy XP/hr baseline is greedy on raw XP
+Caleb: "Go with raw XP. There should be break points where going for certain
+levels in skills is very lucrative, comparatively. Going only by level will
+penalize an agent for going after higher skills to reach those break
+points." `m002-greedy-xp`.
+- **Built:** `e1_baselines()` returns E1's set: masked random, greedy on raw
+  XP (`greedy_xp`) and greedy on net worth (`greedy_wealth`). The scripted
+  guide joins after Caleb's review. Greedy on r_skill stays available for
+  comparison.
+- **Open, raised with Caleb:** the same argument applies to the agent's own
+  skill reward. r_skill is a level-based measure (env contract §4, signed
+  off), chosen so that high-level XP wouldn't dominate and so the reward
+  matches the reported metric. Whether to change it is Caleb's decision.
+
+### Decided: the skill reward stays level-based; total XP is reported
+Caleb: "Keep level-based reward and include total xp, but only up to the
+required xp to get level 99." `m002-total-xp`. This answers the open question
+from `m002-greedy-xp`.
+- **Env contract v1.3** (§4, §6, decision 19): total XP is a reported metric
+  at every checkpoint. It's Σ over all 24 skills of XP, each skill counted
+  up to 13,034,431, the XP for level 99. r_skill is unchanged.
+- **Built:**
+  - `capped_total_xp` (`rlscape/sim/skills.py`) and
+    `CharacterState.total_xp()`
+  - `info["total_xp"]`, in checkpoints, the reset info and `Episode`
+- **Agent choice:** E1's greedy XP/hr baseline now maximises the same capped
+  total, so it chases exactly the metric it's reported on. Within 20 hours
+  from a fresh start the cap never binds, so this changes nothing in
+  practice; it keeps the two definitions identical.

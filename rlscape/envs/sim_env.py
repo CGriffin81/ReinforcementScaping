@@ -54,14 +54,14 @@ class SimEnv(gym.Env):
         super().reset(seed=seed)
         self.weights = tuple((options or {}).get("reward_weights", self.default_weights))
         state = self.sim.reset(seed=int(self.np_random.integers(2**63 - 1)))
-        return self._observe(), {"game_ticks": state.tick, "total_level": state.total_level(),
-                                 "net_worth": state.net_worth(), "coins": state.coins()}
+        return self.observe(), {"game_ticks": state.tick, "total_level": state.total_level(),
+                                "total_xp": state.total_xp(), "net_worth": state.net_worth(), "coins": state.coins()}
 
     def step(self, action: int) -> tuple[np.ndarray, float, bool, bool, dict]:
         result = self.sim.step(int(action))
         r_skill, r_wealth = result.reward_vec
         reward = self.weights[0] * r_skill + self.weights[1] * r_wealth
-        return self._observe(), float(reward), result.terminated, result.truncated, result.info
+        return self.observe(), float(reward), result.terminated, result.truncated, result.info
 
     def action_masks(self) -> np.ndarray:
         return self._mask.copy()
@@ -69,7 +69,9 @@ class SimEnv(gym.Env):
     def option_catalog(self) -> list[OptionSpec]:
         return [OptionSpec(i, o.id, o.family) for i, o in enumerate(self.options)]
 
-    def _observe(self) -> np.ndarray:
+    def observe(self) -> np.ndarray:
+        """The observation for the current state, refreshing the mask. `reset` and `step` call it; call it yourself
+        after editing `sim.state` directly (tests, calibration setup), so the mask matches the state."""
         # The mask first: the combat candidates in the observation reuse the ranking it just made.
         self._mask = self.sim.action_mask()
         return self.encoder.encode(self.sim.state, self._mask, self.weights)

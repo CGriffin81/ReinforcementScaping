@@ -40,6 +40,12 @@ def progress(xp: float) -> float:
     return (xp - XP_FOR_LEVEL[level]) / (XP_FOR_LEVEL[level + 1] - XP_FOR_LEVEL[level])
 
 
+def capped_total_xp(xp) -> float:
+    """Σ over all 24 skills of XP, each capped at what level 99 needs (13,034,431): the reported total XP (Caleb,
+    2026-10-30; env contract §4). XP past 99 buys no level, so it isn't counted."""
+    return sum(min(x, XP_FOR_LEVEL[MAX_LEVEL]) for x in xp)
+
+
 def skill_measure(xp) -> float:
     """Σ over all 24 skills of (level + fractional progress): the quantity r_skill rewards changes in (env contract
     §4)."""

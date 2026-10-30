@@ -82,6 +82,7 @@ class Simulator:
             "termination": termination,
             "game_ticks": state.tick,
             "total_level": state.total_level(),
+            "total_xp": state.total_xp(),
             "net_worth": state.net_worth(),
             "coins": state.coins(),
             "xp_gained": {SKILLS[i]: state.xp[i] - xp[i] for i in range(len(SKILLS)) if state.xp[i] != xp[i]},
@@ -91,7 +92,7 @@ class Simulator:
         # Checkpoints crossed during the option, measured at its end (options last at most D, so the lag is small).
         crossed = range(tick // CHECKPOINT_TICKS + 1, state.tick // CHECKPOINT_TICKS + 1)
         if crossed:
-            info["checkpoints"] = {k * CHECKPOINT_TICKS // TICKS_PER_HOUR: {"total_level": info["total_level"],
-                                                                             "net_worth": info["net_worth"]}
-                                   for k in crossed}
+            info["checkpoints"] = {k * CHECKPOINT_TICKS // TICKS_PER_HOUR: {
+                "total_level": info["total_level"], "total_xp": info["total_xp"], "net_worth": info["net_worth"]}
+                for k in crossed}
         return StepResult(info["reward_vec"], False, truncated, info)

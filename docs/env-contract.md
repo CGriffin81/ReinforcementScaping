@@ -1,10 +1,12 @@
-# Environment Contract (v1.2, Signed off)
+# Environment Contract (v1.3, Signed off)
 
-**Status:** v1.2, 2026-10-30. It adds run energy and weight to the observation (§3) and the run rule to the backends
-(§7), from Caleb's buying decision Q3b (option catalog §8). v1.1, approved by Caleb on 2026-10-28, added the
-simulation decisions to v1.0: five more trainable skills (§5), event-level sampling, the ambient-bots setting, and the
-calibration gate and characters (§7). v1.0 added
-the death rule (§1) to v0.6. Any later change needs Caleb's approval and is logged in `docs/decision-log.md`.
+**Status:** v1.3, 2026-10-30. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
+- **v1.3** (2026-10-30, Caleb) adds total XP to the reported metrics (§4, §6).
+- **v1.2** (the same day) adds run energy and weight to the observation (§3) and the run rule to the backends
+  (§7), from Caleb's buying decision Q3b (option catalog §8).
+- **v1.1** (approved by Caleb on 2026-10-28) adds the simulation decisions: five more trainable skills (§5),
+  event-level sampling, the ambient-bots setting, and the calibration gate and characters (§7).
+- **v1.0** added the death rule (§1) to v0.6.
 
 Both backends implement this contract exactly: `SimEnv` (the surrogate simulator) and `ServerEnv` (2009Scape
 through the bridge). Any policy, baseline or logger written against it runs on either one.
@@ -97,7 +99,12 @@ catalog as built (974 actions, *V* = 156) the vector has 1,572 features.
   - Net worth = coins + Σ (inventory + bank + equipment) × `data/prices_v2.csv` value.
   - Dropped items leave net worth, so dropping is a real cost the agent weighs against walking to a bank.
 - **Shaping (E5 only):** F = γ^τ Φ(s′) − Φ(s), with Φ(terminal) = 0. Off by default.
-- **Reported metrics** (not rewards): total level and net worth at each 2-hour checkpoint, undiscounted.
+- **Reported metrics** (not rewards), undiscounted, at each 2-hour checkpoint:
+  - total level
+  - **total XP:** Σ over all 24 skills of XP, each skill counted only up to level 99's 13,034,431 (Caleb,
+    2026-10-30). The skill reward stays level-based; total XP shows progress toward levels that are worth
+    climbing to, which the level-based reward values less per XP.
+  - net worth
 
 ## 5. In-scope skills (v1.1)
 
@@ -124,10 +131,10 @@ Magic trains through combat spells and alchemy.
 | `option` | id and name; for combat, also the chosen target and style |
 | `termination` | `completed`, `inventory_full`, `inputs_exhausted`, `out_of_food`, `out_of_ammo`, `resources_exhausted`, `died`, `failed_precondition` (server only), `horizon` |
 | `game_ticks` | ticks since reset |
-| `total_level`, `net_worth`, `coins` | after the option |
+| `total_level`, `total_xp`, `net_worth`, `coins` | after the option (`total_xp` as §4 defines it) |
 | `xp_gained` | per-skill XP gained during the option |
 | `items_delta` | per-item change, split into inventory, bank and dropped |
-| `checkpoints` | (only when crossed) `{hour: {"total_level", "net_worth"}}` |
+| `checkpoints` | (only when crossed) `{hour: {"total_level", "total_xp", "net_worth"}}` |
 
 The decision logger records `obs`, `mask`, `action`, action probabilities, value estimate, and all of `info`
 for every step.
@@ -252,3 +259,8 @@ Caleb signed off both documents on 2026-10-28 (v1.0).
 18. **Run energy and weight** (option catalog §8, Q3b): travel follows the server's run energy, which weight drains
     faster and Agility restores faster. Energy and weight are in the observation (§3), and on both backends every
     walk starts with run on (§7). The observation's encoding is Claude's choice.
+
+### Decided (Caleb, 2026-10-30, baselines): v1.3
+19. **The skill reward stays level-based, and total XP is reported** (§4): each skill's XP up to level 99's. Caleb's
+    reason: some levels are breakpoints worth climbing to, and a level-only view undervalues the higher skills
+    that reach them. E1's greedy XP/hr baseline maximises the same capped total.

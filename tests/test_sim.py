@@ -10,7 +10,7 @@ import pytest
 from rlscape.gamedata import server as gd
 from rlscape.sim import Simulator, build_catalog
 from rlscape.sim.engine import HORIZON_TICKS, WEALTH_SCALE
-from rlscape.sim.skills import SKILL_INDEX, XP_FOR_LEVEL, level_for_xp, progress
+from rlscape.sim.skills import SKILL_INDEX, SKILLS, XP_FOR_LEVEL, capped_total_xp, level_for_xp, progress
 from rlscape.sim.state import SPAWN, CharacterState
 from rlscape.sim.woodcutting import (
     SWING_TICKS,
@@ -34,6 +34,12 @@ def test_xp_table_matches_the_server_formula():
     assert (XP_FOR_LEVEL[1], XP_FOR_LEVEL[2], XP_FOR_LEVEL[10], XP_FOR_LEVEL[99]) == (0, 83, 1154, 13_034_431)
     assert level_for_xp(82) == 1 and level_for_xp(83) == 2 and level_for_xp(200_000_000) == 99
     assert progress(83) == 0.0 and progress(13_034_431) == 0.0
+
+
+def test_total_xp_counts_each_skill_up_to_level_99():
+    xp = [0.0] * len(SKILLS)
+    xp[SKILL_INDEX["attack"]], xp[SKILL_INDEX["mining"]] = 20_000_000.0, 50_000.0
+    assert capped_total_xp(xp) == 13_034_431 + 50_000  # attack's XP past 99 isn't counted
 
 
 @needs_server
@@ -125,3 +131,6 @@ def test_the_horizon_truncates_and_checkpoints_are_reported():
     result = sim.step(0)
     assert result.truncated and result.info["termination"] == "horizon" and result.info["duration"] == 50
     assert result.info["checkpoints"].keys() == {20}
+    assert result.info["checkpoints"][20] == {"total_level": result.info["total_level"],
+                                              "total_xp": result.info["total_xp"],
+                                              "net_worth": result.info["net_worth"]}

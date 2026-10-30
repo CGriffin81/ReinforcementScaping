@@ -10,7 +10,7 @@ from dataclasses import dataclass, field, replace
 
 from rlscape.combat.access import Progress, relevant
 from rlscape.gamedata import server as gd
-from rlscape.sim.skills import SKILL_INDEX, SKILLS, XP_FOR_LEVEL, level_for_xp, skill_measure
+from rlscape.sim.skills import SKILL_INDEX, SKILLS, XP_FOR_LEVEL, capped_total_xp, level_for_xp, skill_measure
 
 INVENTORY_SLOTS = 28
 COINS = 995
@@ -61,6 +61,10 @@ class CharacterState:
 
     def skill_measure(self) -> float:
         return skill_measure(self.xp)
+
+    def total_xp(self) -> float:
+        """Reported total XP: each skill's XP up to level 99's."""
+        return capped_total_xp(self.xp)
 
     def slots_used(self) -> int:
         stackable = gd.stackable_items()
