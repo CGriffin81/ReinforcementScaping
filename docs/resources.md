@@ -74,6 +74,10 @@ and is credited where used.
       notes (`learnings/`) describe that version. Our formulas come from the 2009Scape source.
 20. **LostCity.** https://github.com/LostCityRS/Server — the 2004scape engine that [18] and [19] build on.
     Cited only for context.
+21. **Towers, M., Kwiatkowski, A., Terry, J., Balis, J. U., et al. (2024).** Gymnasium: A Standard Interface for
+    Reinforcement Learning Environments. arXiv:2407.17032. https://github.com/Farama-Foundation/Gymnasium (MIT)
+    — **Used:** `SimEnv` (`rlscape/envs/`) implements its `Env` API, version 1.4.0, as the env contract's
+    interface (§2), so SB3 and sb3-contrib agents can drive it. Added 2026-10-30.
 
 ## Planned (named in ROADMAP.md, not used yet)
 

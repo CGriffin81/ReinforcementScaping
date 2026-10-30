@@ -8,8 +8,7 @@
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS (run energy and weight built in sim v0, `bank_deposit_worn` added, the bridge's `set_run` built
   and live-tested)
-- Commit: fork `f5844bb` (branch `rl`); main repo: the commit that adds this record, on branch `sim-v0` (its SHA can
-  only be filled in by a later commit)
+- Commit: fork `f5844bb` (branch `rl`); main repo `1b9b9b4` (branch `sim-v0`)
 
 ## Full Prompt
 

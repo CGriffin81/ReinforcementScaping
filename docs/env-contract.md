@@ -83,6 +83,11 @@ roughly [0, 1].
 Inventory and bank are separate because banking is now the agent's decision. *V* is the item vocabulary in the
 option catalog.
 
+**As built** (`rlscape/envs/encoding.py`, 2026-10-30): E = 11 roles (weapons for melee, ranged and magic,
+ammunition, head, body, legs, shield, axe, pickaxe, fishing gear), R = 12 (the catalog's 11 regions and
+"elsewhere"), C = 18 slots (6 per combat class). The encoder's docstring lists how each part is scaled. With the
+catalog as built (194 actions, empty *V*) the vector has 480 features.
+
 **Left out on purpose:** GE prices. They're frozen, so a price snapshot would be a constant.
 
 ## 4. Reward

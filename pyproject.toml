@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Hierarchical RL for skill and wealth accumulation in 2009Scape (CS898BG project)"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "gymnasium>=1.4.0",
     "numpy>=2.5.4",
 ]
 

@@ -1583,3 +1583,43 @@ Caleb: "keep going with run energy and weight". `m002-run-energy`.
   - Fishing-spot moves still use the average speed.
   - Observation encoding: energy / 100, and kg / 100 clipped to [0, 1].
 - **Next:** the Gymnasium layer (SimEnv and the observation encoder).
+
+### Built: the Gymnasium layer (SimEnv and the observation encoder)
+Caleb: "Commit this and keep going with the Gymnasium layer". `m002-gymnasium-layer`. Run energy was committed
+first: fork `f5844bb`, main repo `1b9b9b4`.
+- **`SimEnv`** (`rlscape/envs/sim_env.py`): the env contract's interface (§2)
+  over sim v0.
+  - `reset` takes `reward_weights` as an option, as §2 has it. The
+    defaults are (0.5, 0.5), the weights of the planned sweep.
+  - `step` returns w_s·r_skill + w_b·r_wealth, plus the §6 info.
+  - `action_masks()` and `option_catalog()`.
+  - Seeding follows Gymnasium: later resets continue the seeded stream.
+  - A masked action raises, as before.
+  - Episodes end only by truncation.
+- **`ObsEncoder`** (`rlscape/envs/encoding.py`): every §3 part.
+  - 480 features in [0, 1] for today's catalog (194 actions, empty *V*).
+  - Each part has a named slice, for the decision logs.
+  - `ServerEnv` will share it by turning the bridge state into a
+    `CharacterState`.
+- **`rlscape/quests.py`:** the 21-quest set with quest points, for the
+  observation now and sim v1's quest options later.
+- **Dependency:** `gymnasium` 1.4.0, the first of the RL stack (resources
+  [21]).
+- **Agent choices** (reversible, listed in the encoder's docstring):
+  - **Equipment tiers** come from item names (metal, bow wood, staff
+    kind), the tool chains, and the Fishing level of fishing gear. They
+    count the best item carried, worn or in the inventory, because fights
+    and tools use both.
+  - **Regions** are the nearest of the catalog's 11 region anchors within
+    60 tiles, or "elsewhere". The anchors are banks where the catalog names
+    one, otherwise estimates to verify.
+  - **Candidate features** are scaled by log XP/hr, signed log gp/hr,
+    damage per hour over HP plus food, and travel over 15 minutes.
+  - **Prayer** reads 1, since the sim doesn't drain it.
+- **Found:** Gymnasium's `check_env` stops at its first unmasked random
+  action, because masked actions raise. That's the contract's choice (never
+  a silent no-op); the checker's reset and space checks pass before that.
+- **Next:**
+  - the item vocabulary *V* for Caleb to check (the inventory and bank
+    parts grow with it)
+  - then the baselines and the eval harness
