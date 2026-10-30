@@ -23,6 +23,7 @@ class Episode:
     total_level: int = 0
     total_xp: float = 0.0  # each skill's XP up to level 99's
     net_worth: float = 0.0
+    start: dict = field(default_factory=dict)  # {"total_level", "total_xp", "net_worth"} at reset
     checkpoints: dict[int, dict] = field(default_factory=dict)  # hour -> {"total_level", "total_xp", "net_worth"}
     options: Counter = field(default_factory=Counter)  # option id -> times chosen
     terminations: Counter = field(default_factory=Counter)
@@ -34,8 +35,8 @@ def play(env: SimEnv, policy: Policy, seed: int, options: dict | None = None,
     numbers, so a policy's lookahead can't change the episode it's playing."""
     obs, info = env.reset(seed=seed, options=options)
     policy.reset(seed)
-    episode = Episode(policy.name, seed, total_level=info["total_level"], total_xp=info["total_xp"],
-                      net_worth=info["net_worth"])
+    start = {key: info[key] for key in ("total_level", "total_xp", "net_worth")}
+    episode = Episode(policy.name, seed, start=start, **start)
     skill = wealth = 0.0
     for _ in range(max_decisions):
         obs, reward, terminated, truncated, info = env.step(policy.act(env, obs))

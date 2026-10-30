@@ -1756,3 +1756,46 @@ from `m002-greedy-xp`.
   total, so it chases exactly the metric it's reported on. Within 20 hours
   from a fresh start the cap never binds, so this changes nothing in
   practice; it keeps the two definitions identical.
+
+### Built: the eval harness; a preliminary E1 run
+Caleb: "Commit this and keep going with the eval harness". `m002-eval-harness`.
+The baselines and total XP were committed first, as main repo `43887df`.
+- **`rlscape/eval/harness.py`:**
+  - `run(policies, seeds, env_kwargs, workers)` plays every (policy, seed)
+    episode, in worker processes when asked, and returns two tables: one
+    row per checkpoint (hour 0 and every 2 hours), and one row per episode.
+    An episode's result depends only on its policy and seed, never on the
+    number of workers (tested).
+  - `summarize`: per policy, hour and metric, the mean over seeds with a
+    percentile-bootstrap 95% CI.
+  - `paired_difference`: policy a − b on the same seeds, per hour, with a
+    CI.
+  - `save` writes parquet plus `config.json`: the config, its hash, the
+    git SHAs of this repo and the server submodule, whether the tree had
+    uncommitted changes, and package versions.
+- **`scripts/evaluate.py`:** the command line. Results go to the
+  git-ignored `results/`.
+- **Dependencies:** pandas 3.1 and pyarrow 26, from the ROADMAP's stack.
+- **Preliminary E1 run.** This isn't the E1 deliverable: the sim isn't
+  calibrated, and the scripted guide isn't written yet. It ran 3 baselines
+  × 10 seeds × 20 game-hours on 14 workers, in 223 s
+  (`results/eval/e1-preliminary-20261030`).
+
+  | At hour 20 (mean [95% CI]) | Total level | Total XP | Net worth |
+  |---|---|---|---|
+  | random | 184 [180, 187] | 72,712 [67,628, 78,752] | 8,982 [6,798, 11,531] |
+  | greedy XP | 159 [158, 160] | 767,586 [762,726, 772,094] | 1,199 [1,150, 1,241] |
+  | greedy wealth | 122 [101, 143] | 213,992 [136,095, 290,864] | 687,811 [434,726, 935,678] |
+
+- **Found: greedy wealth is bimodal.**
+  - 6 of 10 seeds mine iron and bank, ending at 0.94–1.09M gp and total
+    level 92–101.
+  - The other 4 commit early to fighting for drops (melee gp slots) and
+    never switch, ending at 118k–253k gp with total levels 157–167.
+  - That's myopic lock-in: mining iron needs Mining 15 first, which greedy
+    never trains once combat looks better. It's the kind of delayed payoff
+    H1 is about, and the reason the CI is wide.
+- **Episode cost:** in parallel, a greedy XP episode takes about 157 s, a
+  greedy wealth episode about 89 s, and a random one about 6 s.
+- **Next:** the scripted-guide baseline, which Claude drafts from archived
+  2009 guides, with citations, for Caleb's review.

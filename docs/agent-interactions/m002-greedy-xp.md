@@ -7,8 +7,7 @@
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS (decision recorded and built; a related question about r_skill raised with Caleb)
-- Commit: main repo: the commit that adds this record, on branch `sim-v0` (its SHA can only be filled in by a
-  later commit)
+- Commit: main repo `43887df` (branch `sim-v0`)
 
 ## Full Prompt
 

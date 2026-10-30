@@ -8,8 +8,7 @@
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS (*V* adopted and committed; the random and greedy baselines built and tested; the scripted
   guide and the eval harness are next)
-- Commit: *V* is main repo `cf050ed` (branch `sim-v0`); the baselines are in the main repo commit that adds
-  this record (its SHA can only be filled in by a later commit)
+- Commit: *V* is main repo `cf050ed` (branch `sim-v0`); the baselines are main repo `43887df`
 
 ## Full Prompt
 
