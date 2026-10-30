@@ -11,6 +11,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from rlscape.sim.energy import rest
 from rlscape.sim.health import regenerate
 from rlscape.sim.options import COMPLETED, HORIZON, Option
 from rlscape.sim.skills import SKILLS
@@ -61,7 +62,7 @@ class Simulator:
         xp, inventory, bank = list(state.xp), dict(state.inventory), dict(state.bank)
 
         budget = min(self.activity_ticks, self.horizon_ticks - tick)
-        state.dropped = {}
+        state.dropped, state.energy_clock = {}, 0
         if state.gravestone is not None and state.tick >= state.gravestone.expires_at:
             state.gravestone = None  # crumbled: its items are gone
         result = option.run(state, self.rng, budget)
@@ -69,6 +70,7 @@ class Simulator:
             raise RuntimeError(f"option {option.id!r} took {result.ticks} ticks with a budget of {budget}")
         if not result.regenerated:
             regenerate(state, result.ticks)
+        rest(state, result.ticks - state.energy_clock)  # run energy: the ticks not spent walking
         state.tick += result.ticks
         truncated = state.tick >= self.horizon_ticks
         termination = HORIZON if truncated and result.termination == COMPLETED else result.termination

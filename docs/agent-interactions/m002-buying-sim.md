@@ -8,7 +8,7 @@
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS (decisions recorded; buying built in sim v0 and tested; run energy and weight are next, as a
   separate change)
-- Commit: the main repo commit that adds `m002-smith-mithril` (branch `sim-v0`; its SHA can only be filled in by a later commit); the fork's GE change is fork `043cdfa`
+- Commit: main repo `d72dc47` (branch `sim-v0`); the fork's GE change is fork `043cdfa`
 
 ## Full Prompt
 

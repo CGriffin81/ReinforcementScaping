@@ -59,6 +59,7 @@ class Item:
     attack_speed: int | None
     requirements: dict[int, int]  # skill id -> level needed to equip
     two_handed: bool
+    weight: float = 0.0  # kg (ItemConfigParser.WEIGHT); banknotes have no config entry, so they weigh nothing
 
 
 @dataclass(frozen=True)
@@ -172,6 +173,7 @@ def items() -> dict[int, Item]:
             attack_speed=_int(raw.get("attack_speed"), 0) or None,
             requirements=_requirements(raw.get("requirements")),
             two_handed=raw.get("two_handed") == "true",
+            weight=float(raw["weight"]) if raw.get("weight") else 0.0,
         )
     return out
 

@@ -61,9 +61,9 @@ def nearest_station(state: CharacterState, kind: str) -> gd.Station | None:
     return min(reachable, key=lambda s: route_ticks(state, s.tile), default=None)
 
 
-def _walk_to(state: CharacterState, station: gd.Station, budget: int) -> int | None:
+def _walk_to(state: CharacterState, station: gd.Station, budget: int, elapsed: int = 0) -> int | None:
     """Walk to the station; the ticks it took, or None if the budget ran out on the way."""
-    return walk(state, station.tile, budget)
+    return walk(state, station.tile, budget, elapsed)
 
 
 def _remove(state: CharacterState, item: int, amount: int = 1) -> None:
@@ -204,7 +204,7 @@ class Cook(Option):
             if self._next_raw(state) is None:
                 return OptionResult(elapsed, INPUTS_EXHAUSTED)
         station = nearest_station(state, "range")
-        walked = None if station is None else _walk_to(state, station, budget - elapsed)
+        walked = None if station is None else _walk_to(state, station, budget - elapsed, elapsed)
         if walked is None:
             return OptionResult(max(elapsed, 1) if station is None else budget,
                                 INPUTS_EXHAUSTED if station is None else COMPLETED)

@@ -20,8 +20,8 @@ change needs Caleb's approval and is logged in `docs/decision-log.md`.
   running out, out of food or ammunition, death, or the horizon. They never bank (decided). When the
   inventory is full, gathering options are masked until the agent banks, drops, sells, alchs or processes.
 - **Economy and inventory options** run once: travel if needed, then the transaction.
-- **Travel** between regions is part of every option's duration. It will depend on run energy, weight and Agility
-  (decided 2026-10-30, §8; not built yet).
+- **Travel** between regions is part of every option's duration. It depends on run energy, weight and Agility
+  (§8).
 - **Preconditions** make up the action mask: levels, tools, items in the inventory, coins, location
   requirements.
 - **Verify** marks a location or access detail to confirm on the server during calibration.
@@ -274,7 +274,7 @@ is never a no-op (agent choice, 2026-10-29).
 | `bank_withdraw_for_<activity>` | walk to the nearest bank; withdraw the inputs one processing activity needs, up to a full inventory. Banknotes of the inputs held (from GE buys) are banked first. One per §3 activity, so 10 actions. |
 | `bank_withdraw_gear_<class>` | melee, ranged, magic: walk to the nearest bank; withdraw the gear that beats what the character carries for that combat class (the weapon, for ranged with its ammunition, then armour, the biggest defence gain first), up to the free slots. Fights put it on from the inventory. 3 actions (§8). |
 | `bank_withdraw_<food>` | one per GE food tier (mackerel, tuna, monkfish, shark): walk to the nearest bank, bank the banknotes held of that food, and withdraw it into the free slots. 4 actions (§8). |
-| `bank_deposit_worn` | walk to the nearest bank; bank the worn gear (§8; decided 2026-10-30, built with run energy) |
+| `bank_deposit_worn` | walk to the nearest bank; bank the worn gear (the banker's "deposit worn items"), except what `bank_deposit` keeps (tools, ammunition), so a worn axe or pickaxe stays on. Masked unless something else is worn (§8). |
 | `drop_<item>` | drop every unit of one vocabulary item from the inventory (dropped items leave net worth) |
 | `drop_misc` | drop every non-vocabulary item |
 | `reclaim_gravestone` | after a death outside the Wilderness: walk back to the gravestone and take back everything in it. Masked unless a gravestone exists and the walk fits in its remaining time (it lasts 200 ticks; env contract §1). |
@@ -301,8 +301,8 @@ Per item, selling **all of that item in the inventory** (decided). To keep some 
 
 ## 8. Buying
 
-Decided by Caleb, 2026-10-27 to 2026-10-30 (`docs/decision-log.md`); built in sim v0 (`rlscape/sim/buying.py`),
-except run energy and weight (below).
+Decided by Caleb, 2026-10-27 to 2026-10-30 (`docs/decision-log.md`); built in sim v0 (`rlscape/sim/buying.py`;
+run energy and weight in `rlscape/sim/energy.py`).
 
 **Sources** (from the fork's code):
 - **GE** (`buy_ge_<item>`): the frozen seller fills a buy at once, at the 2009 price, from unlimited supply. The
@@ -375,17 +375,24 @@ drop actions exist.
 **Gear and the task (Q3):**
 - **Withdrawals (3a):** deposits are unchanged, so `bank_deposit` banks unworn gear. `bank_withdraw_gear_<class>`
   (§5) takes a class's best gear back out, and fights put it on from the inventory.
-- **Run energy and weight (3b, decided 2026-10-30; not built yet):** gear goes on when it suits the task. For
-  example, no metal armour for tasks with a lot of running. The sim gets the server's run energy:
+- **Run energy and weight (3b, decided and built 2026-10-30):** gear goes on when it suits the task. For example,
+  no metal armour for tasks with a lot of running. The sim has the server's run energy (`WalkingQueue`, `Settings`),
+  checked tick by tick against the server:
   - **Drain:** each running tick drains 0.55 × (1 + kg / 100)% energy. Running covers 2 tiles a tick; walking
-    covers 1.
-  - **Restore:** each tick not running restores 0.6 × 100 / (175 − Agility)%.
-  - **Weight:** worn items, plus one of each inventory slot's item.
-  - Energy goes in the character state and the observation, and travel runs while energy lasts.
+    covers 1. Under 1% energy, the server turns run off.
+  - **Restore:** each tick not running, walking or not, restores 0.6 × 100 / (175 − Agility)%: empty to full in
+    about 290 ticks at Agility 1. Death restores it to 100%.
+  - **Weight:** worn items, plus one of each inventory slot's item (a stack counts once; banknotes weigh nothing).
+  - **Walks:** each walk starts with run on and runs until energy is under 1%, then walks the rest. Energy is in the
+    character state and the observation (env contract §3).
   - `bank_deposit_worn` (§5) lets the agent leave armour in the bank. Taking it off into the inventory wouldn't help,
     because the inventory's weight counts too.
-  - On the server, a bridge command turns run on, as a person would. The server character currently walks.
-  - Full plate (about 27 kg) makes long trips about 4% slower; a full inventory of ore weighs more (about 63 kg).
+  - On the server, the bridge's `set_run` turns run on at the start of each walk, as a person would. The character
+    spawns with run on (`AIPlayer.init`), but once energy first runs out the server leaves it off.
+  - **How much it matters:** from full energy at Agility 1, a character runs about 360 tiles unencumbered, 290 in
+    full rune (27 kg) and 230 carrying 28 iron ore (63 kg). Shorter trips aren't slowed at all; a 400-tile trip
+    takes about 18% longer in full rune and 32% longer with the ore. A 15-minute activity restores energy fully, so
+    weight matters most for trips back to back (banking, the GE).
 
 **Shops used** (`server/Server/data/configs/shops.json`):
 
@@ -414,8 +421,8 @@ arrows and high-tier pickaxes.
   class, so they'd never be worn over plate. They need class-aware armour choice first.
 
 **Server side:** GE buys use the bridge's `ge_offer` and `ge_collect`, which collects as Q2 decided (fork change,
-2026-10-29). Shop buys, putting gear on, bank withdrawals and the run toggle each need a bridge command through the
-player's path: fork changes, each with Caleb's go-ahead.
+2026-10-29). Walks use `set_run` (fork change, 2026-10-30). Shop buys, putting gear on, bank withdrawals and
+`bank_deposit_worn` each need a bridge command through the player's path: fork changes, each with Caleb's go-ahead.
 
 ## 9. Item vocabulary and size
 

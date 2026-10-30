@@ -36,6 +36,8 @@ class CharacterState:
     gravestone: object | None = None  # rlscape.sim.combat.Gravestone after a death outside the Wilderness
     # (shop, item) -> (amount, tick it was set), for shop stock the character has moved (rlscape.sim.shops)
     shop_stock: dict[tuple[int, int], tuple[int, int]] = field(default_factory=dict)
+    run_energy: float = 100.0  # % (rlscape.sim.energy); a fresh character has it full
+    energy_clock: int = 0  # ticks into the current step that run energy accounts for (rlscape.sim.energy)
 
     @classmethod
     def fresh(cls) -> CharacterState:

@@ -8,6 +8,9 @@ Mechanics:
 - bank_deposit: walk to the nearest bank (data/banks.csv) and deposit everything except tools, food, ammunition,
   runes and fishing bait (the catalog's list, with bait counted as an activity's ammunition). Banknotes go in as
   their items. Banking costs BANKING_TICKS (rlscape.travel; calibrate).
+- bank_deposit_worn: walk to the nearest bank and bank the worn gear (the banker's "deposit worn items",
+  BankDepositDialogue), keeping what bank_deposit keeps, so a worn axe or pickaxe stays on. Lighter, the character
+  runs further on its energy (rlscape.sim.energy).
 - bank_withdraw_for_<activity>: walk to the nearest bank and withdraw what one processing activity needs, up to a
   full inventory: its tool if it isn't held (hammer, tinderbox), then its inputs in the right proportions. Banknotes
   of the inputs held (from GE buys) are banked first, as a player would at the booth.
@@ -113,6 +116,27 @@ class BankDeposit(Option):
                 state.take(item, amount)
                 real = unnoted.get(item, item)
                 state.bank[real] = state.bank.get(real, 0) + amount
+        return OptionResult(ticks, COMPLETED)
+
+
+class BankDepositWorn(Option):
+    family = "inventory"
+
+    def __init__(self, option_id: str = "bank_deposit_worn"):
+        self.id = option_id
+
+    def available(self, state: CharacterState) -> bool:
+        return any(not kept_on_deposit(item) for item in state.equipment.values())
+
+    def run(self, state: CharacterState, rng: np.random.Generator, budget: int) -> OptionResult:
+        ticks = bank_trip(state, budget)
+        if ticks is None:
+            return OptionResult(budget, COMPLETED)
+        for slot, item in list(state.equipment.items()):
+            if not kept_on_deposit(item):
+                state.bank[item] = state.bank.get(item, 0) + state.worn(slot)
+                del state.equipment[slot]
+                state.worn_amounts.pop(slot, None)
         return OptionResult(ticks, COMPLETED)
 
 
@@ -283,10 +307,10 @@ class Alch(Option):
 
 
 def inventory_options(vocabulary: Iterable[int] = ()) -> list[Option]:
-    """Catalog §5–§6 for a given vocabulary: deposit, the nine withdrawals, drops, and alchemy. With an empty
-    vocabulary only the misc actions exist."""
+    """Catalog §5–§6 for a given vocabulary: the deposits, the processing withdrawals, drops, and alchemy. With an
+    empty vocabulary only the misc actions exist."""
     v = frozenset(vocabulary)
-    return [BankDeposit(), *(BankWithdraw(activity) for activity in WITHDRAW_RECIPES),
+    return [BankDeposit(), BankDepositWorn(), *(BankWithdraw(activity) for activity in WITHDRAW_RECIPES),
             *(Drop(item) for item in sorted(v)), DropMisc(v),
             *(Alch(True, item) for item in sorted(v)), *(Alch(False, item) for item in sorted(v)),
             Alch(True, vocabulary=v), Alch(False, vocabulary=v)]

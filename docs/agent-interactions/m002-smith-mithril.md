@@ -7,8 +7,7 @@
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS (`smith_mithril` built and tested; everything committed, not pushed)
-- Commit: fork `043cdfa` (branch `rl`); main repo: the commit that adds this record, on branch `sim-v0` (its SHA can
-  only be filled in by a later commit)
+- Commit: fork `043cdfa` (branch `rl`); main repo `d72dc47` (branch `sim-v0`)
 
 ## Full Prompt
 

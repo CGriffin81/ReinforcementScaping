@@ -95,6 +95,11 @@ class BridgeClient:
     def walk_to(self, uid: int, x: int, y: int, z: int = 0) -> None:
         self.request("walk_to", uid=uid, x=x, y=y, z=z)
 
+    def set_run(self, uid: int, on: bool = True) -> bool:
+        """Turn run on or off, as the run orb does; returns whether it's on. The server turns it off when run energy
+        drops under 1%."""
+        return self.request("set_run", uid=uid, on=on)["run"]
+
     def interact(self, uid: int, name: str, option: str, is_object: bool = True) -> dict[str, Any]:
         """Use ``option`` on the nearest scenery object (or NPC, with ``is_object=False``) called ``name``."""
         return self.request("interact", uid=uid, name=name, option=option, object=is_object)

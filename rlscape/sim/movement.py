@@ -1,4 +1,5 @@
-"""Walking between tiles, including the Al Kharid toll gate. Every option that walks somewhere goes through `walk`.
+"""Walking between tiles, including the Al Kharid toll gate. Every option that walks somewhere goes through `walk`,
+which runs while run energy lasts (rlscape.sim.energy); `route_ticks` predicts the same walk without making it.
 
 The toll (TollGateOptionPlugin, BorderGuardDialogue): passing the gate between Lumbridge and Al Kharid takes 10
 coins from the inventory, in either direction, unless Prince Ali Rescue is past stage 50 (counted here as complete).
@@ -13,8 +14,9 @@ from __future__ import annotations
 
 from math import ceil
 
+from rlscape.sim.energy import rest, walk_plan
 from rlscape.sim.state import COINS, CharacterState
-from rlscape.travel import UNDERGROUND_Y_OFFSET, travel_ticks
+from rlscape.travel import UNDERGROUND_Y_OFFSET, path
 
 TOLL = 10
 AL_KHARID = (3268, 2700, 3400, 3330)  # x1, y1, x2, y2: east of the Lumbridge-Al Kharid fence, south of its end
@@ -38,24 +40,33 @@ def toll_exempt(state: CharacterState) -> bool:
     return "PRINCE_ALI_RESCUE" in state.progress.quests_complete
 
 
-def route_ticks(state: CharacterState, destination: tuple[int, int, int]) -> int:
-    """Ticks to walk from the character's tile to `destination`, by the gate if the toll can be paid or is waived,
-    otherwise round the fence's north end."""
+def _legs(state: CharacterState, destination: tuple[int, int, int]) -> list[tuple[float, int]]:
+    """The route's legs: by the gate if the toll can be paid or is waived, otherwise round the fence's north end."""
     a = state.location
     if uses_toll_gate(a, destination) and not toll_exempt(state) and state.inventory.get(COINS, 0) < TOLL:
-        return ceil(travel_ticks(a, FENCE_NORTH_END) + travel_ticks(FENCE_NORTH_END, destination))
-    return ceil(travel_ticks(a, destination))
+        return [path(a, FENCE_NORTH_END), path(FENCE_NORTH_END, destination)]
+    return [path(a, destination)]
 
 
-def walk(state: CharacterState, destination: tuple[int, int, int], budget: int) -> int | None:
+def route_ticks(state: CharacterState, destination: tuple[int, int, int]) -> int:
+    """Ticks to walk from the character's tile to `destination` with its current run energy and weight."""
+    return ceil(walk_plan(state, _legs(state, destination))[0])
+
+
+def walk(state: CharacterState, destination: tuple[int, int, int], budget: int, elapsed: int = 0) -> int | None:
     """Walk to `destination`, paying the toll if the route uses the gate. Returns the ticks taken, or None if the
-    budget runs out on the way (then the character hasn't arrived and pays nothing)."""
-    ticks = route_ticks(state, destination)
+    budget runs out on the way (then the character hasn't arrived, pays nothing and uses no energy). `elapsed` is
+    how far into the option the walk starts; the ticks before it restore energy first."""
+    rest(state, elapsed - state.energy_clock)
+    state.energy_clock = max(state.energy_clock, elapsed)
+    ticks, energy = walk_plan(state, _legs(state, destination))
+    ticks = ceil(ticks)
     if ticks >= budget:
         return None
     if uses_toll_gate(state.location, destination) and not toll_exempt(state) and state.inventory.get(COINS, 0) >= TOLL:
         state.inventory[COINS] -= TOLL
         if state.inventory[COINS] == 0:
             del state.inventory[COINS]
-    state.location = destination
+    state.location, state.run_energy = destination, energy
+    state.energy_clock += ticks
     return ticks

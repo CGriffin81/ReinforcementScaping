@@ -8,7 +8,7 @@
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS (decisions recorded; the fork's GE collection follows Q2, and a slot bug is fixed and tested; the
   Q3b mechanism and the food withdrawal are left for Caleb)
-- Commit: fork `043cdfa` (branch `rl`); the test and the submodule pointer are in the main repo commit that adds `m002-smith-mithril` (branch `sim-v0`; its SHA can only be filled in by a later commit)
+- Commit: fork `043cdfa` (branch `rl`); the test and the submodule pointer are in main repo `d72dc47` (branch `sim-v0`)
 
 ## Full Prompt
 

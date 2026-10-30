@@ -223,7 +223,7 @@ class BuyShop(Option):
                 return OptionResult(budget, COMPLETED)
             elapsed = walked + BANKING_TICKS
             _withdraw_coins(state, cost + self._toll(state, state.location) - state.inventory.get(COINS, 0))
-        walked = walk(state, self.tile, budget - elapsed)
+        walked = walk(state, self.tile, budget - elapsed, elapsed)
         if walked is None or elapsed + walked + STORE_TICKS > budget:
             return OptionResult(budget, COMPLETED)
         elapsed += walked + STORE_TICKS

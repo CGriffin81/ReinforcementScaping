@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from math import ceil
+
 import pytest
 
 from rlscape.combat.access import Progress
@@ -9,7 +11,7 @@ from rlscape.gamedata import server as gd
 from rlscape.sim import Simulator, build_catalog
 from rlscape.sim.movement import TOLL, route_ticks, uses_toll_gate, walk
 from rlscape.sim.state import COINS, CharacterState
-from rlscape.travel import travel_ticks
+from rlscape.travel import path
 
 needs_server = pytest.mark.skipif(not gd.SERVER_CONTENT.exists(), reason="server submodule missing")
 LUMBRIDGE, AL_KHARID_FURNACE, VARROCK = (3222, 3218, 0), (3274, 3186, 0), (3212, 3424, 0)
@@ -48,7 +50,7 @@ def test_prince_ali_rescue_waives_the_toll():
 def test_without_coins_the_walk_goes_round_the_fence():
     broke, paying = at(LUMBRIDGE), at(LUMBRIDGE, coins=TOLL)
     assert route_ticks(broke, AL_KHARID_FURNACE) > route_ticks(paying, AL_KHARID_FURNACE)
-    assert route_ticks(paying, AL_KHARID_FURNACE) == pytest.approx(travel_ticks(LUMBRIDGE, AL_KHARID_FURNACE), abs=1)
+    assert route_ticks(paying, AL_KHARID_FURNACE) == ceil(path(LUMBRIDGE, AL_KHARID_FURNACE)[0] / 2)  # runs all the way
     ticks = walk(broke, AL_KHARID_FURNACE, 10_000)
     assert ticks == route_ticks(at(LUMBRIDGE), AL_KHARID_FURNACE) and broke.location == AL_KHARID_FURNACE
 

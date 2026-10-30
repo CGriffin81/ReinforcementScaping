@@ -1538,3 +1538,48 @@ Caleb: "Add smith_mithril and commit this." `m002-smith-mithril`.
 - **Committed:** the fork's GE banknote change first, then this repo (the
   submodule pointer, buying, `smith_mithril` and their records).
 - **Next:** run energy and weight (3b), then the Gymnasium layer.
+
+### Built: run energy and weight (Q3b)
+Caleb: "keep going with run energy and weight". `m002-run-energy`.
+- **Simulator** (`rlscape/sim/energy.py`): run energy and weight ported from
+  the server's `WalkingQueue` and `Settings`.
+  - Drain: 0.55 × (1 + kg / 100)% per running tick.
+  - Restore: 0.6 × 100 / (175 − Agility)% per other tick.
+  - Run turns off under 1%; death restores energy to 100%.
+  - Weight counts each inventory slot once, plus everything worn.
+  - Walks run until energy is out, then walk. `route_ticks` predicts the
+    same walk, so masks and runs agree. Every tick not spent walking
+    restores energy.
+- **`bank_deposit_worn`:** banks the worn gear but keeps tools and
+  ammunition on, as `bank_deposit` does, so the agent can't strand its axe
+  or pickaxe in the bank. The server has the player's path for it (the
+  banker's "deposit worn items").
+- **Fork change** (`RLCommands.kt`, fork `f5844bb`): `set_run` turns run on or
+  off as the run orb does. `state` now reports run energy, run on or off,
+  and weight.
+- **Docs:**
+  - option catalog §1, §5 and §8 (still v1.2)
+  - env contract v1.2: energy and weight in the observation (§3), and the
+    run rule (§7)
+- **Found:**
+  - **The server character already spawns with run on** (`AIPlayer.init`).
+    Once energy runs out, the server turns run off and nothing turns it
+    back on. Catalog §8 said the character "currently walks"; that was my
+    mistake, now corrected. `set_run` is still needed, to run again on
+    later walks.
+  - **The weight model matches the server.** It matches the server's
+    weight for the starter kit. Each running and resting tick on the server
+    drains or restores exactly what the sim computes (live test, one read
+    per tick).
+  - **Combat-slot masks are slow** (`FightSlot.available`, 91% of mask
+    time; about 90 steps/s on a random policy, unchanged by this work). I
+    flagged it as a separate task.
+- **Agent choices** (reversible):
+  - Run goes on at the start of every walk, not mid-walk once energy
+    recovers, because the server leaves run off once it runs out.
+  - Stairs and ladders count as rest.
+  - Moving between monsters in a fight isn't modelled, so fight ticks
+    restore energy.
+  - Fishing-spot moves still use the average speed.
+  - Observation encoding: energy / 100, and kg / 100 clipped to [0, 1].
+- **Next:** the Gymnasium layer (SimEnv and the observation encoder).

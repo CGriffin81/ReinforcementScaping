@@ -7,7 +7,7 @@
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS (Caleb's decisions recorded; Q3 and Q6 explained for discussion; nothing built)
-- Commit: the main repo commit that adds `m002-smith-mithril` (branch `sim-v0`; its SHA can only be filled in by a later commit)
+- Commit: main repo `d72dc47` (branch `sim-v0`)
 
 ## Full Prompt
 

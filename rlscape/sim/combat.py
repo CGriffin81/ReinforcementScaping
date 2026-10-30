@@ -17,10 +17,10 @@ until the time budget, a full inventory, running out of food, or death:
   charging the attacks made. Casting each spell by hand is assumed, at the autocast rate (5 ticks), so magic
   doesn't need a staff (an agent choice; the server's autocast does).
 
-Death (DeathTask, GraveController, GraveType): the character respawns at rl.conf's home_location; the 3 most valuable
-items by high-alchemy value are kept (no skull in training; Protect Item isn't modelled); outside the Wilderness the
-rest goes into a gravestone for 200 ticks, which reclaim_gravestone recovers by walking back in time; in the
-Wilderness the rest is lost. Items in a gravestone aren't counted in net worth until recovered.
+Death (DeathTask, GraveController, GraveType): the character respawns at rl.conf's home_location with full run energy
+(Player.finalizeDeath); the 3 most valuable items by high-alchemy value are kept (no skull in training; Protect Item
+isn't modelled); outside the Wilderness the rest goes into a gravestone for 200 ticks, which reclaim_gravestone
+recovers by walking back in time; in the Wilderness the rest is lost. Items in a gravestone aren't counted in net worth until recovered.
 
 A kill still in progress when the time budget runs out earns nothing and uses no ammunition. The candidate-slot
 actions that start fights are in rlscape.sim.slots.
@@ -37,6 +37,7 @@ import numpy as np
 from rlscape.combat.candidates import PoolEntry, Site
 from rlscape.combat.rates import ESCAPE_ATTACKS, OVERHEAD_TICKS_PER_KILL, Plan, npc_offence, player_offence
 from rlscape.gamedata import server as gd
+from rlscape.sim.energy import MAX_ENERGY
 from rlscape.sim.equipment import WEAPON, fighter_for, ranged_ready, wield_best
 from rlscape.sim.health import eat_one, regenerate, retreat_hp
 from rlscape.sim.movement import route_ticks, walk
@@ -190,7 +191,7 @@ def die(state: CharacterState, now: int) -> None:
     state.inventory, state.equipment, state.worn_amounts = {}, {}, {}
     for item in kept:
         state.add(item)
-    state.hp, state.location = state.max_hp(), RESPAWN
+    state.hp, state.location, state.run_energy = state.max_hp(), RESPAWN, MAX_ENERGY  # Player.finalizeDeath
 
 
 def fight(state: CharacterState, rng: np.random.Generator, budget: int, entry: PoolEntry, plan: Plan, site: Site,

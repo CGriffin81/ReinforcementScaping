@@ -1,7 +1,9 @@
-# Environment Contract (v1.1, Signed off)
+# Environment Contract (v1.2, Signed off)
 
-**Status:** v1.1, approved by Caleb on 2026-10-28. It adds the simulation decisions to v1.0: five more trainable
-skills (§5), event-level sampling, the ambient-bots setting, and the calibration gate and characters (§7). v1.0 added
+**Status:** v1.2, 2026-10-30. It adds run energy and weight to the observation (§3) and the run rule to the backends
+(§7), from Caleb's buying decision Q3b (option catalog §8). v1.1, approved by Caleb on 2026-10-28, added the
+simulation decisions to v1.0: five more trainable skills (§5), event-level sampling, the ambient-bots setting, and the
+calibration gate and characters (§7). v1.0 added
 the death rule (§1) to v0.6. Any later change needs Caleb's approval and is logged in `docs/decision-log.md`.
 
 Both backends implement this contract exactly: `SimEnv` (the surrogate simulator) and `ServerEnv` (2009Scape
@@ -65,6 +67,7 @@ roughly [0, 1].
 | Skills | 2 × 20 | level / 99 and fractional progress to the next level, for the 19 trainable skills plus Slayer (§5). The v1 skills read 1 in sim v0. |
 | Total level | 1 | total level (all 24 skills) / 2376 |
 | Hitpoints, prayer | 2 | current / max |
+| Run energy, weight | 2 | energy / 100; weight in kg / 100, clipped to [0, 1] (option catalog §8) |
 | Wealth | 2 | log1p(coins) / log1p(10M); log1p(net worth) / log1p(10M) |
 | Inventory | V + 1 | log1p(count) / log1p(28) per vocabulary item; free slots / 28 |
 | Bank | V | log1p(count) / log1p(10k) per vocabulary item |
@@ -128,8 +131,8 @@ for every step.
 
 - **`SimEnv`:**
   - seeded `numpy.random.Generator`; same seed and same actions give the same trajectory
-  - option effects come from the server's formulas (skilling, combat, drop tables) plus calibrated
-    overheads (travel, banking, GE and shop trips)
+  - option effects come from the server's formulas (skilling, combat, drop tables, run energy) plus
+    calibrated overheads (travel paths, banking, GE and shop trips)
   - **event-level sampling** (Caleb, 2026-10-28). Outcomes are sampled per event, not per tick and not as
     averages:
     - resources gathered over N ticks: one binomial draw
@@ -150,6 +153,8 @@ for every step.
     crowding.
   - not seedable (world randomness); reported as such
   - options run through human-path actions only, never `debug_*`
+  - turns run on (`set_run`) at the start of each walk, as the simulator assumes. The server turns it off when
+    energy drops under 1%.
 - **Parity test:** the same scripted option sequence runs on both backends. The per-option XP, item, coin and
   duration distributions are compared; that's the sim-to-real gap (E6).
 - **Calibration and the gate before E2** (Caleb, 2026-10-28):
@@ -237,3 +242,8 @@ Caleb signed off both documents on 2026-10-28 (v1.0).
 16. **The sim-to-server gate** before E2 is ±20%, and the calibration characters are as described in §7.
 17. **The scripted-guide baseline** (E1) is drafted by Claude from archived 2009 guides, cited in `docs/resources.md`,
     and reviewed by Caleb before E1 runs.
+
+### Decided (Caleb, 2026-10-30, buying): v1.2
+18. **Run energy and weight** (option catalog §8, Q3b): travel follows the server's run energy, which weight drains
+    faster and Agility restores faster. Energy and weight are in the observation (§3), and on both backends every
+    walk starts with run on (§7). The observation's encoding is Claude's choice.

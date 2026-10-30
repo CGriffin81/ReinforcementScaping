@@ -7,7 +7,7 @@
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS (the commit is made; the buying draft is written for review; nothing built)
-- Commit: ranged and magic are main repo `8eb9486` (branch `sim-v0`); the draft is in the main repo commit that adds `m002-smith-mithril` (branch `sim-v0`; its SHA can only be filled in by a later commit)
+- Commit: ranged and magic are main repo `8eb9486` (branch `sim-v0`); the draft is in main repo `d72dc47` (branch `sim-v0`)
 
 ## Full Prompt
 
