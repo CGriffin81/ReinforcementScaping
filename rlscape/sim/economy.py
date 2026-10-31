@@ -25,14 +25,12 @@ Mechanics:
 from __future__ import annotations
 
 from collections.abc import Iterable
-from math import ceil
 
 import numpy as np
 
 from rlscape.gamedata import server as gd
-from rlscape.sim.health import foods_held
 from rlscape.sim.kits import GATHERING_TOOLS, kit
-from rlscape.sim.movement import route_ticks, walk
+from rlscape.sim.movement import reachable, route_ticks, walk
 from rlscape.sim.options import COMPLETED, INPUTS_EXHAUSTED, Option, OptionResult
 from rlscape.sim.processing import HAMMER, TINDERBOX
 from rlscape.sim.shops import PLAYER_STOCK, set_stock, stock
@@ -54,7 +52,7 @@ def kept_on_deposit(item: int) -> bool:
     items, tools = gd.items(), {t.item for t in gd.skilling_tools().values()}
     fishing = {m.tool for m in gd.fishing_methods().values()} | {b for m in gd.fishing_methods().values() for b in m.bait}
     definition = items.get(item)
-    return (item in tools or item in fishing or item in (HAMMER, TINDERBOX) or item in gd.food_healing()
+    return (item in tools or item in fishing or item in (HAMMER, TINDERBOX, gd.KNIFE) or item in gd.food_healing()
             or (definition is not None and (definition.equipment_slot == AMMO_SLOT
                                             or definition.name.lower().endswith(" rune"))))
 
@@ -124,8 +122,8 @@ class BankDeposit(Option):
 
 class BankWithdrawKit(Option):
     """bank_withdraw_for_<task> for a gathering task: walk to the nearest bank and take out its kit (rlscape.sim.kits):
-    for woodcutting and mining, the best axe or pickaxe the level allows, if none as good is held; for a fishing
-    method, its tool and all of its bait or feathers."""
+    for woodcutting and mining, the best axe or pickaxe the level allows, if none as good is held (woodcutting also
+    a tinderbox and a knife, if not held); for a fishing method, its tool and all of its bait or feathers."""
 
     family = "inventory"
 
@@ -139,7 +137,11 @@ class BankWithdrawKit(Option):
             priority, held = GATHERING_TOOLS[kind], best_tool(state, GATHERING_TOOLS[kind], kind)
             rank = lambda tool: priority.index(tool.name)  # SkillingTool's order: best first
             best = next((tool for tool in _banked_tools(state, kind) if held is None or rank(tool) < rank(held)), None)
-            return [(best.item, 1)] if best is not None else []
+            wanted = [(best.item, 1)] if best is not None else []
+            if kind == "woodcutting":  # the chop-and-burn and chop-and-fletch paths' tinderbox and knife
+                wanted += [(tool, 1) for tool in (TINDERBOX, gd.KNIFE)
+                           if not state.holds(tool) and state.bank.get(tool, 0) > 0]
+            return wanted
         fishing = gd.fishing_methods()[method]
         wanted = [(fishing.tool, 1)] if not state.inventory.get(fishing.tool) and state.bank.get(fishing.tool) else []
         return wanted + [(bait, state.bank[bait]) for bait in fishing.bait if state.bank.get(bait, 0) > 0]
@@ -368,12 +370,44 @@ class Alch(Option):
             state.xp[magic] = min(state.xp[magic] + xp, MAX_XP)
 
 
+PICKUP_TICKS = 1  # taking an item off the ground; calibrate
+
+
+class TakeSpawn(Option):
+    """take_<item>: walk to the nearest reachable spawn of an item (the server's ground spawns) and pick it up.
+    Offered while none is held anywhere and a slot is free. The knife's (Caleb, 2026-10-31: "a knife spawn in
+    Lumbridge Castle, which is very convenient for a fresh starting character") are in and beside Lumbridge Castle.
+    The respawn (80 ticks for the knife) isn't tracked: with one held the action is masked, and getting rid of it
+    first takes longer than that."""
+
+    family = "inventory"
+
+    def __init__(self, item: int, name: str):
+        self.id, self.item = f"take_{name}", item
+
+    def _nearest(self, state: CharacterState) -> tuple[int, int, int] | None:
+        tiles = [tile for tile, _ in gd.ground_spawns(self.item) if reachable(state, tile)]
+        return min(tiles, key=lambda tile: route_ticks(state, tile), default=None)
+
+    def available(self, state: CharacterState) -> bool:
+        return not state.holds(self.item) and self.item not in state.bank and state.free_slots() > 0 and bool(
+            gd.ground_spawns(self.item))
+
+    def run(self, state: CharacterState, rng: np.random.Generator, budget: int) -> OptionResult:
+        tile = self._nearest(state)
+        walked = None if tile is None else walk(state, tile, budget)
+        if walked is None or walked + PICKUP_TICKS > budget:
+            return OptionResult(budget, COMPLETED)
+        state.add(self.item)
+        return OptionResult(walked + PICKUP_TICKS, COMPLETED)
+
+
 def inventory_options(vocabulary: Iterable[int] = ()) -> list[Option]:
     """Catalog §5–§6 for a given vocabulary: the deposits, the processing withdrawals, drops, and alchemy. With an
     empty vocabulary only the misc actions exist."""
     v = frozenset(vocabulary)
     return [BankDeposit(), BankDepositWorn(), *(BankWithdraw(activity) for activity in WITHDRAW_RECIPES),
-            *(BankWithdrawKit(key, task) for key, task in GATHERING_KITS.items()),
+            *(BankWithdrawKit(key, task) for key, task in GATHERING_KITS.items()), TakeSpawn(gd.KNIFE, "knife"),
             *(Drop(item) for item in sorted(v)), DropMisc(v),
             *(Alch(True, item) for item in sorted(v)), *(Alch(False, item) for item in sorted(v)),
             Alch(True, vocabulary=v), Alch(False, vocabulary=v)]

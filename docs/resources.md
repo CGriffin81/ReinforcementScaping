@@ -117,6 +117,28 @@ and is credited where used.
     https://runescape.wiki/w/Magic?oldid=900388 (CC BY-NC-SA 3.0) — **Used:** the scripted guide's magic (strike
     spells, buying runes; no January 2009 training page exists). Added 2026-10-30.
 
+34. **RuneScape Wiki. "Pay-to-play melee training",** revision 900265 (2009-01-31).
+    https://runescape.wiki/w/Pay-to-play_melee_training?oldid=900265 (CC BY-NC-SA 3.0) — **Used:** the scripted
+    guide's melee monsters by level band (members), replacing [24] there. Added 2026-10-31.
+35. **RuneScape Wiki. "Pay-to-play Ranged training",** revision 895507 (2009-01-30).
+    https://runescape.wiki/w/Pay-to-play_Ranged_training?oldid=895507 (CC BY-NC-SA 3.0) — **Used:** the scripted
+    guide's ranged monsters by level band (members), replacing [31] there. Added 2026-10-31.
+36. **RuneScape Wiki. "Pay-to-play Woodcutting training",** revision 892489 (2009-01-29).
+    https://runescape.wiki/w/Pay-to-play_Woodcutting_training?oldid=892489 (CC BY-NC-SA 3.0) — **Used:** the
+    scripted guide's trees by level (members), replacing [22] there. Added 2026-10-31.
+37. **RuneScape Wiki. "Pay-to-play Fishing training",** revision 876863 (2009-01-24).
+    https://runescape.wiki/w/Pay-to-play_Fishing_training?oldid=876863 (CC BY-NC-SA 3.0) — **Used:** the scripted
+    guide's fishing methods (members), replacing [23] there. Added 2026-10-31.
+38. **RuneScape Wiki. "Pay-to-play Cooking training",** revision 892859 (2009-01-29).
+    https://runescape.wiki/w/Pay-to-play_Cooking_training?oldid=892859 (CC BY-NC-SA 3.0) — **Used:** the scripted
+    guide's cooking (members), replacing [28] there. Added 2026-10-31.
+39. **RuneScape Wiki. "Pay-to-play Firemaking training",** revision 881333 (2009-01-25).
+    https://runescape.wiki/w/Pay-to-play_Firemaking_training?oldid=881333 (CC BY-NC-SA 3.0) — **Used:** the
+    scripted guide's logs by level (members), replacing [32] there. Added 2026-10-31.
+40. **RuneScape Wiki. "Fletching",** revision 882419 (2009-01-25).
+    https://runescape.wiki/w/Fletching?oldid=882419 (CC BY-NC-SA 3.0) — consulted for the fletching proposal (no
+    January 2009 fletching training page exists). Added 2026-10-31.
+
 ## Planned (named in ROADMAP.md, not used yet)
 
 - **MORL-Baselines** (Envelope Q-learning implementation) and **MO-Gymnasium**. E4.

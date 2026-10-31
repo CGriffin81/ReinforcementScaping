@@ -84,7 +84,7 @@ def test_the_reward_is_the_weighted_pair(env):
     for weights in [(1.0, 0.0), (0.2, 0.8)]:
         env.reset(seed=3, options={"reward_weights": weights})
         mask = env.action_masks()
-        action = next(s.action for s in env.option_catalog() if s.id == "wc_logs")
+        action = next(s.action for s in env.option_catalog() if s.id == "skill_woodcutting_xp1")
         assert mask[action]
         _, reward, _, _, info = env.step(action)
         r_skill, r_wealth = info["reward_vec"]

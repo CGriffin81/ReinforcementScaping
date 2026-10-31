@@ -1,18 +1,26 @@
-# Scripted-Guide Baseline: Draft for Caleb's Review
+# Scripted-Guide Baseline
 
-> **Reviewed by Caleb (2026-10-31):** "Apply both recommended actions": Q5 (a), this 13-skill guide is E1's
-> scripted-guide baseline (now in `e1_baselines()`); Q6, the four sim fixes stay.
+> **Fourth revision (2026-10-31):** Fletching, brought forward into sim v0 (Caleb), is the guide's 14th skill,
+> trained by the Fletching article's methods ([40]; January 2009 had no Fletching training page): arrow shafts from
+> normal logs to 25, then oak, willow and maple bows (u), and from 70 yew longbows, strung (the only bows here worth
+> more strung than their parts). It cuts the logs where it chops them while its woodcutting allows, otherwise works
+> banked logs at a bank. Its knife is Lumbridge Castle's (Caleb: "very convenient for a fresh starting
+> character"). Results below.
+
+> **Third revision (2026-10-31), from Caleb's review the same day:** the members' guides where January 2009 had
+> them (melee [34], ranged [35], woodcutting [36], fishing [37], cooking [38], firemaking [39]); the schedule trains
+> the lowest skill in a stint to the next multiple of 5 ("Minimum stint where the goal levels are multiples of
+> 5"); gathering goes through the new skilling slots (option catalog §2), taking the slot that holds the guide's
+> method. Results below. The rest of this page describes the second draft, except where these change it.
+
+> **Signed off by Caleb (2026-10-31)** as E1's scripted-guide baseline (now in `e1_baselines()`), with the four sim
+> fixes below kept. The questions and answers behind each revision are in `docs/decision-log.md`.
 
 **Status:** second draft, 2026-10-30, widened to every skill sim v0 trains (Caleb: "Widen the guide", "Go after
 lowest skill for schedule", "include more skills", thieving as an early money-maker). Env contract decision 17 says
 Claude drafts the E1 scripted-guide baseline from archived 2009 guides, cites them in `docs/resources.md`, and Caleb
 reviews it before E1 runs. The routine is `rlscape/baselines/guide.py` (`ScriptedGuidePolicy`), in
 `e1_baselines()` since Caleb's review; the eval harness runs it as `scripted_guide`.
-
-> **Caleb's review of the first draft (2026-10-30):** Q1, the schedule: lowest skill first. Q2: a withdraw-to-sell
-> action (built). Q3, the scope: widen the guide to more skills, with thieving as an early money-maker (this draft).
-> Also decided then: deposits keep the task's kit (built), and skilling is offered as XP/hr and gp/hr slots (to
-> come).
 
 ## Sources
 
@@ -34,6 +42,12 @@ BY-NC-SA 3.0; cited and paraphrased here, not copied):
 | [31] | Free-to-play Ranged training | 880633, 2009-01-25 | monsters by Ranged level, shortbows, iron arrows |
 | [32] | Firemaking (the skill article) | 892441, 2009-01-29 | logs by level (no training page yet) |
 | [33] | Magic (the skill article) | 900388, 2009-01-31 | strike spells, buying runes (no training page yet) |
+| [34] | Pay-to-play melee training | 900265, 2009-01-31 | members' monsters by level band (third revision) |
+| [35] | Pay-to-play Ranged training | 895507, 2009-01-30 | members' monsters by Ranged level (third revision) |
+| [36] | Pay-to-play Woodcutting training | 892489, 2009-01-29 | oaks 15–29, willows 30+ (third revision) |
+| [37] | Pay-to-play Fishing training | 876863, 2009-01-24 | small net, fly fishing from 20 (third revision) |
+| [38] | Pay-to-play Cooking training | 892859, 2009-01-29 | cook the catch (third revision) |
+| [39] | Pay-to-play Firemaking training | 881333, 2009-01-25 | logs by level (third revision) |
 
 No 2009 source says how to split time between skills; Caleb chose lowest first.
 
@@ -75,6 +89,29 @@ to smith) passes the turn to the next lowest.
 
 ## Results (sim v0, uncalibrated; 10 seeds, 20 game-hours)
 
+**Fourth revision** (with Fletching; `results/eval/guide-fletching-20261031`):
+
+| At hour 20 (mean [95% CI]) | Total level | Total XP | Net worth |
+|---|---|---|---|
+| scripted guide | 312 [307, 316] | 94,137 [91,854, 96,342] | 107,825 [102,322, 113,002] |
+| random | 235 [227, 243] | 101,804 [92,906, 110,677] | 8,398 [5,132, 12,023] |
+
+Fletching nearly doubles the guide's net worth (58k before), all from arrow shafts: Fletching stays below 25, so the
+guide never reaches bows. Seed 0 ends at Fletching 20 holding 13,205 arrow shafts (66k of its 106k net worth, at
+5 gp each) and 400 headless arrows (3k).
+
+**Third revision** (members' guides, stints, skilling slots; `results/eval/guide-slots-20261031`):
+
+| At hour 20 (mean [95% CI]) | Total level | Total XP | Net worth |
+|---|---|---|---|
+| scripted guide | 306 [305, 308] | 89,527 [87,177, 92,061] | 57,704 [54,756, 61,008] |
+| random | 236 [230, 243] | 108,293 [101,748, 115,381] | 9,797 [5,922, 13,988] |
+
+The guide is about where the second draft was. Random gained most from the skilling slots (184 levels and 80k XP
+before): every slot it can pick is now one of a skill's best paths, and the chop-and-burn paths give a lot of XP.
+
+**Second draft:**
+
 | At hour 20 (mean [95% CI]) | Total level | Total XP | Net worth |
 |---|---|---|---|
 | scripted guide, 13 skills (this draft) | 308 [302, 314] | 87,147 [83,191, 90,882] | 55,071 [52,198, 58,304] |
@@ -105,15 +142,3 @@ Widening the guide found four sim problems that would trap an agent too. Each is
 
 Earlier, the first draft found two others: fight slots open when they couldn't start, and the guide's own buy/sell
 and deposit/withdraw loops.
-
-## Questions for Caleb
-
-**Q5. Is the 13-skill lowest-first guide the E1 baseline you want?** *Decided (Caleb, 2026-10-31): (a).* It does what was asked: every skill trained,
-lowest first, by the 2009 guides. The cost is XP and wealth, so E1's agents will beat it easily on both.
-- **(a) Recommended:** keep it. It's the specified plan, and its balance is what makes it a fair "new player"
-  reference on total level.
-- (b) Lowest first, but over fewer skills (for example the first draft's six plus thieving).
-- (c) Report both in E1: the 13-skill guide and the six-skill one.
-
-**Q6. The four sim fixes above** *Decided (Caleb, 2026-10-31): keep them.* change the agents' options too (magic's armour, the magic withdrawal, the
-processing withdrawals, the buy mask). None changes the action count. Recommended: keep them.

@@ -9,8 +9,7 @@
 - Status: SUCCESS (the decisions applied and committed; the guide's second draft built and measured; four sim fixes;
   two questions for Caleb)
 - Commit: the decisions, with the earlier work, are fork `7956207` (branch `rl`) and main repo `6ad245c` (branch
-  `sim-v0`); the guide's second draft is the main repo commit
-  that adds `m002-guide-signoff` (its SHA can only be filled in by a later commit)
+  `sim-v0`); the guide's second draft is main repo `7030ede`
 
 ## Full Prompt
 

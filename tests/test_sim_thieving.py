@@ -9,11 +9,12 @@ from rlscape.gamedata import server as gd
 from rlscape.sim import Simulator, build_catalog
 from rlscape.sim.health import REGEN_TICKS, eat_one, regenerate
 from rlscape.sim.skills import SKILL_INDEX, XP_FOR_LEVEL
+from rlscape.sim.skilling import slot_holding
 from rlscape.sim.state import CharacterState
 from rlscape.combat.access import rules_at
 from rlscape.sim.combat import in_wilderness
 from rlscape.sim.thieving import (FLEE_TICKS, LEFT_OUT, PICKPOCKET_TARGETS, STALLS, STEAL_TICKS, SUCCESS_TICKS,
-                                  Pickpocket, StealFromStall, pickpocket_chance, pickpocket_options, server_random,
+                                  StealFromStall, pickpocket_chance, pickpocket_options, server_random,
                                   stall_options)
 
 needs_server = pytest.mark.skipif(not gd.SERVER_CONTENT.exists(), reason="server submodule missing")
@@ -75,7 +76,7 @@ def test_cheapest_food_is_eaten_first():
 def test_fresh_character_pickpockets_until_the_food_runs_out():
     sim = Simulator(build_catalog())
     sim.reset(seed=5)
-    action = [o.id for o in sim.options].index("pickpocket_men")
+    action = [o.id for o in sim.options].index(slot_holding(sim.options, sim.state, "pickpocket_men"))
     info = sim.step(action).info
     assert info["termination"] == "out_of_food" and sim.state.hp <= sim.state.max_hp() / 2
     assert SHRIMPS not in sim.state.inventory and BREAD not in sim.state.inventory
@@ -87,8 +88,7 @@ def test_fresh_character_pickpockets_until_the_food_runs_out():
 @needs_server
 def test_sampled_coin_rate_matches_the_success_chance():
     """With HP to spare (no eating), coins per tick = 3p / (2p + 5(1 - p))."""
-    sim = Simulator(build_catalog())
-    option = next(o for o in sim.options if isinstance(o, Pickpocket))
+    option = pickpocket_options()[0]  # men
     p = pickpocket_chance(option.target, 40)
     expected = 3 * p / (SUCCESS_TICKS * p + option.target.stun_ticks * (1 - p))
     rng, coins, ticks = np.random.default_rng(2), 0, 0
@@ -106,7 +106,8 @@ def test_the_engine_regenerates_hitpoints_during_other_options():
     sim = Simulator(build_catalog())
     sim.reset(seed=0)
     sim.state.hp = 5
-    duration = sim.step(0).info["duration"]  # wc_logs
+    ids = [o.id for o in sim.options]
+    duration = sim.step(ids.index(slot_holding(sim.options, sim.state, "wc_logs"))).info["duration"]  # chop, keep
     assert sim.state.hp == 5 + duration // REGEN_TICKS
 
 
@@ -251,7 +252,7 @@ def test_a_steal_takes_one_reward_uniformly():
 @needs_server
 def test_noticed_steals_run_off_and_come_back():
     option = next(o for o in stall_options() if o.id == "steal_silk_stall")
-    rng, steals, noticed_ticks, ticks = np.random.default_rng(2), 0, 0, 0
+    rng, steals, ticks = np.random.default_rng(2), 0, 0
     for _ in range(200):
         state = _thief(option)
         result = option.run(state, rng, 2_000)

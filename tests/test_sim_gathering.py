@@ -11,6 +11,7 @@ from rlscape.sim.fishing import Fishing
 from rlscape.sim.gathering import WALK_BETWEEN_RESOURCES, Site
 from rlscape.sim.mining import ATTEMPT_TICKS, GEMS, Mining, best_pickaxe, mine_chance, uniform_race
 from rlscape.sim.skills import SKILL_INDEX, XP_FOR_LEVEL
+from rlscape.sim.skilling import path_options
 from rlscape.sim.state import CharacterState
 
 needs_server = pytest.mark.skipif(not gd.SERVER_CONTENT.exists(), reason="server submodule missing")
@@ -119,5 +120,9 @@ def test_lure_fishing_uses_a_feather_per_fish_and_stops_without_them():
 def test_fresh_character_can_chop_mine_copper_and_tin_net_shrimp_and_pickpocket():
     sim = Simulator(build_catalog())
     sim.reset(seed=0)
-    available = {o.id for o, ok in zip(sim.options, sim.action_mask()) if ok and o.family == "gathering"}
-    assert available == {"wc_logs", "mine_copper", "mine_tin", "fish_shrimp", "pickpocket_men"}
+    paths = {p.id for p in path_options() if p.available(sim.state)}
+    assert paths == {"wc_logs", "wc_logs_burn", "mine_copper", "mine_tin", "fish_shrimp", "fish_shrimp_cook",
+                     "pickpocket_men"}
+    slots = {o.id for o, ok in zip(sim.options, sim.action_mask()) if ok and o.family == "gathering"}
+    assert slots == {f"skill_{s}_xp{n}" for s in ("woodcutting", "fishing", "mining") for n in (1, 2)} | {
+        "skill_thieving_xp1"}

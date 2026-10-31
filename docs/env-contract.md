@@ -1,13 +1,17 @@
-# Environment Contract (v1.5, Signed off)
+# Environment Contract (v1.7, Signed off)
 
-**Status:** v1.5, 2026-10-30. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
+**Status:** v1.7, 2026-10-31. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
+- **v1.7** (2026-10-31, Caleb) brings Fletching forward into sim v0 (§5), with Fletching skilling slots, a
+  fletching task (§3) and 20 fletching inputs in *V*.
+- **v1.6** (2026-10-31, Caleb) replaces the fixed gathering actions with skilling slots and adds their rates to
+  the observation (§3).
 - **v1.5** (2026-10-30, Caleb) has `ServerEnv` send its inputs as client packets (§7), after the live
   tick-manipulation test found that the bridge's direct commands land a tick late against the world's pulses.
 - **v1.4** (2026-10-30) adds the last task to the observation (§3), because Caleb's deposit rule makes what a
   deposit keeps depend on it.
 - **v1.3** (2026-10-30, Caleb) adds total XP to the reported metrics (§4, §6).
 - **v1.2** (the same day) adds run energy and weight to the observation (§3) and the run rule to the backends
-  (§7), from Caleb's buying decision Q3b (option catalog §8).
+  (§7), from Caleb's buying decision on gear and running (option catalog §8).
 - **v1.1** (approved by Caleb on 2026-10-28) adds the simulation decisions: five more trainable skills (§5),
   event-level sampling, the ambient-bots setting, and the calibration gate and characters (§7).
 - **v1.0** added the death rule (§1) to v0.6.
@@ -80,8 +84,9 @@ roughly [0, 1].
 | Equipment | E | tier index / max tier per slot: weapon (melee / ranged / staff), ammunition, head, body, legs, shield; tools (axe, pickaxe, fishing gear) |
 | Region | R | one-hot over the catalog's regions |
 | Combat candidates | C × 5 | for each candidate slot: XP/hr, gp/hr, expected damage taken per hour vs food held, travel minutes, Slayer / level eligibility (option catalog §4) |
+| Skilling candidates | 20 × 5 | per skilling slot (option catalog §2): the gathering skill's XP/hr, its processing counterpart's XP/hr, gp/hr, travel, open; scaled as the combat candidates |
 | Loot mode | 4 | one-hot: all / valuable / vocabulary / none (option catalog §4.D) |
-| Task | 11 | one-hot: the last activity's task (none, woodcutting, mining, the three fishing methods, thieving, processing, the three combat classes), which decides what `bank_deposit` keeps (option catalog §5) |
+| Task | 12 | one-hot: the last activity's task (none, woodcutting, mining, the three fishing methods, thieving, fletching, processing, the three combat classes), which decides what `bank_deposit` keeps (option catalog §5) |
 | Access | A | 0/1 per access rule (`data/access_areas.csv`, A = 55 today; `access.unlocked_rules`): unlocked by quests, items held, levels or coins (option catalog §4.C) |
 | Quests | Q × 3 + 1 | stage one-hot (not started / underway / complete) per curated quest; quest points / 32 |
 | Mask | N | the action mask |
@@ -93,7 +98,7 @@ option catalog.
 **As built** (`rlscape/envs/encoding.py`, 2026-10-30): E = 11 roles (weapons for melee, ranged and magic,
 ammunition, head, body, legs, shield, axe, pickaxe, fishing gear), R = 12 (the catalog's 11 regions and
 "elsewhere"), C = 18 slots (6 per combat class). The encoder's docstring lists how each part is scaled. With the
-catalog as built (1,000 actions, *V* = 156) the vector has 1,609 features.
+catalog as built (1,110 actions, *V* = 176) the vector has 1,860 features.
 
 **Left out on purpose:** GE prices. They're frozen, so a price snapshot would be a constant.
 
@@ -114,9 +119,9 @@ catalog as built (1,000 actions, *V* = 156) the vector has 1,609 features.
 ## 5. In-scope skills (v1.1)
 
 **Trainable (19):**
-- from sim v0 (14): Attack, Strength, Defence, Hitpoints, Ranged, Magic, Prayer, Woodcutting, Mining, Smithing,
-  Fishing, Cooking, Firemaking, Thieving
-- added in sim v1, before E2 (5): Fletching, Crafting, Agility, Herblore, Runecrafting (Caleb, 2026-10-28).
+- from sim v0 (15): Attack, Strength, Defence, Hitpoints, Ranged, Magic, Prayer, Woodcutting, Mining, Smithing,
+  Fishing, Cooking, Firemaking, Thieving, and Fletching (brought forward by Caleb, 2026-10-31)
+- added in sim v1, before E2 (4): Crafting, Agility, Herblore, Runecrafting (Caleb, 2026-10-28).
   Herblore needs Druidic Ritual and Runecrafting needs Rune Mysteries, both in the quest set. Agility levels also
   open the Agility shortcuts in the access table.
 
@@ -158,7 +163,7 @@ for every step.
     - eating and death checked kill by kill
   - resource depletion and respawn come from the server's data. Competition from other players isn't modelled,
     because ambient bots are off on the server too.
-  - **staged:** sim v0 has every family except quests and the five v1 skills. Sim v1 adds the 21 quests and those
+  - **staged:** sim v0 has every family except quests and the four v1 skills. Sim v1 adds the 21 quests and those
     skills before E2.
   - target ≥ 20k decisions per second across `SubprocVecEnv` workers
 - **`ServerEnv`:**
@@ -266,7 +271,7 @@ Caleb signed off both documents on 2026-10-28 (v1.0).
     (`docs/scripted-guide-draft.md`).
 
 ### Decided (Caleb, 2026-10-30, buying): v1.2
-18. **Run energy and weight** (option catalog §8, Q3b): travel follows the server's run energy, which weight drains
+18. **Run energy and weight** (option catalog §8): travel follows the server's run energy, which weight drains
     faster and Agility restores faster. Energy and weight are in the observation (§3), and on both backends every
     walk starts with run on (§7). The observation's encoding is Claude's choice.
 
@@ -283,3 +288,13 @@ Caleb signed off both documents on 2026-10-28 (v1.0).
 ### Decided (Caleb, 2026-10-30, the tick-manipulation test): v1.5
 21. **`ServerEnv` inputs are client packets** (§7): the bridge enqueues the packet a click would send rather than
     handling the click itself, so input timing matches a real client's to the tick.
+
+### Decided (Caleb, 2026-10-30 and 31, skilling slots): v1.6
+22. **Skilling slots** (option catalog §2): Woodcutting, Fishing, Mining and Thieving each offer their 2 best paths by
+    XP/hr and 2 by gp/hr as actions, replacing the fixed gathering actions; a path pairs a gathering method with its
+    processing counterpart where sim v0 has it. Their rates are in the observation (§3).
+
+### Decided (Caleb, 2026-10-31, fletching): v1.7
+23. **Fletching is in sim v0** (§5; option catalog §2): woodcutting's logs can be cut where they're chopped, and
+    Fletching has its own skilling slots over the server's recipes (bows, stringing where the strung bow is worth
+    more than its parts, arrows, darts, bolts). Its bought inputs join *V* by *V*'s rule (option catalog §9).

@@ -41,6 +41,10 @@ The interaction records in `docs/agent-interactions/` hold the full context.
   in ROADMAP Appendix B. Decide at the week-5 midpoint.
 
 ### Agent recommendations (pending acceptance)
+*Resolved later (noted 2026-10-31):* the env contract Caleb signed off on
+2026-10-28 adopts the discounting (§1) and both rewards (§4); his simulation
+decisions the same day build on the sim-first plan; the stretch is tentatively
+A (`docs/open-questions-log.md`, OQ-1).
 - Make the simulator the critical path, with the real server for calibration
   and validation only (ROADMAP §0).
 - Use SMDP-correct discounting (γ^τ) in GAE and in potential-based shaping.
@@ -1431,7 +1435,8 @@ Caleb: "Commit this and draft the buying actions for my review." Commit
   - Q4: buys that aren't upgrades are masked.
   - Q5: armour as pieces, not sets. With sets, rune armour would wait for
     Dragon Slayer, though only the platebody needs it.
-  - Q7: every shop action is kept.
+  - Q7: every shop action is kept, including the shops that never beat the
+    GE on price.
   - Q8: processing inputs can be bought.
   - Q9: shop stock is tracked within an episode, and selling uses it.
 - **Open for discussion:** Q3 (gear) and Q6 (food), explained in the
@@ -1461,7 +1466,8 @@ Caleb, on the buying draft; `m002-ge-banknotes`. The simulator side isn't built.
     no metal armour for tasks with a lot of running, since it drains run
     energy.
   - Q6: four GE food tiers (mackerel, tuna, monkfish, shark), plus Wydin's
-    bread.
+    bread. The alternatives were one `buy_ge_food` that picks the fish that
+    heals fully at the current max HP, or all eight fish as tiers.
   - Lots for banknoted GE buys: 100 for food, 1,000 for processing inputs.
   - "Make the change(s) as appropriate to make sure that GE purchasing acts
     normally": the go-ahead for the fork change below.
@@ -1493,9 +1499,12 @@ tier." `m002-buying-sim`. Uncommitted.
     weight, restore by Agility), the agent gets `bank_deposit_worn`, and a
     bridge command turns run on so the server character runs as a person
     would. I read choosing (a) as the go-ahead for that run-toggle fork
-    change; it comes with the energy change, not yet built.
+    change; it comes with the energy change, not yet built. The alternatives
+    were (b) a rule that fights withdraw their class's gear and every other
+    option banks it first, and (c) no weight or energy at all.
   - Food: one `bank_withdraw_<food>` per GE tier (mackerel, tuna, monkfish,
-    shark).
+    shark), not one withdrawal that picks the largest food that heals fully
+    at the current max HP.
 - **Built in sim v0** (`rlscape/sim/buying.py`, `rlscape/sim/shops.py`):
   - 113 buy actions (76 GE, 37 shop), 3 gear withdrawals and 4 food
     withdrawals.
@@ -1657,8 +1666,11 @@ Caleb: "Commit this and keep going with the item vocabulary".
 Caleb: "Accept the recommendations, commit this, and keep going with the
 baselines". `m002-baselines`.
 - **Decisions (Q1–Q4 of `docs/vocabulary-draft.md`, all as recommended):**
-  - common drops are those in at least 20 of the sweep's fights
-  - smithed products no other group names stay misc
+  - common drops are those in at least 20 of the sweep's fights: 50 of the
+    73 that reach 1,000 gp/hr (the alternatives: all 73, or at least 50
+    fights, which keeps 39)
+  - smithed products no other group names stay misc (29 items; the
+    alternative put all 44 smithed products in *V*, for 185 items)
   - burnt food stays out
   - nothing added or removed by hand
 - **Built:**
@@ -2071,7 +2083,10 @@ Continuing `m002-wider-guide` (Caleb: "keep going with the guide"). Details in
   - Widening keeps total level but costs 58% of the XP and 83% of the
     wealth: with 13 skills at the bottom of the schedule, every skill stays
     low, where every method is slow.
-  - Raised as Q5 (recommended: keep it as specified).
+  - Raised as Q5: is the 13-skill, lowest-first guide the E1 baseline?
+    Recommended: (a) keep it as specified. The alternatives were (b) lowest
+    first over fewer skills, and (c) both the 13-skill and the six-skill
+    guide in E1.
 - **Sim fixes found along the way** (each would trap an agent too; tested;
   raised as Q6):
   - magic fights take off, and don't put on or withdraw, armour that lowers
@@ -2099,3 +2114,118 @@ actions." `m002-guide-signoff`.
   - the magic withdrawal takes runes
   - processing withdrawals respect the level
   - the buy mask's coins rule
+
+### Decided and built: skilling slots; the guide on members' guides with stints; fletching checked live
+Caleb: "Commit this and keep going with the skilling slots" (the guide work is
+main repo `7030ede`). `m002-skilling-slots`.
+- **Skilling slots** (env contract v1.6, decision 22; option catalog §2). On
+  the design questions:
+  - Caleb's answer on the skills: "Where possible, pair gathering skills with
+    their processing counterpart. Woodcutting with fletching/firemaking,
+    fishing with cooking, and mining with smithing."
+  - Slots: "2 by XP + 2 by gp (Recommended)".
+  - The 31 fixed actions: "Replace them (Recommended)".
+  - Built: 39 paths (each method kept, or burned, cooked or smelted where
+    sim v0 has the counterpart; thieving's targets and stalls); 16 slot
+    actions; an analytic rate model checked against the simulated paths
+    within 8%; 985 actions and 1,674 observation features.
+  - A ranking costs 0.7 ms per decision once its cache is warm.
+  - The woodcutting kit now keeps a tinderbox (and its withdrawal takes one),
+    for the chop-and-burn paths.
+- **The scripted guide's sources** (mid-turn): "We need to review why we have
+  the scripted guide based on f2p activities. p2p activities generally give
+  better rewards, but could require more travel time, especially when skill
+  hopping."
+  - The F2P pages were Claude's oversight: January 2009 members' guides exist
+    for melee, ranged, woodcutting, fishing, cooking and firemaking.
+  - Caleb: "Members' where they exist (Recommended)"; and for the schedule,
+    "Minimum stint where the goal levels are multiples of 5."
+  - Built: members' sources [34]–[39]; stints to the next multiple of 5;
+    gathering through the slots.
+  - Guide, 10 seeds × 20 hours: total level 306, total XP 90k, net worth 58k.
+    Random: 236, 108k, 10k (it was 184, 80k, 13k before the slots).
+- **Fletching** (mid-turn): "We need to include fletching as a major skill to
+  level. It is significantly better than firemaking for gp and can be used to
+  gain xp while traveling." And: "Attaching feathers to unfinished bolts or
+  darts should be a zero time action, which can be completed between any
+  other actions. Unless 2009scape is weird."
+  - Checked on the live server:
+    - Knife on logs makes one log's worth every 3 ticks.
+    - Darts make 10 per stage, every 3 ticks; bolts are coded the same way.
+    - Darts need The Tourist Trap.
+  - All of these are queued scripts. Any walk or new action clears them
+    (`MovementPulse` and `PulseManager.run` call `removeWeakScripts` and
+    `removeNormalScripts`). Live, a walk stopped log fletching after 2 logs
+    and dart making after 2 stages.
+  - So on 2009Scape, fletching (darts and bolts included) is neither
+    zero-time nor possible while travelling: it's an activity of its own.
+  - No January 2009 fletching training page exists; the Fletching skill
+    article ([40]) does.
+  - Proposal for Caleb in the reply: bring Fletching forward from sim v1.
+
+### Decided and built: Fletching in sim v0; the knife spawn
+
+- **Fletching** (Caleb, on Claude's options): "B, but do not use bowstrings to
+  complete bows where the value of the bow is not greater than unfinished +
+  bowstring. Take the recommended option for other fletching decisions."
+  - B: cutting logs, stringing, arrows, darts and bolts, from the server's
+    recipes (44; no stocks, ogre, dragon, broad, blurite or silver).
+  - Stringing at prices_v2's values: only maple, yew and magic longbows and
+    yew shortbows are worth more strung.
+  - The recommended rest: woodcutting's chop-and-fletch paths (normal logs
+    into arrow shafts, which stack; otherwise the best bow (u)), and
+    Fletching's own skilling slots over bank paths, one per recipe. The guide
+    trains Fletching by the Fletching article ([40]).
+  - The 20 fletching inputs (knife, bowstring, arrowtips, dart tips,
+    unfinished bolts) join *V* by its rule: *V* = 176, 1,110 actions, 1,860
+    observation features. Env contract v1.7, decision 23.
+- **The knife spawn** (mid-turn): "There should be a knife spawn in Lumbridge
+  Castle, which is very convenient for a fresh starting character."
+  - The server's ground spawns have two knives, at (3205, 3212, 0) and
+    (3224, 3202, 0), respawning after 80 ticks.
+  - Built as `take_knife`: walk to the nearest and pick it up, while no knife
+    is held. A fresh character has one in under 30 ticks.
+- Guide, 10 seeds × 20 hours: total level 312, total XP 94k, net worth 108k.
+  Random: 235, 102k, 8k.
+
+### Decided: an open-questions log; answered questions only here
+Caleb: "Review the documentation for questions. Questions that are already
+answered should exist only in the decision log. Open questions should be
+migrated to an open-questions-log.md file. For future questions that are
+undecided, record them in open-questions-log." `m002-open-questions`.
+- **New: `docs/open-questions-log.md`,** with the six open questions found:
+  - OQ-1: the stretch experiment (tentatively A)
+  - OQ-2: the sim v1 skills' options and their *V* items
+  - OQ-3: prayer flicking: the test's fork change, then how agents use prayer
+  - OQ-4: the bridge commands for the other player paths (shop buys,
+    putting gear on, bank withdrawals, `bank_deposit_worn`)
+  - OQ-5: freezing the server version once calibration starts
+  - OQ-6: public repos for the submission (deferred)
+- **The rule** (in `CLAUDE.md`): an undecided question goes in that log when
+  it comes up. Once answered, it moves here with its options and the answer,
+  and leaves that log.
+- **Answered questions removed from the other docs.** Each was already here;
+  the alternatives some entries lacked were added above (the buying Q6, Q7 and
+  Q3b, the food withdrawals, the vocabulary's Q1 and Q2, the guide's Q5).
+  - `ROADMAP.md` §8: the 2026-10-05 answers and the repos; now a pointer
+  - `docs/scripted-guide-draft.md`: the question section (Q5, Q6) and the
+    first draft's review note (Q1–Q3)
+  - `docs/vocabulary-draft.md`: Q1–Q4, now stated as the accepted readings
+  - `docs/option-catalog.md`: the buying questions' tags and the list of
+    decided v1.0 questions
+  - `docs/env-contract.md`: the Q3b references
+- **`docs/buying-draft.md` deleted** (Caleb: "Delete it (Recommended)"). It was
+  superseded on 2026-10-30: option catalog §8 has the spec, and this log the
+  decisions. Its last version is in commit `d72dc47`.
+- **Env contract §9 kept** (Caleb: "Keep it (Recommended)"): it's the signed-off
+  contract's list of what's fixed, stated as decisions.
+- **Left as they are:**
+  - the interaction records, which record past turns
+  - this log's chronological "open" notes, each answered by a later entry
+  - agent choices marked "for Caleb's review": decisions Claude made, not
+    questions
+  - known gaps and planned checks: the rate model's respawn waits and
+    consumables, the access rows "to verify", the untested in-combat flag
+- **Also fixed:** "five v1 skills" in `CLAUDE.md`, `ROADMAP.md` and env
+  contract §7 (four since Fletching moved into sim v0), and the ROADMAP's
+  "awaiting Caleb" on the signed-off guide.

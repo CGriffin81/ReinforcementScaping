@@ -1,36 +1,59 @@
 """The scripted-guide baseline (E1; env contract decision 17): a new player following the RuneScape Wiki's training
 guides as they stood in January 2009, the month the GE prices are frozen at. Its second draft, all 13 sim v0
-skills, was reviewed by Caleb on 2026-10-31 (`docs/scripted-guide-draft.md`, Q5) and is one of E1's baselines.
+skills, was reviewed by Caleb on 2026-10-31 (`docs/scripted-guide-draft.md`; decision log) and is one of E1's baselines.
+
+The guides are the members' ones where January 2009 had them (Caleb, 2026-10-31: the character is a member):
+melee [34], ranged [35], woodcutting [36], fishing [37], cooking [38], firemaking [39]. Mining, smithing, prayer and
+magic had no members' guide, so theirs are the free-to-play pages or the skill articles; thieving's is members-only.
+Fletching (brought forward from sim v1 by Caleb, 2026-10-31) had no training page, so its guide is the skill
+article [40].
 
 The guides say how to train each skill: the method at each level, and the tool or gear tier to use. They don't say
-how to split time between skills, so the schedule is Caleb's (2026-10-30, "Go after lowest skill"):
-- **Schedule:** train the lowest of the 13 skills sim v0 trains directly (all but Hitpoints, which rises with
-  combat), one option at a time; ties go to SKILLS' order. A skill that can't be trained right now (no bones, no
-  logs, a fight its style can't start) passes the turn to the next lowest.
-- **Woodcutting** ([22]): normal trees to 14, oaks 15–40, willows from 41 (the guide says not to start yews at 60).
+how to split time between skills, so the schedule is Caleb's:
+- **Schedule** (2026-10-30, "Go after lowest skill"; 2026-10-31, "Minimum stint where the goal levels are multiples
+  of 5"): the lowest of the 14 skills the sim trains directly (all but Hitpoints, which rises with combat) starts a
+  stint, trained until it reaches the next multiple of 5; then the lowest starts the next. Ties go to SKILLS' order.
+  A skill that can't be trained right now (no bones, no logs, a fight its style can't start) passes the turn to the
+  next lowest, and the stint resumes when it can. Stints cut the trips between distant sites that switching every
+  option would cost.
+- **Gathering through the skilling slots** (rlscape.sim.skilling): the guide runs the slot that holds its method's
+  path (the method, its produce kept); if no slot holds it, the skill's top XP slot.
+- **Woodcutting** ([36]): normal trees to 14, oaks 15–29, willows from 30 (the guide's teaks and eucalyptus aren't
+  in sim v0).
 - **Mining** ([25]): copper and tin to 14, alternately (the guide's clay and essence aren't in sim v0); iron from 15,
   "the best ore for experience".
-- **Fishing** ([23]): the small net to 19 (shrimp, then anchovies); fly fishing from 20, the fastest method at every
-  level, with a fly rod and feathers bought for it.
-- **Melee** ([24]):
+- **Fishing** ([37]): the small net to 19 (the guide's bait fishing at 5–20 isn't in sim v0); fly fishing from 20,
+  "the fastest experience", with a fly rod and feathers bought for it. The guide fishes at Shilo Village, behind its
+  quest; the sim's fly-fishing spot is Barbarian Village. Its monkfish (62) and barbarian fishing (70) aren't in sim
+  v0.
+- **Melee** ([34]):
   - each stat is trained only with its own style (accurate, aggressive, defensive); the guide leaves the order to the
     player
-  - monsters come from the guide's list for the trained stat's level band; the agent's 3 + 3 melee slots are
-    searched for one, otherwise the top XP slot is fought
-  - the scimitar is the weapon (the fastest F2P weapon); armour is the best tier the Defence level allows
+  - monsters come from the guide's list for the trained stat's level band (spiders, goblins, chickens and seagulls
+    to 15; dark warriors to 30; hill giants to 45; flesh crawlers, experiments and moss giants to 55; white knights
+    and ogres to 75; moss and fire giants, bloodvelds, bandits and armoured zombies after); the agent's 3 + 3 melee
+    slots are searched for one, otherwise the top XP slot is fought
+  - the scimitar is the weapon (the guide's "scimitar or dagger"); armour is the best tier the Defence level allows
   - drops are picked up (the `valuable` loot mode keeps cowhides and bones, which the guide says to collect)
-- **Ranged** ([31]): the best shortbow the level allows, iron arrows ("recommended for training"); monsters from the
-  guide's list by Ranged level (monks, goblins and chickens to 19; wizards, minotaurs and barbarians from 20; flesh
-  crawlers and moss giants from 30; lesser demons and ankou late), otherwise the top ranged XP slot.
+- **Ranged** ([35]): the best shortbow the level allows, iron arrows; monsters from the guide's list by Ranged level
+  (chickens, cows, rock crabs, men and goblins to 39, hill giants from 20; moss and ice giants from 40; yaks and green
+  dragons from 50; fire giants from 60; demons and dragons later), otherwise the top ranged XP slot.
 - **Magic** ([33]): the guide's strike spells (earth strike at 9, fire strike at 13), then the bolts, on the top
   magic XP slot, with runes bought ("the fastest way to obtain runes is to buy them"). Its other steps (curse at 19,
   telekinetic grab at 33, crumble undead at 39, high alchemy at 55) aren't sim v0 options. (Magic fights take off
   metal armour themselves: rlscape.sim.equipment.hinders.)
 - **Prayer** ([30]): bury the bones that kills drop.
-- **Firemaking** ([32]): burn the logs woodcutting brings in, the best the level allows.
-- **Cooking** ([28]): cook the fish fishing brings in ("easily obtainable with the Fishing skill").
+- **Firemaking** ([39]): burn the logs woodcutting brings in, the best the level allows (normal to 15, oaks to 30,
+  willows after; the guide's maples and yews come from the GE, which the guide doesn't buy inputs from).
+- **Cooking** ([38]): cook the fish fishing brings in ("easily obtainable with the Fishing skill").
 - **Smithing** ([29]): bronze to 14 (smelt copper and tin, smith the bars), then iron from 15 ("the best way to power
   level"), from the ores mining brings in; with none, it mines them (copper and tin, or iron), as the guide says.
+- **Fletching** ([40], "Level advancement"): arrow shafts cut where normal trees are chopped (a knife and an axe)
+  to 24; oak longbows (u) 25–34; willow shortbows (u) 35–39; willow longbows (u) 40–49 ("they should not be
+  strung"); maple shortbows (u) 50–54; maple longbows (u) 55–69; yew longbows from 70, strung. Bows are cut from the
+  logs woodcutting banked (`fletch_<bow>` paths) or chopped and cut on the spot (`wc_<tree>_fletch`); when the
+  guide's method isn't open, the earlier ones are tried. The knife is taken from Lumbridge Castle's spawn
+  (`take_knife`, Caleb).
 - **Thieving** ([27]): men to 4, the baker's stall 5–19, the silk stall 20–34, the fur stall 35–37, master farmers
   38–54, Knights of Ardougne 55–64, Menaphite thugs from 65. The guide's 30–37 (The Feud's experience) and 45–55
   (blackjacking bandits) need The Feud, which isn't in the sim, so its neighbouring methods stretch over those
@@ -72,6 +95,7 @@ from rlscape.sim.buying import (ARMOUR, ARROWS, AXES, HAMMER, PICKAXES, SCIMITAR
 from rlscape.sim.economy import kept_on_deposit
 from rlscape.sim.equipment import WEAPON
 from rlscape.sim.health import foods_held
+from rlscape.sim.skilling import slot_holding
 from rlscape.sim.skills import SKILL_INDEX, XP_FOR_LEVEL
 from rlscape.sim.slots import K
 from rlscape.sim.state import CharacterState
@@ -83,38 +107,48 @@ RUNE_REORDER = 30  # casts of the guide's spell held (inventory and bank); below
 FOOD = 10  # pieces of food to keep; raw fish are cooked only below it
 KIT_WITHDRAWAL = {"fish_shrimp": "bank_withdraw_for_fish_shrimp", "fish_fly": "bank_withdraw_for_fish_fly"}
 COMBAT = ("attack", "strength", "defence")
-SKILLS = (*COMBAT, "ranged", "magic", "prayer", "woodcutting", "firemaking", "fishing", "cooking", "mining",
-          "smithing", "thieving")  # SCHEDULE: the lowest of these is trained next
+SKILLS = (*COMBAT, "ranged", "magic", "prayer", "woodcutting", "firemaking", "fletching", "fishing", "cooking",
+          "mining", "smithing", "thieving")  # SCHEDULE: the lowest of these starts the next stint
+STINT = 5  # a stint trains its skill to the next multiple of this level
 STYLE = {"attack": "accurate", "strength": "aggressive", "defence": "defensive"}
 PROCESSING = {"prayer": "bury_bones", "firemaking": "burn_logs", "cooking": "cook_fish"}
-# Free-to-play melee training, January 2009 ([24]): monsters by the trained stat's level.
+# Pay-to-play melee training, January 2009 ([34]): monsters by the trained stat's level.
 MELEE_BANDS = (
-    (15, {"goblin", "cow", "cow calf", "chicken", "man", "woman", "seagull", "monk", "highwayman", "mugger"}),
-    (30, {"cockroach drone", "barbarian", "al-kharid warrior", "minotaur", "dark warrior", "dark wizard", "wizard",
-          "scorpion"}),
-    (45, {"hill giant", "zombie", "hobgoblin", "skeleton"}),
-    (55, {"moss giant", "black knight", "white knight", "deadly red spider", "al-kharid warrior"}),
-    (75, {"ice warrior", "ice giant", "white knight", "cockroach worker", "catablepon", "zombie"}),
-    (99, {"flesh crawler", "ankou", "lesser demon", "greater demon", "ice giant", "ice warrior", "giant spider",
-          "cockroach soldier"}),
+    (15, {"spider", "goblin", "chicken", "seagull"}),
+    (30, {"dark warrior"}),
+    (45, {"hill giant"}),
+    (55, {"flesh crawler", "experiment", "moss giant"}),
+    (75, {"white knight", "ogre", "jogre", "mogre"}),
+    (99, {"moss giant", "fire giant", "skeletal hand", "zombie hand", "mutated bloodveld", "bandit",
+          "armoured zombie"}),
 )
-# Free-to-play ranged training, January 2009 ([31]): monsters by Ranged level.
+# Pay-to-play ranged training, January 2009 ([35]): monsters by Ranged level.
 RANGED_BANDS = (
-    (19, {"monk", "goblin", "chicken", "barbarian"}),
-    (29, {"wizard", "dark wizard", "minotaur", "barbarian"}),
-    (54, {"dark wizard", "flesh crawler", "moss giant"}),
-    (99, {"moss giant", "lesser demon", "ankou"}),
+    (19, {"chicken", "cow", "rock crab", "man", "woman", "goblin"}),
+    (39, {"chicken", "cow", "rock crab", "man", "woman", "goblin", "hill giant"}),
+    (49, {"moss giant", "hill giant", "ice giant", "ice warrior", "rock crab"}),
+    (59, {"yak", "rock crab", "hill giant", "ice giant", "moss giant", "green dragon"}),
+    (69, {"fire giant", "green dragon", "yak"}),
+    (79, {"fire giant", "green dragon", "greater demon", "lesser demon", "iron dragon", "yak"}),
+    (99, {"green dragon", "blue dragon", "red dragon", "black dragon", "bronze dragon", "iron dragon", "steel dragon",
+          "mithril dragon", "yak", "fire giant", "tormented demon"}),
 )
 # Magic, January 2009 ([33]): the strike spells, then the bolts (the ones sim v0 casts whose runes the GE sells).
 GUIDE_SPELLS = ("wind_strike", "water_strike", "earth_strike", "fire_strike", "wind_bolt", "water_bolt",
                 "earth_bolt", "fire_bolt")
+# Fletching, January 2009 ([40]): (first level, paths), the bank path before the chop-and-fletch one.
+FLETCHING = ((1, ("wc_logs_fletch",)), (25, ("fletch_oak_longbow_u", "wc_oak_fletch")),
+             (35, ("fletch_willow_shortbow_u", "wc_willow_fletch")),
+             (40, ("fletch_willow_longbow_u", "wc_willow_fletch")),
+             (50, ("fletch_maple_shortbow_u",)), (55, ("fletch_maple_longbow_u",)),
+             (70, ("fletch_string_yew_longbow", "fletch_yew_longbow_u")))
 # Thieving training, January 2009 ([27]): (first level, method), as mapped onto sim v0 above.
 THIEVING = ((1, "pickpocket_men"), (5, "steal_bakers_stall"), (20, "steal_silk_stall"), (35, "steal_fur_stall"),
             (38, "pickpocket_master_farmers"), (55, "pickpocket_knights"), (65, "pickpocket_menaphite_thugs"))
 
 
 def woodcutting_method(level: int) -> str:
-    return "wc_logs" if level < 15 else "wc_oak" if level < 41 else "wc_willow"
+    return "wc_logs" if level < 15 else "wc_oak" if level < 30 else "wc_willow"
 
 
 def mining_method(state: CharacterState) -> str:
@@ -132,6 +166,11 @@ def thieving_methods(level: int) -> list[str]:
     """The guide's method for the level first, then the earlier ones (for when it can't start, e.g. the desert
     without coins for a Shantay pass)."""
     return [method for start, method in reversed(THIEVING) if start <= level]
+
+
+def fletching_methods(level: int) -> list[str]:
+    """The guide's paths for the level first, then the earlier levels' (when the logs for these aren't held)."""
+    return [path for start, paths in reversed(FLETCHING) if start <= level for path in paths]
 
 
 def guide_spell(level: int) -> gd.CombatSpell:
@@ -171,15 +210,25 @@ class ScriptedGuidePolicy:
     def __init__(self) -> None:
         self.vocabulary = frozenset(vocabulary())
         self.last: str | None = None  # the previous option id
+        self.stint: tuple[str, int] | None = None  # (skill, goal level)
 
     def reset(self, seed: int | None) -> None:  # deterministic: nothing to seed
-        self.last = None
+        self.last, self.stint = None, None
+
+    def schedule(self, state: CharacterState) -> list[str]:
+        """SCHEDULE: the stint's skill first, then the rest lowest first. A stint ends when its skill reaches the goal
+        level, the next multiple of STINT above where it started; the lowest skill then starts the next."""
+        lowest_first = sorted(SKILLS, key=lambda s: (state.level(s), SKILLS.index(s)))
+        if self.stint is None or state.level(self.stint[0]) >= self.stint[1]:
+            skill = lowest_first[0]
+            self.stint = (skill, (state.level(skill) // STINT + 1) * STINT)
+        return [self.stint[0], *(s for s in lowest_first if s != self.stint[0])]
 
     def act(self, env: SimEnv, obs: np.ndarray) -> int:
         state, mask = env.sim.state, env.action_masks()
         ids = {o.id: i for i, o in enumerate(env.options)}
         allowed = lambda option_id: option_id in ids and bool(mask[ids[option_id]])
-        order = sorted(SKILLS, key=lambda s: (state.level(s), SKILLS.index(s)))  # SCHEDULE: lowest first
+        order = self.schedule(state)
         action = next((ids[o] for o in self._plan(env, state, order, allowed) if allowed(o)), None)
         if action is None:
             action = int(np.flatnonzero(mask)[0])  # nothing in the plan is possible: the first allowed action
@@ -242,16 +291,24 @@ class ScriptedGuidePolicy:
                 for metal in smithing_metals(state.level("smithing")):
                     yield from (f"bank_withdraw_for_smith_{metal}", f"bank_withdraw_for_smelt_{metal}")
                 ore = "mine_iron" if state.level("smithing") >= 15 else mining_method(at_most(state, "mining", 14))
-                yield from (ore, "bank_withdraw_for_mining")  # nothing to smith: mine it, as [29] says
+                yield from self._slots_holding(env, state, [ore])  # nothing to smith: mine it, as [29] says
+                yield "bank_withdraw_for_mining"
         elif skill == "thieving":
-            yield from thieving_methods(state.level("thieving"))
+            yield from self._slots_holding(env, state, thieving_methods(state.level("thieving")))
+            yield "skill_thieving_xp1"
+        elif skill == "fletching":
+            yield "take_knife"  # Lumbridge Castle's, if none is held (Caleb)
+            yield from self._slots_holding(env, state, fletching_methods(state.level("fletching")))
+            yield "bank_withdraw_for_woodcutting"  # the axe and knife, for chopping and cutting on the spot
+            yield "skill_fletching_xp1"
         else:
             method = self._method(state, skill)
-            yield method
+            fallback = ["fish_shrimp"] if skill == "fishing" else []  # no fly rod or feathers yet
+            yield from self._slots_holding(env, state, [method, *fallback])
             yield KIT_WITHDRAWAL.get(method, f"bank_withdraw_for_{skill}")  # its tool from the bank
             if skill == "fishing":
-                yield "fish_shrimp"  # no fly rod or feathers yet
                 yield "bank_withdraw_for_fish_shrimp"
+            yield f"skill_{skill}_xp1"
 
     @staticmethod
     def _kit_banked(state: CharacterState, skill: str) -> bool:
@@ -272,6 +329,13 @@ class ScriptedGuidePolicy:
         elif skill == "smithing":
             for metal in smithing_metals(state.level("smithing")):
                 yield from (f"smith_{metal}", f"smelt_{metal}")
+
+    @staticmethod
+    def _slots_holding(env: SimEnv, state: CharacterState, paths: list[str]):
+        """The skilling slots that hold these paths now, in the paths' order."""
+        for path in paths:
+            if (slot := slot_holding(env.options, state, path)) is not None:
+                yield slot
 
     @staticmethod
     def _food(state: CharacterState) -> list[tuple[int, int]]:
@@ -296,7 +360,7 @@ class ScriptedGuidePolicy:
 
     @staticmethod
     def _method(state: CharacterState, skill: str) -> str:
-        """The guide's method for a gathering skill at the character's level."""
+        """The guide's method for a gathering skill at the character's level: a path id (rlscape.sim.skilling)."""
         if skill == "woodcutting":
             return woodcutting_method(state.level("woodcutting"))
         return mining_method(state) if skill == "mining" else fishing_method(state)

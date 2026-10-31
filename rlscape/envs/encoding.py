@@ -17,8 +17,9 @@ Parts, in order (sizes for vocabulary V, A access rules, N actions):
 | equipment | 11 | tier / top tier of the best item carried (worn or in the inventory) per role, 0 for none |
 | region | 12 | one-hot: the catalog's 11 regions, or elsewhere |
 | combat_candidates | 18 × 5 | per slot: XP/hr, gp/hr, damage per hour vs HP and food, travel, open |
+| skilling_candidates | 20 × 5 | per slot: the slot's skill's XP/hr, its processing counterpart's XP/hr, gp/hr, travel, open |
 | loot_mode | 4 | one-hot |
-| task | 11 | one-hot: the last activity's task, which decides what bank_deposit keeps (rlscape.sim.kits) |
+| task | 12 | one-hot: the last activity's task, which decides what bank_deposit keeps (rlscape.sim.kits) |
 | access | A | 0/1 per access rule (data/access_areas.csv order) |
 | quests | 21 × 3 + 1 | not started / underway / complete per quest; quest points / 32 |
 | mask | N | the action mask |
@@ -35,6 +36,8 @@ Agent choices the contract leaves open, all reversible:
 - Candidate features: XP/hr is the sum over skills; gp/hr keeps its sign, 0.5 meaning 0; damage per hour is divided
   by the HP and food healing held and squashed to d / (1 + d); travel is over 15 game-minutes, clipped; open is 1
   for a filled slot (candidates are already eligible: Slayer, levels, access).
+- Skilling candidates (rlscape.sim.skilling) use the same scales: the two XP/hr features split a path's XP between
+  the gathering skill and the one that processes its produce (0 for paths that keep it, and for thieving).
 """
 
 from __future__ import annotations
@@ -54,6 +57,8 @@ from rlscape.sim.energy import MAX_ENERGY, weight
 from rlscape.sim.health import food_healing_held
 from rlscape.sim.mining import PICKAXE_PRIORITY
 from rlscape.sim.options import Option
+from rlscape.sim.skilling import K_GP, K_XP, SkillSlot
+from rlscape.sim.skilling import SKILLS as SKILLING_SKILLS
 from rlscape.sim.skills import MAX_LEVEL, SKILL_INDEX, SKILLS, XP_FOR_LEVEL, level_for_xp
 from rlscape.sim.slots import K, FightSlot
 from rlscape.sim.state import INVENTORY_SLOTS, CharacterState
@@ -94,8 +99,9 @@ REGIONS = {
 }
 REGION_RADIUS = 60  # tiles (Chebyshev)
 CANDIDATE_FEATURES = ("xp_per_hour", "gp_per_hour", "damage_vs_food", "travel", "open")
+SKILLING_FEATURES = ("gather_xp_per_hour", "process_xp_per_hour", "gp_per_hour", "travel", "open")
 TASKS = ("none", "woodcutting", "mining", "fishing:SMALL_NET", "fishing:LURE", "fishing:LOBSTER_CAGE", "thieving",
-         "processing", "combat:melee", "combat:ranged", "combat:magic")
+         "fletching", "processing", "combat:melee", "combat:ranged", "combat:magic")
 QUEST_STAGES = ("not_started", "underway", "complete")
 
 
@@ -192,6 +198,7 @@ class ObsEncoder:
         self.horizon_ticks = horizon_ticks
         self.preference = preference
         self.slots = next((o.slots for o in options if isinstance(o, FightSlot)), None)
+        self.skilling = next((o.slots for o in options if isinstance(o, SkillSlot)), None)
         self.rules = tuple(rule.name for rule in access_rules())
         self._unlocked: dict = {}
         item_name = lambda i: gd.items()[i].name if i in gd.items() else str(i)
@@ -208,6 +215,8 @@ class ObsEncoder:
             Part("equipment", EQUIPMENT_ROLES),
             Part("region", (*REGIONS, "elsewhere")),
             Part("combat_candidates", tuple(f"{s}_{f}" for s in slot_names for f in CANDIDATE_FEATURES)),
+            Part("skilling_candidates", tuple(f"{o.id}_{f}" for o in options if isinstance(o, SkillSlot)
+                                              for f in SKILLING_FEATURES)),
             Part("loot_mode", tuple(f"loot_{m}" for m in LOOT_MODES)),
             Part("task", tuple(f"task_{t}" for t in TASKS)),
             Part("access", tuple(f"access_{r}" for r in self.rules)),
@@ -243,6 +252,7 @@ class ObsEncoder:
         obs[p["equipment"]] = self._equipment(state)
         obs[p["region"].start + region_of(state.location)] = 1.0
         obs[p["combat_candidates"]] = self._candidates(state)
+        obs[p["skilling_candidates"]] = self._skilling(state)
         obs[p["loot_mode"].start + LOOT_MODES.index(state.loot_mode)] = 1.0
         obs[p["task"].start + TASKS.index(_task_key(state.task))] = 1.0
         obs[p["access"]] = self._access(state)
@@ -278,6 +288,25 @@ class ObsEncoder:
                         min(candidate.travel_ticks / TRAVEL_SCALE_TICKS, 1.0),
                         1.0)
                 n += len(CANDIDATE_FEATURES)
+        return out
+
+    def _skilling(self, state: CharacterState) -> list[float]:
+        out = [0.0] * (len(SKILLING_SKILLS) * (K_XP + K_GP) * len(SKILLING_FEATURES))
+        if self.skilling is None:
+            return out
+        n = 0
+        for skill in SKILLING_SKILLS:
+            for index in range(K_XP + K_GP):
+                candidate = self.skilling.candidate(state, skill, index)
+                if candidate is not None:
+                    rate = candidate.rate
+                    out[n:n + len(SKILLING_FEATURES)] = (
+                        min(log1p(rate.gather_xp) / XP_HR_SCALE, 1.0),
+                        min(log1p(rate.process_xp) / XP_HR_SCALE, 1.0),
+                        _signed_log(rate.gp, GP_HR_SCALE),
+                        min(rate.travel / TRAVEL_SCALE_TICKS, 1.0),
+                        1.0)
+                n += len(SKILLING_FEATURES)
         return out
 
     def _access(self, state: CharacterState) -> list[float]:

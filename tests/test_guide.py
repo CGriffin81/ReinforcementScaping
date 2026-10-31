@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from rlscape.baselines.guide import (SKILLS, ScriptedGuidePolicy, fishing_method, guide_spell, mining_method,
-                                     smithing_metals, thieving_methods, woodcutting_method)
+from rlscape.baselines.guide import (SKILLS, ScriptedGuidePolicy, fishing_method, fletching_methods, guide_spell,
+                                     mining_method, smithing_metals, thieving_methods, woodcutting_method)
 from rlscape.envs import SimEnv
 from rlscape.eval import play
 from rlscape.gamedata import server as gd
@@ -22,7 +22,7 @@ def at_level(skill: str, level: int) -> CharacterState:
 
 
 def test_methods_follow_the_2009_guides_breakpoints():
-    assert [woodcutting_method(n) for n in (1, 14, 15, 40, 41, 60)] == ["wc_logs"] * 2 + ["wc_oak"] * 2 + ["wc_willow"] * 2
+    assert [woodcutting_method(n) for n in (1, 14, 15, 29, 30, 60)] == ["wc_logs"] * 2 + ["wc_oak"] * 2 + ["wc_willow"] * 2
     assert mining_method(at_level("mining", 14)) in ("mine_copper", "mine_tin")
     assert mining_method(at_level("mining", 15)) == "mine_iron"
     assert fishing_method(at_level("fishing", 19)) == "fish_shrimp" and fishing_method(at_level("fishing", 20)) == "fish_fly"
@@ -36,6 +36,22 @@ def test_methods_follow_the_2009_guides_breakpoints():
     assert [guide_spell(n).name for n in (1, 9, 13, 16, 17, 35, 99)] == [
         "wind_strike", "earth_strike", "fire_strike", "fire_strike", "wind_bolt", "fire_bolt", "fire_bolt"]
     assert smithing_metals(14) == ("bronze",) and smithing_metals(15) == ("iron", "bronze")
+    assert fletching_methods(24) == ["wc_logs_fletch"]
+    assert fletching_methods(42)[:2] == ["fletch_willow_longbow_u", "wc_willow_fletch"]
+    assert fletching_methods(70)[0] == "fletch_string_yew_longbow" and fletching_methods(70)[-1] == "wc_logs_fletch"
+
+
+def test_a_stint_trains_the_lowest_skill_to_the_next_multiple_of_5():
+    policy, state = ScriptedGuidePolicy(), at_level("thieving", 1)
+    for skill in SKILLS:
+        state.xp[SKILL_INDEX[skill]] = float(XP_FOR_LEVEL[12])
+    state.xp[SKILL_INDEX["cooking"]] = float(XP_FOR_LEVEL[7])
+    assert policy.schedule(state)[0] == "cooking" and policy.stint == ("cooking", 10)
+    state.xp[SKILL_INDEX["cooking"]] = float(XP_FOR_LEVEL[9])
+    state.xp[SKILL_INDEX["mining"]] = float(XP_FOR_LEVEL[8])  # now lower, but the stint goes on
+    assert policy.schedule(state)[:2] == ["cooking", "mining"]
+    state.xp[SKILL_INDEX["cooking"]] = float(XP_FOR_LEVEL[10])
+    assert policy.schedule(state)[0] == "mining" and policy.stint == ("mining", 10)
 
 
 def test_a_guided_episode_is_deterministic_and_balanced():

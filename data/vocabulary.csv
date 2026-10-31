@@ -155,3 +155,23 @@ item_id,name,groups
 5321,Watermelon seed,drop
 5323,Strawberry seed,drop
 5504,Strawberry,drop
+946,Knife,bought;tool
+1777,Bow string,bought;consumed
+39,Bronze arrowtips,bought;consumed
+40,Iron arrowtips,bought;consumed
+41,Steel arrowtips,bought;consumed
+42,Mithril arrowtips,bought;consumed
+43,Adamant arrowtips,bought;consumed
+44,Rune arrowtips,bought;consumed
+819,Bronze dart tip,bought;consumed
+820,Iron dart tip,bought;consumed
+821,Steel dart tip,bought;consumed
+822,Mithril dart tip,bought;consumed
+823,Adamant dart tip,bought;consumed
+824,Rune dart tip,bought;consumed
+9375,Bronze bolts (unf),bought;consumed
+9377,Iron bolts (unf),bought;consumed
+9378,Steel bolts (unf),bought;consumed
+9379,Mithril bolts (unf),bought;consumed
+9380,Adamant bolts(unf),bought;consumed
+9381,Runite bolts (unf),bought;consumed

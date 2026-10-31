@@ -1,4 +1,5 @@
 """Buying (option catalog §8): one action per item and source, and the bank withdrawals for bought gear and food.
+Q1–Q9 below are Caleb's buying decisions of 2026-10-29 and 30, in docs/decision-log.md.
 
 Sources, from the server:
 - buy_ge_<item>: the GE's frozen seller (GrandExchange.buyFromFrozenSeller) fills a buy at once, at the 2009 price,
@@ -79,22 +80,26 @@ FOOD_TIERS = (355, 361, 7946, 385)  # mackerel (heals 6), tuna (10), monkfish (1
 BREAD = 2309
 # raw trout, lobster, swordfish; oak, willow, maple, yew logs; iron, steel, mithril bars
 PROCESSING_INPUTS = (335, 377, 371, 1521, 1519, 1517, 1515, 2351, 2353, 2359)
+# Fletching's (Caleb, 2026-10-31): a knife; bowstrings; arrowtips, dart tips and unfinished bolts, bronze to rune.
+KNIFE = 946
+FLETCHING_INPUTS = (1777, 39, 40, 41, 42, 43, 44, 819, 820, 821, 822, 823, 824, 9375, 9377, 9378, 9379, 9380, 9381)
 
 # shops.json ids. Zeke's is listed twice (135 and 150); Shops.startup maps the shopkeeper to the later one.
 BOBS, NURMOFS, GERRANTS, LUMBRIDGE_STORE, ZEKES, LOWES, AUBURYS, ZAFFS, WYDINS = 54, 124, 144, 25, 150, 47, 114, 140, 77
 
 GE_ITEMS = (AXES + PICKAXES + FISHING_TOOLS + BAIT_AND_FEATHERS + (HAMMER,) + SCIMITARS + ARMOUR + SHORTBOWS + ARROWS
-            + RUNES + STAVES + FOOD_TIERS + PROCESSING_INPUTS)
+            + RUNES + STAVES + FOOD_TIERS + PROCESSING_INPUTS + (KNIFE,) + FLETCHING_INPUTS)
 SHOP_ITEMS = {**dict.fromkeys(AXES[:2], BOBS), **dict.fromkeys(PICKAXES, NURMOFS),
               **dict.fromkeys(FISHING_TOOLS + BAIT_AND_FEATHERS, GERRANTS), HAMMER: LUMBRIDGE_STORE,
               **dict.fromkeys(SCIMITARS[:3], ZEKES), **dict.fromkeys(SHORTBOWS + ARROWS, LOWES),
               **dict.fromkeys(RUNES[:7], AUBURYS), **dict.fromkeys(STAVES, ZAFFS), BREAD: WYDINS}
 LOTS = {**dict.fromkeys(ARROWS + RUNES, 100), **dict.fromkeys(BAIT_AND_FEATHERS, 200),
-        **dict.fromkeys(FOOD_TIERS + (BREAD,), 100), **dict.fromkeys(PROCESSING_INPUTS, 1_000)}  # 1 for the rest
+        **dict.fromkeys(FOOD_TIERS + (BREAD,), 100),
+        **dict.fromkeys(PROCESSING_INPUTS + FLETCHING_INPUTS, 1_000)}  # 1 for the rest
 # role -> how the upgrade check compares; items without a role (consumables) have no upgrade check
 ROLES = {**dict.fromkeys(AXES, "axe"), **dict.fromkeys(PICKAXES, "pickaxe"), **dict.fromkeys(SCIMITARS, "melee"),
          **dict.fromkeys(SHORTBOWS, "ranged"), **dict.fromkeys(ARMOUR, "armour"),
-         **dict.fromkeys(FISHING_TOOLS + (HAMMER,) + STAVES, "unique")}
+         **dict.fromkeys(FISHING_TOOLS + (HAMMER, KNIFE) + STAVES, "unique")}
 TOOL_CHAINS = {"axe": (HATCHET_PRIORITY, "woodcutting"), "pickaxe": (PICKAXE_PRIORITY, "mining")}
 GEAR_CLASSES = ("melee", "ranged", "magic")
 

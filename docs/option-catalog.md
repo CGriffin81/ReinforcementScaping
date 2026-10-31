@@ -2,14 +2,10 @@
 
 **Status:** v1.2, 2026-10-30. It replaces §8's buying table with Caleb's buying decisions (2026-10-29 and 30): the
 buy actions, the gear and food withdrawals (§5), and run energy and weight for travel. It also adds `smith_mithril`
-(§3), so bought mithril bars can be smithed. v1.1 (2026-10-28) added five more trainable skills for sim v1 (§3.5).
-Their options are still to be specified and get Caleb's review before sim v1 is built. Read it together with
-`docs/env-contract.md`. It replaces v0 and `ROADMAP.md` Appendix A. All of its v1.0 questions are decided:
-- selling quantity
-- per-source buying
-- the combat design (§4), including the loot modes (§4.D)
-- death (§5's `reclaim_gravestone`)
-- quests (§10)
+(§3), so bought mithril bars can be smithed. v1.1 (2026-10-28) added five more trainable skills for sim v1 (§3.5);
+Fletching has since been brought into sim v0 (2026-10-31, §2), and the other four's options are an open question
+(`docs/open-questions-log.md`, OQ-2). Read it together with `docs/env-contract.md`. It replaces v0 and
+`ROADMAP.md` Appendix A. The decisions behind it are in `docs/decision-log.md`.
 
 The item vocabulary *V* (§9) is chosen by the agreed rule before training, and Caleb checks the list. Any later
 change needs Caleb's approval and is logged in `docs/decision-log.md`.
@@ -49,9 +45,44 @@ The world is members-enabled (`rl.conf`), so members areas are allowed.
 Combat targets (§4) can be anywhere reachable. Their travel times come from the same region graph, extended to
 each target's spawn area.
 
-## 2. Gathering
+## 2. Gathering: skilling slots
 
-Each produces into the inventory until it's full.
+**Skilling slots** (Caleb, 2026-10-30/31; `rlscape/sim/skilling.py`). Like the combat slots (§4), each gathering
+skill offers its best **paths** by XP/hr and by gp/hr at the current levels, gear and position, as actions, and
+agents choose a path, not a fixed method. Five skills (Woodcutting, Fishing, Mining, Thieving, Fletching) × 2 slots
+by XP/hr + 2 by gp/hr = 20 actions, `skill_<skill>_xp1/xp2/gp1/gp2`. They replace the 31 fixed gathering and thieving
+actions.
+A path in an XP slot doesn't also fill a gp slot (the next best takes its place, as in combat), and slots are
+recomputed every decision. The observation carries each slot's rates (env contract §3).
+
+A **path** is a gathering method plus what happens to its produce. Caleb: "pair gathering skills with their
+processing counterpart". Each method is either kept (the method below alone, ending at a full inventory) or
+processed where the sim has the counterpart: woodcutting's logs burned where they're cut (`wc_<tree>_burn`,
+Firemaking; it keeps chopping while burning frees room) or cut with a knife (`wc_<tree>_fletch`, Fletching: arrow
+shafts from normal logs, which stack, so it keeps chopping; otherwise the best bow (u) the level allows),
+fishing's catch cooked (`fish_<method>_cook`, Cooking; it ends at a full inventory of cooked fish) and mining's
+iron smelted (`mine_iron_smelt`, Smithing; it keeps mining while there's room). Thieving's paths are its targets
+and stalls.
+
+**Fletching** (Caleb, 2026-10-31: brought forward from sim v1; `rlscape/sim/fletching.py`) has its own paths, one per
+recipe (`fletch_<recipe>`): at the nearest bank, take out the recipe's inputs, craft them, bank the products, and
+again, until the inputs (banked or carried) or the time run out. The recipes are the server's: logs cut into arrow
+shafts or unstrung bows (a log every 3 ticks), bows strung (every 2 ticks), headless arrows and arrows (15 every 3
+ticks), darts (10 every 3 ticks, after The Tourist Trap) and bolts (10 every 3 ticks). A bow is strung only where
+the strung bow is worth more than the unstrung bow and the bowstring (Caleb): maple, yew and magic longbows and yew
+shortbows. On 2009Scape every one of these is a queued script that a walk or any other action clears (checked
+live), so fletching can't be done on the move or between other actions.
+
+That's 79 paths: woodcutting 12, fishing 6, mining 5, thieving 20, fletching 36.
+
+**Rates** come from an analytic model of the same mechanics, over an option of D ticks, as the combat ranker values
+fights: the time, XP and value (`data/prices_v2.csv`) of a unit at the site; for trees and rocks that deplete, a
+load replayed under the gathering loop's rules; the processing's time, XP and value; one bank trip per load (the
+slots a deposit leaves after the task's kit); and travel to the site, taken out of D. Bait is costed; thieving's
+hitpoints aren't (a target the character can't sustain is masked). Tests check the model against the simulated
+paths within 8%.
+
+The paths' gathering methods (their ids are the path ids of the kept paths):
 
 | Id | Preconditions | Produces | Region |
 |---|---|---|---|
@@ -119,13 +150,15 @@ These work from the inventory and run until the inputs run out. They happen at t
 
 ## 3.5 Skills added for sim v1 (Caleb, 2026-10-28)
 
-Fletching, Crafting, Agility, Herblore and Runecrafting become trainable in sim v1, before E2 (env contract §5). Their
-options are **to be specified** (in a later catalog version, for Caleb's review), following the same rules as §2–§3: preconditions,
+Crafting, Agility, Herblore and Runecrafting become trainable in sim v1, before E2 (env contract §5); Fletching was
+brought forward into sim v0 (Caleb, 2026-10-31; §2). Their
+options are an open question (`docs/open-questions-log.md`, OQ-2): Claude drafts them in a later catalog version for
+Caleb's review, following the same rules as §2–§3: preconditions,
 inputs, a fixed duration *D*, server formulas, and calibration. The likely shape:
 
 | Skill | Likely options | Notes |
 |---|---|---|
-| Fletching | cut logs into bows and arrow shafts, string bows, make arrows | processing, like Smithing; a classic 2009 money-maker |
+| Fletching | brought forward into sim v0 (Caleb, 2026-10-31): see §2 | |
 | Crafting | tan hides into leather, make leather armour, spin flax, cut gems | processing; uses cowhides from combat |
 | Agility | course laps (Gnome Stronghold, Draynor, …) | a gathering-like activity with no product; levels open the access table's shortcuts |
 | Herblore | clean herbs, make potions | needs Druidic Ritual; herbs come from drops (vocabulary) |
@@ -308,9 +341,10 @@ is never a no-op (agent choice, 2026-10-29).
 
 | Id | Effect |
 |---|---|
-| `bank_deposit` | walk to the nearest bank; deposit everything that isn't the kit of the task at hand, the last activity the character did (Caleb, 2026-10-30; `rlscape/sim/kits.py`). Worn items stay worn. The kits: the best usable axe or pickaxe; a fishing method's tool and bait; food for thieving; a processing activity's tools and inputs; for a fight, food, what the class's fight would wear from the inventory, and runes for magic. With no task yet, everything goes. |
-| `bank_withdraw_for_<task>` (gathering) | woodcutting, mining, fish_shrimp, fish_fly, fish_lobster: walk to the nearest bank and take out the task's kit: the best usable axe or pickaxe if none as good is held, or the fishing method's tool and all its bait. 5 actions. |
+| `bank_deposit` | walk to the nearest bank; deposit everything that isn't the kit of the task at hand, the last activity the character did (Caleb, 2026-10-30; `rlscape/sim/kits.py`). Worn items stay worn. The kits: the best usable axe (and a tinderbox and a knife, for the chop-and-burn and chop-and-fletch paths) or pickaxe; a Fletching path's knife and inputs; a fishing method's tool and bait; food for thieving; a processing activity's tools and inputs; for a fight, food, what the class's fight would wear from the inventory, and runes for magic. With no task yet, everything goes. |
+| `bank_withdraw_for_<task>` (gathering) | woodcutting, mining, fish_shrimp, fish_fly, fish_lobster: walk to the nearest bank and take out the task's kit: the best usable axe (with a tinderbox and a knife, if banked) or pickaxe if none as good is held, or the fishing method's tool and all its bait. 5 actions. |
 | `bank_withdraw_food` | walk to the nearest bank and take out food, the best healing first, into the free slots, whatever it is (cooked catches as well as the four GE tiers) |
+| `take_knife` | walk to the nearest knife spawn (the server's ground spawns: in and beside Lumbridge Castle) and pick it up; offered while no knife is held anywhere. Caleb, 2026-10-31: "very convenient for a fresh starting character". |
 | `bank_withdraw_for_<activity>` | walk to the nearest bank; withdraw the inputs one processing activity needs, up to a full inventory. Banknotes of the inputs held (from GE buys) are banked first. Interchangeable inputs are only those the level allows: logs Firemaking can burn, raw food Cooking can cook (2026-10-30, found by the scripted guide). One per §3 activity, so 10 actions. |
 | `bank_withdraw_gear_<class>` | melee, ranged, magic: walk to the nearest bank; withdraw the gear that beats what the character carries for that combat class (the weapon, for ranged with its ammunition, then armour, the biggest defence gain first), up to the free slots. For magic it also takes every banked rune, which a deposit for another task banks (2026-10-30, found by the scripted guide). Fights put it on from the inventory. 3 actions (§8). |
 | `bank_withdraw_<food>` | one per GE food tier (mackerel, tuna, monkfish, shark): walk to the nearest bank, bank the banknotes held of that food, and withdraw it into the free slots. 4 actions (§8). |
@@ -352,11 +386,11 @@ run energy and weight in `rlscape/sim/energy.py`).
   agent learns the price-versus-travel trade-off.
   - **Price:** ⌈value × m / 100⌉ a unit, with m rising from 100% at normal stock to 130% when sold out; each further
     unit of a purchase is priced at one less in stock.
-  - **Stock:** shared (`personalized_shops = false`) and tracked within an episode (Q9). It restocks 1 unit per 100
+  - **Stock:** shared (`personalized_shops = false`) and tracked within an episode. It restocks 1 unit per 100
     ticks.
   - **Paying:** the coins for the whole purchase must be in the inventory.
 
-**Actions** (113 buys; all kept, Q7):
+**Actions** (133 buys; every shop kept, including those that never beat the GE on price):
 
 | Group | Items | GE | Shop | Lot |
 |---|---|---|---|---|
@@ -365,29 +399,31 @@ run energy and weight in `rlscape/sim/energy.py`).
 | Fishing | fishing rod, fly rod, harpoon, lobster pot; bait; feathers | all | Gerrant's (Port Sarim): all | 1; 200 bait or feathers |
 | Hammer | hammer (smithing needs one; the starter kit has none) | yes | Lumbridge general store | 1 |
 | Scimitars | iron, steel, mithril, adamant, rune | all | Zeke's (Al Kharid): iron, steel, mithril | 1 |
-| Armour pieces (Q5) | iron to rune: full helm, platebody, platelegs, kiteshield | all 20 | none | 1 |
+| Armour pieces | iron to rune: full helm, platebody, platelegs, kiteshield | all 20 | none | 1 |
 | Bows | oak, willow, maple shortbow | all | Lowe's (Varrock): all | 1 |
 | Arrows | bronze, iron, steel, mithril, adamant | all | Lowe's: all | 100 |
 | Runes | air, water, earth, fire, mind, chaos, death, nature | all | Aubury's (Varrock): all but nature | 100 |
 | Staves | staff of air, water, earth, fire | all | Zaff's (Varrock): all | 1 |
-| Food (Q6) | mackerel, tuna, monkfish, shark; bread | the 4 fish | Wydin's (Port Sarim): bread | 100 |
-| Processing inputs (Q8) | raw trout, lobster, swordfish; oak, willow, maple, yew logs; iron, steel, mithril bars | all 10 | none | 1,000 |
+| Food | mackerel, tuna, monkfish, shark; bread | the 4 fish | Wydin's (Port Sarim): bread | 100 |
+| Processing inputs | raw trout, lobster, swordfish; oak, willow, maple, yew logs; iron, steel, mithril bars | all 10 | none | 1,000 |
+| Fletching (2026-10-31) | knife | yes | none | 1 |
+| Fletching inputs (2026-10-31) | bowstring; bronze to rune arrowtips and dart tips; bronze to runite unfinished bolts (19) | all | none | 1,000 |
 
-That's 76 GE actions and 37 shop actions. Every bought item joins the vocabulary *V* (§9), so its sell, alch and
+That's 96 GE actions and 37 shop actions. A knife is also free: `take_knife` (§5) picks up Lumbridge Castle's. Every bought item joins the vocabulary *V* (§9), so its sell, alch and
 drop actions exist.
 
 **How a buy works:**
-- **Amount (Q1):** as many as the coins allow, up to the lot. A shop buy is also capped by its stock and the free
+- **Amount:** as many as the coins allow, up to the lot. A shop buy is also capped by its stock and the free
   slots.
 - **Paying:** coins in the inventory pay first. If they're short, the trip starts with a bank stop to withdraw the
   rest. The GE has bankers beside it, so there the stop costs only the banking time.
-- **Where purchases land (Q2):**
+- **Where purchases land:**
   - Shops: in the inventory, as items.
   - GE: banknotes for more than one of an item that has a banknote. A single item, or a stack (runes, arrows, bait,
     feathers), comes as itself; a single item with no room comes as a banknote.
   - Banknotes can't be eaten or worn. The withdrawals (§5) bank them and take out the items.
 - **Timing:** the walk, plus 8 ticks at the GE or 3 at a shop (the selling constants; calibrate).
-- **Mask (Q4):** a buy is open only when all of these hold:
+- **Mask:** a buy is open only when all of these hold:
   - **Affordable:** at least one unit, with the coins in the inventory and the bank. Banked coins count only if
     they can reach the inventory, onto coins carried or into a free slot; otherwise the trip couldn't withdraw
     them (2026-10-30, found by the scripted guide, which looped on such a buy).
@@ -398,10 +434,10 @@ drop actions exist.
     item is held.
   - **Room:** a free inventory slot, unless the purchase stacks onto one held.
   - **Shops only:** in stock.
-- **Armour as pieces (Q5):** the rune full helm, platelegs and kiteshield can be bought at Defence 40; only the rune
+- **Armour as pieces:** the rune full helm, platelegs and kiteshield can be bought at Defence 40; only the rune
   platebody waits for Dragon Slayer.
 
-**Food (Q6):** four GE tiers and bread.
+**Food:** four GE tiers and bread.
 
 | Food | Heals | 2009 GE price | gp per HP | Heals fully once max HP is at least |
 |---|---|---|---|---|
@@ -415,10 +451,10 @@ drop actions exist.
 - The trade-off is gold against HP per slot. Doubling the HP per trip (tuna to shark) costs about 10× the gold.
 - The sim eats at half the maximum HP and healing stops at the maximum, so the useful size grows with Hitpoints.
 
-**Gear and the task (Q3):**
-- **Withdrawals (3a):** deposits are unchanged, so `bank_deposit` banks unworn gear. `bank_withdraw_gear_<class>`
+**Gear and the task:**
+- **Withdrawals:** deposits are unchanged, so `bank_deposit` banks unworn gear. `bank_withdraw_gear_<class>`
   (§5) takes a class's best gear back out, and fights put it on from the inventory.
-- **Run energy and weight (3b, decided and built 2026-10-30):** gear goes on when it suits the task. For example,
+- **Run energy and weight (built 2026-10-30):** gear goes on when it suits the task. For example,
   no metal armour for tasks with a lot of running. The sim has the server's run energy (`WalkingQueue`, `Settings`),
   checked tick by tick against the server:
   - **Drain:** each running tick drains 0.55 × (1 + kg / 100)% energy. Running covers 2 tiles a tick; walking
@@ -463,7 +499,7 @@ arrows and high-tier pickaxes.
 - Ranged and magic armour (leather, studded, coif, wizard robes): fights choose armour by defence for every combat
   class, so they'd never be worn over plate. They need class-aware armour choice first.
 
-**Server side:** GE buys use the bridge's `ge_offer` and `ge_collect`, which collects as Q2 decided (fork change,
+**Server side:** GE buys use the bridge's `ge_offer` and `ge_collect`, which collects as "Where purchases land" says (fork change,
 2026-10-29). Walks use `set_run` (fork change, 2026-10-30). Shop buys, putting gear on, bank withdrawals and
 `bank_deposit_worn` each need a bridge command through the player's path: fork changes, each with Caleb's go-ahead.
 
@@ -485,22 +521,23 @@ consumed, 57 more bought, and the 50 drops. Noted items count as their items; co
 a 2009 GE price and can be alched.
 
 Every other item is **misc**. It still counts in net worth, and is handled by the `*_misc` actions. *V* is fixed
-before training, so the action space doesn't change during the study. Sim v1's five skills and quests will add
-items; *V* is revisited when they're specified.
+before training, so the action space doesn't change during the study. Sim v1's four skills and quests will add
+items; *V* is revisited when they're specified (`docs/open-questions-log.md`, OQ-2).
 
-**Size (*V* = 156, selling as "all in the inventory"):**
+**Size (*V* = 176: the 156 accepted and 20 fletching inputs added by the same rule on 2026-10-31; selling as "all
+in the inventory"):**
 
 | Group | Actions |
 |---|---|
-| Gathering and thieving | 31 (11 gathering + 15 pickpocket targets + 5 stalls) |
+| Skilling slots | 20 (5 skills × 2 by XP/hr + 2 by gp/hr; they replace the 31 fixed gathering and thieving actions) |
 | Processing | 10 |
 | Combat | 30 |
 | Loot mode | 4 |
-| Inventory | 2 deposits + 10 processing withdrawals + 5 gathering-kit withdrawals + 157 drops (156 + misc) + 1 reclaim gravestone + 3 gear + 4 food tiers + 1 any food + 1 for sale = 184 |
-| Alchemy | 314 (high and low, 157 each) |
-| Selling | 314 (GE and store, 157 each) |
-| Buying | 113 |
-| **Total in sim v0** | **1,000** |
+| Inventory | 2 deposits + 10 processing withdrawals + 5 gathering-kit withdrawals + 1 take knife + 177 drops (176 + misc) + 1 reclaim gravestone + 3 gear + 4 food tiers + 1 any food + 1 for sale = 205 |
+| Alchemy | 354 (high and low, 177 each) |
+| Selling | 354 (GE and store, 177 each) |
+| Buying | 133 (96 at the GE, with the knife and 19 fletching inputs; 37 at shops) |
+| **Total in sim v0** | **1,110** |
 | Quests (sim v1) | 21 |
 
 Each *V* item adds 7 observation features: its inventory and bank counts, and its 5 actions' mask entries (env

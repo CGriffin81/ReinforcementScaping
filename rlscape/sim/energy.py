@@ -1,4 +1,5 @@
-"""Run energy and weight (option catalog §8, Q3b), from the server's WalkingQueue and Settings.
+"""Run energy and weight (option catalog §8; buying decision Q3b in docs/decision-log.md), from the server's
+WalkingQueue and Settings.
 
 - Weight (Settings.updateWeight): each inventory slot's item once, so a stack counts once, and only when it weighs
   more than nothing; plus every worn item, negative weights included (boots of lightness). Banknotes weigh nothing.

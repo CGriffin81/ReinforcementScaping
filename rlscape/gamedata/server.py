@@ -549,6 +549,89 @@ def stalls() -> dict[str, Stall]:
     return out
 
 
+FLETCHING = SERVER_CONTENT / "global" / "skill" / "fletching"
+KNIFE, BOWSTRING, FEATHER, ARROW_SHAFT, HEADLESS_ARROW = 946, 1777, 314, 52, 53
+FLETCHED_LOGS = (1511, 1521, 1519, 1517, 1515, 1513)  # logs, oak, willow, maple, yew, magic
+
+
+@dataclass(frozen=True)
+class FletchRecipe:
+    """One thing Fletching makes, as its craft script runs it: per unit (a log, a bow, a set), the inputs used, the
+    products made and the experience; units_per_stage units every stage_ticks ticks, after a first tick."""
+
+    name: str  # e.g. "yew_longbow_u", "string_yew_longbow", "headless_arrow", "adamant_arrow", "rune_dart"
+    kind: str  # cut, string, headless, arrow, dart, bolt
+    inputs: tuple[tuple[int, int], ...]  # (item, amount) per unit
+    product: int
+    per_unit: int  # products per unit: 15 arrow shafts a log, otherwise 1
+    level: int
+    experience: float  # per unit
+    units_per_stage: int
+    stage_ticks: int
+    quest: str | None = None  # darts need The Tourist Trap (DartListeners)
+    tool: int | None = None  # cutting needs a knife
+
+
+def _fletching_rows(file: str, pattern: str) -> list[tuple[str, ...]]:
+    return re.findall(pattern, (FLETCHING / file).read_text(encoding="utf-8"), re.M)
+
+
+@cache
+def fletching_recipes() -> dict[str, FletchRecipe]:
+    """Fletching's recipes, from its enums and craft scripts (content/global/skill/fletching):
+    - cut (LogCraftInfo, CraftItemWithLogScript): a log every 3 ticks into a bow (u), or into 15 arrow shafts; the
+      crossbow stocks and the achey-log items are out of scope;
+    - string (StringableCraftInfo, StringItemScript): a bow (u) and a bowstring every 2 ticks; bows only;
+    - headless (HeadlessArrowCraftScript): 15 shafts and 15 feathers every 3 ticks, 1 XP each;
+    - arrow (ArrowCraftInfo, TippedArrowCraftScript): 15 headless arrows and arrowtips every 3 ticks;
+    - dart (DartCraftInfo, DartCraftScript): 10 dart tips and feathers every 3 ticks, after The Tourist Trap;
+    - bolt (BoltCraftInfo, BoltCraftScript): 10 unfinished bolts and feathers every 3 ticks.
+    Dragon, broad, blurite and silver projectiles are out of scope (rewards, quests or materials sim v0 lacks)."""
+    item = r"Items\.\w+?_(\d+)"
+    out: dict[str, FletchRecipe] = {}
+    names = items()
+
+    def key(product: int) -> str:
+        return re.sub(r"[^a-z0-9]+", "_", names[product].name.lower()).strip("_")
+
+    for name, log, product, xp, level in _fletching_rows(
+            "log/LogCraftInfo.kt", rf"^\s*([A-Z_]+)\({item},\s*{item},\s*([\d.]+),\s*(\d+)\)"):
+        if int(log) in FLETCHED_LOGS and "STOCK" not in name:
+            shafts = int(product) == ARROW_SHAFT
+            out[key(int(product)) if not shafts else "arrow_shaft"] = FletchRecipe(
+                key(int(product)) if not shafts else "arrow_shaft", "cut", ((int(log), 1),), int(product),
+                15 if shafts else 1, int(level), float(xp), 1, 3, tool=KNIFE)
+    for name, crossbow, unstrung, strung, level, xp in _fletching_rows(
+            "stringing/StringableCraftInfo.kt", rf"^\s*([A-Z_]+)\((true|false),\s*{item},\s*{item},\s*(\d+),\s*([\d.]+),"):
+        if crossbow == "false" and "OGRE" not in name:
+            recipe = f"string_{key(int(strung))}"
+            out[recipe] = FletchRecipe(recipe, "string", ((int(unstrung), 1), (BOWSTRING, 1)), int(strung), 1,
+                                       int(level), float(xp), 1, 2)
+    out["headless_arrow"] = FletchRecipe("headless_arrow", "headless", ((ARROW_SHAFT, 1), (FEATHER, 1)),
+                                         HEADLESS_ARROW, 1, 1, 1.0, 15, 3)
+    for file, kind, per_stage, quest in (("arrow/ArrowCraftInfo.kt", "arrow", 15, None),
+                                         ("darts/DartCraftInfo.kt", "dart", 10, "THE_TOURIST_TRAP"),
+                                         ("bolts/BoltCraftInfo.kt", "bolt", 10, None)):
+        for name, tip, product, level, xp in _fletching_rows(
+                file, rf"^\s*([A-Z_]+)\({item},\s*{item},\s*(\d+),\s*([\d.]+)\)"):
+            if any(word in name for word in ("DRAGON", "BROAD", "BLURITE", "SILVER")):
+                continue
+            second = HEADLESS_ARROW if kind == "arrow" else FEATHER
+            out[key(int(product))] = FletchRecipe(key(int(product)), kind, ((second, 1), (int(tip), 1)), int(product),
+                                                  1, int(level), float(xp), per_stage, 3, quest)
+    return out
+
+
+@cache
+def ground_spawns(item: int) -> tuple[tuple[tuple[int, int, int], int], ...]:
+    """(tile, respawn ticks) for each spawn of an item (data/configs/ground_spawns.json, read by GroundSpawnLoader:
+    "{amount,x,y,z,respawn}" per spawn; the respawn is a Pulse of that many ticks)."""
+    with (SERVER_CONFIGS / "ground_spawns.json").open(encoding="utf-8") as f:
+        rows = [r for r in json.load(f) if int(r["item_id"]) == item]
+    return tuple(((int(x), int(y), int(z)), int(respawn))
+                 for r in rows for _, x, y, z, respawn in re.findall(r"\{(\d+),(\d+),(\d+),(\d+),(\d+)\}", r["loc_data"]))
+
+
 @cache
 def food_healing() -> dict[int, int]:
     """Item id -> hitpoints healed, for Consumables' single-bite foods (`new Food(new int[] {id}, new

@@ -1,14 +1,12 @@
-# Item Vocabulary *V*: Draft for Caleb's Review
+# Item Vocabulary *V*: How It Was Built
 
-> **Accepted (Caleb, 2026-10-30):** Q1–Q4 as recommended. *V* is the 156 items below, frozen in
-> `data/vocabulary.csv` and the catalog's default (option catalog §9). Where this page says the code doesn't use it
-> yet, that was true when it was drafted.
+**Status:** accepted by Caleb on 2026-10-30 (the questions and answers are in `docs/decision-log.md`). *V* is the
+156 items below, frozen in `data/vocabulary.csv` and the catalog's default (option catalog §9). On 2026-10-31 the
+20 fletching inputs joined by the same rule, for 176 (catalog §9).
 
-**Status:** draft, 2026-10-30. The rule is agreed: option catalog §9, "the items this catalog produces or consumes,
-plus the most valuable common drops from the enemy pool", and, from buying (§8), every item the agent can buy. Caleb
-checks the list (decision log, 2026-10-28). This draft applies the rule to the simulator's data and recommends how
-to read its two loose words, "common" and "produces". Nothing in the code uses it yet: the catalog's *V* stays empty
-until Caleb signs off.
+The rule: option catalog §9, "the items this catalog produces or consumes, plus the most valuable common drops from
+the enemy pool", and, from buying (§8), every item the agent can buy. This page applies it to the simulator's data
+and gives the accepted readings of its two loose words, "common" and "produces".
 
 - **Data:** `data/vocabulary_draft.csv`, one row per item the rule names. It holds the groups that put the item
   there, its value, its best drop gp/hr and where, and `proposed` (yes or no) with a note when no.
@@ -28,12 +26,12 @@ once, except what banking keeps: tools, food, ammunition, runes and bait.
 
 | *V* | Actions | Observation features |
 |---|---|---|
-| empty (today) | 194 | 480 |
+| empty (before *V*) | 194 | 480 |
 | 60 (catalog §9's estimate, made before buying) | 494 | 900 |
-| **156 (recommended)** | **974** | **1,572** |
+| **156 (accepted)** | **974** | **1,572** |
 | 208 (the rule taken literally, burnt food aside) | 1,234 | 1,936 |
 
-Quests add 21 actions in sim v1. All 156 recommended items have a 2009 GE price and can be alched, so none of their
+Quests add 21 actions in sim v1. All 156 items have a 2009 GE price and can be alched, so none of their
 actions is always masked.
 
 ## How the list was made
@@ -53,32 +51,18 @@ actions is always masked.
 - Noted drops count as their items, since banking turns banknotes back into items. Coins are never in *V*: they're
   always picked up and are the currency.
 
-## Questions
+## The accepted readings
 
-**Q1. What counts as a "common" drop?** 73 drops reach 1,000 gp/hr somewhere. 23 of them drop in fewer than 20 of
-the selected fights, mostly one monster at level 90+ (Wallasalki bone pieces, a Cyclops's rune dagger).
-- **(a) Recommended:** at least 20 fights, which keeps **50 drops**.
-- (b) No breadth test: all 73.
-- (c) At least 50 fights: 39.
+- **"Common" drops** reach 1,000 gp/hr somewhere and drop in at least 20 of the selected fights: 50 of the 73 that
+  reach 1,000 gp/hr.
+- **Smithed products** that no other group names stay misc (29 items): the agent sells or alches them in bulk
+  through the misc actions, not per item.
+- **Burnt food** stays out (8 items).
+- Nothing added or removed by hand. The largest groups that were weighed: herb seeds and grimy herbs (23 items,
+  only for selling until Herblore arrives in sim v1), black armour and weapons (7), the near misses under
+  1,000 gp/hr, and raw beef and raw chicken (which cooking can use).
 
-**Q2. Smithed products.** Smithing makes a different "best item" at almost every level and number of bars, which
-gives 44 items. 15 of them are in *V* anyway, because they can be bought or drop. The other 29 (bronze chainbody,
-iron warhammer, mithril bolts (unf), …) are made to be sold or alched in bulk, which the misc actions already do.
-- **(a) Recommended:** leave those 29 as misc. The cost is that the agent can't choose GE versus alchemy per
-  smithed item, only for all of them together.
-- (b) Put all 44 in *V* (+29, so 185 with Q1 (a)).
-
-**Q3. Burnt food.** It's worthless, and `drop_misc` drops it.
-- **Recommended:** leave the 8 burnt items out.
-
-**Q4. Anything to add or remove by hand?** Some entries worth a look:
-- **Herb seeds and grimy herbs (23 items).** Farming is out of scope and Herblore arrives in sim v1, so for now
-  these are only for selling. They're valuable and common, though: grimy ranarr reaches 77,000 gp/hr.
-- **Black armour and weapons,** mostly from Black Knights: 7 items (a black platebody is 3,538 gp on the 2009 GE).
-- **Near misses under 1,000 gp/hr,** listed below. Some are common: body runes, iron and steel spears, iron swords.
-- **Raw beef and raw chicken** come from cows and chickens, so cooking can use them.
-
-## The recommended *V* (156)
+## The accepted *V* (156)
 
 Each item appears once, under the first group that names it.
 
@@ -140,5 +124,5 @@ spear, steel spear, iron sword, earth talisman, mithril ore, trading sticks.
 - The drop ranking comes from the rate model, so its gp/hr values are expected values to calibrate (E6), not
   measurements. Its high-level picks (unicorns, desert wolves, thieves at level 99) come from the sweep's reference
   gear, not from a trained agent.
-- Sim v1's five skills and quests will add items (fletching products, crafting materials, potions, quest items).
-  Catalog §3.5 says §9 is updated when they're specified, so *V* will be revisited then.
+- Sim v1's four skills and quests will add items (crafting materials, potions, quest items). *V* is revisited
+  when they're specified (`docs/open-questions-log.md`, OQ-2).

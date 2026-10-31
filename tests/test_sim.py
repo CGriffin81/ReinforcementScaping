@@ -11,6 +11,7 @@ from rlscape.gamedata import server as gd
 from rlscape.sim import Simulator, build_catalog
 from rlscape.sim.engine import HORIZON_TICKS, WEALTH_SCALE
 from rlscape.sim.skills import SKILL_INDEX, SKILLS, XP_FOR_LEVEL, capped_total_xp, level_for_xp, progress
+from rlscape.sim.skilling import slot_holding
 from rlscape.sim.state import SPAWN, CharacterState
 from rlscape.sim.woodcutting import (
     SWING_TICKS,
@@ -104,7 +105,8 @@ def test_fresh_character_chops_until_the_inventory_is_full():
     infos = []
     for sim in sims:
         sim.reset(seed=7)
-        infos.append(sim.step(0).info)  # wc_logs
+        ids = [o.id for o in sim.options]
+        infos.append(sim.step(ids.index(slot_holding(sim.options, sim.state, "wc_logs"))).info)  # chop and keep
     info = infos[0]
     assert info == infos[1]  # same seed, same trajectory
     assert info["termination"] == "inventory_full" and info["items_delta"]["inventory"] == {LOGS: 10}
@@ -116,9 +118,10 @@ def test_fresh_character_chops_until_the_inventory_is_full():
 def test_masked_options_raise():
     sim = Simulator(build_catalog())
     sim.reset(seed=0)
-    assert sim.action_mask().tolist()[:4] == [True, False, False, False]  # oak, willow, yew need 15 / 30 / 60
+    # woodcutting's slots: normal trees kept or burned fill the XP slots; nothing else is open at level 1
+    assert sim.action_mask().tolist()[:4] == [True, True, False, False]
     with pytest.raises(ValueError, match="masked"):
-        sim.step(1)
+        sim.step(2)
 
 
 @needs_server
