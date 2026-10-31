@@ -228,9 +228,18 @@ class BankWithdraw(Option):
     def _input_items(self) -> frozenset[int]:
         return self._interchangeable() if isinstance(self.inputs, str) else frozenset(i for i, _ in self.inputs)
 
+    def _usable(self, state: CharacterState, item: int) -> bool:
+        """Whether the level lets the activity use an interchangeable input (logs to burn, raw food to cook)."""
+        if self.inputs == "logs":
+            return gd.log_types()[item][0] <= state.level("firemaking")
+        if self.inputs == "raw_food":
+            return gd.cookables()[item].level <= state.level("cooking")
+        return True
+
     def available(self, state: CharacterState) -> bool:
         if isinstance(self.inputs, str):
-            in_bank = any(banked_or_noted(state, item) > 0 for item in self._interchangeable())
+            in_bank = any(banked_or_noted(state, item) > 0 and self._usable(state, item)
+                          for item in self._interchangeable())
             need = 1
         else:
             in_bank = all(banked_or_noted(state, item) >= amount for item, amount in self.inputs)
@@ -257,7 +266,8 @@ class BankWithdraw(Option):
                 log = next((item for item in gd.log_types() if state.bank.get(item, 0) > 0), None)
                 if log is not None and state.free_slots() > 1:
                     self._withdraw(state, log, 1)  # one log makes the fire to cook on (rlscape.sim.processing.Cook)
-            for item in sorted(self._interchangeable(), key=lambda i: -gd.item_values().get(i, 0)):
+            usable = (i for i in self._interchangeable() if self._usable(state, i))  # the level allows it
+            for item in sorted(usable, key=lambda i: -gd.item_values().get(i, 0)):
                 take = min(state.bank.get(item, 0), state.free_slots())
                 if take:
                     self._withdraw(state, item, take)

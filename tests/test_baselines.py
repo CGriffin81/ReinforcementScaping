@@ -70,5 +70,5 @@ def test_play_collects_the_contracts_checkpoints():
     assert episode.reward == pytest.approx(0.5 * episode.reward_vec[0] + 0.5 * episode.reward_vec[1])
 
 
-def test_e1_uses_raw_xp_and_net_worth():
-    assert [p.name for p in e1_baselines()] == ["random", "greedy_xp", "greedy_wealth"]
+def test_e1_uses_raw_xp_net_worth_and_the_reviewed_guide():
+    assert [p.name for p in e1_baselines()] == ["random", "greedy_xp", "greedy_wealth", "scripted_guide"]

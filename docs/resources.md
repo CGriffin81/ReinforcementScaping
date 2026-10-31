@@ -94,6 +94,28 @@ and is credited where used.
     https://runescape.wiki/w/Money_making_guide?oldid=899155 (CC BY-NC-SA 3.0) — consulted for the scripted guide.
     Its free-to-play part only links subpages whose January 2009 text isn't in the wiki's history, so nothing is
     taken from it. Added 2026-10-30.
+27. **RuneScape Wiki. "Thieving training",** revision 900070 (2009-01-31).
+    https://runescape.wiki/w/Thieving_training?oldid=900070 (CC BY-NC-SA 3.0) — **Used:** the scripted guide's
+    thieving methods by level (men, the baker's, silk and fur stalls, master farmers, Knights of Ardougne,
+    Menaphite thugs). Added 2026-10-30.
+28. **RuneScape Wiki. "Free-to-play Cooking training",** revision 885447 (2009-01-26).
+    https://runescape.wiki/w/Free-to-play_Cooking_training?oldid=885447 (CC BY-NC-SA 3.0) — **Used:** the scripted
+    guide's cooking (cook the fish fishing brings in). Added 2026-10-30.
+29. **RuneScape Wiki. "Free-to-play Smithing training",** revision 881317 (2009-01-25).
+    https://runescape.wiki/w/Free-to-play_Smithing_training?oldid=881317 (CC BY-NC-SA 3.0) — **Used:** the
+    scripted guide's smithing (bronze to 14, iron from 15, mining the ores). Added 2026-10-30.
+30. **RuneScape Wiki. "Free-to-play Prayer training",** revision 888578 (2009-01-28).
+    https://runescape.wiki/w/Free-to-play_Prayer_training?oldid=888578 (CC BY-NC-SA 3.0) — **Used:** the scripted
+    guide's prayer (bury the bones kills drop). Added 2026-10-30.
+31. **RuneScape Wiki. "Free-to-play Ranged training",** revision 880633 (2009-01-25).
+    https://runescape.wiki/w/Free-to-play_Ranged_training?oldid=880633 (CC BY-NC-SA 3.0) — **Used:** the scripted
+    guide's ranged monsters by level, shortbows and iron arrows. Added 2026-10-30.
+32. **RuneScape Wiki. "Firemaking",** revision 892441 (2009-01-29).
+    https://runescape.wiki/w/Firemaking?oldid=892441 (CC BY-NC-SA 3.0) — **Used:** the scripted guide's firemaking
+    (logs by level; no January 2009 training page exists). Added 2026-10-30.
+33. **RuneScape Wiki. "Magic",** revision 900388 (2009-01-31).
+    https://runescape.wiki/w/Magic?oldid=900388 (CC BY-NC-SA 3.0) — **Used:** the scripted guide's magic (strike
+    spells, buying runes; no January 2009 training page exists). Added 2026-10-30.
 
 ## Planned (named in ROADMAP.md, not used yet)
 

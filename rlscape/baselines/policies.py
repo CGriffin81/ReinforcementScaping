@@ -24,6 +24,7 @@ from typing import Protocol
 
 import numpy as np
 
+from rlscape.baselines.guide import ScriptedGuidePolicy
 from rlscape.envs.sim_env import SimEnv
 from rlscape.sim.engine import WEALTH_SCALE, Simulator
 
@@ -53,9 +54,9 @@ class RandomPolicy:
 
 
 def e1_baselines() -> list[Policy]:
-    """E1's baselines: masked random, greedy XP/hr (raw XP) and greedy GP/hr (net worth). The scripted guide joins
-    once Caleb has reviewed it."""
-    return [RandomPolicy(), GreedyPolicy("xp"), GreedyPolicy("wealth")]
+    """E1's baselines: masked random, greedy XP/hr (raw XP), greedy GP/hr (net worth) and the scripted guide, its
+    13-skill second draft (reviewed by Caleb, 2026-10-31; docs/scripted-guide-draft.md)."""
+    return [RandomPolicy(), GreedyPolicy("xp"), GreedyPolicy("wealth"), ScriptedGuidePolicy()]
 
 
 class GreedyPolicy:

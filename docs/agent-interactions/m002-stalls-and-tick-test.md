@@ -8,9 +8,8 @@
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS (stalls and the Shantay Pass built and tested; tick manipulation tested live, none found; three
   findings raised)
-- Commit: fork `7956207` (branch `rl`, with the command renames from `m002-wider-guide`); main repo: the commit
-  that adds this record, with `m002-thieving-targets` (branch `sim-v0`; its SHA can only be filled in by a later
-  commit)
+- Commit: fork `7956207` (branch `rl`, with the command renames from `m002-wider-guide`); main repo `6ad245c`,
+  with `m002-thieving-targets` (branch `sim-v0`)
 
 ## Full Prompt
 

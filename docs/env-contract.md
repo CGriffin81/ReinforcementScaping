@@ -262,7 +262,8 @@ Caleb signed off both documents on 2026-10-28 (v1.0).
 15. **Ambient bots off** on the server for calibration and E6 (§7).
 16. **The sim-to-server gate** before E2 is ±20%, and the calibration characters are as described in §7.
 17. **The scripted-guide baseline** (E1) is drafted by Claude from archived 2009 guides, cited in `docs/resources.md`,
-    and reviewed by Caleb before E1 runs.
+    and reviewed by Caleb before E1 runs. Reviewed 2026-10-31: the 13-skill, lowest-first second draft
+    (`docs/scripted-guide-draft.md`).
 
 ### Decided (Caleb, 2026-10-30, buying): v1.2
 18. **Run energy and weight** (option catalog §8, Q3b): travel follows the server's run energy, which weight drains

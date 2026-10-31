@@ -311,8 +311,8 @@ is never a no-op (agent choice, 2026-10-29).
 | `bank_deposit` | walk to the nearest bank; deposit everything that isn't the kit of the task at hand, the last activity the character did (Caleb, 2026-10-30; `rlscape/sim/kits.py`). Worn items stay worn. The kits: the best usable axe or pickaxe; a fishing method's tool and bait; food for thieving; a processing activity's tools and inputs; for a fight, food, what the class's fight would wear from the inventory, and runes for magic. With no task yet, everything goes. |
 | `bank_withdraw_for_<task>` (gathering) | woodcutting, mining, fish_shrimp, fish_fly, fish_lobster: walk to the nearest bank and take out the task's kit: the best usable axe or pickaxe if none as good is held, or the fishing method's tool and all its bait. 5 actions. |
 | `bank_withdraw_food` | walk to the nearest bank and take out food, the best healing first, into the free slots, whatever it is (cooked catches as well as the four GE tiers) |
-| `bank_withdraw_for_<activity>` | walk to the nearest bank; withdraw the inputs one processing activity needs, up to a full inventory. Banknotes of the inputs held (from GE buys) are banked first. One per §3 activity, so 10 actions. |
-| `bank_withdraw_gear_<class>` | melee, ranged, magic: walk to the nearest bank; withdraw the gear that beats what the character carries for that combat class (the weapon, for ranged with its ammunition, then armour, the biggest defence gain first), up to the free slots. Fights put it on from the inventory. 3 actions (§8). |
+| `bank_withdraw_for_<activity>` | walk to the nearest bank; withdraw the inputs one processing activity needs, up to a full inventory. Banknotes of the inputs held (from GE buys) are banked first. Interchangeable inputs are only those the level allows: logs Firemaking can burn, raw food Cooking can cook (2026-10-30, found by the scripted guide). One per §3 activity, so 10 actions. |
+| `bank_withdraw_gear_<class>` | melee, ranged, magic: walk to the nearest bank; withdraw the gear that beats what the character carries for that combat class (the weapon, for ranged with its ammunition, then armour, the biggest defence gain first), up to the free slots. For magic it also takes every banked rune, which a deposit for another task banks (2026-10-30, found by the scripted guide). Fights put it on from the inventory. 3 actions (§8). |
 | `bank_withdraw_<food>` | one per GE food tier (mackerel, tuna, monkfish, shark): walk to the nearest bank, bank the banknotes held of that food, and withdraw it into the free slots. 4 actions (§8). |
 | `bank_deposit_worn` | walk to the nearest bank; bank the worn gear (the banker's "deposit worn items"), except what `bank_deposit` keeps (tools, ammunition), so a worn axe or pickaxe stays on. Masked unless something else is worn (§8). |
 | `bank_withdraw_for_sale` | walk to the nearest bank and take out produce to sell, as banknotes (the bank's withdraw-as-note setting), so each item's stack fits in one slot, the most valuable stacks first, up to the free slots. Produce is what `bank_deposit` banks, apart from the gear the character would take out to fight (`bank_withdraw_gear_<class>`) and items that neither note nor stack. Caleb, 2026-10-30. |
@@ -388,7 +388,9 @@ drop actions exist.
   - Banknotes can't be eaten or worn. The withdrawals (§5) bank them and take out the items.
 - **Timing:** the walk, plus 8 ticks at the GE or 3 at a shop (the selling constants; calibrate).
 - **Mask (Q4):** a buy is open only when all of these hold:
-  - **Affordable:** at least one unit, with the coins in the inventory and the bank.
+  - **Affordable:** at least one unit, with the coins in the inventory and the bank. Banked coins count only if
+    they can reach the inventory, onto coins carried or into a free slot; otherwise the trip couldn't withdraw
+    them (2026-10-30, found by the scripted guide, which looped on such a buy).
   - **Usable now:** gear and weapons meet their wear requirements, including quest locks; axes and pickaxes meet
     their skill level; arrows meet their Ranged level.
   - **An upgrade** (gear, tools, bows and weapons only): better than anything held and usable now for that role,

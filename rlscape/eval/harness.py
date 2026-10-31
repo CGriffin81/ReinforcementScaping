@@ -43,7 +43,7 @@ POLICIES: dict[str, Callable[[], Policy]] = {
     "greedy_xp": lambda: GreedyPolicy("xp"),
     "greedy_wealth": lambda: GreedyPolicy("wealth"),
     "greedy_skill": lambda: GreedyPolicy("skill"),
-    "scripted_guide": ScriptedGuidePolicy,  # draft, awaiting Caleb's review (docs/scripted-guide-draft.md)
+    "scripted_guide": ScriptedGuidePolicy,  # reviewed by Caleb, 2026-10-31 (docs/scripted-guide-draft.md)
 }
 N_BOOT = 10_000
 

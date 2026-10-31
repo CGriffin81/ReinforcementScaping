@@ -13,7 +13,8 @@ How a buy works:
 - Paying: coins in the inventory pay first. If they're short, the trip starts with a bank stop to withdraw the rest.
   The GE has bankers beside it, so there the stop costs only the banking.
 - Timing: the walk, then GE_TICKS at the GE or STORE_TICKS at a shop (the selling constants; calibrate).
-- Mask (Q4): the character can afford one unit (coins in the inventory and the bank), can use the item now (wear
+- Mask (Q4): the character can afford one unit (coins in the inventory and the bank, and the bank's can reach the
+  inventory: onto coins carried or into a free slot), can use the item now (wear
   requirements and quest locks; a tool's skill level; arrows' Ranged level), it's an upgrade over anything held for
   its role (gear, tools, bows and weapons only), there's room (a free slot, unless it stacks onto one held) and, at
   a shop, it's in stock.
@@ -46,6 +47,7 @@ from rlscape.sim.equipment import (
     WEAPON,
     can_wear,
     defence_score,
+    hinders,
     kit_score,
     ranged_kits,
     weapon_score,
@@ -149,6 +151,13 @@ def ge_landing(state: CharacterState, item: int, units: int) -> int:
     return item
 
 
+def can_pay(state: CharacterState, price: int) -> bool:
+    """The coins for one unit can reach the inventory: they're carried, or the bank's can be withdrawn onto the coins
+    carried or into a free slot."""
+    carried = state.inventory.get(COINS, 0)
+    return carried >= price or (state.coins() >= price and (carried > 0 or state.free_slots() > 0))
+
+
 def _withdraw_coins(state: CharacterState, amount: int) -> None:
     """Withdraw up to `amount` coins, as far as the bank and a slot for them allow."""
     added = state.add(COINS, min(amount, state.bank.get(COINS, 0))) if amount > 0 else 0
@@ -169,7 +178,7 @@ class BuyGE(Option):
 
     def available(self, state: CharacterState) -> bool:
         units = self._units(state)
-        return (units > 0 and usable(state, self.item) and is_upgrade(state, self.item)
+        return (units > 0 and can_pay(state, self.price) and usable(state, self.item) and is_upgrade(state, self.item)
                 and _room_for(state, ge_landing(state, self.item, units)))
 
     def run(self, state: CharacterState, rng: np.random.Generator, budget: int) -> OptionResult:
@@ -206,7 +215,8 @@ class BuyShop(Option):
     def available(self, state: CharacterState) -> bool:
         in_stock = stock(state, self.shop, self.item, state.tick)
         normal = gd.shops()[self.shop].stock[self.item][0]
-        return (in_stock > 0 and state.coins() >= unit_price(self.item, normal, in_stock) and self._room(state) > 0
+        price = unit_price(self.item, normal, in_stock)
+        return (in_stock > 0 and can_pay(state, price) and self._room(state) > 0
                 and usable(state, self.item) and is_upgrade(state, self.item))
 
     def _toll(self, state: CharacterState, origin: tuple[int, int, int]) -> int:
@@ -242,8 +252,9 @@ class BuyShop(Option):
 
 def gear_to_withdraw(state: CharacterState, combat_class: str) -> list[int]:
     """Bank items that beat what the character carries or wears for a combat class, in the order they're taken: the
-    weapon (ranged: the weapon and ammunition of the best kit) first, then armour, the biggest defence gain first.
-    Only what the character can wear."""
+    weapon (ranged: the weapon and ammunition of the best kit) first, for magic every banked rune (a deposit for
+    another task banks them), then armour, the biggest defence gain first (for magic, none that hinders it). Only
+    what the character can wear."""
     items, carried = gd.items(), set(state.inventory) | set(state.equipment.values())
     bank = frozenset(i for i in state.bank if i in items and can_wear(state, i))
     out: list[int] = []
@@ -262,12 +273,15 @@ def gear_to_withdraw(state: CharacterState, combat_class: str) -> list[int]:
         if best is not None and (now is None or score(best) > score(now)):
             out.append(best)
         weapon = out[0] if out else now
+        if combat_class == "magic":
+            out += sorted(i for i in state.bank if i in gd.rune_ids().values())
     two_handed = weapon is not None and items[weapon].two_handed
     gains = []
     for slot in ARMOUR_SLOTS + (() if two_handed else (SHIELD,)):
-        best = max((i for i in bank if items[i].equipment_slot == slot), key=defence_score, default=None)
+        best = max((i for i in bank if items[i].equipment_slot == slot and not hinders(i, combat_class)),
+                   key=defence_score, default=None)
         worn = max((defence_score(i) for i in carried if i in items and items[i].equipment_slot == slot
-                    and can_wear(state, i)), default=None)
+                    and can_wear(state, i) and not hinders(i, combat_class)), default=None)
         if best is not None and defence_score(best) > (0 if worn is None else worn):
             gains.append((defence_score(best) - (worn or 0), best))
     return out + [item for _, item in sorted(gains, reverse=True)]

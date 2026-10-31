@@ -83,6 +83,15 @@ def ranged_ready(state: CharacterState) -> bool:
     return ranged.weapon_type == "DEGRADING" or state.equipment.get(ranged.ammo_slot) in ranged.ammunition
 
 
+MAGIC_ATTACK = 3  # index of the magic attack bonus in an item's bonuses
+
+
+def hinders(item: int, combat_class: str) -> bool:
+    """Armour a class leaves off: for magic, anything that lowers magic attack (metal armour). Worn, an iron set's
+    penalty leaves a low-level caster no target worth fighting."""
+    return combat_class == "magic" and gd.items()[item].bonuses[MAGIC_ATTACK] < 0
+
+
 def defence_score(item: int) -> float:
     return sum(gd.items()[item].bonuses[5:10])
 
@@ -121,7 +130,7 @@ def _wield_weapon(state: CharacterState, weapon: int) -> bool:
 
 def wield_best(state: CharacterState, combat_class: str) -> int:
     """Wield the best weapon (ranged: weapon and ammunition) for the class and the best armour per slot from the
-    inventory; the ticks it takes."""
+    inventory; the ticks it takes. For magic, armour that hinders it is taken off (room allowing) and not put on."""
     items, worn = gd.items(), 0
     if combat_class == "ranged":
         kits = ranged_kits(state)
@@ -142,7 +151,11 @@ def wield_best(state: CharacterState, combat_class: str) -> int:
             worn += _wield_weapon(state, best)
     two_handed = WEAPON in state.equipment and items[state.equipment[WEAPON]].two_handed
     for slot in ARMOUR_SLOTS + (() if two_handed else (SHIELD,)):
-        options = [i for i in state.inventory if can_wear(state, i) and items[i].equipment_slot == slot]
+        if slot in state.equipment and hinders(state.equipment[slot], combat_class) and state.free_slots() > 0:
+            state.add(state.equipment.pop(slot))
+            worn += 1
+        options = [i for i in state.inventory if can_wear(state, i) and items[i].equipment_slot == slot
+                   and not hinders(i, combat_class)]
         best = max(options, key=defence_score, default=None)
         if best is not None and (slot not in state.equipment or defence_score(best) > defence_score(state.equipment[slot])):
             _put_on(state, slot, best)

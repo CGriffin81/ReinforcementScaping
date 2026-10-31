@@ -2052,3 +2052,50 @@ guide". `m002-wider-guide`.
 - **Committed:** fork `7956207` (the bridge commands); the main repo commit adds
   the thieving targets, stalls, the Shantay Pass, the tick-manipulation test and
   the mining fix.
+
+### Drafted: the scripted guide over every sim v0 skill
+Continuing `m002-wider-guide` (Caleb: "keep going with the guide"). Details in
+`docs/scripted-guide-draft.md` (second draft).
+- **The routine:** the lowest of the 13 skills sim v0 trains directly comes
+  next (Caleb's schedule), each by its January 2009 RuneScape Wiki guide.
+  Seven new sources, [27]–[33]: Thieving, Cooking, Smithing, Prayer and Ranged
+  training pages, and the Firemaking and Magic articles (neither had a
+  training page yet).
+  - Thieving maps the guide's path onto the new targets and stalls; The
+    Feud's levels (blackjacking) stretch the neighbouring methods.
+  - Processing uses the guide's own gathering, not GE inputs.
+- **Results** (10 seeds × 20 hours, `results/eval/guide-wide-20261030`):
+  - the 13-skill guide: total level 308, total XP 87k, net worth 55k
+  - the first draft's six skills, on today's sim: 303, 205k, 330k
+  - random: 184, 80k, 13k
+  - Widening keeps total level but costs 58% of the XP and 83% of the
+    wealth: with 13 skills at the bottom of the schedule, every skill stays
+    low, where every method is slow.
+  - Raised as Q5 (recommended: keep it as specified).
+- **Sim fixes found along the way** (each would trap an agent too; tested;
+  raised as Q6):
+  - magic fights take off, and don't put on or withdraw, armour that lowers
+    magic attack (an iron set left a level-1 caster no target)
+  - `bank_withdraw_gear_magic` takes banked runes back out
+  - processing withdrawals take only inputs the level can use
+  - a buy is masked when its banked coins can't reach the inventory (a full
+    one): such a buy bought nothing, and the guide looped on it 7,000 times
+- **Loops fixed in the guide itself** while widening it:
+  - depositing a just-withdrawn input before using it
+  - a thieving food withdrawal filling the slots the loot needs
+  - selling the starter shortbow as misc, which stopped Ranged at 1
+  - funding counted banked items it would never sell
+  - The tests now bound a 20-hour episode at 1,000 decisions. The episodes
+    take 519–618.
+
+### Decided: the 13-skill guide is E1's scripted baseline; the sim fixes stay
+Caleb, on Q5 and Q6 of the guide's second draft: "Apply both recommended
+actions." `m002-guide-signoff`.
+- **Q5 (a):** the 13-skill, lowest-first guide is E1's scripted-guide
+  baseline. `e1_baselines()` now returns random, greedy XP, greedy wealth and
+  the scripted guide. Env contract decision 17's review is done.
+- **Q6:** the four sim fixes the guide found stay:
+  - magic's armour rule
+  - the magic withdrawal takes runes
+  - processing withdrawals respect the level
+  - the buy mask's coins rule

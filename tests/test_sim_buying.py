@@ -17,6 +17,7 @@ from rlscape.sim.buying import (
     BuyGE,
     BuyShop,
     buying_options,
+    gear_to_withdraw,
     is_upgrade,
 )
 from rlscape.sim.economy import STORE_TICKS, BankDeposit, BankWithdraw, SellGE, SellStore, store_sale_value
@@ -175,6 +176,38 @@ def test_processing_withdrawals_bank_notes_of_their_inputs_first():
 
 
 @needs_server
+def test_magic_leaves_metal_armour_off_and_brings_back_its_runes():
+    """Iron armour lowers magic attack (an iron set: -65), so a magic fight takes it off and the magic withdrawal
+    leaves it banked; the runes a deposit for another task banked come back with it."""
+    iron = (1153, 1115, 1067, 1191)  # full helm, platebody, platelegs, kiteshield
+    worn = character({}, defence=10)
+    for item in iron:
+        worn.add(item)
+    wield_best(worn, "melee")
+    assert set(worn.equipment.values()) >= set(iron)
+    wield_best(worn, "magic")
+    assert not set(worn.equipment.values()) & set(iron) and all(worn.inventory.get(i) == 1 for i in iron)
+    banked = character({}, {**dict.fromkeys(iron, 1), AIR: 50, 558: 40, STAFF_OF_AIR: 1}, defence=10)
+    assert gear_to_withdraw(banked, "magic") == [STAFF_OF_AIR, AIR, 558]
+    assert set(gear_to_withdraw(banked, "melee")) == {*iron, STAFF_OF_AIR}  # the staff is its best melee weapon
+    BankWithdrawGear("magic").run(banked, RNG, 10_000)
+    assert banked.inventory == {STAFF_OF_AIR: 1, AIR: 50, 558: 40}
+
+
+@needs_server
+def test_processing_withdrawals_take_only_inputs_the_level_allows():
+    logs, oak, willow = 1511, 1521, 1519
+    state = character({590: 1}, {logs: 5, oak: 5, willow: 5}, firemaking=15)
+    BankWithdraw("burn_logs").run(state, RNG, 10_000)
+    assert state.inventory == {590: 1, oak: 5, logs: 5} and state.bank == {willow: 5}  # willows need Firemaking 30
+    raw_lobster = 377
+    cook = character({590: 1}, {raw_lobster: 5}, cooking=39)  # cooking also needs a tinderbox
+    assert not BankWithdraw("cook_fish").available(cook)  # lobsters need Cooking 40
+    cook.xp[SKILL_INDEX["cooking"]] = float(XP_FOR_LEVEL[40])
+    assert BankWithdraw("cook_fish").available(cook)
+
+
+@needs_server
 def test_general_store_overstock_carries_over_between_sales():
     logs = 1511  # no general store stocks logs: they go to the player stock every general store shares
     state = character({logs: 5})
@@ -214,3 +247,15 @@ def test_withdrawing_for_sale_takes_produce_as_banknotes_and_keeps_what_the_char
     assert not option.available(state)
     SellGE(logs).run(state, RNG, 10_000)  # a per-item sell takes the banknotes too
     assert notes[logs] not in state.inventory and state.inventory[COINS] == 300 * gd.ge_prices_2009()[logs]
+
+
+@needs_server
+def test_a_buy_is_masked_when_the_banked_coins_cant_reach_the_inventory():
+    mind_rune = 558
+    price = gd.ge_prices_2009()[mind_rune]
+    full = character({BREAD: 27, mind_rune: 1}, {COINS: price})  # the runes would stack, but the coins can't come out
+    assert full.coins() >= price and not BuyGE(mind_rune).available(full)
+    full.inventory = {BREAD: 26, mind_rune: 1, COINS: 1}
+    assert BuyGE(mind_rune).available(full)  # the withdrawal stacks onto the coins carried
+    BuyGE(mind_rune).run(full, RNG, 10_000)
+    assert full.inventory[mind_rune] == 2

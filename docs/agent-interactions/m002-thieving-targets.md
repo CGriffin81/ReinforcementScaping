@@ -9,8 +9,8 @@
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS (the previous work committed; 13 pickpocket targets built and tested; the tick-manipulation finding
   corrected; stalls wait on Caleb's call about the market guards)
-- Commit: the guide, withdraw-to-sell and task kits are main repo `63ebb0d` (branch `sim-v0`); this work is the main
-  repo commit that adds this record (its SHA can only be filled in by a later commit)
+- Commit: the guide, withdraw-to-sell and task kits are main repo `63ebb0d` (branch `sim-v0`); this work is main repo
+  `6ad245c` (branch `sim-v0`)
 
 ## Full Prompt
 
