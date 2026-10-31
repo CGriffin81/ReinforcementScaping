@@ -41,6 +41,10 @@ The interaction records in `docs/agent-interactions/` hold the full context.
   in ROADMAP Appendix B. Decide at the week-5 midpoint.
 
 ### Agent recommendations (pending acceptance)
+*Resolved later (noted 2026-10-31):* the env contract Caleb signed off on
+2026-10-28 adopts the discounting (§1) and both rewards (§4); his simulation
+decisions the same day build on the sim-first plan; the stretch is tentatively
+A (`docs/open-questions-log.md`, OQ-1).
 - Make the simulator the critical path, with the real server for calibration
   and validation only (ROADMAP §0).
 - Use SMDP-correct discounting (γ^τ) in GAE and in potential-based shaping.
@@ -778,3 +782,1567 @@ Caleb accepted all nine recommendations
   `ge-frozen-buyer-random-events` were deleted locally and on GitHub, after
   checking both were fully merged into `main` (PRs #4 and #1). The submodule
   bump goes on `sync-upstream-2009scape`.
+
+### User decisions (afternoon, simulation review)
+`m002-simulation-decisions`. Three rounds of questions. The env contract and
+option catalog are now v1.1.
+
+**Simulator:**
+1. **Event-level sampling** (recommended). Sampled per event:
+   - resources gathered over N ticks: one binomial draw
+   - each kill's duration and damage
+   - each drop roll
+   - eating and death checked kill by kill
+
+   Rejected: expected values only (no risk) and tick-level simulation (too
+   slow for 20k decisions/s).
+2. **Staging** (recommended): sim v0 covers everything except the quests;
+   all 21 quests come in sim v1, before E2.
+3. **Five more trainable skills.** Caleb asked why only 14 skills were
+   trainable. Claude explained that it had scoped the list itself on Oct 5,
+   from the proposal's examples, and never asked; sign-off only accepted it
+   implicitly. Total level sums all 24 skills, and untouched skills give
+   the cheapest early levels. Decision: **add Fletching, Crafting, Agility,
+   Herblore and Runecrafting in sim v1**, for 19 trainable. Farming,
+   Construction, Summoning, Hunter and Slayer tasks stay out, as a stated
+   limitation.
+
+**Server:**
+4. **Ambient bots off** for calibration and E6 (recommended).
+
+**Calibration:**
+5. **The gate:** ±20% on mean XP/hr, gp/hr and duration per calibrated
+   option (recommended), with one patch round; residual gaps are reported.
+6. **Calibration characters,** Caleb's own design, refined over two rounds.
+   Claude flagged blind spots before the second round:
+   - untrainable skills
+   - gear
+   - bands that can't be reached
+   - grid size
+   - side effects of debug-completed quests
+   - self-crowding
+   - testing only the diagonal
+
+   The design:
+   - **Bands:** fresh, 11, 21, 31, 41, 51, 61, 71, 81, 91, 99. Caleb kept
+     all 11, though Claude noted 81–99 can't be reached in 20 hours.
+   - **Skills:** trainable skills at the band, the rest at 1.
+   - **Gear:** non-fresh characters get the starter kit and
+     100 gp × total level, and buy their own gear on the GE.
+   - **Quests,** cumulative: 11–21 the four starter quests; 31–41 adds the
+     rest of the 32-quest-point route; 51+ all 21, including Dragon Slayer.
+
+**Baselines:**
+7. **Scripted-guide baseline** (recommended): Claude drafts it from archived
+   2009 guides, cites them, and Caleb reviews it before E1.
+
+**Agent defaults (reversible; Caleb can object):**
+- **Calibration runs:** each option at the bands where it's unlocked, about
+  10 runs each; parallel characters never share a spot.
+- **Buying rule for calibration characters:** the tool for the calibrated
+  option, then the weapon, then armour by defence per gp, within level and
+  quest requirements.
+- **Ported from the server:** resource depletion and respawn, HP regeneration,
+  and eating. Travel stays on the current model until calibration.
+- **Speed:** candidate ranking is exact, made fast with caching and
+  vectorisation, not approximated.
+- **GE purchases** are collected to the bank, which matches the server
+  executor's path.
+- **The RL stack** is installed when SimEnv is wired up: CPU PyTorch for PPO,
+  CUDA later only if Envelope Q or the stretch needs it.
+
+**For Caleb to review later:**
+- the item vocabulary list
+- the scripted-guide routine
+- the five new skills' options (catalog v1.2)
+
+### Built (afternoon): sim v0, first slice
+`m002-sim-v0-core-and-woodcutting`, on branch `sim-v0` (the merged
+`sync-upstream-2009scape` branch deleted first; the simulation-decision docs
+committed as `493af16`).
+- `rlscape/sim/`:
+  - `skills.py`: the 24 skills in the server's order; XP and levels from
+    `Skills.getExperienceByLevel`, line for line; the skill measure that
+    r_skill rewards
+  - `state.py`: the character, with inventory stacking rules, bank,
+    equipment, location, access progress and net worth
+  - `options.py`: the option interface and the termination reasons
+  - `engine.py`: `Simulator.reset` and `step`, which handle the time budget
+    (D or what's left of the horizon), truncation, the reward vector, every
+    contract `info` field and checkpoints
+  - `woodcutting.py`: the first family
+- **Woodcutting,** ported from `WoodcuttingListener`:
+  - a swing every 3 ticks, succeeding with `getSkillSuccessChance` over the
+    tree's bounds plus the axe's enum ordinal (halved for black)
+  - normal trees fall after every log, others 1 time in 8
+  - respawns from `getRespawnDuration` with one player online
+  - the axe chosen by `SkillingTool.getHatchet`'s priority
+  - sampled log by log: one geometric draw of swings per log, one Bernoulli
+    for the fall; the level is re-read after every log
+- **New gamedata parsers,** reading the server source:
+  - `starter_kit()` from `CharacterDesign`
+  - `tree_types()` from `WoodcuttingNode`'s switch, including fall-through
+    labels and the never-falling `respawnRate = -1`
+  - `skilling_tools()` from `SkillingTool` (all 36 constants, so the
+    ordinals are right)
+- **Refactor:** `rlscape/travel.py` now holds the travel model shared by
+  combat and gathering; `candidates` imports it.
+- **Dependency:** `numpy` (2.5.4) added, the first piece of the RL stack.
+- **Tests:** `tests/test_sim.py` (10). Full suite: 35 passed, 14 skipped.
+
+### Findings
+- A fresh character fills its 10 free slots with logs in 197 ticks (walk
+  included) and reaches Woodcutting 3. That matches the server's G2 gate,
+  which gave the same 10 logs and 250 XP. The 18-item starter kit leaves only
+  10 free slots, so banking or dropping starter items comes up early for the
+  agent.
+- **Speed:** about 5,700 woodcutting decisions/s on one core, reset
+  included, so roughly 90k/s across 16 workers against the 20k target.
+  Combat ranking is the expected bottleneck.
+- **Still estimates:** the Lumbridge, Draynor-oak and Edgeville-yew tiles
+  and all tree counts (the willow tile comes from the `DraynorWillows` bot).
+  The server ships no scenery data, so a bridge export of scenery near each
+  site is the planned source. Bird nests (1 in 282 logs) aren't modelled yet.
+
+### Built (afternoon): sim v0, mining and fishing
+`m002-sim-v0-mining-and-fishing`. The woodcutting slice was committed first
+(`f2baf2c`).
+- **Mining**, ported from `MiningListener`:
+  - an attempt every 4 ticks (`getDelay`)
+  - success is `Math.random()·100·rate < Math.random()·(1 + level − rock
+    level)·(1 + pickaxe ratio)`, computed exactly as a race between two
+    uniform rolls
+  - every ore empties its rock, which respawns after `getRespawnDuration`
+  - a gem 1 time in 282 (`roll`), uniformly one of four, because
+    `GEM_REWARDS.random()` ignores the frequencies listed beside them
+  - the pickaxe chosen by `getPickaxe`'s priority
+- **Fishing**, ported from `FishingListener`, `FishingOption.rollFish` and
+  `FishingNPC`:
+  - an attempt every 5 ticks
+  - the method's fish are rolled in order with `Fish.getSuccessChance`
+    (linear in level), and the first that passes is caught (rainbow fish only
+    with stripy feathers)
+  - one bait per catch
+  - spots move every `random(200, 390)` ticks among their `FishSpots` tiles,
+    and the angler walks after them
+  - sampled as one geometric draw for any catch and one categorical draw for
+    which fish, with the server's sequential weights; redrawn after a spot
+    move, since geometric waits are memoryless
+- **Shared gathering loop** (`rlscape/sim/gathering.py`): sites of depleting,
+  respawning resources, now used by woodcutting and mining. Woodcutting was
+  refactored onto it, and its 10 tests still pass.
+- **gamedata:**
+  - one parser for the node enums' `switch(identifier & 0xFF)` blocks,
+    across several constructors, with `identifier == N ? a : b` resolved per
+    label. It now covers `WoodcuttingNode`'s farming-tree constructor (ids
+    19–23), which a first draft missed.
+  - new: `rock_types()`, `fish_types()`, `fishing_methods()`,
+    `fish_spot_locations()`
+- **Tests:** `tests/test_sim_gathering.py` (8). Full suite: 43 passed, 14
+  skipped.
+
+### Findings
+- **Sources for the sites:**
+  - from the server: fishing spot tiles (`FishSpots`) and the coal tile (the
+    `CoalMiner` bot's Dwarven Mine zone)
+  - still estimates: the copper, tin and iron tiles, and every rock count
+- **A fresh character** (bronze pickaxe and small net) can chop logs, mine
+  copper and tin, and net shrimp: 10 copper in 282 ticks, or 10 shrimp in
+  444 ticks, walks included.
+- **Speed:** about 5,600 mining and 2,900 fishing decisions/s on one core,
+  reset included.
+
+### Built (late afternoon): sim v0, pickpocketing and hitpoints
+`m002-sim-v0-pickpocketing`. The mining and fishing slice was committed first
+(`ae0cb7e`).
+- **Pickpocketing** (`pickpocket_men`), ported from `ThievingListeners` and
+  `Pickpockets`:
+  - success when `randomDouble(1, 100) <= getSkillSuccessChance(low, high,
+    level)`, i.e. p = (T − 1) / 99
+  - a success gives 3 coins and 8 XP with a 2-tick lock
+  - a failure gives a 5-tick stun and `random(1, 1)` = 1 damage
+  - sampled as runs of successes ended by a failure, one geometric draw each
+  - the site is the server's Man spawn nearest the spawn point, (3230, 3238)
+- **Hitpoints** (`rlscape/sim/health.py`), shared with combat later:
+  - regeneration from `SkillRestore`: one HP every **101** ticks (its check
+    is `++ >= 100`), on a cycle carried across options
+  - eating from `ConsumableListener` (2 ticks per bite) with heal amounts
+    from `Consumables` (102 single-bite foods)
+  - the retreat rule: eat at or below half HP, cheapest food first, and stop
+    when the food runs out
+  - the engine applies regeneration for options that don't handle HP
+    themselves
+- **gamedata:** `pickpocket_targets()` (17 targets with loot tables) and
+  `food_healing()`.
+- **Tests:** `tests/test_sim_thieving.py` (8). Full suite: 51 passed, 14
+  skipped.
+
+### Findings
+- **A fresh character** pickpockets 27 times (81 coins, Thieving 1→4), eats
+  its shrimp and bread, and stops out of food at half HP after 135 ticks. The
+  option is then masked until HP regenerates or food is bought, which is the
+  first real economy and health trade-off the agent meets.
+- **Speed:** about 1,500 decisions/s on one core for a full 15-minute option
+  (about 150 events). That's about 24k/s across 16 workers, so it's the
+  first family near the target; vectorising it is the fallback.
+- **Death** isn't modelled yet. Pickpocketing men can't kill (1 damage, stop
+  at half HP), and the option raises if a hit ever would. The death rule
+  arrives with combat.
+- **Only fixed, always-dropping, stackable loot** is modelled. Targets with
+  weighted or non-stackable loot raise until their table rules are ported.
+
+### Built (late afternoon): sim v0, processing
+`m002-sim-v0-processing`. The pickpocketing slice was committed first
+(`32f4ed3`). Catalog §3's nine options, ported from the server's pulses:
+- **Smelting** (`SmeltingPulse`, `smelting.Bar`):
+  - a bar every 5 ticks; the ores are used either way
+  - iron succeeds half the time (`nextBool`)
+  - XP only on success (bronze 6.2, iron 12.5, steel 17.5)
+- **Smithing** (`SmithingPulse`, `Bars`, `SmithingType`, `BarType`):
+  - an item every 4 ticks after a first tick, with a hammer
+  - each item uses its type's bars and gives the bar type's XP per bar
+  - "best item" means the most bars per item the level and bars allow, then
+    the most valuable per bar; leftover bars go into the next best that fits
+  - dart tips and claws only after The Tourist Trap and Death Plateau, as
+    the pulse checks
+- **Cooking** (`StandardCookingPulse`, `CookableItems`):
+  - an item every 5 ticks on a range
+  - burnt if `randomDouble(100) > getSkillSuccessChance`, with the range's
+    bounds; the Lumbridge castle range (object 114) needs Cook's Assistant
+    and has its own bounds
+  - anything `CookableItems` turns into food is cooked
+- **Firemaking** (`FireMakingPulse`, `firemaking.Log`):
+  - a light attempt every 3 ticks with the server's ceil formula against
+    `random(99)`
+  - a log lit within 2 ticks of the last fire lights at once
+    (`setLastFire`), so a line of fires rolls only for the first log
+- **Burying bones** (`BoneBuryListener`, `Bones`): a bone every 2 ticks.
+- **Stations:** `data/stations.csv` (new, curated) with 4 furnaces, 2 anvils
+  and 3 ranges. Three tiles come from server code (the Lumbridge and
+  Edgeville furnaces, the Varrock south-east anvil, all from diary checks);
+  the rest are estimates. An option uses the nearest station the character
+  can reach.
+- **gamedata:** `smelted_bars()`, `smithables()` (all 157 `Bars` entries),
+  `cookables()` (with `lumbridgeRangeValues`), `log_types()`,
+  `bone_experience()`, `stations()`.
+- **Tests:** `tests/test_sim_processing.py` (9). Full suite: 60 passed, 14
+  skipped.
+
+### Findings (need calibration)
+- **Firemaking is very fast.** Because of the 2-tick relight, 10 normal logs
+  burn in 21 ticks (400 XP), about 114k Firemaking XP/hr even at level 1, and
+  willows would give about 160k/hr. That is the server's code as written,
+  ported faithfully. It's the first thing to check on the server
+  (`CHAIN_TICKS`), because if it holds, burning logs will dominate the skill
+  reward.
+- **Cooking without Cook's Assistant goes to Al Kharid's range.** The Al
+  Kharid toll gate (10 gp, or Prince Ali Rescue) isn't modelled, and the
+  range tiles are estimates.
+- **Fresh characters can't smith yet:** the starter kit has no hammer, so
+  buying one is the first economy dependency.
+
+### User decisions (late afternoon, after the processing slice)
+`m002-al-kharid-toll`.
+- **Firemaking's speed is normal** (Caleb). In 2009 it was seen as a
+  do-nothing skill that unlocks nothing, and burned logs give nothing back.
+  The model already reflects that: logs leave the inventory with no product,
+  so net worth falls by their value and the wealth reward charges for it.
+  No calibration flag.
+- **Model the 10 gp Al Kharid toll** (Caleb). Built in
+  `rlscape/sim/movement.py`, and every option now walks through it:
+  - the server's rules (`TollGateOptionPlugin`, `BorderGuardDialogue`): 10
+    coins from the inventory each time the gate is passed, in either
+    direction; free once Prince Ali Rescue is past stage 50, counted here as
+    complete
+  - a walk uses the gate when one end is inside Al Kharid and the other is
+    west of the fence, south of its north end
+  - without 10 coins in the inventory, the walk goes round the fence's north
+    end instead (as players did via the Al Kharid mine): slower, never
+    stranded
+  - nearest-station choices count the route, detours included
+  - the fence line and its north end are estimates to verify on the server
+- **Tests:** `tests/test_sim_movement.py` (6). Full suite: 66 passed, 14
+  skipped.
+- Work pauses for a few hours after this commit.
+
+### User correction (late afternoon): cooking on fires
+`m002-cooking-on-fires`.
+- **Caleb: most food doesn't need a range; it cooks on a fire the player
+  lights.** The server agrees:
+  - `StandardCookingPulse` handles fires: 4 ticks an item instead of 5, with
+    each food's fire bounds
+  - `CookingRewrite` requires a range only for bread dough, uncooked cake
+    and barley
+- **Built:** `cook_fish` now lights a fire where the character stands when
+  it holds a tinderbox and a log it can light:
+  - it burns the cheapest such log with the firemaking roll and gains its
+    Firemaking XP
+  - the fire lasts `Log.life` ticks (180+), which outlasts a full inventory
+  - it cooks there at the fire rate and bounds
+  - range-only food, or everything when no fire can be made, still goes to
+    the nearest range
+- **gamedata:** `log_fire_ticks()`.
+- **Effect:** at the Draynor fishing spot, 10 raw shrimp now cook in 44 ticks
+  with no walk and no toll; the range route took over 95 ticks plus the toll.
+  Fishing then cooking on the spot, the classic 2009 loop, is now cheap, and
+  logs gain a use beyond burning or selling.
+- **Tests:** 3 more in `tests/test_sim_processing.py`. Full suite: 69
+  passed, 14 skipped.
+
+### Built (evening): sim v0, inventory, alchemy and selling
+`m002-sim-v0-inventory-and-selling`. Caleb: "Continue work on the project.
+Try to avoid things that need my approval for now." So nothing is committed
+or pushed, nothing changes in the fork, and the item vocabulary stays out of
+the catalog.
+- `rlscape/sim/economy.py` (catalog §5–§7):
+  - **`bank_deposit`:** walk to the nearest bank and deposit everything except
+    tools, food, ammunition, runes and fishing bait; banknotes go in as their
+    items
+  - **`bank_withdraw_for_<activity>`** (9): the activity's tool if missing,
+    then its inputs in proportion up to a full inventory; for cooking, one log
+    as well to make a fire
+  - **`drop_<item>` / `drop_misc`:** dropped items leave net worth and are
+    reported in `items_delta["dropped"]`
+  - **alchemy** from `ModernListeners.alchemize`: low (Magic 21, 3 fire + 1
+    nature, 31 XP) and high (Magic 55, 5 fire + 1 nature, 65 XP), 5 ticks a
+    cast, the export's alchemy values, fire staves (`MagicStaff.FIRE_RUNE`)
+    replacing fire runes
+  - **`sell_ge_*`:** the frozen buyer pays the 2009 price for items that have
+    one, and GE-blocked items never sell
+  - **`sell_store_*`:** the nearest general store pays `Shop.getGPSell`'s low
+    alchemy minus 3% of value per unit of overstock (at most 10), unit by
+    unit, never below 1 coin
+- **Vocabulary handling:** `build_catalog(vocabulary=...)` builds the per-item
+  actions for any vocabulary. The default is empty, so the catalog carries
+  only the misc actions until Caleb checks V. "Misc" means outside V and
+  never coins or what banking keeps.
+- **gamedata:** `alchemy_values()`, `unnoted_ids()`, `fire_staves()`,
+  `ge_prices_2009()`, `item_base_values()`. `data/stations.csv` gains 4
+  general stores (estimates).
+- **Engine:** reports drops; "completed" now also means a one-shot option
+  finished.
+- **Tests:** `tests/test_sim_economy.py` (12). Full suite: 81 passed, 14
+  skipped.
+
+### Agent choices (reversible; for Caleb's review)
+- Fishing bait is kept on deposit along with the catalog's list, treated as
+  an activity's ammunition.
+- A general store is assumed to start each sale at its normal stock;
+  player-sold stock drains back between visits on the server.
+- Timings to calibrate: 1 tick per unit dropped, 8 ticks per GE trip, 3 ticks
+  per store sale.
+- **Buying isn't built.** The catalog fixes its groups and sources, but the
+  concrete actions ("best affordable food, up to 100", which tiers), where
+  purchases land (inventory or bank), and whether bought gear is wielded are
+  design calls for Caleb. A draft comes for his review.
+
+### Built (evening): sim v0, combat part 1 (melee fights, drops, death)
+`m002-sim-v0-combat-melee`, continuing under "avoid things that need my
+approval".
+- **Two fixes to the drop model, both bringing it in line with the server**
+  (they change the candidate rates slightly):
+  - **Amounts exclude the upper bound.** `WeightedItem.getItem` draws
+    `random(min, max)`, which never returns max, so the mean is
+    (min + max − 1) / 2; it was (min + max) / 2. That affects 882 entries.
+  - **Placeholder ids aren't items.** 477 entries point to sub-tables: the
+    rare drop table (31), herbs, gems, seeds, clues (`SPECIAL_DROP_SLOTS`).
+    They had counted as items and as inventory slots; they now count as
+    nothing until the sub-tables are ported, which understates some
+    monsters' loot.
+- **`rlscape/sim/equipment.py`:**
+  - a fighter's bonuses come from what's worn
+  - `wield_best` puts on the best weapon for the combat class (scored as
+    (attack + 64)(strength + 64) / speed for melee, matching the server's
+    formulas) and the best armour per slot
+  - equip requirements from the item configs and quest locks from
+    `ItemQuestRequirementListener` are respected (134 items: rune
+    platebodies and green d'hide bodies need Dragon Slayer, the dragon
+    scimitar Monkey Madness, ...); a two-handed weapon empties the shield
+    slot
+- **`rlscape/sim/combat.py`:**
+  - **`fight`:** walk, wield, then kills until the budget, a full inventory,
+    out of food, or death. Each kill samples its cumulative-damage sequence
+    (one vectorised draw), and the monster's swings resolve one by one with
+    eating (3 ticks of attack delay a bite) and the retreat rule (2 escape
+    swings). A retreat or death mid-kill charges the time fought and the
+    XP for the damage dealt. XP is 4/damage to the style skill and 1.33 to
+    Hitpoints; drops go through the loot mode.
+  - **`roll_drops`:** `WeightBasedTable.roll`.
+  - **`die`:** your death rule, ported from `DeathTask`, `GraveController`
+    and `GraveType`: keep the 3 highest high-alchemy items, the rest into a
+    200-tick gravestone (or lost in the Wilderness, whose borders are
+    `WildernessZone`'s five rectangles), and respawn at full HP at rl.conf's
+    `home_location` (3222, 3218).
+  - **`reclaim_gravestone`:** available only while the walk beats the
+    timer; the engine clears expired gravestones.
+- **gamedata:** `equip_quest_locks()`. The rate model's offence helpers are
+  now public (`player_offence`, `npc_offence`).
+- **Tests:** `tests/test_sim_combat.py` (9). Full suite: 90 passed, 14
+  skipped.
+
+### Findings
+- **Sampled kill times match the rate model:** 135.5 against 134.1 fighting
+  ticks per cow for a fresh character.
+- **A fresh character can't sustain cows.** The server's formulas give cows
+  a 52% chance of hitting it, about 7 damage per kill, so with 10 HP and
+  the starter food it manages about 1.6 cows before stopping out of food,
+  in every one of 200 runs, with no deaths. A level-30 fighter fills its
+  inventory with hides in about 300 ticks.
+
+### Agent choices (reversible; for Caleb's review)
+- Combat options wield the best gear carried automatically (1 tick an item,
+  to calibrate).
+- Quest locks that only check "underway" are read as "complete".
+- Protect Item isn't modelled, and stacks count as one unit when choosing
+  the 3 kept items.
+- Items that don't fit when reclaiming a gravestone are left behind.
+
+### Still to come in combat
+- Ranged (arrows in the ammunition slot, ammunition use) and magic (runes per
+  cast).
+- The candidate-slot actions. Ranking takes 60–100 ms and the mask needs it
+  every step, so this needs vectorising and caching first.
+- The four loot-mode actions; poison; respawn waits; the sub-tables.
+
+### Built (evening): fast candidate ranking
+`m002-fast-candidate-ranking`.
+- **Profiling** one full ranking (3 classes, 5 plans, 1,058 pool entries)
+  took 89 ms:
+  - about half went to `loot_per_kill` rebuilding each monster's
+    expected-drop dictionary on every call
+  - about a fifth went to `combat_rates`
+  - neither changes as the character moves
+- **`rlscape/combat/ranking.py` (`CandidateRanker`):**
+  - **cached:** rates per (fighter, plan), loot per (loot mode,
+    vocabulary), access and Slayer per progress, and the gear check per
+    shield
+  - **vectorised over all sites with numpy:** walking time, the
+    inventory-cycle share, the filters, best site per monster, best plan,
+    one per name, and the 3 + 3 picks
+  - `candidates.select_candidates` stays as the reference
+- **Result:** about 1.3 ms per full ranking with a new location every call,
+  about 70× faster. The ranking matches the reference exactly (ids, values,
+  sites, training styles) in 18 of 18 cases across six characters,
+  including all-zero gp ties, an underground start and no food. The
+  reference's tie order (names first seen valid in pool order) is
+  reproduced.
+- **Tests:** `tests/test_ranking.py` (6 parametrised cases, warnings as
+  errors). Full suite: 96 passed, 14 skipped.
+- **Next:** the 30 combat-slot actions and the 4 loot-mode actions on top of
+  the ranker, then ranged and magic fights.
+
+## 2026-10-29
+
+### Committed: economy, melee combat and fast ranking
+Caleb: "Commit this and keep going with the combat-slot actions." Commit
+`59d7a31` on `sim-v0` (not pushed) holds cooking on fires, inventory,
+alchemy and selling, melee combat, the drop-model fixes and the fast
+ranker, with their records. `m002-combat-slot-actions`.
+
+### Built: the combat-slot and loot-mode actions
+`m002-combat-slot-actions`.
+- **`rlscape/sim/slots.py`:**
+  - `CombatSlots` ranks once per state with the shared `CandidateRanker`
+    and serves all 30 slot actions: their mask entries and their runs.
+    - The fighter is the character after the fight's own wielding step
+      (`wield_best` on a copy), so the ranking sees the gear the fight
+      uses.
+    - The ranking is cached on a fingerprint of everything it reads (tick,
+      location, HP, XP, inventory, equipment, bank, loot mode, quests). The
+      run after a mask check fights the candidate the mask showed.
+  - `FightSlot`: ids `fight_<class>_<xp|gp><n>[_<style>]`, in the order
+    melee slot by slot (accurate, aggressive, defensive), then ranged, then
+    magic. Ranged and magic stay masked until those fights are built.
+  - `SetLootMode`: `loot_all`, `loot_valuable`, `loot_vocabulary`,
+    `loot_none`.
+  - The catalog now has 71 actions: combat sits between processing and
+    inventory, as in option catalog §9.
+- **Access sees the whole state.** `CharacterState.access_progress()` adds
+  items held (inventory, bank, worn), levels and coins to the quests.
+  `access.relevant` reduces it to what the access table checks: the items
+  and skills the rules name, and coins rounded down to the highest
+  threshold reached. Access is unchanged, and the ranker's per-progress
+  cache keeps hitting as items come and go.
+- **`info["option"]`** now carries a fight's `target`, `target_name`,
+  `style`, `site` and `kills`, as env contract §6 asks. This is through a
+  new `OptionResult.detail`.
+- **Speed:**
+  - The first mask fills the caches (0.3 s per process).
+  - After that, a decision costs a median of 1.1 ms for the mask and
+    0.6 ms for the step.
+  - Level-ups that change the fighter cost about 20 ms once (rates for the
+    3 styles over 1,058 monsters).
+  - Three random 20-hour episodes biased to combat ran 382 fights with no
+    errors. The fights ended 162 out of food, 159 on time, 58 with a full
+    inventory and 3 at the horizon.
+- **Tests:**
+  - `tests/test_sim_slots.py` (6):
+    - the ids and their order
+    - the slots equal the reference ranking for a hand-built armed
+      character
+    - per-style masking matches the filter, and bites with little food
+    - a slot fights its monster with the chosen style
+    - the loot mode is set by its action and used by fights
+    - the slots follow the character
+  - Two access tests in `tests/test_access.py`.
+  - Full suite: 104 passed, 14 skipped.
+
+### Agent choices (reversible; for Caleb's review)
+- **A melee style is masked when it fails the retreat-aware filter on its
+  own.** The slot's monster is ranked by its best style, but the filter is
+  what makes starting a fight safe, so it's applied per action. With little
+  food this often leaves one or two of the three styles.
+- **Choosing the current loot mode is masked,** so the action is never a
+  no-op. Setting a mode takes 1 tick, the minimum per decision.
+- **Access counts coins and items in the bank as well as on hand.** This
+  follows the access table's own "held" wording. There's no action to
+  withdraw coins yet, so counting only coins on hand would lock Brimhaven
+  and Waterbirth after any deposit. The fees still aren't charged.
+- **Dragons only reach a slot if the shield the fight will wear protects.**
+  The fight wears the best shield by defence, so a character holding a
+  better shield as well as the anti-dragon shield won't see dragons. The
+  ranking and the fight agree, which is conservative. Shield choice per
+  target belongs with the quests slice, the only source of the shield.
+
+### Next
+Ranged fights (a bow, arrows in the ammunition slot, arrows used and
+dropped) and magic fights (the best spell the runes allow, runes per cast),
+which unmask the 12 ranged and magic slots. Then the Gymnasium layer.
+
+### Committed: the combat-slot actions
+Caleb: "Commit this and keep going with ranged and magic." Commit `bac2124`
+on `sim-v0` (not pushed). `m002-ranged-and-magic`.
+
+### Built: ranged and magic fights
+`m002-ranged-and-magic`.
+- **Read the server first:**
+  - `RangeSwingHandler`: one shot per attack, the landing chance, rapid's
+    1-tick saving
+  - `ranged_weapon_configs.json` via `RangedConfigLoader`
+  - `MagicSwingHandler`; `MagicSpell.addExperience` (the base XP on every
+    cast, splash or hit)
+  - `CombatPulse` (players cast every 5 ticks); `MagicSpell.meetsRequirements`
+    (runes from the inventory; staves stand in)
+  - the elemental spell registrations, `MagicStaff`, `Runes`
+- **Server data parsed** (`rlscape/gamedata/server.py`):
+  - `combat_spells` (16 spells; levels and XP match `formulas.SPELLS`)
+  - `staff_runes`, `rune_ids`, `ranged_weapons`
+- **Worn stacks:** `CharacterState.worn_amounts` holds arrows and bolts in
+  the quiver and thrown weapons, with `worn()` and `use_worn()`. Net worth and
+  death count them in full; wielding 25 arrows would otherwise have read as
+  a wealth loss.
+- **Gear** (`rlscape/sim/equipment.py`):
+  - ranged kits: a bow or crossbow with ammunition it accepts, a thrown
+    weapon (its own ammunition), or a crystal bow
+  - the best kit by damage per tick; stacks go on whole and top up
+  - thrown weapons ignore the quiver's ranged strength, as in the server
+  - **Fixed:** wielding a two-handed weapon with a full inventory could
+    make the shield vanish, since `state.add` silently drops what doesn't
+    fit. Now nothing is wielded without room for what comes off.
+- **Fights** (`rlscape/sim/combat.py`):
+  - **Ranged:** one shot from the worn stack per attack. A shot lands with
+    1 − 1/⌊5·(1 + Ranged/100)⌋ (4 in 5 at level 1) and is picked back up when
+    the loot mode takes arrows.
+  - **Magic:** runes paid per cast (a worn elemental staff stands in for its
+    own), and the spell's base XP on every cast.
+  - **Ending:** `out_of_ammo`, charging the attacks made.
+- **Ammunition in the ranking:**
+  - A candidate's share of the option is now capped by how long the arrows
+    or runes last (`Character.attacks_held`, `Rates.attacks_per_kill`), in
+    both the reference and the fast ranker, as catalog §4.A's "current ...
+    ammunition" asks.
+  - Without the cap, Ram topped a fresh character's magic slots at
+    8,760 XP/hr though the 15 starter casts last 75 ticks. With it, the slots
+    are rats, gnome children and men at about 590 XP/hr over the option.
+  - The fast ranker still matches the reference in all 8 cases, including
+    two new ones with finite ammunition.
+- **Slots:**
+  - Ranged slots rank the accurate, rapid and longrange styles; magic slots
+    use the best spell.
+  - Each class is ranked for the character armed for it: its own gear,
+    shield and free slots.
+- **Checks:**
+  - **Fresh character:** a ranged fight on rats made 20 kills, and the 25
+    arrows lasted 490 ticks. A magic fight cast 15 wind strikes (110.5 Magic
+    XP).
+  - **Random stress:** four random 20-hour episodes ran with no errors.
+  - **Speed:** the mask takes a median of 1.2 ms (p95 26 ms, from level-ups
+    over three classes).
+- **Tests:**
+  - `tests/test_sim_ranged_magic.py` (10).
+  - The slot test now checks all three classes against the reference.
+  - Two finite-ammunition ranker cases.
+  - Full suite: 117 passed, 14 skipped.
+
+### Agent choices (reversible; for Caleb's review)
+- **Magic doesn't need a staff.** Spells are cast by hand at the autocast
+  rate. The server's autocast needs a staff, and the starter kit has none,
+  so otherwise magic would wait for buying. The catalog's "autocasts" is
+  annotated.
+- **Arrows that land are picked straight back up** when the loot mode takes
+  arrows. The pick-up time sits in the per-kill overhead (to calibrate).
+  With `loot_none`, every shot is gone.
+- **A magic fight keeps one spell.** When its runes run out the option ends,
+  and the next ranking picks the next spell the runes allow.
+- **The dark bow and chinchompas are never wielded** for ranged (two hits
+  per attack; multi-target).
+- **Magic gear:** the fight wields the weapon with the best magic attack
+  bonus (a bronze dagger's +1 beats nothing) and armour by defence, ignoring
+  armour's magic penalties.
+
+### Known gaps
+- gp/hr still doesn't subtract the arrows and runes used.
+- The kill in progress when the time budget ends earns nothing and uses no
+  ammunition (as for melee).
+
+### Next
+Buying (needs Caleb's review) keeps ranged and magic going after the starter
+arrows and runes. Then the Gymnasium layer.
+
+### Committed: ranged and magic
+Caleb: "Commit this and draft the buying actions for my review." Commit
+`8eb9486` on `sim-v0` (not pushed). `m002-buying-draft`.
+
+### Drafted: the buying actions, for Caleb's review
+`docs/buying-draft.md`; `m002-buying-draft`. Nothing is built.
+- **Server mechanics read for it:**
+  - The frozen GE seller fills a buy at once, at the 2009 price, from
+    unlimited supply, for items with a 2009 price. There are no buy limits.
+  - `ge_collect` takes items as banknotes when they don't fit.
+  - Shop prices climb from 100% to 130% of value as stock runs down, and the
+    whole purchase needs the coins in the inventory. Stock restocks by 1 unit
+    per 100 ticks and is shared (`personalized_shops = false`).
+- **The proposal:**
+  - 51 GE actions and 37 shop actions (66 if the shops that never beat the
+    GE are trimmed), with lots, masks, wearing on purchase and a banking-rule
+    change.
+  - Nine questions for Caleb, each with a recommendation.
+- **Findings:**
+  - The buy list alone has 67 items, more than V's estimated 60, so V grows.
+  - Smithing needs a hammer, which the starter kit lacks. Until buying
+    exists, one comes only from drops (316 monsters, guards among them). The
+    default `loot_valuable` mode skips it, since a hammer is worth 1 gp.
+  - The server's item configs swap skill and level in the "requirements" of
+    the fishing rod and fly rod (`{5,10}`, `{20,10}`). It's harmless: rods
+    can't be worn, and fishing levels come from the fishing code.
+
+### Decided: most of the buying questions (Caleb)
+`docs/buying-draft.md` §4; `m002-buying-decisions`. Nothing is built.
+- **Decisions:**
+  - Q1: as recommended, a buy gets as many as the coins allow, up to a lot.
+  - Q2: shop purchases land in the inventory as items. GE purchases arrive
+    as banknotes unless it's a single item.
+  - Q4: buys that aren't upgrades are masked.
+  - Q5: armour as pieces, not sets. With sets, rune armour would wait for
+    Dragon Slayer, though only the platebody needs it.
+  - Q7: every shop action is kept, including the shops that never beat the
+    GE on price.
+  - Q8: processing inputs can be bought.
+  - Q9: shop stock is tracked within an episode, and selling uses it.
+- **Open for discussion:** Q3 (gear) and Q6 (food), explained in the
+  draft's §5 and §6.
+- **Findings:**
+  - Banking already strands gear without buying. A deposit banks unworn
+    gear, and no action takes gear out, so the starter kit's first deposit
+    loses the bow (after melee) or the sword and shield (after ranged). My
+    revised Q3 recommendation fixes the deposit rule instead of wearing gear
+    on purchase.
+  - My draft's food tiers included two fish that other fish beat outright.
+    Cod heals as much as trout for less, and monkfish heals more than
+    swordfish for less. Corrected tiers: mackerel, tuna, monkfish, shark.
+  - Q2's banknotes need a way to take GE food out of the bank, and lots for
+    banknoted buys, since free slots no longer cap them. Both are proposed in
+    the draft.
+  - The server's GE lets a player collect as items or as banknotes, so Q2 is
+    the human path. The bridge's `ge_collect` needs a fork change to choose
+    banknotes.
+
+### Decided: gear withdrawals, food tiers and lots; GE collection fixed on the fork
+Caleb, on the buying draft; `m002-ge-banknotes`. The simulator side isn't built.
+- **Decisions:**
+  - Q3a, option (b): deposits are unchanged, and `bank_withdraw_gear_<class>`
+    (melee, ranged, magic) takes a class's best gear out of the bank.
+  - Q3b, as a principle: gear goes on when it suits the task. Caleb's example:
+    no metal armour for tasks with a lot of running, since it drains run
+    energy.
+  - Q6: four GE food tiers (mackerel, tuna, monkfish, shark), plus Wydin's
+    bread. The alternatives were one `buy_ge_food` that picks the fish that
+    heals fully at the current max HP, or all eight fish as tiers.
+  - Lots for banknoted GE buys: 100 for food, 1,000 for processing inputs.
+  - "Make the change(s) as appropriate to make sure that GE purchasing acts
+    normally": the go-ahead for the fork change below.
+- **Fork change** (`RLCommands.kt`, uncommitted):
+  - `ge_collect` collects as Q2 decided: more than one of an item that has a
+    banknote as banknotes; a single item, coins, runes or arrows as items.
+  - **Bug found and fixed:** offers placed back to back could get the same
+    slot, so the second replaced the first. A new offer reaches the
+    character's records only when the GE worker thread writes it, and until
+    then its slot looked free. The bridge now remembers the slots it has
+    handed out.
+  - A new live test covers both.
+- **Findings for Q3b** (the mechanism is still Caleb's call; draft §5):
+  - The simulator has no run energy or weight, so gear costs nothing outside
+    combat, and Agility would do nothing.
+  - The server's weight penalty is mild. Running drains 1% faster per kg, and
+    full plate is about 27 kg, which makes long trips about 4% slower. A full
+    inventory of ore (about 63 kg) weighs more than the armour.
+  - The server character never runs: no bridge command turns run on, so it
+    walks at 1 tile a tick while the simulator assumes running at 1.5. The
+    ±20% gate would catch this in travel times.
+- **Still open:** the Q3b mechanism, and how GE food comes out of the bank.
+
+### Decided: run energy and weight, and food withdrawals; buying built in sim v0
+Caleb: "3b should sue option a. Make the bank_withdraw_<food> actions per
+tier." `m002-buying-sim`. Uncommitted.
+- **Decisions:**
+  - Q3b, option (a): the simulator models run energy and weight (drain by
+    weight, restore by Agility), the agent gets `bank_deposit_worn`, and a
+    bridge command turns run on so the server character runs as a person
+    would. I read choosing (a) as the go-ahead for that run-toggle fork
+    change; it comes with the energy change, not yet built. The alternatives
+    were (b) a rule that fights withdraw their class's gear and every other
+    option banks it first, and (c) no weight or energy at all.
+  - Food: one `bank_withdraw_<food>` per GE tier (mackerel, tuna, monkfish,
+    shark), not one withdrawal that picks the largest food that heals fully
+    at the current max HP.
+- **Built in sim v0** (`rlscape/sim/buying.py`, `rlscape/sim/shops.py`):
+  - 113 buy actions (76 GE, 37 shop), 3 gear withdrawals and 4 food
+    withdrawals.
+  - Shop stock, prices and restocking from `Shop.kt`, tracked within an
+    episode (Q9). General-store sales now use the same stock: a store's own
+    stock for items it sells, otherwise the player stock all general stores
+    share, which the server clears every 3 hours.
+  - Processing withdrawals now bank banknotes of their inputs first, so GE
+    inputs need no separate deposit.
+- **Option catalog v1.2:** §8 now holds the buying decisions, which replace
+  the draft's table; §1, §5, §7 and §9 are updated. `docs/buying-draft.md`
+  is marked superseded.
+- **Agent choices** (reversible, listed in `buying.py`):
+  - For the upgrade check, "held" means usable now, wherever it is.
+  - The coins withdrawn are just the shortfall. A shop trip's bank stop is
+    the bank with the shortest walk overall.
+  - No shield is withdrawn behind a two-handed weapon.
+  - Restocks and the player-stock clear run on episode ticks. The server's
+    phase is arbitrary.
+- **Found:**
+  - **Mithril bars can't be processed in sim v0.** There's no
+    `smith_mithril` activity, so bought mithril bars can only be sold.
+    That's my draft's mistake. Options: add `smith_mithril` (Smithing 50,
+    one more processing action), or drop `buy_ge_2359`.
+  - Zeke's shop is listed twice in `shops.json` (ids 135 and 150).
+    `Shops.startup` maps the shopkeeper to the later one, so the sim uses
+    150.
+- **Next:** run energy and weight (3b), then the Gymnasium layer.
+
+### Decided: `smith_mithril`; buying committed
+Caleb: "Add smith_mithril and commit this." `m002-smith-mithril`.
+- **Decision:** add `smith_mithril` (my recommendation), not drop
+  `buy_ge_2359`. Bought mithril bars can now be smithed.
+- **Built:** `Smith("smith_mithril", "MITHRIL")` and its
+  `bank_withdraw_for_smith_mithril`, by the same rules as the other three
+  tiers. Smithing 50 makes daggers; the bigger items open with the level.
+  Mithril bars come only from the GE, since sim v0 has no mithril ore or
+  smelting.
+- **Option catalog v1.2:** §3, §5 and §9 (about 514 actions).
+- **Committed:** the fork's GE banknote change first, then this repo (the
+  submodule pointer, buying, `smith_mithril` and their records).
+- **Next:** run energy and weight (3b), then the Gymnasium layer.
+
+### Built: run energy and weight (Q3b)
+Caleb: "keep going with run energy and weight". `m002-run-energy`.
+- **Simulator** (`rlscape/sim/energy.py`): run energy and weight ported from
+  the server's `WalkingQueue` and `Settings`.
+  - Drain: 0.55 × (1 + kg / 100)% per running tick.
+  - Restore: 0.6 × 100 / (175 − Agility)% per other tick.
+  - Run turns off under 1%; death restores energy to 100%.
+  - Weight counts each inventory slot once, plus everything worn.
+  - Walks run until energy is out, then walk. `route_ticks` predicts the
+    same walk, so masks and runs agree. Every tick not spent walking
+    restores energy.
+- **`bank_deposit_worn`:** banks the worn gear but keeps tools and
+  ammunition on, as `bank_deposit` does, so the agent can't strand its axe
+  or pickaxe in the bank. The server has the player's path for it (the
+  banker's "deposit worn items").
+- **Fork change** (`RLCommands.kt`, fork `f5844bb`): `set_run` turns run on or
+  off as the run orb does. `state` now reports run energy, run on or off,
+  and weight.
+- **Docs:**
+  - option catalog §1, §5 and §8 (still v1.2)
+  - env contract v1.2: energy and weight in the observation (§3), and the
+    run rule (§7)
+- **Found:**
+  - **The server character already spawns with run on** (`AIPlayer.init`).
+    Once energy runs out, the server turns run off and nothing turns it
+    back on. Catalog §8 said the character "currently walks"; that was my
+    mistake, now corrected. `set_run` is still needed, to run again on
+    later walks.
+  - **The weight model matches the server.** It matches the server's
+    weight for the starter kit. Each running and resting tick on the server
+    drains or restores exactly what the sim computes (live test, one read
+    per tick).
+  - **Combat-slot masks are slow** (`FightSlot.available`, 91% of mask
+    time; about 90 steps/s on a random policy, unchanged by this work). I
+    flagged it as a separate task.
+- **Agent choices** (reversible):
+  - Run goes on at the start of every walk, not mid-walk once energy
+    recovers, because the server leaves run off once it runs out.
+  - Stairs and ladders count as rest.
+  - Moving between monsters in a fight isn't modelled, so fight ticks
+    restore energy.
+  - Fishing-spot moves still use the average speed.
+  - Observation encoding: energy / 100, and kg / 100 clipped to [0, 1].
+- **Next:** the Gymnasium layer (SimEnv and the observation encoder).
+
+### Built: the Gymnasium layer (SimEnv and the observation encoder)
+Caleb: "Commit this and keep going with the Gymnasium layer". `m002-gymnasium-layer`. Run energy was committed
+first: fork `f5844bb`, main repo `1b9b9b4`.
+- **`SimEnv`** (`rlscape/envs/sim_env.py`): the env contract's interface (§2)
+  over sim v0.
+  - `reset` takes `reward_weights` as an option, as §2 has it. The
+    defaults are (0.5, 0.5), the weights of the planned sweep.
+  - `step` returns w_s·r_skill + w_b·r_wealth, plus the §6 info.
+  - `action_masks()` and `option_catalog()`.
+  - Seeding follows Gymnasium: later resets continue the seeded stream.
+  - A masked action raises, as before.
+  - Episodes end only by truncation.
+- **`ObsEncoder`** (`rlscape/envs/encoding.py`): every §3 part.
+  - 480 features in [0, 1] for today's catalog (194 actions, empty *V*).
+  - Each part has a named slice, for the decision logs.
+  - `ServerEnv` will share it by turning the bridge state into a
+    `CharacterState`.
+- **`rlscape/quests.py`:** the 21-quest set with quest points, for the
+  observation now and sim v1's quest options later.
+- **Dependency:** `gymnasium` 1.4.0, the first of the RL stack (resources
+  [21]).
+- **Agent choices** (reversible, listed in the encoder's docstring):
+  - **Equipment tiers** come from item names (metal, bow wood, staff
+    kind), the tool chains, and the Fishing level of fishing gear. They
+    count the best item carried, worn or in the inventory, because fights
+    and tools use both.
+  - **Regions** are the nearest of the catalog's 11 region anchors within
+    60 tiles, or "elsewhere". The anchors are banks where the catalog names
+    one, otherwise estimates to verify.
+  - **Candidate features** are scaled by log XP/hr, signed log gp/hr,
+    damage per hour over HP plus food, and travel over 15 minutes.
+  - **Prayer** reads 1, since the sim doesn't drain it.
+- **Found:** Gymnasium's `check_env` stops at its first unmasked random
+  action, because masked actions raise. That's the contract's choice (never
+  a silent no-op); the checker's reset and space checks pass before that.
+- **Next:**
+  - the item vocabulary *V* for Caleb to check (the inventory and bank
+    parts grow with it)
+  - then the baselines and the eval harness
+
+### Drafted: the item vocabulary *V*, for Caleb's check
+Caleb: "Commit this and keep going with the item vocabulary".
+`m002-vocabulary-draft`. The Gymnasium layer was committed first, as main repo
+`44ad628`.
+- **Draft:** `docs/vocabulary-draft.md`, with the data in
+  `data/vocabulary_draft.csv`, generated by `scripts/draft_vocabulary.py`.
+  It applies the agreed rule (catalog §9, plus every bought item, §8) to
+  the simulator's own data.
+- **Drops:** a sweep repeats the agent's candidate selection (3 + 3 slots
+  per class) over the calibration bands' levels, gear and quests, from 18
+  hub towns, and records each drop's expected gp/hr per fight. Noted drops
+  count as their items.
+- **Found:**
+  - **The rule taken literally gives 208 items, not about 60.** The
+    catalog's estimate predates buying, which alone adds 77 items.
+  - **Each *V* item adds 7 observation features,** not 2: its inventory
+    and bank counts, plus its 5 actions' mask entries.
+  - All 156 recommended items have a 2009 GE price and can be alched.
+- **Recommendation (156 items; 974 actions; 1,572 observation features):**
+  - "common" drops: at least 1,000 gp/hr somewhere and in at least 20 of
+    the sweep's fights (50 drops)
+  - the 29 smithed products no other group names stay misc
+  - burnt food stays out
+- **Open, for Caleb (Q1–Q4 in the draft):** the meaning of "common", the
+  smithed products, burnt food, and any items to add or remove by hand
+  (herb seeds and grimy herbs are the largest group).
+- **Next:** once Caleb has checked it, *V* becomes the catalog's default
+  (catalog §9, with tests). Meanwhile, the baselines and the eval harness.
+
+### Decided: the item vocabulary *V* (156 items)
+Caleb: "Accept the recommendations, commit this, and keep going with the
+baselines". `m002-baselines`.
+- **Decisions (Q1–Q4 of `docs/vocabulary-draft.md`, all as recommended):**
+  - common drops are those in at least 20 of the sweep's fights: 50 of the
+    73 that reach 1,000 gp/hr (the alternatives: all 73, or at least 50
+    fights, which keeps 39)
+  - smithed products no other group names stay misc (29 items; the
+    alternative put all 44 smithed products in *V*, for 185 items)
+  - burnt food stays out
+  - nothing added or removed by hand
+- **Built:**
+  - *V* is frozen in `data/vocabulary.csv`, read by `rlscape/vocabulary.py`
+  - it's the default for `build_catalog()` and `SimEnv()`; an empty
+    vocabulary is still available for tests
+  - the catalog has 974 actions, and the observation has 1,572 features
+- **Tests:**
+  - `tests/test_vocabulary.py` (new)
+  - two existing tests updated for the new default. The slots test now
+    gives its reference ranking the same *V*: the `valuable` loot mode picks
+    up every *V* item, so bones fill the inventory sooner, and the bank
+    trips change the fresh character's melee XP slots (Rat, Giant spider,
+    Imp, where it was Rat, Man, Ram).
+- **Docs:**
+  - option catalog §9: the decision and the real action counts
+  - the draft marked accepted
+  - env contract §3's as-built note
+
+### Built: the random and greedy baselines (E1)
+Same interaction (`m002-baselines`). *V* was committed first, as main repo
+`cf050ed`.
+- **`rlscape/baselines`:**
+  - `RandomPolicy`: uniform over the masked actions.
+  - `GreedyPolicy(objective)`: one-step lookahead on expected rates at the
+    current state, as the ROADMAP describes.
+    - Each allowed option runs twice on a copy of the character, with the
+      policy's own random numbers, so the episode itself is untouched.
+    - It takes the best mean gain per mean game tick.
+    - Objectives: `skill` (r_skill), `wealth` (net worth, GP/hr) and `xp`
+      (raw XP summed over skills, XP/hr).
+- **`rlscape/eval/rollout.py`:** `play(env, policy, seed)` plays one
+  episode and collects the contract's metrics and checkpoints. The multi-seed
+  harness comes next.
+- **`SimEnv.observe()`** is now public, for tests and setup that edit the
+  state directly.
+- **Agent choices** (reversible):
+  - When nothing gains, greedy banks (`bank_deposit`) if it can, otherwise
+    takes the least bad option. Without that rule, a myopic policy stalls
+    at a full inventory.
+  - Greedy never picks loot-mode actions. They gain nothing themselves, so
+    switching back and forth would waste decisions.
+  - Two lookahead samples per option.
+- **First 20-hour episodes** (seed 0; one seed, so indicative only):
+
+  | Baseline | Total level | Net worth | Decisions | Wall time |
+  |---|---|---|---|---|
+  | random | 183 | 6,702 | 430 | 3 s |
+  | greedy skill | 236 | 5,981 | 136 | 10 s |
+  | greedy wealth | 94 | 1,006,944 | 1,090 | 67 s |
+  | greedy XP | 160 | 1,139 | 1,182 | 87 s |
+
+- **Found:**
+  - **Greedy on raw XP ends below random on total level.** It piles its
+    XP into firemaking and woodcutting (cut, burn, repeat), while greedy on
+    r_skill spreads its XP and mostly fights. The E1 "greedy XP/hr" should
+    probably be the r_skill version, the quantity the skill objective
+    measures; that's for Caleb.
+  - **Greedy wealth mines and banks:** copper ore at first, then iron. The
+    frozen January 2009 prices value copper ore at 72 gp and iron ore at
+    99 gp, so a fresh character's best immediate money is mining. It makes
+    over a million gp of net worth in 20 hours, a strong bar for H1 to
+    beat.
+- **Next:**
+  - the eval harness (seeds, parquet, bootstrap CIs)
+  - then the scripted-guide baseline, which Claude drafts from archived
+    2009 guides for Caleb's review
+
+### Decided: E1's greedy XP/hr baseline is greedy on raw XP
+Caleb: "Go with raw XP. There should be break points where going for certain
+levels in skills is very lucrative, comparatively. Going only by level will
+penalize an agent for going after higher skills to reach those break
+points." `m002-greedy-xp`.
+- **Built:** `e1_baselines()` returns E1's set: masked random, greedy on raw
+  XP (`greedy_xp`) and greedy on net worth (`greedy_wealth`). The scripted
+  guide joins after Caleb's review. Greedy on r_skill stays available for
+  comparison.
+- **Open, raised with Caleb:** the same argument applies to the agent's own
+  skill reward. r_skill is a level-based measure (env contract §4, signed
+  off), chosen so that high-level XP wouldn't dominate and so the reward
+  matches the reported metric. Whether to change it is Caleb's decision.
+
+### Decided: the skill reward stays level-based; total XP is reported
+Caleb: "Keep level-based reward and include total xp, but only up to the
+required xp to get level 99." `m002-total-xp`. This answers the open question
+from `m002-greedy-xp`.
+- **Env contract v1.3** (§4, §6, decision 19): total XP is a reported metric
+  at every checkpoint. It's Σ over all 24 skills of XP, each skill counted
+  up to 13,034,431, the XP for level 99. r_skill is unchanged.
+- **Built:**
+  - `capped_total_xp` (`rlscape/sim/skills.py`) and
+    `CharacterState.total_xp()`
+  - `info["total_xp"]`, in checkpoints, the reset info and `Episode`
+- **Agent choice:** E1's greedy XP/hr baseline now maximises the same capped
+  total, so it chases exactly the metric it's reported on. Within 20 hours
+  from a fresh start the cap never binds, so this changes nothing in
+  practice; it keeps the two definitions identical.
+
+### Built: the eval harness; a preliminary E1 run
+Caleb: "Commit this and keep going with the eval harness". `m002-eval-harness`.
+The baselines and total XP were committed first, as main repo `43887df`.
+- **`rlscape/eval/harness.py`:**
+  - `run(policies, seeds, env_kwargs, workers)` plays every (policy, seed)
+    episode, in worker processes when asked, and returns two tables: one
+    row per checkpoint (hour 0 and every 2 hours), and one row per episode.
+    An episode's result depends only on its policy and seed, never on the
+    number of workers (tested).
+  - `summarize`: per policy, hour and metric, the mean over seeds with a
+    percentile-bootstrap 95% CI.
+  - `paired_difference`: policy a − b on the same seeds, per hour, with a
+    CI.
+  - `save` writes parquet plus `config.json`: the config, its hash, the
+    git SHAs of this repo and the server submodule, whether the tree had
+    uncommitted changes, and package versions.
+- **`scripts/evaluate.py`:** the command line. Results go to the
+  git-ignored `results/`.
+- **Dependencies:** pandas 3.1 and pyarrow 26, from the ROADMAP's stack.
+- **Preliminary E1 run.** This isn't the E1 deliverable: the sim isn't
+  calibrated, and the scripted guide isn't written yet. It ran 3 baselines
+  × 10 seeds × 20 game-hours on 14 workers, in 223 s
+  (`results/eval/e1-preliminary-20261030`).
+
+  | At hour 20 (mean [95% CI]) | Total level | Total XP | Net worth |
+  |---|---|---|---|
+  | random | 184 [180, 187] | 72,712 [67,628, 78,752] | 8,982 [6,798, 11,531] |
+  | greedy XP | 159 [158, 160] | 767,586 [762,726, 772,094] | 1,199 [1,150, 1,241] |
+  | greedy wealth | 122 [101, 143] | 213,992 [136,095, 290,864] | 687,811 [434,726, 935,678] |
+
+- **Found: greedy wealth is bimodal.**
+  - 6 of 10 seeds mine iron and bank, ending at 0.94–1.09M gp and total
+    level 92–101.
+  - The other 4 commit early to fighting for drops (melee gp slots) and
+    never switch, ending at 118k–253k gp with total levels 157–167.
+  - That's myopic lock-in: mining iron needs Mining 15 first, which greedy
+    never trains once combat looks better. It's the kind of delayed payoff
+    H1 is about, and the reason the CI is wide.
+- **Episode cost:** in parallel, a greedy XP episode takes about 157 s, a
+  greedy wealth episode about 89 s, and a random one about 6 s.
+- **Next:** the scripted-guide baseline, which Claude drafts from archived
+  2009 guides, with citations, for Caleb's review.
+
+### Drafted: the scripted-guide baseline; a fight-mask fix
+Caleb: "Commit this and keep going with the scripted guide". `m002-scripted-guide`.
+The eval harness was committed first, as main repo `3714afa`.
+- **Sources:** the RuneScape Wiki's training pages as of January 2009
+  (revisions with stable links, resources [22]–[26]): Woodcutting, Fishing,
+  melee and the Mining article. No January 2009 page orders the skills, so
+  the schedule is Claude's proposal.
+- **Draft:** `docs/scripted-guide-draft.md`, built as
+  `rlscape/baselines/guide.py` (`ScriptedGuidePolicy`, run as
+  `scripted_guide`). It's not in `e1_baselines()` until Caleb has reviewed
+  it.
+  - Methods by level come from the guides.
+  - The schedule is lowest skill first, over Attack, Strength, Defence,
+    Woodcutting, Mining and Fishing.
+  - Upgrades: the tool, then the scimitar, then armour.
+  - Produce is sold only when it pays for the next upgrade.
+- **10 seeds × 20 hours (sim v0, uncalibrated):** total level 233 [230,
+  236], total XP 152k, net worth 23k. Random gives 192 levels and 9k.
+- **Sim fix (agent choice, reversible):** fight slots are masked while HP is
+  at or below the retreat point with no food. Before, every such fight
+  retreated before its first swing, and a policy could loop on 1-tick
+  fights. Random's numbers move a little (184 → 192 levels at hour 20), so
+  the preliminary E1 table above predates this fix.
+- **Found, for Caleb (Q2 of the draft):** nothing in the catalog withdraws
+  banked produce to sell it; `bank_withdraw_for_<activity>` covers
+  processing inputs only. Net worth doesn't need selling, but buying gear
+  needs coins.
+- **Caleb, during the turn:** "The agents must be flagged as members. Do the
+  agents know how to tick-manipulate for skilling and prayer flicking?"
+  - **Members:** they are. 2009Scape has no per-player membership: the world
+    setting `members = true` (`rl.conf`) covers every character, the
+    agent's included, and no per-player members check exists in the server
+    source. The sim includes members areas, banks and monsters.
+  - **Prayer flicking:** it works on this server and makes prayer free.
+    `Prayer.tick()` drains only on even counts of consecutive prayer ticks,
+    and the count resets when no prayer is on. Neither the sim nor the
+    planned executor uses prayers in combat yet, so the agents don't pray
+    or flick.
+  - **Tick manipulation:** options run the server's standard delays (for
+    example woodcutting's 3-tick `Clocks.SKILLING`). Whether an item
+    interaction can shorten the skilling clock on 2009Scape is unverified;
+    that needs a live test.
+  - Both are decisions for Caleb; options are in `m002-scripted-guide`.
+- **Next:** Caleb's review of the draft (Q1–Q4) and of the two technique
+  questions.
+
+### Decided: a withdraw-to-sell action; found: inventories clog with kept items
+Caleb: "1. Why is it only selecting from those skills? 2. Add a withdraw to sell
+action. 3. Is your recommendation here only for initial evaluation? I want the
+real agents to be able to utilize any skill. 4. Do you think we'll be able to
+get level 99 fishing in the time allowed?" `m002-withdraw-for-sale`.
+- **Decision (Q2 of the scripted-guide draft):** add a withdraw-to-sell
+  action.
+- **Built:**
+  - **`bank_withdraw_for_sale`** (catalog §5; `rlscape/sim/buying.py`):
+    walk to the nearest bank and take out produce as banknotes, most
+    valuable stacks first, up to the free slots. Produce is what
+    `bank_deposit` banks, apart from the gear the character would fight
+    in, and apart from items that neither note nor stack.
+  - **Per-item sells** (`sell_ge_<item>`, `sell_store_<item>`) now sell the
+    item's banknotes too. Before, a vocabulary item's banknotes couldn't be
+    sold at all.
+  - The catalog is now 975 actions, and the observation 1,573 features.
+  - **The guide funds upgrades from the bank,** and buys the best
+    affordable tier rather than only the best usable one.
+- **Answers:**
+  - **Q1 and Q3:** the six skills are only the scripted guide's scope. The
+    agents' action space has every sim v0 option (all 14 trainable skills'
+    activities, combat in all three classes, buying, selling), and sim v1
+    adds five skills and quests.
+  - **Q4:** no. Level 99 needs 13,034,431 XP. Sim v0's fly fishing
+    (powerfishing, uncalibrated) gives about 16k XP/hr at level 20 and
+    32–36k from level 50. That's about 365 game-hours from 20 to 99, and 20
+    hours of nothing but fly fishing from 20 reaches about level 68.
+- **Found, for Caleb:** inventories clog with what `bank_deposit` keeps.
+  "Tools stay" keeps every tool, including obsolete axes and pickaxes;
+  ammunition stays even with no weapon to fire it (bolts from drops); food
+  stays in every amount. On seed 1 the guide reached Attack 22 holding 28
+  kept items, so nothing could be banked, bought or gathered. Agents can
+  reach the same state. Recommended: keep only the best usable tool of each
+  kind, and only ammunition that fits a held weapon, and bank the rest. It
+  changes a signed-off catalog rule, so it waits for Caleb.
+
+### Decided: the guide review; deposits keep the task's kit (built)
+Caleb, in reply to the guide draft and `m002-withdraw-for-sale`: "1. Widen the
+guide. 2. Deposit all items that are not suitable to the task at hand. 3. Go
+after lowest skill for schedule. 4. For scope, include more skills. I think
+Thieving, specifically will be a great money maker early on. 5. Offer the
+different paths as gp/hr or xp/hr for the agents to choose from. 6. We will
+implement prayer flicking and 3-tick woodcutting if they can be used."
+Clarified in a follow-up question: deposits use the last activity's kit;
+paths become skilling slots (XP/hr and gp/hr per skill, with rates in the
+observation); prayer flicking and tick manipulation get a live test first,
+which should also cover 2-tick woodcutting and fishing and mining; thieving
+gets the pickpocket targets and the stalls. `m002-task-kits`.
+- **Built (this slice): deposits by task.**
+  - Every activity option names its task (`Option.task`), and the engine
+    records the last one in `state.task`.
+  - `bank_deposit` keeps that task's kit (`rlscape/sim/kits.py`) and banks
+    the rest.
+  - New: `bank_withdraw_for_<task>` for gathering (woodcutting, mining and
+    the three fishing methods), and `bank_withdraw_food` for any food.
+  - The task is a new 11-way observation part (env contract v1.4, decision
+    20). The catalog is now 981 actions, and the observation 1,590 features.
+  - Tests cover each task's kit, the withdrawals, and a bug they caught:
+    the withdrawal ranked tools by level, so an iron axe never beat a bronze
+    one; it now uses the server's tool priority.
+- **The guide with kit deposits** (10 seeds × 20 hours): total level 306,
+  total XP 211k, net worth 353k. Before, it was 233, 152k and 23k, stuck in
+  steel by the clog. Random: 190, 86k, 10k.
+- **Tick manipulation, from the server source** (Caleb pointed to the OSRS
+  wiki's tick manipulation page, which shows the mechanism: an action
+  resets the skilling timer):
+  - **Woodcutting:** rolls whenever `Clocks.SKILLING` is ready. A roll
+    every 3 ticks is already 2009Scape's default. `delayClock` overwrites
+    the clock, and burying a bone sets it to 2 ticks (`BoneBuryListener`).
+    So chopping, burying a bone on the same tick and clicking the tree again
+    may give 2-tick woodcutting. Live test needed.
+  - **Mining:** each start waits the full `getDelay` before its first roll,
+    and no shared timer exists, so no manipulation is possible.
+  - **Fishing:** `FishingPulse`'s first pulse only sets a 5-tick delay, so
+    restarting adds delay. No manipulation is possible.
+  - **Prayer flicking:** it avoids drain, by the code. Whether flicked
+    protection is up on an NPC's hit tick needs a live test.
+- **Remaining slices, in order:**
+  1. thieving targets and stalls
+  2. the wider guide
+  3. skilling slots
+  4. the live tests, which need bridge commands for item options and prayer
+     toggles (fork changes)
+
+### Built: pickpocket targets; tick manipulation re-checked (correction)
+Caleb: "Commit this and keep going with thieving" (the guide, withdraw-to-sell
+and task kits are `63ebb0d`). Mid-turn: "I've seen tick manipulation methods
+with fishing and mining using either herb+tar+pestle/mortar or knife +
+log/barbarian fish." `m002-thieving-targets`.
+- **Built: 13 pickpocket targets** from the server's Pickpockets table (men,
+  farmers, both H.A.M. members, warriors, master farmers, guards, Fremenniks,
+  Knights of Ardougne, Yanille watchmen, paladins, gnomes, heroes), each at its
+  server spawn nearest Lumbridge. Weighted loot, the server's canRoll rule, lost
+  loot when it doesn't fit, and an eating rule that keeps a failed attempt from
+  killing (heroes hit 6). The catalog is now 993 actions and the observation
+  1,602 features. The parser now reads `IntStream.rangeClosed` ids and
+  `insertEasyClue`.
+- **No option yet:** rogues (Wilderness only), cave goblins (Dorgesh-Kaan,
+  outside the travel model), bearded bandits (no spawns), desert bandits and
+  Menaphite thugs (behind the Shantay Pass gate, which takes a pass going south).
+- **Rates with HP to spare, while pickpocketing (no banking):** men 12k XP/h;
+  H.A.M. members about 25k XP/h and 200k gp/h (grimy kwuarm, 2,911 gp in
+  January 2009); master farmers 43k XP/h and 355k gp/h at level 38 (ranarr and
+  snapdragon seeds); Knights of Ardougne 95k XP/h at 55; heroes 159k XP/h and
+  548k gp/h at 80.
+- **Stalls: open questions for Caleb.** The server's StallThiefPulse steals
+  once per click (3 ticks), then the stall restocks (baker 4 ticks … gem 300).
+  4 in 15 steals are noticed when a market guard (id 32) is within 8 tiles,
+  and that guard attacks; no stealing in combat. Ardougne's market has 7 guard
+  spawns near its stalls. The server's Stall table lacks Ardougne's spice stall
+  (object 2564).
+- **Correction to the tick-manipulation findings (`m002-task-kits`).** OSRS's
+  methods work because an item-on-item action sets the skilling clock without
+  checking it. On 2009Scape, every action that sets `Clocks.SKILLING`
+  (`CraftItemWithLogScript` for knife on log, `BoneBuryListener`, the arrow,
+  bolt and stringing scripts) first returns unless `clockReady`, so none can
+  shorten a pending delay. Herb on tar (`HerbTarPulse`) is a pulse that never
+  touches the clock, and starting it replaces the skilling action. So:
+  - **Fishing:** `FishingListener` (not `FishingPulse`, which nothing in the
+    live game calls) rolls on a click when the clock is ready, then sets it 5
+    ticks ahead. Neither knife-on-log nor herb-on-tar can shorten that. The sim
+    already models `FishingListener`.
+  - **Mining:** a fixed 4-tick script delay from each click; no clock.
+  - **Woodcutting:** the 2-tick method by burying a bone is **not** possible:
+    burying is refused while the clock is pending. Woodcutting stays at its
+    default 3 ticks.
+  - **Prayer flicking** is unaffected; its live test still stands.
+
+### Decided and built: stalls, the Shantay Pass; tick manipulation tested live
+Caleb, on the three questions in `m002-thieving-targets`: "1. Go with B. 2.
+Good recommendation. 3. Let's try to test it. The code may have bugs that we
+can exploit for this limited use. Tick manipulation is an understood and
+normal part of the game." `m002-stalls-and-tick-test`.
+- **Stalls (B: run off and come back).** Five Ardougne market stalls (baker,
+  silk, fur, silver, gem), from the server's Stall and StallThiefPulse:
+  - a steal takes 3 ticks and a free slot, gives one reward picked uniformly,
+    and empties the stall for its restock time (4 to 300 ticks)
+  - 4 in 15 steals are noticed when a guard is within 8 tiles, and the market's
+    guards reach every stall. A noticed steal fails, and the character takes
+    the guard's swings (the combat retreat's ESCAPE_ATTACKS) and 20 ticks away
+    (FLEE_TICKS, an estimate to calibrate)
+  - left out: the spice stall (not in the server's Stall table)
+  - rates at each stall's level, with guards: 3–6k XP/h and 9–29k gp/h, far
+    below pickpocketing
+- **The Shantay Pass (the recommendation).** Going south through the gate buys a
+  5-coin pass from Shantay (ShantayOptionPlugin) and hands it over; north is
+  free. Without 5 coins the desert is unreachable, and pickpocket and fight
+  options there are masked. That adds desert bandits and Menaphite thugs: 15
+  pickpocket targets. Desert heat on the walk and the magic carpets aren't
+  modelled. The catalog is now 1,000 actions and the observation 1,609 features.
+- **Tick manipulation, tested live** (`scripts/tick_manipulation_test.py`,
+  `results/live/tick-manipulation-20261030-2023.json`). Each trial ran 45
+  ticks of per-tick inputs, sent as client packets, and read the skilling
+  clock and the script delay every tick, so every roll is seen, failed or not:
+
+  | Skill | Natural interval | Shortest gap, any method | Burying a bone | Knife on log, herb on tar |
+  |---|---|---|---|---|
+  | Woodcutting | 3 ticks | 3 | 5–6 ticks | 3 or slower |
+  | Fishing | 5 ticks | 5 | 7–8 ticks | 5–6 ticks |
+  | Mining | 5 ticks | 8, or no roll at all | no roll | no roll |
+
+  No method shortened a gap: the code's guard holds. Every action that sets the
+  skilling clock first checks it's ready (burying also locks the character for
+  2 ticks). "Make" queues the log craft as a weak script, which the click on the
+  tree removes. The tar is a pulse that waits 4 ticks, which the click's
+  movement pulse replaces. Mining restarts its wait on any click or item use.
+- **Found by the test:**
+  - **Mining rolls every 5 ticks on the server, not 4.** ScriptProcessor runs a
+    script only when `nextExecution < ticks`, so `delayScript(4)` means 5 ticks.
+    The sim's mining assumes 4 (`ATTEMPT_TICKS`), so it overstates mining by
+    25%. Recommended fix: 5, Caleb's call.
+  - **Bridge timing.** The bridge's commands run after the world's pulses, but a
+    client's packets run before them. So a buried bone (a 1-tick pulse) landed a
+    tick late through the bridge. The new `packet` option enqueues the real
+    client packet instead. Recommended: the ServerEnv executor uses it.
+  - **Skill dialogues.** The bridge used to close every chatbox each tick,
+    including herb on tar's "how many" dialogue, which opens a tick after the
+    action. It now leaves skill dialogues open for the controller to answer.
+- **Fork changes** (`RLCommands.kt`, `RLBridge.kt`; uncommitted):
+  - `item_option`, `use_item`, `dialogue_button`, and `schedule` (one list of
+    commands per tick)
+  - `interact` now follows the client's click path (it resets the character's
+    scripts first, as PacketProcessor does)
+  - the `packet` option on the four input commands
+  - `debug_set_levels`, `debug_complete_quest` (the names env contract §7
+    gives them), `debug_clocks` (tests and
+    calibration only)
+- **Next:** the wider guide, skilling slots, and the prayer-flicking live test,
+  which the new commands make possible (it still needs a prayer-toggle command).
+
+### Decided: mining every 5 ticks; ServerEnv inputs as client packets
+Caleb: "Accept both recommendations, commit this, and keep going with the
+guide". `m002-wider-guide`.
+- **Mining:** the sim's attempt interval is now 5 ticks (`rlscape/sim/mining.py`,
+  `ATTEMPT_TICKS`), as measured live. getDelay is 4, and delayScript's wait
+  runs one tick longer. Of the other activities the sim models, only cooking's
+  fire-lighting animation waits on delayScript; cooking itself is a pulse.
+- **ServerEnv inputs are client packets** (env contract v1.5, decision 21): the
+  bridge's `packet` option.
+- **Renamed** the new calibration commands to the names env contract §7 already
+  gave them: `debug_set_levels` (several skills at once) and
+  `debug_complete_quest`.
+- **Committed:** fork `7956207` (the bridge commands); the main repo commit adds
+  the thieving targets, stalls, the Shantay Pass, the tick-manipulation test and
+  the mining fix.
+
+### Drafted: the scripted guide over every sim v0 skill
+Continuing `m002-wider-guide` (Caleb: "keep going with the guide"). Details in
+`docs/scripted-guide-draft.md` (second draft).
+- **The routine:** the lowest of the 13 skills sim v0 trains directly comes
+  next (Caleb's schedule), each by its January 2009 RuneScape Wiki guide.
+  Seven new sources, [27]–[33]: Thieving, Cooking, Smithing, Prayer and Ranged
+  training pages, and the Firemaking and Magic articles (neither had a
+  training page yet).
+  - Thieving maps the guide's path onto the new targets and stalls; The
+    Feud's levels (blackjacking) stretch the neighbouring methods.
+  - Processing uses the guide's own gathering, not GE inputs.
+- **Results** (10 seeds × 20 hours, `results/eval/guide-wide-20261030`):
+  - the 13-skill guide: total level 308, total XP 87k, net worth 55k
+  - the first draft's six skills, on today's sim: 303, 205k, 330k
+  - random: 184, 80k, 13k
+  - Widening keeps total level but costs 58% of the XP and 83% of the
+    wealth: with 13 skills at the bottom of the schedule, every skill stays
+    low, where every method is slow.
+  - Raised as Q5: is the 13-skill, lowest-first guide the E1 baseline?
+    Recommended: (a) keep it as specified. The alternatives were (b) lowest
+    first over fewer skills, and (c) both the 13-skill and the six-skill
+    guide in E1.
+- **Sim fixes found along the way** (each would trap an agent too; tested;
+  raised as Q6):
+  - magic fights take off, and don't put on or withdraw, armour that lowers
+    magic attack (an iron set left a level-1 caster no target)
+  - `bank_withdraw_gear_magic` takes banked runes back out
+  - processing withdrawals take only inputs the level can use
+  - a buy is masked when its banked coins can't reach the inventory (a full
+    one): such a buy bought nothing, and the guide looped on it 7,000 times
+- **Loops fixed in the guide itself** while widening it:
+  - depositing a just-withdrawn input before using it
+  - a thieving food withdrawal filling the slots the loot needs
+  - selling the starter shortbow as misc, which stopped Ranged at 1
+  - funding counted banked items it would never sell
+  - The tests now bound a 20-hour episode at 1,000 decisions. The episodes
+    take 519–618.
+
+### Decided: the 13-skill guide is E1's scripted baseline; the sim fixes stay
+Caleb, on Q5 and Q6 of the guide's second draft: "Apply both recommended
+actions." `m002-guide-signoff`.
+- **Q5 (a):** the 13-skill, lowest-first guide is E1's scripted-guide
+  baseline. `e1_baselines()` now returns random, greedy XP, greedy wealth and
+  the scripted guide. Env contract decision 17's review is done.
+- **Q6:** the four sim fixes the guide found stay:
+  - magic's armour rule
+  - the magic withdrawal takes runes
+  - processing withdrawals respect the level
+  - the buy mask's coins rule
+
+### Decided and built: skilling slots; the guide on members' guides with stints; fletching checked live
+Caleb: "Commit this and keep going with the skilling slots" (the guide work is
+main repo `7030ede`). `m002-skilling-slots`.
+- **Skilling slots** (env contract v1.6, decision 22; option catalog §2). On
+  the design questions:
+  - Caleb's answer on the skills: "Where possible, pair gathering skills with
+    their processing counterpart. Woodcutting with fletching/firemaking,
+    fishing with cooking, and mining with smithing."
+  - Slots: "2 by XP + 2 by gp (Recommended)".
+  - The 31 fixed actions: "Replace them (Recommended)".
+  - Built: 39 paths (each method kept, or burned, cooked or smelted where
+    sim v0 has the counterpart; thieving's targets and stalls); 16 slot
+    actions; an analytic rate model checked against the simulated paths
+    within 8%; 985 actions and 1,674 observation features.
+  - A ranking costs 0.7 ms per decision once its cache is warm.
+  - The woodcutting kit now keeps a tinderbox (and its withdrawal takes one),
+    for the chop-and-burn paths.
+- **The scripted guide's sources** (mid-turn): "We need to review why we have
+  the scripted guide based on f2p activities. p2p activities generally give
+  better rewards, but could require more travel time, especially when skill
+  hopping."
+  - The F2P pages were Claude's oversight: January 2009 members' guides exist
+    for melee, ranged, woodcutting, fishing, cooking and firemaking.
+  - Caleb: "Members' where they exist (Recommended)"; and for the schedule,
+    "Minimum stint where the goal levels are multiples of 5."
+  - Built: members' sources [34]–[39]; stints to the next multiple of 5;
+    gathering through the slots.
+  - Guide, 10 seeds × 20 hours: total level 306, total XP 90k, net worth 58k.
+    Random: 236, 108k, 10k (it was 184, 80k, 13k before the slots).
+- **Fletching** (mid-turn): "We need to include fletching as a major skill to
+  level. It is significantly better than firemaking for gp and can be used to
+  gain xp while traveling." And: "Attaching feathers to unfinished bolts or
+  darts should be a zero time action, which can be completed between any
+  other actions. Unless 2009scape is weird."
+  - Checked on the live server:
+    - Knife on logs makes one log's worth every 3 ticks.
+    - Darts make 10 per stage, every 3 ticks; bolts are coded the same way.
+    - Darts need The Tourist Trap.
+  - All of these are queued scripts. Any walk or new action clears them
+    (`MovementPulse` and `PulseManager.run` call `removeWeakScripts` and
+    `removeNormalScripts`). Live, a walk stopped log fletching after 2 logs
+    and dart making after 2 stages.
+  - So on 2009Scape, fletching (darts and bolts included) is neither
+    zero-time nor possible while travelling: it's an activity of its own.
+  - No January 2009 fletching training page exists; the Fletching skill
+    article ([40]) does.
+  - Proposal for Caleb in the reply: bring Fletching forward from sim v1.
+
+### Decided and built: Fletching in sim v0; the knife spawn
+
+- **Fletching** (Caleb, on Claude's options): "B, but do not use bowstrings to
+  complete bows where the value of the bow is not greater than unfinished +
+  bowstring. Take the recommended option for other fletching decisions."
+  - B: cutting logs, stringing, arrows, darts and bolts, from the server's
+    recipes (44; no stocks, ogre, dragon, broad, blurite or silver).
+  - Stringing at prices_v2's values: only maple, yew and magic longbows and
+    yew shortbows are worth more strung.
+  - The recommended rest: woodcutting's chop-and-fletch paths (normal logs
+    into arrow shafts, which stack; otherwise the best bow (u)), and
+    Fletching's own skilling slots over bank paths, one per recipe. The guide
+    trains Fletching by the Fletching article ([40]).
+  - The 20 fletching inputs (knife, bowstring, arrowtips, dart tips,
+    unfinished bolts) join *V* by its rule: *V* = 176, 1,110 actions, 1,860
+    observation features. Env contract v1.7, decision 23.
+- **The knife spawn** (mid-turn): "There should be a knife spawn in Lumbridge
+  Castle, which is very convenient for a fresh starting character."
+  - The server's ground spawns have two knives, at (3205, 3212, 0) and
+    (3224, 3202, 0), respawning after 80 ticks.
+  - Built as `take_knife`: walk to the nearest and pick it up, while no knife
+    is held. A fresh character has one in under 30 ticks.
+- Guide, 10 seeds × 20 hours: total level 312, total XP 94k, net worth 108k.
+  Random: 235, 102k, 8k.
+
+### Decided: an open-questions log; answered questions only here
+Caleb: "Review the documentation for questions. Questions that are already
+answered should exist only in the decision log. Open questions should be
+migrated to an open-questions-log.md file. For future questions that are
+undecided, record them in open-questions-log." `m002-open-questions`.
+- **New: `docs/open-questions-log.md`,** with the six open questions found:
+  - OQ-1: the stretch experiment (tentatively A)
+  - OQ-2: the sim v1 skills' options and their *V* items
+  - OQ-3: prayer flicking: the test's fork change, then how agents use prayer
+  - OQ-4: the bridge commands for the other player paths (shop buys,
+    putting gear on, bank withdrawals, `bank_deposit_worn`)
+  - OQ-5: freezing the server version once calibration starts
+  - OQ-6: public repos for the submission (deferred)
+- **The rule** (in `CLAUDE.md`): an undecided question goes in that log when
+  it comes up. Once answered, it moves here with its options and the answer,
+  and leaves that log.
+- **Answered questions removed from the other docs.** Each was already here;
+  the alternatives some entries lacked were added above (the buying Q6, Q7 and
+  Q3b, the food withdrawals, the vocabulary's Q1 and Q2, the guide's Q5).
+  - `ROADMAP.md` §8: the 2026-10-05 answers and the repos; now a pointer
+  - `docs/scripted-guide-draft.md`: the question section (Q5, Q6) and the
+    first draft's review note (Q1–Q3)
+  - `docs/vocabulary-draft.md`: Q1–Q4, now stated as the accepted readings
+  - `docs/option-catalog.md`: the buying questions' tags and the list of
+    decided v1.0 questions
+  - `docs/env-contract.md`: the Q3b references
+- **`docs/buying-draft.md` deleted** (Caleb: "Delete it (Recommended)"). It was
+  superseded on 2026-10-30: option catalog §8 has the spec, and this log the
+  decisions. Its last version is in commit `d72dc47`.
+- **Env contract §9 kept** (Caleb: "Keep it (Recommended)"): it's the signed-off
+  contract's list of what's fixed, stated as decisions.
+- **Left as they are:**
+  - the interaction records, which record past turns
+  - this log's chronological "open" notes, each answered by a later entry
+  - agent choices marked "for Caleb's review": decisions Claude made, not
+    questions
+  - known gaps and planned checks: the rate model's respawn waits and
+    consumables, the access rows "to verify", the untested in-combat flag
+- **Also fixed:** "five v1 skills" in `CLAUDE.md`, `ROADMAP.md` and env
+  contract §7 (four since Fletching moved into sim v0), and the ROADMAP's
+  "awaiting Caleb" on the signed-off guide.
+
+### Committed; prayer flicking tested live (OQ-3's first part)
+Caleb: "Commit this and go ahead with OQ-3." `m002-prayer-flicking`. The
+skilling slots, Fletching and the open-questions log are main repo `f47b7fb`
+(not pushed).
+- **Answered (OQ-3's first part):** the go-ahead for the fork change the
+  prayer-flicking test needs. The second part, how agents use prayer in
+  combat, stays open (OQ-3, reworded).
+- **Fork change** (`RLCommands.kt`, uncommitted):
+  - `prayer {uid, prayer}` clicks a prayer's button on the prayer tab, as
+    `PacketProcessor.processIfAction` handles a click; with `packet=true` it
+    enqueues the `IfAction` packet a client's click sends.
+  - `state` reports prayer points and the active prayers.
+  - **Bug fixed in `debug_set_levels`:** it set a level but not the current
+    hitpoints or prayer points (`setStaticLevel` leaves them), so a
+    calibration character set to Hitpoints 50 still had 10 hitpoints. It now
+    refills both.
+- **From the source:**
+  - `Prayer.tick`, in each character's tick, counts the ticks in a row with
+    any prayer on, resets the count on a tick with none, and drains only on
+    even counts.
+  - A protection prayer is checked when the attacker swings
+    (`getFormattedHit`, from `adjustBattleState`); an NPC's hit is then 0.
+  - A tick runs the client packets, then the world's pulses, then the bridge,
+    then the characters' ticks. So a prayer turned on by a packet in a swing's
+    tick, and off by one the next tick, is counted once and never drains.
+- **Live test** (`scripts/prayer_flick_test.py`,
+  `results/live/prayer-flicking-20261031-0536.json`). A character with
+  Prayer 43, Hitpoints 99 and Defence 1 fights a lone hill giant (a swing
+  every 6 ticks) for 120 ticks per trial, over 2 rounds:
+
+  | Protect from Melee | Hits landed | Prayer drained |
+  |---|---|---|
+  | none | 13, 11 | 0 |
+  | on throughout | 0, 0 | 8.85 |
+  | flicked: on every other tick, switching parity halfway | the half on the giant's swing ticks: 0, 0; the other: 9, 4 | 0 |
+  | off and on in the same tick, every tick (the OSRS one-tick flick) | 0, 0 | 8.85 |
+
+  - Flicking works: it costs nothing and blocks every swing that falls in a
+    tick with the prayer on. Each hit that landed showed one tick after a tick
+    with the prayer off, so protection counts at the swing, not when the hit
+    lands.
+  - The OSRS one-tick flick doesn't save anything here: `Prayer.tick` only
+    ever sees the prayer on, so it drains as if left on.
+  - A first run against a Falador guard (18 hitpoints) gave the same results,
+    but its fourth trial's fight stopped after 37 ticks, most likely because
+    the earlier trials had worn the guard down. The giant has 35.
+- **Tests:** three live tests in `tests/test_bridge_inputs_live.py` (the
+  prayer button, both ways; the refilled levels; a prayer on every other tick
+  never drains). Full suite with the server up: 246 passed.
+- **Open, for Caleb (OQ-3):** how agents use prayer in combat. Recommended:
+  fights flick automatically wherever the Prayer level allows.
+
+### Decided: fights flick prayers automatically (OQ-3); offensive flicking tested live
+Caleb: "We're going to automatically flick prayers, including the accuracy and
+damage options available. That includes atk and str, but also range and mage,
+if those prayers exist in 2009scape." `m002-prayer-in-combat`. The options
+were (a) fights flick automatically (recommended), (b) a prayer mode the agent
+sets, (c) no prayer in combat.
+- **They exist:** attack (Clarity of Thought 7, Improved Reflexes 16,
+  Incredible Reflexes 34), strength (Burst 4, Superhuman 13, Ultimate 31),
+  ranged (Sharp Eye 8, Hawk Eye 26, Eagle Eye 44: accuracy and max hit),
+  magic (Mystic Will 9, Lore 27, Might 45: accuracy only); Chivalry and Piety
+  need Defence 65/70 and King's Ransom, which isn't in the quest set. Each
+  adds floor(L + bonus x L) to the effective level at the swing.
+- **Live** (`scripts/prayer_offence_test.py`,
+  `results/live/prayer-offence-20261031-0553.json`): Strength 60 punches
+  reached 8 only with Ultimate Strength on in the punch's tick (5 times), never
+  above 7 otherwise; nothing drained. Every gap between a giant's swing and the
+  nearest punch was even: a monster starts swinging on the character's swing
+  ticks. With two even attack speeds the sides never swing in adjacent ticks,
+  so flicking both is free; with an odd speed some swings are adjacent, and
+  flicking both there drains.
+- **Built so far:** `gamedata.server.prayers()` reads PrayerType.
+- **Not built yet:** the sim side (prayer bonuses in the formulas and
+  Fighter, zero damage from a protected style, skipping the offensive flick on
+  swings adjacent to a protection flick), its tests, env contract v1.8 and the
+  catalog's §4.
+
+### Decided and built: defence prayers; prayer flicking in the sim's fights
+Caleb, on the question of defence prayers: "Defence prayers don't need to be
+flicked unless an enemy has multiple damage types or the agent does not have
+access to the protection prayer associated." `m002-prayer-flicking-in-fights`.
+- **Built** (env contract v1.8, decision 24; option catalog §4,
+  "Prayers in fights"):
+  - `rlscape/combat/prayers.py`: what a fight flicks, from
+    `gamedata.server.prayers()` (PrayerType); the swings that get the
+    accuracy and damage prayers
+  - `rlscape/combat/formulas.py`: each player roll takes its prayer's bonus,
+    floor(L + bonus x L), as the swing handlers do
+  - `rlscape/combat/rates.py`: `Fighter.flicks`; a protected style deals
+    nothing; defence (and, against magic, Mystic) prayers raise the defence
+    rolls otherwise; damage per swing mixes boosted and plain swings
+  - `rlscape/sim/combat.py`: each kill's swings follow that pattern
+  - `rlscape/sim/equipment.py`: `fighter_for` gives the fighter its prayers
+- **Multiple damage types:** the sim gives each monster one combat style, so
+  that case isn't modelled; dragonfire stays the gear check.
+- **Agent choices (reversible):**
+  - on a tick next to a monster swing, the monster's tick keeps its prayer
+    (protection or defence) and the character's swing goes without
+  - against magic the defensive flick adds the best Mystic prayer, since
+    magic defence is 70% Magic
+- **Tests:** `tests/test_prayers.py` (7), including Strength 60's max hit of
+  7, and 8 with Ultimate Strength, as measured live.
+- **E1 baselines, 10 seeds x 20 hours** (`results/eval/guide-prayer-20261031`):
+  guide total level 314, total XP 96k, net worth 110k (312, 94k, 108k
+  before); random 234, 102k, 11k (235, 102k, 8k). Neither raises Prayer far
+  (the guide's seed 0 ended at Prayer 5), so they get only the low prayers.
+
+### Committed; the PR for sim v0
+Caleb: "Commit the changes, then create the PR." `m002-commit-and-pr`.
+- Fork `99152ea` on `rl`: the `prayer` command and the `debug_set_levels` fix.
+- The main repo commit after `f47b7fb` holds the prayer-flicking work, with the
+  submodule bump.
+- Pushed the fork's `rl` (3 commits had never been pushed, and `sim-v0`'s
+  submodule pointers name them) and `sim-v0`, then opened a PR from `sim-v0`
+  to `main` with all of sim v0.

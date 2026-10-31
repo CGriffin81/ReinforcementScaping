@@ -74,6 +74,70 @@ and is credited where used.
       notes (`learnings/`) describe that version. Our formulas come from the 2009Scape source.
 20. **LostCity.** https://github.com/LostCityRS/Server — the 2004scape engine that [18] and [19] build on.
     Cited only for context.
+21. **Towers, M., Kwiatkowski, A., Terry, J., Balis, J. U., et al. (2024).** Gymnasium: A Standard Interface for
+    Reinforcement Learning Environments. arXiv:2407.17032. https://github.com/Farama-Foundation/Gymnasium (MIT)
+    — **Used:** `SimEnv` (`rlscape/envs/`) implements its `Env` API, version 1.4.0, as the env contract's
+    interface (§2), so SB3 and sb3-contrib agents can drive it. Added 2026-10-30.
+22. **RuneScape Wiki. "Free-to-play Woodcutting training",** revision 890919 (2009-01-29).
+    https://runescape.wiki/w/Free-to-play_Woodcutting_training?oldid=890919 (CC BY-NC-SA 3.0) — **Used:** the
+    scripted-guide baseline's woodcutting methods and axes (`docs/scripted-guide-draft.md`). Added 2026-10-30.
+23. **RuneScape Wiki. "Free-to-play Fishing training",** revision 886593 (2009-01-27).
+    https://runescape.wiki/w/Free-to-play_Fishing_training?oldid=886593 (CC BY-NC-SA 3.0) — **Used:** the
+    scripted guide's fishing methods, gear and cooking for food. Added 2026-10-30.
+24. **RuneScape Wiki. "Free-to-play melee training",** revision 898754 (2009-01-30).
+    https://runescape.wiki/w/Free-to-play_melee_training?oldid=898754 (CC BY-NC-SA 3.0) — **Used:** the scripted
+    guide's monsters by level band, weapon and armour tiers, and drops to collect. Added 2026-10-30.
+25. **RuneScape Wiki. "Mining",** revision 899733 (2009-01-31).
+    https://runescape.wiki/w/Mining?oldid=899733 (CC BY-NC-SA 3.0) — **Used:** the scripted guide's rocks by level
+    and pickaxes. Added 2026-10-30.
+26. **RuneScape Wiki. "Money making guide",** revision 899155 (2009-01-30).
+    https://runescape.wiki/w/Money_making_guide?oldid=899155 (CC BY-NC-SA 3.0) — consulted for the scripted guide.
+    Its free-to-play part only links subpages whose January 2009 text isn't in the wiki's history, so nothing is
+    taken from it. Added 2026-10-30.
+27. **RuneScape Wiki. "Thieving training",** revision 900070 (2009-01-31).
+    https://runescape.wiki/w/Thieving_training?oldid=900070 (CC BY-NC-SA 3.0) — **Used:** the scripted guide's
+    thieving methods by level (men, the baker's, silk and fur stalls, master farmers, Knights of Ardougne,
+    Menaphite thugs). Added 2026-10-30.
+28. **RuneScape Wiki. "Free-to-play Cooking training",** revision 885447 (2009-01-26).
+    https://runescape.wiki/w/Free-to-play_Cooking_training?oldid=885447 (CC BY-NC-SA 3.0) — **Used:** the scripted
+    guide's cooking (cook the fish fishing brings in). Added 2026-10-30.
+29. **RuneScape Wiki. "Free-to-play Smithing training",** revision 881317 (2009-01-25).
+    https://runescape.wiki/w/Free-to-play_Smithing_training?oldid=881317 (CC BY-NC-SA 3.0) — **Used:** the
+    scripted guide's smithing (bronze to 14, iron from 15, mining the ores). Added 2026-10-30.
+30. **RuneScape Wiki. "Free-to-play Prayer training",** revision 888578 (2009-01-28).
+    https://runescape.wiki/w/Free-to-play_Prayer_training?oldid=888578 (CC BY-NC-SA 3.0) — **Used:** the scripted
+    guide's prayer (bury the bones kills drop). Added 2026-10-30.
+31. **RuneScape Wiki. "Free-to-play Ranged training",** revision 880633 (2009-01-25).
+    https://runescape.wiki/w/Free-to-play_Ranged_training?oldid=880633 (CC BY-NC-SA 3.0) — **Used:** the scripted
+    guide's ranged monsters by level, shortbows and iron arrows. Added 2026-10-30.
+32. **RuneScape Wiki. "Firemaking",** revision 892441 (2009-01-29).
+    https://runescape.wiki/w/Firemaking?oldid=892441 (CC BY-NC-SA 3.0) — **Used:** the scripted guide's firemaking
+    (logs by level; no January 2009 training page exists). Added 2026-10-30.
+33. **RuneScape Wiki. "Magic",** revision 900388 (2009-01-31).
+    https://runescape.wiki/w/Magic?oldid=900388 (CC BY-NC-SA 3.0) — **Used:** the scripted guide's magic (strike
+    spells, buying runes; no January 2009 training page exists). Added 2026-10-30.
+
+34. **RuneScape Wiki. "Pay-to-play melee training",** revision 900265 (2009-01-31).
+    https://runescape.wiki/w/Pay-to-play_melee_training?oldid=900265 (CC BY-NC-SA 3.0) — **Used:** the scripted
+    guide's melee monsters by level band (members), replacing [24] there. Added 2026-10-31.
+35. **RuneScape Wiki. "Pay-to-play Ranged training",** revision 895507 (2009-01-30).
+    https://runescape.wiki/w/Pay-to-play_Ranged_training?oldid=895507 (CC BY-NC-SA 3.0) — **Used:** the scripted
+    guide's ranged monsters by level band (members), replacing [31] there. Added 2026-10-31.
+36. **RuneScape Wiki. "Pay-to-play Woodcutting training",** revision 892489 (2009-01-29).
+    https://runescape.wiki/w/Pay-to-play_Woodcutting_training?oldid=892489 (CC BY-NC-SA 3.0) — **Used:** the
+    scripted guide's trees by level (members), replacing [22] there. Added 2026-10-31.
+37. **RuneScape Wiki. "Pay-to-play Fishing training",** revision 876863 (2009-01-24).
+    https://runescape.wiki/w/Pay-to-play_Fishing_training?oldid=876863 (CC BY-NC-SA 3.0) — **Used:** the scripted
+    guide's fishing methods (members), replacing [23] there. Added 2026-10-31.
+38. **RuneScape Wiki. "Pay-to-play Cooking training",** revision 892859 (2009-01-29).
+    https://runescape.wiki/w/Pay-to-play_Cooking_training?oldid=892859 (CC BY-NC-SA 3.0) — **Used:** the scripted
+    guide's cooking (members), replacing [28] there. Added 2026-10-31.
+39. **RuneScape Wiki. "Pay-to-play Firemaking training",** revision 881333 (2009-01-25).
+    https://runescape.wiki/w/Pay-to-play_Firemaking_training?oldid=881333 (CC BY-NC-SA 3.0) — **Used:** the
+    scripted guide's logs by level (members), replacing [32] there. Added 2026-10-31.
+40. **RuneScape Wiki. "Fletching",** revision 882419 (2009-01-25).
+    https://runescape.wiki/w/Fletching?oldid=882419 (CC BY-NC-SA 3.0) — consulted for the fletching proposal (no
+    January 2009 fletching training page exists). Added 2026-10-31.
 
 ## Planned (named in ROADMAP.md, not used yet)
 

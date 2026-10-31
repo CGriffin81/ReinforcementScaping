@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 
 from rlscape.bridge import BridgeClient, BridgeError
+from rlscape.gamedata import server as gd
 from test_bridge_live import bridge_reachable
 
 COINS = 995
@@ -172,6 +173,38 @@ def test_frozen_seller_supplies_items_bot_stock_lacks_and_refunds_overpayment(cl
 
     assert amount_of(after, steel_scimitar) == 1
     assert amount_of(before, COINS) - amount_of(after, COINS) == price  # offered price + 50, refunded 50
+
+
+def test_ge_collects_several_as_banknotes_and_a_single_item_or_a_stack_as_items(client, character):
+    """As a person collects (Caleb's buying decision Q2, 2026-10-29): several of an item that has a banknote come
+    as banknotes; a single item, or a stack of runes, comes as items. Regression: offers placed back to back used to
+    get the same slot, because a new offer reaches the character's records only when the GE worker thread writes it."""
+    lobster, tuna, air_rune = 379, 361, 556
+    notes = {unnoted: noted for noted, unnoted in gd.unnoted_ids().items()}
+    uid = character["uid"]
+    prices = {p["id"]: p["value"] for p in client.ge_snapshot()["prices"]}
+    client.debug_teleport(uid, *GE)
+    client.debug_give(uid, COINS, 5 * prices[lobster] + prices[tuna] + 100 * prices[air_rune] + 100)
+    client.wait(3)
+    before = client.state(uid)
+
+    slots = [client.ge_offer(uid, item=item, amount=amount, price=prices[item])
+             for item, amount in ((lobster, 5), (tuna, 1), (air_rune, 100))]
+    assert slots == [0, 1, 2]
+    for _ in range(40):  # an offer shows in the status only once the GE worker thread has registered it
+        client.wait(5)
+        slots = client.ge_status(uid)
+        if len(slots) == 3 and all(s["state"] == "COMPLETED" for s in slots):
+            break
+    assert [s["completed"] for s in client.ge_status(uid)] == [5, 1, 100]
+    client.ge_collect(uid)
+    client.wait(1)
+    after = client.state(uid)
+
+    assert amount_of(after, notes[lobster]) == 5 and amount_of(after, lobster) == 0
+    assert amount_of(after, tuna) == 1 and amount_of(after, notes[tuna]) == 0
+    assert amount_of(after, air_rune) - amount_of(before, air_rune) == 100
+    assert client.ge_status(uid) == []
 
 
 def test_frozen_seller_ignores_items_without_a_2009_price(client, character):

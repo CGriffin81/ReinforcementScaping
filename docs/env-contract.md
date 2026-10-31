@@ -1,7 +1,21 @@
-# Environment Contract (v1.0, Signed off)
+# Environment Contract (v1.8, Signed off)
 
-**Status:** v1.0, signed off by Caleb on 2026-10-28. v1.0 adds the death rule (§1) to v0.6. Any later change needs Caleb's
-approval and is logged in `docs/decision-log.md`.
+**Status:** v1.8, 2026-10-31. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
+- **v1.8** (2026-10-31, Caleb) has fights flick prayers (§8).
+- **v1.7** (2026-10-31, Caleb) brings Fletching forward into sim v0 (§5), with Fletching skilling slots, a
+  fletching task (§3) and 20 fletching inputs in *V*.
+- **v1.6** (2026-10-31, Caleb) replaces the fixed gathering actions with skilling slots and adds their rates to
+  the observation (§3).
+- **v1.5** (2026-10-30, Caleb) has `ServerEnv` send its inputs as client packets (§7), after the live
+  tick-manipulation test found that the bridge's direct commands land a tick late against the world's pulses.
+- **v1.4** (2026-10-30) adds the last task to the observation (§3), because Caleb's deposit rule makes what a
+  deposit keeps depend on it.
+- **v1.3** (2026-10-30, Caleb) adds total XP to the reported metrics (§4, §6).
+- **v1.2** (the same day) adds run energy and weight to the observation (§3) and the run rule to the backends
+  (§7), from Caleb's buying decision on gear and running (option catalog §8).
+- **v1.1** (approved by Caleb on 2026-10-28) adds the simulation decisions: five more trainable skills (§5),
+  event-level sampling, the ambient-bots setting, and the calibration gate and characters (§7).
+- **v1.0** added the death rule (§1) to v0.6.
 
 Both backends implement this contract exactly: `SimEnv` (the surrogate simulator) and `ServerEnv` (2009Scape
 through the bridge). Any policy, baseline or logger written against it runs on either one.
@@ -61,16 +75,19 @@ roughly [0, 1].
 | Part | Size | Encoding |
 |---|---|---|
 | Time | 2 | elapsed / horizon; remaining / horizon |
-| Skills | 2 × 15 | level / 99 and fractional progress to the next level, for the in-scope skills (§5) |
+| Skills | 2 × 20 | level / 99 and fractional progress to the next level, for the 19 trainable skills plus Slayer (§5). The v1 skills read 1 in sim v0. |
 | Total level | 1 | total level (all 24 skills) / 2376 |
 | Hitpoints, prayer | 2 | current / max |
+| Run energy, weight | 2 | energy / 100; weight in kg / 100, clipped to [0, 1] (option catalog §8) |
 | Wealth | 2 | log1p(coins) / log1p(10M); log1p(net worth) / log1p(10M) |
 | Inventory | V + 1 | log1p(count) / log1p(28) per vocabulary item; free slots / 28 |
 | Bank | V | log1p(count) / log1p(10k) per vocabulary item |
 | Equipment | E | tier index / max tier per slot: weapon (melee / ranged / staff), ammunition, head, body, legs, shield; tools (axe, pickaxe, fishing gear) |
 | Region | R | one-hot over the catalog's regions |
 | Combat candidates | C × 5 | for each candidate slot: XP/hr, gp/hr, expected damage taken per hour vs food held, travel minutes, Slayer / level eligibility (option catalog §4) |
+| Skilling candidates | 20 × 5 | per skilling slot (option catalog §2): the gathering skill's XP/hr, its processing counterpart's XP/hr, gp/hr, travel, open; scaled as the combat candidates |
 | Loot mode | 4 | one-hot: all / valuable / vocabulary / none (option catalog §4.D) |
+| Task | 12 | one-hot: the last activity's task (none, woodcutting, mining, the three fishing methods, thieving, fletching, processing, the three combat classes), which decides what `bank_deposit` keeps (option catalog §5) |
 | Access | A | 0/1 per access rule (`data/access_areas.csv`, A = 55 today; `access.unlocked_rules`): unlocked by quests, items held, levels or coins (option catalog §4.C) |
 | Quests | Q × 3 + 1 | stage one-hot (not started / underway / complete) per curated quest; quest points / 32 |
 | Mask | N | the action mask |
@@ -78,6 +95,11 @@ roughly [0, 1].
 
 Inventory and bank are separate because banking is now the agent's decision. *V* is the item vocabulary in the
 option catalog.
+
+**As built** (`rlscape/envs/encoding.py`, 2026-10-30): E = 11 roles (weapons for melee, ranged and magic,
+ammunition, head, body, legs, shield, axe, pickaxe, fishing gear), R = 12 (the catalog's 11 regions and
+"elsewhere"), C = 18 slots (6 per combat class). The encoder's docstring lists how each part is scaled. With the
+catalog as built (1,110 actions, *V* = 176) the vector has 1,860 features.
 
 **Left out on purpose:** GE prices. They're frozen, so a price snapshot would be a constant.
 
@@ -88,15 +110,28 @@ option catalog.
   - Net worth = coins + Σ (inventory + bank + equipment) × `data/prices_v2.csv` value.
   - Dropped items leave net worth, so dropping is a real cost the agent weighs against walking to a bank.
 - **Shaping (E5 only):** F = γ^τ Φ(s′) − Φ(s), with Φ(terminal) = 0. Off by default.
-- **Reported metrics** (not rewards): total level and net worth at each 2-hour checkpoint, undiscounted.
+- **Reported metrics** (not rewards), undiscounted, at each 2-hour checkpoint:
+  - total level
+  - **total XP:** Σ over all 24 skills of XP, each skill counted only up to level 99's 13,034,431 (Caleb,
+    2026-10-30). The skill reward stays level-based; total XP shows progress toward levels that are worth
+    climbing to, which the level-based reward values less per XP.
+  - net worth
 
-## 5. In-scope skills (v0.2)
+## 5. In-scope skills (v1.1)
 
-Attack, Strength, Defence, Hitpoints, Ranged, Magic, Prayer, Slayer (requirement checks only, no tasks),
-Woodcutting, Mining, Smithing, Fishing, Cooking, Firemaking, Thieving.
+**Trainable (19):**
+- from sim v0 (15): Attack, Strength, Defence, Hitpoints, Ranged, Magic, Prayer, Woodcutting, Mining, Smithing,
+  Fishing, Cooking, Firemaking, Thieving, and Fletching (brought forward by Caleb, 2026-10-31)
+- added in sim v1, before E2 (4): Crafting, Agility, Herblore, Runecrafting (Caleb, 2026-10-28).
+  Herblore needs Druidic Ritual and Runecrafting needs Rune Mysteries, both in the quest set. Agility levels also
+  open the Agility shortcuts in the access table.
 
-Magic and Ranged are trainable (decided). Magic trains through combat spells and alchemy. The other skills
-count toward total level but have no options.
+**Requirement checks only:** Slayer. There are no tasks, so it stays at 1 and Slayer-locked monsters stay out.
+
+**Out of scope:** Farming, Construction, Summoning, Hunter. Each is a whole system (growth timers, the player-owned
+house, familiars, traps). They stay at 1 and still count toward total level. The report lists this as a limitation.
+
+Magic trains through combat spells and alchemy.
 
 ## 6. `info` fields (every step)
 
@@ -107,10 +142,10 @@ count toward total level but have no options.
 | `option` | id and name; for combat, also the chosen target and style |
 | `termination` | `completed`, `inventory_full`, `inputs_exhausted`, `out_of_food`, `out_of_ammo`, `resources_exhausted`, `died`, `failed_precondition` (server only), `horizon` |
 | `game_ticks` | ticks since reset |
-| `total_level`, `net_worth`, `coins` | after the option |
+| `total_level`, `total_xp`, `net_worth`, `coins` | after the option (`total_xp` as §4 defines it) |
 | `xp_gained` | per-skill XP gained during the option |
 | `items_delta` | per-item change, split into inventory, bank and dropped |
-| `checkpoints` | (only when crossed) `{hour: {"total_level", "net_worth"}}` |
+| `checkpoints` | (only when crossed) `{hour: {"total_level", "total_xp", "net_worth"}}` |
 
 The decision logger records `obs`, `mask`, `action`, action probabilities, value estimate, and all of `info`
 for every step.
@@ -119,18 +154,55 @@ for every step.
 
 - **`SimEnv`:**
   - seeded `numpy.random.Generator`; same seed and same actions give the same trajectory
-  - option effects come from the server's formulas (skilling, combat, drop tables) plus calibrated
-    overheads (travel, banking, GE and shop trips)
+  - option effects come from the server's formulas (skilling, combat, drop tables, run energy) plus
+    calibrated overheads (travel paths, banking, GE and shop trips)
+  - **event-level sampling** (Caleb, 2026-10-28). Outcomes are sampled per event, not per tick and not as
+    averages:
+    - resources gathered over N ticks: one binomial draw
+    - each kill's duration and damage taken
+    - each drop roll
+    - eating and death checked kill by kill
+  - resource depletion and respawn come from the server's data. Competition from other players isn't modelled,
+    because ambient bots are off on the server too.
+  - **staged:** sim v0 has every family except quests and the four v1 skills. Sim v1 adds the 21 quests and those
+    skills before E2.
   - target ≥ 20k decisions per second across `SubprocVecEnv` workers
 - **`ServerEnv`:**
   - `reset` reinstalls the frozen GE database. This is required, not optional: GE offers outlive the
     character that placed them, and in testing one test's offer filled the next test's.
   - then start the server with `rl.conf` and spawn through the bridge
   - one RL character per world for validation (E6)
-  - not seedable (world randomness, ambient bots); reported as such
+  - **ambient bots off** for calibration and E6 alike (Caleb, 2026-10-28). The gap then measures the model, not
+    crowding.
+  - not seedable (world randomness); reported as such
   - options run through human-path actions only, never `debug_*`
+  - its inputs (clicks, item options, item-on-item, dialogue choices) go as client packets (the bridge's
+    `packet` option), so the server handles them in its packet phase, before the world's pulses, exactly as a
+    client's. Handled directly, a bridge command runs after the pulses, and an item option's effect lands a
+    tick late (Caleb, 2026-10-30)
+  - turns run on (`set_run`) at the start of each walk, as the simulator assumes. The server turns it off when
+    energy drops under 1%.
 - **Parity test:** the same scripted option sequence runs on both backends. The per-option XP, item, coin and
   duration distributions are compared; that's the sim-to-real gap (E6).
+- **Calibration and the gate before E2** (Caleb, 2026-10-28):
+  - **The gate:** each calibrated option's mean XP/hr, gp/hr and duration must be within **±20%** of the server's.
+    Misses get one round of patching; anything still outside is listed as a known gap in the report.
+  - **Bands:** calibration characters come in 11 bands: fresh, 11, 21, 31, 41, 51, 61, 71, 81, 91, 99.
+  - **Skills:** the trainable skills (§5) are set to the band level, the rest stay at 1. Fresh means all 1s with
+    10 Hitpoints.
+  - **Gear:** non-fresh characters spawn with the starter kit and 100 gp × total level, and buy their own gear on
+    the GE. They buy the best their levels and quests allow, in this priority: the tool for the option being
+    calibrated, then the weapon, then armour by defence per gp.
+  - **Quests,** cumulative by band:
+    - fresh: none
+    - 11–21: Cook's Assistant, Sheep Shearer, Rune Mysteries, Romeo & Juliet
+    - 31–41: adds the rest of the 32-quest-point route
+    - 51 and up: all 21, including Dragon Slayer
+  - **Setup only:** stats and quests are set by calibration-only bridge commands (`debug_set_levels`,
+    `debug_complete_quest`), never exposed to the agent. Each unlock that a debug-completed quest grants (rune
+    platebody, Crandor, the Duke's shield) is live-tested before it's relied on.
+  - **Runs:** each option is calibrated at the bands where it's unlocked, about 10 runs each. Parallel calibration
+    characters never share a spot.
 
 ## 8. Combat-rate model
 
@@ -141,10 +213,12 @@ from `drop_tables.json`, and spawns from `npc_spawns.json`.
 | Quantity | How it's computed |
 |---|---|
 | Kills/hr | from hit chance and max hit against the NPC's defence and HP, plus a fixed 6-tick overhead per kill for finding and reaching the next target. **Respawn waits aren't modelled yet.** |
-| XP/hr | combat XP and Hitpoints XP for the chosen style |
+| XP/hr | combat XP and Hitpoints XP for the chosen style, plus the spell's base XP on every magic cast |
 | gp/hr | expected value (`prices_v2`) of the drops the loot mode keeps × kills/hr. **Not yet subtracted:** consumables used (food, arrows, runes) and entry fees (Brimhaven, Waterbirth). |
 | Risk | expected damage per kill, and the monster's max hit, against HP above the retreat point and the food held (the retreat-aware filter) |
 | Inventory and travel | kills continue until the looted drops fill the free slots, then a bank trip; the walk to the monster is taken out of the duration (*D* = 15 game-minutes = 1,500 ticks) |
+| Prayer | fights flick prayers (option catalog §4): a style the Prayer level can protect against deals nothing, defence prayers count otherwise, and the character's swings get its accuracy and damage prayers except those next to a monster swing. Prayer points never drain. |
+| Ammunition | fighting stops when the arrows or runes run out. Arrows that land and are picked back up stretch the arrows held; melee and crystal bows are unlimited. |
 
 These are *theoretical* rates (expected values). The real server measures the actual ones during calibration
 (E6).
@@ -187,3 +261,47 @@ These are *theoretical* rates (expected values). The real server measures the ac
 11. **Looting is four loot modes the agent sets** (option catalog §4.D), approved as proposed.
 
 Caleb signed off both documents on 2026-10-28 (v1.0).
+
+### Decided (Caleb, 2026-10-28, simulation review): v1.1
+12. **Event-level sampling** in the simulator (§7).
+13. **Staging:** quests and the five new skills arrive in sim v1, before E2.
+14. **Five more trainable skills:** Fletching, Crafting, Agility, Herblore, Runecrafting (§5), for 19 in all.
+15. **Ambient bots off** on the server for calibration and E6 (§7).
+16. **The sim-to-server gate** before E2 is ±20%, and the calibration characters are as described in §7.
+17. **The scripted-guide baseline** (E1) is drafted by Claude from archived 2009 guides, cited in `docs/resources.md`,
+    and reviewed by Caleb before E1 runs. Reviewed 2026-10-31: the 13-skill, lowest-first second draft
+    (`docs/scripted-guide-draft.md`).
+
+### Decided (Caleb, 2026-10-30, buying): v1.2
+18. **Run energy and weight** (option catalog §8): travel follows the server's run energy, which weight drains
+    faster and Agility restores faster. Energy and weight are in the observation (§3), and on both backends every
+    walk starts with run on (§7). The observation's encoding is Claude's choice.
+
+### Decided (Caleb, 2026-10-30, baselines): v1.3
+19. **The skill reward stays level-based, and total XP is reported** (§4): each skill's XP up to level 99's. Caleb's
+    reason: some levels are breakpoints worth climbing to, and a level-only view undervalues the higher skills
+    that reach them. E1's greedy XP/hr baseline maximises the same capped total.
+
+### Decided (Caleb, 2026-10-30, the guide review): v1.4
+20. **Deposits keep the task's kit** (option catalog §5): a deposit banks everything that isn't suitable to the task
+    at hand, the last activity. So that a deposit's outcome is visible to the policy, the last task is part of the
+    observation (§3).
+
+### Decided (Caleb, 2026-10-30, the tick-manipulation test): v1.5
+21. **`ServerEnv` inputs are client packets** (§7): the bridge enqueues the packet a click would send rather than
+    handling the click itself, so input timing matches a real client's to the tick.
+
+### Decided (Caleb, 2026-10-30 and 31, skilling slots): v1.6
+22. **Skilling slots** (option catalog §2): Woodcutting, Fishing, Mining and Thieving each offer their 2 best paths by
+    XP/hr and 2 by gp/hr as actions, replacing the fixed gathering actions; a path pairs a gathering method with its
+    processing counterpart where sim v0 has it. Their rates are in the observation (§3).
+
+### Decided (Caleb, 2026-10-31, fletching): v1.7
+23. **Fletching is in sim v0** (§5; option catalog §2): woodcutting's logs can be cut where they're chopped, and
+    Fletching has its own skilling slots over the server's recipes (bows, stringing where the strung bow is worth
+    more than its parts, arrows, darts, bolts). Its bought inputs join *V* by *V*'s rule (option catalog §9).
+
+### Decided (Caleb, 2026-10-31, prayers): v1.8
+24. **Fights flick prayers automatically** (§8; option catalog §4): protection, accuracy and damage prayers, and
+    defence prayers where the monster's style can't be protected against. Flicking costs nothing on 2009Scape
+    (checked live), so it's no action of the agent's; training Prayer is what it decides.

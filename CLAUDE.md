@@ -15,12 +15,20 @@ validated on a local 2009Scape server.
   in `ROADMAP.md`. It's the authoritative status, so check it against today's
   date.
 - Decisions and findings are logged chronologically in `docs/decision-log.md`.
+- Undecided questions go in `docs/open-questions-log.md` as they come up, including future ones that can't be
+  decided yet. When one is answered, move it (with its options and the answer) to the decision log and delete it
+  from the open-questions log. Answered questions live only in the decision log; other docs state the design.
 - External references (papers, code, data sources, related work) are listed in `docs/resources.md`,
   numbered to continue the proposal's bibliography. Add a resource there when the project starts using it.
 
 Fixed decisions: every episode starts from a fresh level-3 character; training
 episodes are 20 game-hours with checkpoints every 2 game-hours; combat is in
-scope.
+scope. Simulator (2026-10-28):
+- event-level sampling
+- quests and four more skills (Crafting, Agility, Herblore, Runecrafting)
+  arrive in sim v1, before E2; Fletching was brought into sim v0 (2026-10-31)
+- ambient bots off on the server for calibration and E6
+- a ±20% sim-to-server gate before E2 (env contract §7)
 
 ## Collaboration mode
 
@@ -58,8 +66,8 @@ work.
   upstream (synced to `f279da8` on 2026-10-28, merged into `rl`) and our
   changes live on `rl`. All server modifications go in the fork and are
   committed there first; then this repo's submodule pointer is bumped.
-  Sync upstream again only with Caleb's approval. Claude's recommendation is
-  to keep the server version fixed once calibration starts. When syncing,
+  Sync upstream again only with Caleb's approval (whether to freeze the
+  server version once calibration starts is OQ-5 in the open-questions log). When syncing,
   run `git lfs fetch --all upstream` before pushing, or the push is rejected
   for missing cache objects.
 - Our server code is `Server/src/main/content/rl/`: `RLBridge.kt` (transport),

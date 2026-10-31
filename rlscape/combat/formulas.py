@@ -1,8 +1,9 @@
 """Combat formulas ported from the 2009Scape fork's swing handlers (core/game/node/entity/combat).
 
-Each function names the server method it mirrors. Prayer, set effects, skillcape perks, salve amulets and slayer
-gear multiply rolls by 1.0 for the characters this project models, so they are left out; add them here, against the
-server code, if an option starts using them.
+Each function names the server method it mirrors. Prayers enter as `prayer`, the bonus of the prayer flicked for
+that roll (rlscape.combat.prayers). Set effects, skillcape perks, salve amulets and slayer gear multiply rolls by 1.0
+for the characters this project models, so they are left out; add them here, against the server code, if an option
+starts using them.
 """
 
 from __future__ import annotations
@@ -14,6 +15,11 @@ ACCURATE, AGGRESSIVE, DEFENSIVE, CONTROLLED = "accurate", "aggressive", "defensi
 RAPID, LONGRANGE = "rapid", "longrange"
 
 
+def prayer_boosted(level: int, prayer: float) -> int:
+    """floor(L + bonus x L): every swing handler's step for a prayer's SkillBonus on the effective level."""
+    return int(floor(level + prayer * level))
+
+
 def hit_chance(attack_roll: float, defence_roll: float) -> float:
     """CombatSwingHandler.isAccurateImpact."""
     if attack_roll > defence_roll:
@@ -23,46 +29,50 @@ def hit_chance(attack_roll: float, defence_roll: float) -> float:
 
 # --- players ---------------------------------------------------------------------------------------------------
 
-def player_melee_attack_roll(attack_level: int, style: str, attack_bonus: int) -> int:
+def player_melee_attack_roll(attack_level: int, style: str, attack_bonus: int, prayer: float = 0.0) -> int:
     """MeleeSwingHandler.calculateAccuracy (Player)."""
-    effective = attack_level + (3 if style == ACCURATE else 1 if style == CONTROLLED else 0) + 8
+    effective = prayer_boosted(attack_level, prayer) + (3 if style == ACCURATE else 1 if style == CONTROLLED else 0) + 8
     return int(floor(effective) * (attack_bonus + 64))
 
 
-def player_melee_max_hit(strength_level: int, style: str, strength_bonus: int) -> int:
+def player_melee_max_hit(strength_level: int, style: str, strength_bonus: int, prayer: float = 0.0) -> int:
     """MeleeSwingHandler.calculateHit (Player); damage then rolls uniformly in 0..max."""
-    effective = floor(strength_level + (3 if style == AGGRESSIVE else 1 if style == CONTROLLED else 0) + 8)
+    style_bonus = 3 if style == AGGRESSIVE else 1 if style == CONTROLLED else 0
+    effective = floor(prayer_boosted(strength_level, prayer) + style_bonus + 8)
     return int(floor(0.5 + effective * (strength_bonus + 64) / 640.0))
 
 
-def player_ranged_attack_roll(ranged_level: int, style: str, ranged_bonus: int) -> int:
+def player_ranged_attack_roll(ranged_level: int, style: str, ranged_bonus: int, prayer: float = 0.0) -> int:
     """RangeSwingHandler.calculateAccuracy (Player)."""
-    effective = ranged_level + (3 if style == ACCURATE else 0) + 8
+    effective = prayer_boosted(ranged_level, prayer) + (3 if style == ACCURATE else 0) + 8
     return int(floor(effective) * (ranged_bonus + 64))
 
 
-def player_ranged_max_hit(ranged_level: int, style: str, ranged_strength: int) -> int:
-    """RangeSwingHandler.calculateHit (Player); damage then rolls uniformly in 0..max."""
-    effective = floor(ranged_level + (3 if style == ACCURATE else 0) + 8)
+def player_ranged_max_hit(ranged_level: int, style: str, ranged_strength: int, prayer: float = 0.0) -> int:
+    """RangeSwingHandler.calculateHit (Player); damage then rolls uniformly in 0..max. The ranged prayers raise it
+    too."""
+    effective = floor(prayer_boosted(ranged_level, prayer) + (3 if style == ACCURATE else 0) + 8)
     return int(floor(0.5 + effective * (ranged_strength + 64) / 640.0))
 
 
-def player_magic_attack_roll(magic_level: int, magic_bonus: int) -> int:
+def player_magic_attack_roll(magic_level: int, magic_bonus: int, prayer: float = 0.0) -> int:
     """MagicSwingHandler.calculateAccuracy (Player)."""
-    return int(floor(magic_level + 8) * (magic_bonus + 64))
+    return int(floor(prayer_boosted(magic_level, prayer) + 8) * (magic_bonus + 64))
 
 
-def player_defence_roll(defence_level: int, style: str, defence_bonus: int) -> int:
+def player_defence_roll(defence_level: int, style: str, defence_bonus: int, prayer: float = 0.0) -> int:
     """MeleeSwingHandler / RangeSwingHandler.calculateDefence (Player victim). defence_bonus is the bonus against
     the attacker's attack type (index + 5)."""
     style_bonus = 3 if style in (DEFENSIVE, LONGRANGE) else 1 if style == CONTROLLED else 0
-    return int(defence_level + style_bonus + 8) * (defence_bonus + 64)
+    return int(prayer_boosted(defence_level, prayer) + style_bonus + 8) * (defence_bonus + 64)
 
 
-def player_magic_defence_roll(defence_level: int, magic_level: int, style: str, magic_defence_bonus: int) -> int:
-    """MagicSwingHandler.calculateDefence (Player victim): 30% Defence, 70% Magic."""
+def player_magic_defence_roll(defence_level: int, magic_level: int, style: str, magic_defence_bonus: int,
+                              defence_prayer: float = 0.0, magic_prayer: float = 0.0) -> int:
+    """MagicSwingHandler.calculateDefence (Player victim): 30% Defence, 70% Magic, each with its prayer."""
     style_bonus = 3 if style in (DEFENSIVE, LONGRANGE) else 1 if style == CONTROLLED else 0
-    effective = (defence_level + style_bonus) * 0.3 + magic_level * 0.7 + 8
+    effective = ((prayer_boosted(defence_level, defence_prayer) + style_bonus) * 0.3
+                 + prayer_boosted(magic_level, magic_prayer) * 0.7 + 8)
     return int(effective) * (magic_defence_bonus + 64)
 
 

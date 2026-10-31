@@ -95,9 +95,50 @@ class BridgeClient:
     def walk_to(self, uid: int, x: int, y: int, z: int = 0) -> None:
         self.request("walk_to", uid=uid, x=x, y=y, z=z)
 
+    def set_run(self, uid: int, on: bool = True) -> bool:
+        """Turn run on or off, as the run orb does; returns whether it's on. The server turns it off when run energy
+        drops under 1%."""
+        return self.request("set_run", uid=uid, on=on)["run"]
+
     def interact(self, uid: int, name: str, option: str, is_object: bool = True) -> dict[str, Any]:
         """Use ``option`` on the nearest scenery object (or NPC, with ``is_object=False``) called ``name``."""
         return self.request("interact", uid=uid, name=name, option=option, object=is_object)
+
+    def item_option(self, uid: int, item: int, option: str) -> bool:
+        """Click an inventory item's ``option`` ("bury", "eat"); False if the server dropped the click (locked)."""
+        return self.request("item_option", uid=uid, item=item, option=option)["handled"]
+
+    def use_item(self, uid: int, item: int, with_item: int) -> bool:
+        """Use one inventory item on another; False if the server dropped it (locked)."""
+        return self.request("use_item", uid=uid, item=item, **{"with": with_item})["handled"]
+
+    def dialogue_button(self, uid: int, interface: int, button: int) -> None:
+        """Click a button of the open chatbox dialogue, e.g. a skill dialogue's "Make 1"."""
+        self.request("dialogue_button", uid=uid, interface=interface, button=button)
+
+    def prayer(self, uid: int, prayer: str) -> bool:
+        """Click a prayer's button on the prayer tab (a PrayerType name, e.g. "PROTECT_FROM_MELEE"), turning it on or
+        off. Returns whether it's on afterwards; it can't be toggled with no prayer points left."""
+        return self.request("prayer", uid=uid, prayer=prayer)["active"]
+
+    def schedule(self, steps: list[list[dict[str, Any]]]) -> list[dict[str, Any]]:
+        """Run ``steps[0]`` this game tick, ``steps[1]`` the next, and so on. A step is a list of commands (dicts with
+        ``cmd`` and its fields) run in order, as packets that arrive together are. Returns one ``{tick, results}`` per
+        step, each result being that command's response; failures don't raise or stop the rest."""
+        return self.request("schedule", steps=steps)["steps"]
+
+    def debug_set_levels(self, uid: int, levels: dict[str, int]) -> None:
+        """Setup only (tests, calibration): set skills' levels, by skill name. Never exposed to the agent."""
+        self.request("debug_set_levels", uid=uid, levels=levels)
+
+    def debug_complete_quest(self, uid: int, quest: str) -> None:
+        """Setup only (tests, calibration): mark a quest (Quests enum name) complete. Never exposed to the agent."""
+        self.request("debug_complete_quest", uid=uid, quest=quest)
+
+    def debug_clocks(self, uid: int) -> dict[str, Any]:
+        """Measurement only (tests, calibration): the skilling clock, the active script's next execution and the
+        entity delay, in game ticks, with the current ``tick``. Never exposed to the agent."""
+        return self.request("debug_clocks", uid=uid)
 
     def run_script(self, uid: int, script: str) -> None:
         """Run a bundled ``content.global.bots`` script on the character without resetting its stats."""

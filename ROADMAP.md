@@ -154,16 +154,24 @@ ReinforcementScaping/
 
 ### Week 2 (Oct 12–18): Surrogate sim v0, environment, baselines (E1)
 
-*Started 2026-10-27 (catching up):* `rlscape/gamedata` (server data loaders) and `rlscape/combat` (formulas ported from the server, plus the rate model), with tests. Then the cleaned NPC pool (cache definitions), inventory-aware gp/hr and the retreat-aware filter. *2026-10-28:* the access table (gated areas, quest-only NPCs, Slayer levels). Next: the simulator state and options.
-- [ ] `sim/`: per option, check preconditions, sample a duration, apply XP/item/GP deltas and update state. Formulas are ported from the server source; overheads start as placeholders.
-- [ ] `envs/SimEnv`: Gymnasium API, `action_masks()`, `info["duration"]`, `info["reward_vec"]`, and a reward-weight wrapper.
+*Started 2026-10-27 (catching up):* `rlscape/gamedata` (server data loaders) and `rlscape/combat` (formulas ported from the server, plus the rate model), with tests. Then the cleaned NPC pool (cache definitions), inventory-aware gp/hr and the retreat-aware filter. *2026-10-28:* the access table (gated areas, quest-only NPCs, Slayer levels). Sim v0 started on branch `sim-v0`: the core (skills, character state, the step loop), then the gathering family (woodcutting, mining, fishing, pickpocketing, with hitpoint regeneration and eating) the processing family (smelting, smithing, cooking on fires or ranges, firemaking, burying bones), and the inventory, alchemy and selling options (bank, withdraw, drop, alch, sell at the GE or a general store; per-item actions wait for the vocabulary), ported from the server. Combat so far: melee fights, drops, death and gravestones, a fast candidate ranker (1.3 ms, identical to the reference), and *2026-10-29* the 30 combat-slot actions and 4 loot-mode actions, then ranged fights (arrows used and recovered) and magic fights (runes per cast), with the ranking capped by the ammunition held. The server's GE collection now follows Caleb's buying decisions (fork change). *2026-10-30:* buying (113 buy actions at the GE and shops, with shop stock tracked; gear and food withdrawals; `smith_mithril`; option catalog v1.2); run energy and weight (travel follows the server's energy rules; `bank_deposit_worn`; the bridge's `set_run`, fork change); the Gymnasium layer (`SimEnv` and the shared observation encoder). The item vocabulary *V* (156 items, accepted by Caleb; 974 actions). The random and greedy baselines, and the eval harness (a preliminary E1 run of 10 seeds took under 4 minutes). The scripted-guide baseline is drafted from the RuneScape Wiki's January 2009 guides and reviewed by Caleb; deposits keep the task's kit, and a withdraw-to-sell action exists. 15 pickpocket targets, 5 Ardougne stalls and the Shantay Pass are built, and a live test found no tick manipulation on 2009Scape. The guide's second draft covers all 13 sim v0 skills; Caleb signed it off as E1's scripted baseline. *2026-10-31:* skilling slots replace the fixed gathering actions (paths paired with their processing counterparts; env contract v1.6), and the guide follows the members' guides in stints to multiples of 5. Fletching brought forward from sim v1 (Caleb): chop-and-fletch paths, Fletching's own slots, stringing only where it adds value, and Lumbridge Castle's knife (env contract v1.7; 1,110 actions). Open questions moved to `docs/open-questions-log.md`. Prayer flicking, tested live: a prayer on only in the ticks that need it never drains, and protection and accuracy and damage prayers act at the swing. Fights now flick prayers automatically (Caleb; env contract v1.8). Next: the week-2 tests and calibration.
+- [ ] `sim/` v0: per option, check preconditions, sample outcomes, apply XP/item/GP deltas and update state. Formulas are ported from the server source; overheads start as placeholders. Decided 2026-10-28:
+  - **event-level sampling**
+  - **every family except quests and the v1 skills** (four since Fletching moved into sim v0 on 2026-10-31), which come in sim v1 before E2
+  - the item vocabulary list is drafted for Caleb to check (*done 2026-10-30:* 156 items, accepted)
+- [x] `envs/SimEnv`: Gymnasium API, `action_masks()`, `info["duration"]`, `info["reward_vec"]`, and reward weights. *2026-10-30:* the weights are a `reset` option, as env contract §2 has it, not a wrapper.
 - [ ] Baselines:
-  - random (masked)
-  - greedy XP/hr and greedy GP/hr (one-step lookahead on expected rates at the current state)
-  - scripted guide routine (hand-written from a 2009-era training guide)
-- [ ] `eval/` harness: any policy × N seeds produces metrics at game-time checkpoints every 2 h (2, 4, …, 20), written to parquet with bootstrap 95% CIs.
+  - random (masked) (*done 2026-10-30,* `rlscape/baselines`)
+  - greedy XP/hr and greedy GP/hr (one-step lookahead on expected rates at the current state) (*done 2026-10-30:*
+    E1 uses raw XP for XP/hr (Caleb) and net worth for GP/hr; `e1_baselines()`)
+  - scripted guide routine: Claude drafts it from archived 2009 guides, cites them in `docs/resources.md`, and Caleb reviews it before E1 runs (*drafted 2026-10-30:* `docs/scripted-guide-draft.md`; signed off by Caleb on 2026-10-31 and in `e1_baselines()`)
+- [x] `eval/` harness: any policy × N seeds produces metrics at game-time checkpoints every 2 h (2, 4, …, 20), written to parquet with bootstrap 95% CIs. *2026-10-30:* `rlscape/eval/harness.py` and `scripts/evaluate.py`; metrics are total level, total XP and net worth, with paired differences between policies.
 - [ ] Tests: masks are always respected, GP and item counts never go negative, the same seed gives the same trajectory, plus a sim speed benchmark.
-- [ ] Server: `scripts/calibrate.py` runs each option K times through the bridge and logs duration, XP, item and GP distributions.
+- [ ] Server: `scripts/calibrate.py` runs each option K times through the bridge and logs duration, XP, item and GP distributions. Decided 2026-10-28 (env contract §7):
+  - ambient bots off
+  - 11 bands of calibration characters, fresh to 99, with graded quests, buying their own gear with 100 gp × total level
+  - about 10 runs per option at each band where it's unlocked
+  - calibration-only `debug_set_levels` and `debug_complete_quest` commands
 
 **Exit:** E1 table on the sim with CIs, and calibration runs started.
 
@@ -174,7 +182,10 @@ ReinforcementScaping/
   1. PPO solves a 3-option toy catalog with a known optimum.
   2. PPO beats random on the full catalog.
   3. Small hyperparameter sweep at w = (0.5, 0.5).
-- [ ] Sim v1: fold in the calibration data (real duration distributions, travel and bank overheads).
+- [ ] Sim v1, before E2:
+  - fold in the calibration data (real duration distributions, travel and bank overheads)
+  - add the 21 quests and the four new skills (Crafting, Agility, Herblore, Runecrafting; their options are open question OQ-2)
+  - pass the **±20% sim-to-server gate** on mean XP/hr, gp/hr and duration per calibrated option, with one patch round; residual gaps are reported
 - [ ] **E2:** weightings (1,0), (.75,.25), (.5,.5), (.25,.75), (0,1) × 5 seeds.
 
 **Exit:** first learning curves, with E2 running.
@@ -271,17 +282,8 @@ Calibrate against the existing `ChickenKiller`, `CowKiller`, `GenericSlayerBot` 
 
 ## 8. Open questions
 
-Answered Oct 5: due date (Nov 30), division of labor (Claude codes, Caleb reviews and runs), installs approved, fresh level-3 start, 20 h episodes with 2 h checkpoints, combat in.
-
-Also answered Oct 5:
-- **Promethean AI-assisted code policy:** adapted as `docs/ai-log-requirements.md`.
-- **Remote repo:** GitHub. `CGriffin81/ReinforcementScaping` and the fork `CGriffin81/2009scape-rl` are both private.
-  Both stay private for now (Caleb, 2026-10-28). Revisit if the course submission needs public links; a public fork
-  has to include its source (AGPLv3).
-
-Still open:
-1. **Stretch (E7):** tentatively **A, the LLM planner**: Caleb accepted the recommendation on 2026-10-28. It's
-   confirmed at the week-5 midpoint, and only if E1–E6 are solid by then. See Appendix B.
+Open questions are in `docs/open-questions-log.md` (the E7 choice is OQ-1); answered ones are in
+`docs/decision-log.md`.
 
 ---
 
