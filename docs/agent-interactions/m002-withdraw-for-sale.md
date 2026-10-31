@@ -8,8 +8,7 @@
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS (the withdraw-to-sell action built and tested; the questions answered; a catalog problem found and
   raised)
-- Commit: the main repo commit that adds this record, with `m002-scripted-guide` and `m002-task-kits` (branch
-  `sim-v0`; its SHA can only be filled in by a later commit)
+- Commit: main repo `63ebb0d` (branch `sim-v0`), with `m002-scripted-guide` and `m002-task-kits`
 
 ## Full Prompt
 

@@ -1,6 +1,8 @@
-# Environment Contract (v1.3, Signed off)
+# Environment Contract (v1.5, Signed off)
 
-**Status:** v1.4, 2026-10-30. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
+**Status:** v1.5, 2026-10-30. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
+- **v1.5** (2026-10-30, Caleb) has `ServerEnv` send its inputs as client packets (§7), after the live
+  tick-manipulation test found that the bridge's direct commands land a tick late against the world's pulses.
 - **v1.4** (2026-10-30) adds the last task to the observation (§3), because Caleb's deposit rule makes what a
   deposit keeps depend on it.
 - **v1.3** (2026-10-30, Caleb) adds total XP to the reported metrics (§4, §6).
@@ -91,7 +93,7 @@ option catalog.
 **As built** (`rlscape/envs/encoding.py`, 2026-10-30): E = 11 roles (weapons for melee, ranged and magic,
 ammunition, head, body, legs, shield, axe, pickaxe, fishing gear), R = 12 (the catalog's 11 regions and
 "elsewhere"), C = 18 slots (6 per combat class). The encoder's docstring lists how each part is scaled. With the
-catalog as built (981 actions, *V* = 156) the vector has 1,590 features.
+catalog as built (1,000 actions, *V* = 156) the vector has 1,609 features.
 
 **Left out on purpose:** GE prices. They're frozen, so a price snapshot would be a constant.
 
@@ -168,6 +170,10 @@ for every step.
     crowding.
   - not seedable (world randomness); reported as such
   - options run through human-path actions only, never `debug_*`
+  - its inputs (clicks, item options, item-on-item, dialogue choices) go as client packets (the bridge's
+    `packet` option), so the server handles them in its packet phase, before the world's pulses, exactly as a
+    client's. Handled directly, a bridge command runs after the pulses, and an item option's effect lands a
+    tick late (Caleb, 2026-10-30)
   - turns run on (`set_run`) at the start of each walk, as the simulator assumes. The server turns it off when
     energy drops under 1%.
 - **Parity test:** the same scripted option sequence runs on both backends. The per-option XP, item, coin and
@@ -272,3 +278,7 @@ Caleb signed off both documents on 2026-10-28 (v1.0).
 20. **Deposits keep the task's kit** (option catalog §5): a deposit banks everything that isn't suitable to the task
     at hand, the last activity. So that a deposit's outcome is visible to the policy, the last task is part of the
     observation (§3).
+
+### Decided (Caleb, 2026-10-30, the tick-manipulation test): v1.5
+21. **`ServerEnv` inputs are client packets** (§7): the bridge enqueues the packet a click would send rather than
+    handling the click itself, so input timing matches a real client's to the tick.

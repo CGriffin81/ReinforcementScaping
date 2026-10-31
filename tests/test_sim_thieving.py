@@ -10,7 +10,11 @@ from rlscape.sim import Simulator, build_catalog
 from rlscape.sim.health import REGEN_TICKS, eat_one, regenerate
 from rlscape.sim.skills import SKILL_INDEX, XP_FOR_LEVEL
 from rlscape.sim.state import CharacterState
-from rlscape.sim.thieving import SUCCESS_TICKS, Pickpocket, pickpocket_chance, server_random
+from rlscape.combat.access import rules_at
+from rlscape.sim.combat import in_wilderness
+from rlscape.sim.thieving import (FLEE_TICKS, LEFT_OUT, PICKPOCKET_TARGETS, STALLS, STEAL_TICKS, SUCCESS_TICKS,
+                                  Pickpocket, StealFromStall, pickpocket_chance, pickpocket_options, server_random,
+                                  stall_options)
 
 needs_server = pytest.mark.skipif(not gd.SERVER_CONTENT.exists(), reason="server submodule missing")
 COINS, SHRIMPS, BREAD, LOBSTER = 995, 315, 2309, 379
@@ -104,3 +108,166 @@ def test_the_engine_regenerates_hitpoints_during_other_options():
     sim.state.hp = 5
     duration = sim.step(0).info["duration"]  # wc_logs
     assert sim.state.hp == 5 + duration // REGEN_TICKS
+
+
+@needs_server
+def test_every_pickpocket_target_parses():
+    targets = gd.pickpocket_targets()
+    assert len(targets) == 18
+    assert targets["CAVE_GOBLIN"].npc_ids == tuple(range(5752, 5769))  # IntStream.rangeClosed(5752, 5768)
+    for ham in ("MALE_HAM_MEMBER", "FEMALE_HAM_MEMBER"):  # .insertEasyClue(1.0)
+        assert [(l.item, l.weight) for l in targets[ham].loot if l.item == gd.CLUE_SLOT_EASY] == [(1, 1.0)]
+        assert len(targets[ham].loot) == 27
+    hero = targets["HERO"]
+    assert (hero.level, hero.experience, hero.stun_damage_min, hero.stun_damage_max, hero.stun_ticks) == (
+        80, 273.3, 6, 6, 4)
+
+
+@needs_server
+def test_each_target_has_an_option_or_a_reason():
+    options = pickpocket_options()
+    named = {o.target.name for o in options}
+    assert named | set(LEFT_OUT) == set(gd.pickpocket_targets()) and not named & set(LEFT_OUT)
+    assert [o.id for o in options] == list(PICKPOCKET_TARGETS)
+    assert [o.target.level for o in options] == sorted(o.target.level for o in options)
+    for option in options:
+        assert not in_wilderness(option.tile)
+        npc = next(n for n in option.target.npc_ids if option.tile in gd.spawns().get(n, ()))  # a real spawn
+        assert not rules_at(gd.npcs()[npc].name, option.tile)
+
+
+@needs_server
+def test_weighted_loot_follows_the_table():
+    """One weighted pick per success, P = weight / total; the clue slot gives nothing."""
+    option = next(o for o in pickpocket_options() if o.target.name == "MALE_HAM_MEMBER")
+    rng, counts, n, state = np.random.default_rng(3), {}, 20_000, CharacterState.fresh()
+    for _ in range(n):
+        state.inventory = {}
+        assert option._succeed(state, rng, 1) == 1
+        for item in state.inventory:
+            counts[item] = counts.get(item, 0) + 1
+    total = sum(loot.weight for loot in option.target.loot)
+    for loot in option.target.loot:
+        if loot.item == gd.CLUE_SLOT_EASY:
+            continue
+        expected = loot.weight / total
+        assert counts.get(loot.item, 0) / n == pytest.approx(expected, abs=4 * (expected / n) ** 0.5 + 1e-3)
+    assert gd.CLUE_SLOT_EASY not in counts
+
+
+@needs_server
+def test_can_roll_and_lost_loot_follow_the_server():
+    options = {o.target.name: o for o in pickpocket_options()}
+    man, ham, watchman = options["MAN"], options["MALE_HAM_MEMBER"], options["YANILLE_WATCHMAN"]
+    full = CharacterState.fresh()
+    full.inventory = {LOBSTER: 28}
+    assert not man.can_roll(full) and not ham.can_roll(full)
+    full.inventory = {LOBSTER: 27, COINS: 5}
+    assert man.can_roll(full)  # coins already held: the guaranteed item fits
+    assert not ham.can_roll(full) and not watchman.can_roll(full)  # no free slot; the bread doesn't fit
+    one_free = CharacterState.fresh()
+    one_free.inventory = {LOBSTER: 27}
+    assert watchman.can_roll(one_free)  # the inventory isn't full, though coins and bread need two slots
+    assert watchman._succeed(one_free, np.random.default_rng(0), 1) == 1
+    assert one_free.inventory == {LOBSTER: 27, COINS: 60}  # the bread didn't fit, so it's lost
+    assert watchman._succeed(one_free, np.random.default_rng(0), 1) == 0
+
+
+@needs_server
+def test_non_stackable_loot_fills_the_inventory():
+    option = next(o for o in pickpocket_options() if o.target.name == "MALE_HAM_MEMBER")
+    state = with_level(with_level(CharacterState.fresh(), "hitpoints", 99), "thieving", 40)
+    state.inventory, state.hp, state.location = {}, 99, option.tile
+    result = option.run(state, np.random.default_rng(4), 6_000)
+    assert result.termination == "inventory_full" and state.free_slots() == 0 and not option.available(state)
+
+
+@needs_server
+def test_eating_keeps_a_heros_hit_from_killing():
+    """Heroes hit for 6, above a 10-HP character's retreat point of 5: it eats at 6 or below instead."""
+    option = next(o for o in pickpocket_options() if o.target.name == "HERO")
+    for seed in range(20):
+        state = with_level(CharacterState.fresh(), "thieving", 80)  # 10 hitpoints
+        state.inventory, state.location = {LOBSTER: 20}, option.tile
+        assert option.eat_below(state) == 6
+        option.run(state, np.random.default_rng(seed), 6_000)  # would raise on a death
+        assert state.hp > 0
+
+
+@needs_server
+def test_stalls_parse():
+    stalls = gd.stalls()
+    baker = stalls["BAKER_STALL"]
+    assert (baker.level, baker.experience, baker.restock_ticks) == (5, 16.0, 4)
+    assert baker.rewards == ((1891, 1), (BREAD, 1), (1901, 1))  # cake, bread, chocolate slice
+    assert stalls["GEM_STALL"].restock_ticks == 300
+    assert 2564 not in stalls["SPICE_STALL"].full_ids  # Ardougne's spice stall can't be stolen from
+
+
+@needs_server
+def test_the_stalls_are_in_the_guarded_ardougne_market():
+    options = stall_options()
+    assert [o.id for o in options] == list(STALLS)
+    assert [o.stall.level for o in options] == [5, 20, 35, 50, 75]
+    for option in options:
+        assert max(abs(option.tile[0] - 2662), abs(option.tile[1] - 3305)) <= 12
+        assert option.notice == pytest.approx(4 / 15)
+
+
+def _thief(option: StealFromStall, level: int = 99) -> CharacterState:
+    state = with_level(with_level(CharacterState.fresh(), "hitpoints", 99), "thieving", level)
+    state.inventory, state.hp, state.location = {}, 99, option.tile
+    return state
+
+
+@needs_server
+def test_an_unnoticed_steal_waits_for_the_restock():
+    """Unguarded, the baker's stall gives one steal every 3 + 4 ticks, until the inventory is full."""
+    option = next(o for o in stall_options() if o.id == "steal_bakers_stall")
+    option.notice = 0.0
+    state = _thief(option, level=5)
+    result = option.run(state, np.random.default_rng(0), 6_000)
+    assert result.termination == "inventory_full" and result.detail["steals"] == 28
+    assert result.ticks == 28 * (STEAL_TICKS + 4)
+    assert state.xp[SKILL_INDEX["thieving"]] == XP_FOR_LEVEL[5] + 28 * 16.0
+    assert not option.available(state)
+
+
+@needs_server
+def test_a_steal_takes_one_reward_uniformly():
+    option = next(o for o in stall_options() if o.id == "steal_bakers_stall")
+    option.notice = 0.0
+    rng, counts = np.random.default_rng(1), {}
+    for _ in range(300):
+        state = _thief(option)
+        option.run(state, rng, 6_000)
+        for item, amount in state.inventory.items():
+            counts[item] = counts.get(item, 0) + amount
+    assert sum(counts.values()) == 300 * 28
+    for item, _ in option.stall.rewards:
+        assert counts[item] / (300 * 28) == pytest.approx(1 / 3, abs=0.02)
+
+
+@needs_server
+def test_noticed_steals_run_off_and_come_back():
+    option = next(o for o in stall_options() if o.id == "steal_silk_stall")
+    rng, steals, noticed_ticks, ticks = np.random.default_rng(2), 0, 0, 0
+    for _ in range(200):
+        state = _thief(option)
+        result = option.run(state, rng, 2_000)
+        steals += result.detail["steals"]
+        ticks += result.ticks
+    attempts = (ticks - steals * (STEAL_TICKS + 13)) / (STEAL_TICKS + FLEE_TICKS) + steals  # about; the end is cut off
+    assert (attempts - steals) / attempts == pytest.approx(4 / 15, abs=0.03)
+
+
+@needs_server
+def test_eating_keeps_the_guards_swings_from_killing():
+    option = next(o for o in stall_options() if o.id == "steal_bakers_stall")
+    option.notice = 1.0  # every steal noticed
+    for seed in range(20):
+        state = with_level(CharacterState.fresh(), "thieving", 5)  # 10 hitpoints, starter gear
+        state.inventory, state.location = {LOBSTER: 10}, option.tile
+        assert option.eat_below(state) >= option._escape_hits(state)[1] * 2
+        result = option.run(state, np.random.default_rng(seed), 6_000)  # would raise on a death
+        assert result.termination == "out_of_food" and result.detail["steals"] == 0 and state.hp > 0

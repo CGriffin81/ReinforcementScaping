@@ -1930,3 +1930,125 @@ gets the pickpocket targets and the stalls. `m002-task-kits`.
   3. skilling slots
   4. the live tests, which need bridge commands for item options and prayer
      toggles (fork changes)
+
+### Built: pickpocket targets; tick manipulation re-checked (correction)
+Caleb: "Commit this and keep going with thieving" (the guide, withdraw-to-sell
+and task kits are `63ebb0d`). Mid-turn: "I've seen tick manipulation methods
+with fishing and mining using either herb+tar+pestle/mortar or knife +
+log/barbarian fish." `m002-thieving-targets`.
+- **Built: 13 pickpocket targets** from the server's Pickpockets table (men,
+  farmers, both H.A.M. members, warriors, master farmers, guards, Fremenniks,
+  Knights of Ardougne, Yanille watchmen, paladins, gnomes, heroes), each at its
+  server spawn nearest Lumbridge. Weighted loot, the server's canRoll rule, lost
+  loot when it doesn't fit, and an eating rule that keeps a failed attempt from
+  killing (heroes hit 6). The catalog is now 993 actions and the observation
+  1,602 features. The parser now reads `IntStream.rangeClosed` ids and
+  `insertEasyClue`.
+- **No option yet:** rogues (Wilderness only), cave goblins (Dorgesh-Kaan,
+  outside the travel model), bearded bandits (no spawns), desert bandits and
+  Menaphite thugs (behind the Shantay Pass gate, which takes a pass going south).
+- **Rates with HP to spare, while pickpocketing (no banking):** men 12k XP/h;
+  H.A.M. members about 25k XP/h and 200k gp/h (grimy kwuarm, 2,911 gp in
+  January 2009); master farmers 43k XP/h and 355k gp/h at level 38 (ranarr and
+  snapdragon seeds); Knights of Ardougne 95k XP/h at 55; heroes 159k XP/h and
+  548k gp/h at 80.
+- **Stalls: open questions for Caleb.** The server's StallThiefPulse steals
+  once per click (3 ticks), then the stall restocks (baker 4 ticks … gem 300).
+  4 in 15 steals are noticed when a market guard (id 32) is within 8 tiles,
+  and that guard attacks; no stealing in combat. Ardougne's market has 7 guard
+  spawns near its stalls. The server's Stall table lacks Ardougne's spice stall
+  (object 2564).
+- **Correction to the tick-manipulation findings (`m002-task-kits`).** OSRS's
+  methods work because an item-on-item action sets the skilling clock without
+  checking it. On 2009Scape, every action that sets `Clocks.SKILLING`
+  (`CraftItemWithLogScript` for knife on log, `BoneBuryListener`, the arrow,
+  bolt and stringing scripts) first returns unless `clockReady`, so none can
+  shorten a pending delay. Herb on tar (`HerbTarPulse`) is a pulse that never
+  touches the clock, and starting it replaces the skilling action. So:
+  - **Fishing:** `FishingListener` (not `FishingPulse`, which nothing in the
+    live game calls) rolls on a click when the clock is ready, then sets it 5
+    ticks ahead. Neither knife-on-log nor herb-on-tar can shorten that. The sim
+    already models `FishingListener`.
+  - **Mining:** a fixed 4-tick script delay from each click; no clock.
+  - **Woodcutting:** the 2-tick method by burying a bone is **not** possible:
+    burying is refused while the clock is pending. Woodcutting stays at its
+    default 3 ticks.
+  - **Prayer flicking** is unaffected; its live test still stands.
+
+### Decided and built: stalls, the Shantay Pass; tick manipulation tested live
+Caleb, on the three questions in `m002-thieving-targets`: "1. Go with B. 2.
+Good recommendation. 3. Let's try to test it. The code may have bugs that we
+can exploit for this limited use. Tick manipulation is an understood and
+normal part of the game." `m002-stalls-and-tick-test`.
+- **Stalls (B: run off and come back).** Five Ardougne market stalls (baker,
+  silk, fur, silver, gem), from the server's Stall and StallThiefPulse:
+  - a steal takes 3 ticks and a free slot, gives one reward picked uniformly,
+    and empties the stall for its restock time (4 to 300 ticks)
+  - 4 in 15 steals are noticed when a guard is within 8 tiles, and the market's
+    guards reach every stall. A noticed steal fails, and the character takes
+    the guard's swings (the combat retreat's ESCAPE_ATTACKS) and 20 ticks away
+    (FLEE_TICKS, an estimate to calibrate)
+  - left out: the spice stall (not in the server's Stall table)
+  - rates at each stall's level, with guards: 3–6k XP/h and 9–29k gp/h, far
+    below pickpocketing
+- **The Shantay Pass (the recommendation).** Going south through the gate buys a
+  5-coin pass from Shantay (ShantayOptionPlugin) and hands it over; north is
+  free. Without 5 coins the desert is unreachable, and pickpocket and fight
+  options there are masked. That adds desert bandits and Menaphite thugs: 15
+  pickpocket targets. Desert heat on the walk and the magic carpets aren't
+  modelled. The catalog is now 1,000 actions and the observation 1,609 features.
+- **Tick manipulation, tested live** (`scripts/tick_manipulation_test.py`,
+  `results/live/tick-manipulation-20261030-2023.json`). Each trial ran 45
+  ticks of per-tick inputs, sent as client packets, and read the skilling
+  clock and the script delay every tick, so every roll is seen, failed or not:
+
+  | Skill | Natural interval | Shortest gap, any method | Burying a bone | Knife on log, herb on tar |
+  |---|---|---|---|---|
+  | Woodcutting | 3 ticks | 3 | 5–6 ticks | 3 or slower |
+  | Fishing | 5 ticks | 5 | 7–8 ticks | 5–6 ticks |
+  | Mining | 5 ticks | 8, or no roll at all | no roll | no roll |
+
+  No method shortened a gap: the code's guard holds. Every action that sets the
+  skilling clock first checks it's ready (burying also locks the character for
+  2 ticks). "Make" queues the log craft as a weak script, which the click on the
+  tree removes. The tar is a pulse that waits 4 ticks, which the click's
+  movement pulse replaces. Mining restarts its wait on any click or item use.
+- **Found by the test:**
+  - **Mining rolls every 5 ticks on the server, not 4.** ScriptProcessor runs a
+    script only when `nextExecution < ticks`, so `delayScript(4)` means 5 ticks.
+    The sim's mining assumes 4 (`ATTEMPT_TICKS`), so it overstates mining by
+    25%. Recommended fix: 5, Caleb's call.
+  - **Bridge timing.** The bridge's commands run after the world's pulses, but a
+    client's packets run before them. So a buried bone (a 1-tick pulse) landed a
+    tick late through the bridge. The new `packet` option enqueues the real
+    client packet instead. Recommended: the ServerEnv executor uses it.
+  - **Skill dialogues.** The bridge used to close every chatbox each tick,
+    including herb on tar's "how many" dialogue, which opens a tick after the
+    action. It now leaves skill dialogues open for the controller to answer.
+- **Fork changes** (`RLCommands.kt`, `RLBridge.kt`; uncommitted):
+  - `item_option`, `use_item`, `dialogue_button`, and `schedule` (one list of
+    commands per tick)
+  - `interact` now follows the client's click path (it resets the character's
+    scripts first, as PacketProcessor does)
+  - the `packet` option on the four input commands
+  - `debug_set_levels`, `debug_complete_quest` (the names env contract §7
+    gives them), `debug_clocks` (tests and
+    calibration only)
+- **Next:** the wider guide, skilling slots, and the prayer-flicking live test,
+  which the new commands make possible (it still needs a prayer-toggle command).
+
+### Decided: mining every 5 ticks; ServerEnv inputs as client packets
+Caleb: "Accept both recommendations, commit this, and keep going with the
+guide". `m002-wider-guide`.
+- **Mining:** the sim's attempt interval is now 5 ticks (`rlscape/sim/mining.py`,
+  `ATTEMPT_TICKS`), as measured live. getDelay is 4, and delayScript's wait
+  runs one tick longer. Of the other activities the sim models, only cooking's
+  fire-lighting animation waits on delayScript; cooking itself is a pulse.
+- **ServerEnv inputs are client packets** (env contract v1.5, decision 21): the
+  bridge's `packet` option.
+- **Renamed** the new calibration commands to the names env contract §7 already
+  gave them: `debug_set_levels` (several skills at once) and
+  `debug_complete_quest`.
+- **Committed:** fork `7956207` (the bridge commands); the main repo commit adds
+  the thieving targets, stalls, the Shantay Pass, the tick-manipulation test and
+  the mining fix.

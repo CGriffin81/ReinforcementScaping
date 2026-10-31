@@ -497,19 +497,55 @@ class PickpocketTarget:
     loot: tuple[LootItem, ...]
 
 
+CLUE_SLOT_EASY = 1  # WeightBasedTable.SLOT_CLUE_EASY, added to a table by insertEasyClue(weight)
+
+
 @cache
 def pickpocket_targets() -> dict[str, PickpocketTarget]:
+    """The Pickpockets enum. NPC ids are an intArrayOf(...) or an IntStream.rangeClosed(a, b); a table's
+    insertEasyClue(w) adds the easy-clue slot (CLUE_SLOT_EASY) with weight w."""
     text = PICKPOCKETS.read_text(encoding="utf-8")
     out = {}
-    for name, ids, level, low, high, xp, dmin, dmax, stun, table in re.findall(
-            r"^\s*([A-Z_]+)\(intArrayOf\((.*?)\),\s*(\d+),\s*([\d.]+),\s*([\d.]+),\s*([\d.]+),\s*(\d+),\s*(\d+),"
-            r"\s*(\d+),\s*WeightBasedTable\.create\((.*?)\)\s*\),?\s*$", text, re.M | re.S):
+    for name, ids, level, low, high, xp, dmin, dmax, stun, table, clue in re.findall(
+            r"^\s*([A-Z_]+)\((intArrayOf\(.*?\)|IntStream\.rangeClosed\(\d+,\s*\d+\)\.toArray\(\)),\s*(\d+),"
+            r"\s*([\d.]+),\s*([\d.]+),\s*([\d.]+),\s*(\d+),\s*(\d+),\s*(\d+),\s*WeightBasedTable\.create\((.*?)\)"
+            r"(?:\.insertEasyClue\(([\d.]+)\))?\s*\),?\s*$", text, re.M | re.S):
         loot = tuple(LootItem(int(i), int(lo), int(hi), float(w), always == "true") for i, lo, hi, w, always in
                      re.findall(r"WeightedItem\(\s*(?:Items\.[A-Z0-9_]+?_)?(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,"
                                 r"\s*([\d.]+)\s*(?:,\s*(true|false))?\s*\)", table))
-        out[name] = PickpocketTarget(name, tuple(map(int, re.findall(r"(?:NPCs\.[A-Z0-9_]+?_)?(\d+)", ids))),
-                                     int(level), float(low), float(high), float(xp), int(dmin), int(dmax),
-                                     int(stun), loot)
+        if clue:
+            loot += (LootItem(CLUE_SLOT_EASY, 1, 1, float(clue), False),)
+        if span := re.fullmatch(r"IntStream\.rangeClosed\((\d+),\s*(\d+)\)\.toArray\(\)", ids):
+            npc_ids = tuple(range(int(span[1]), int(span[2]) + 1))
+        else:
+            npc_ids = tuple(map(int, re.findall(r"(?:NPCs\.[A-Z0-9_]+?_)?(\d+)", ids.removeprefix("intArrayOf"))))
+        out[name] = PickpocketTarget(name, npc_ids, int(level), float(low), float(high), float(xp), int(dmin),
+                                     int(dmax), int(stun), loot)
+    return out
+
+
+@dataclass(frozen=True)
+class Stall:
+    """A thieving Stall enum constant."""
+
+    name: str
+    full_ids: tuple[int, ...]  # the stall objects it can be stolen from
+    level: int
+    rewards: tuple[tuple[int, int], ...]  # (item, amount); a steal takes one, picked uniformly
+    experience: float
+    restock_ticks: int  # how long the stall stays empty after a steal (SceneryBuilder.replace's restoreTicks)
+
+
+@cache
+def stalls() -> dict[str, Stall]:
+    """Stall.java's constants whose ids are numbers (CANDLES names its object by a constant and is skipped)."""
+    text = (PICKPOCKETS.parent / "Stall.java").read_text(encoding="utf-8")
+    out = {}
+    for name, full, level, rewards, xp, delay in re.findall(
+            r"^\s*([A-Z_]+)\(new Integer\[\]\s*\{([\d,\s]+)\},\s*new Integer\[\]\s*\{[\d,\s]+\},\s*(\d+),"
+            r"\s*new Item\[\]\s*\{(.*?)\},\s*([\d.]+),\s*(\d+),", text, re.M):
+        items = tuple((int(i), int(n)) for i, n in re.findall(r"new Item\((\d+),\s*(\d+)\)", rewards))
+        out[name] = Stall(name, tuple(int(i) for i in full.split(",")), int(level), items, float(xp), int(delay))
     return out
 
 

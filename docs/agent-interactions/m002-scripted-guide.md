@@ -9,8 +9,7 @@
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS (harness committed; the scripted guide drafted, built and evaluated for Caleb's review; a sim
   mask fixed; Caleb's mid-turn questions answered from the server source, with decisions left to him)
-- Commit: the eval harness is main repo `3714afa` (branch `sim-v0`); the guide draft is the main repo commit that adds
-  this record (its SHA can only be filled in by a later commit)
+- Commit: the eval harness is main repo `3714afa` (branch `sim-v0`); the guide draft is main repo `63ebb0d`
 
 ## Full Prompt
 

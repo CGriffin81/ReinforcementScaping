@@ -104,6 +104,37 @@ class BridgeClient:
         """Use ``option`` on the nearest scenery object (or NPC, with ``is_object=False``) called ``name``."""
         return self.request("interact", uid=uid, name=name, option=option, object=is_object)
 
+    def item_option(self, uid: int, item: int, option: str) -> bool:
+        """Click an inventory item's ``option`` ("bury", "eat"); False if the server dropped the click (locked)."""
+        return self.request("item_option", uid=uid, item=item, option=option)["handled"]
+
+    def use_item(self, uid: int, item: int, with_item: int) -> bool:
+        """Use one inventory item on another; False if the server dropped it (locked)."""
+        return self.request("use_item", uid=uid, item=item, **{"with": with_item})["handled"]
+
+    def dialogue_button(self, uid: int, interface: int, button: int) -> None:
+        """Click a button of the open chatbox dialogue, e.g. a skill dialogue's "Make 1"."""
+        self.request("dialogue_button", uid=uid, interface=interface, button=button)
+
+    def schedule(self, steps: list[list[dict[str, Any]]]) -> list[dict[str, Any]]:
+        """Run ``steps[0]`` this game tick, ``steps[1]`` the next, and so on. A step is a list of commands (dicts with
+        ``cmd`` and its fields) run in order, as packets that arrive together are. Returns one ``{tick, results}`` per
+        step, each result being that command's response; failures don't raise or stop the rest."""
+        return self.request("schedule", steps=steps)["steps"]
+
+    def debug_set_levels(self, uid: int, levels: dict[str, int]) -> None:
+        """Setup only (tests, calibration): set skills' levels, by skill name. Never exposed to the agent."""
+        self.request("debug_set_levels", uid=uid, levels=levels)
+
+    def debug_complete_quest(self, uid: int, quest: str) -> None:
+        """Setup only (tests, calibration): mark a quest (Quests enum name) complete. Never exposed to the agent."""
+        self.request("debug_complete_quest", uid=uid, quest=quest)
+
+    def debug_clocks(self, uid: int) -> dict[str, Any]:
+        """Measurement only (tests, calibration): the skilling clock, the active script's next execution and the
+        entity delay, in game ticks, with the current ``tick``. Never exposed to the agent."""
+        return self.request("debug_clocks", uid=uid)
+
     def run_script(self, uid: int, script: str) -> None:
         """Run a bundled ``content.global.bots`` script on the character without resetting its stats."""
         self.request("run_script", uid=uid, script=script)

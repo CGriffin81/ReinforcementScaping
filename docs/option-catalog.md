@@ -65,7 +65,45 @@ Each produces into the inventory until it's full.
 | `fish_shrimp` | Fishing 1, small net | raw shrimps / anchovies | draynor |
 | `fish_fly` | Fishing 20, fly rod, feathers in the inventory | raw trout / salmon | barbarian_village |
 | `fish_lobster` | Fishing 40, lobster pot | raw lobster | catherby |
-| `pickpocket_men` | Thieving 1 | coins (stackable, so it never fills the inventory) | lumbridge |
+| `pickpocket_men` | Thieving 1 | 3 coins (stackable, so it never fills the inventory) | lumbridge |
+| `pickpocket_farmers` | Thieving 10 | 9 coins and a potato seed | lumbridge_farms |
+| `pickpocket_ham_women` / `pickpocket_ham_men` | Thieving 15 / 20 | one weighted pick: coins, herbs, gems, pickaxes, H.A.M. clothing, junk | H.A.M. hideout under Lumbridge (the trapdoor's lock, 1 in 3 per try, is a travel overhead to calibrate) |
+| `pickpocket_warriors` | Thieving 25 | 18 coins | al_kharid |
+| `pickpocket_master_farmers` | Thieving 38 | one weighted pick of 38 seeds (ranarr, snapdragon, …) | between Lumbridge and Varrock (server spawn 3241, 3345) |
+| `pickpocket_guards` | Thieving 40 | 30 coins | varrock |
+| `pickpocket_fremenniks` | Thieving 45 | 40 coins | Rellekka |
+| `pickpocket_desert_bandits` | Thieving 53 | one weighted pick: 1–49 coins, an antipoison, a lockpick | the Bandit Camp, in the desert (a Shantay pass on the way, below) |
+| `pickpocket_knights` | Thieving 55 | 50 coins | East Ardougne |
+| `pickpocket_watchmen` | Thieving 65 | 60 coins and a bread | Yanille |
+| `pickpocket_menaphite_thugs` | Thieving 65 | 60 coins | Pollnivneach, in the desert |
+| `pickpocket_paladins` | Thieving 70 | 80 coins and 2 chaos runes | East Ardougne |
+| `pickpocket_gnomes` | Thieving 75 | one weighted pick: 300 coins, earth runes, gold ore, fire orbs, swamp toads, king worms | Tree Gnome Village area (server spawn 2558, 3228) |
+| `pickpocket_heroes` | Thieving 80 | one weighted pick: 200–299 coins, death and blood runes, fire orbs, diamonds, gold ore, wine | East Ardougne |
+| `steal_bakers_stall` | Thieving 5 | a cake, bread or chocolate slice | the Ardougne market |
+| `steal_silk_stall` | Thieving 20 | silk | the Ardougne market |
+| `steal_fur_stall` | Thieving 35 | fur or grey wolf fur | the Ardougne market |
+| `steal_silver_stall` | Thieving 50 | silver ore | the Ardougne market |
+| `steal_gem_stall` | Thieving 75 | an uncut sapphire, emerald, ruby or diamond | the Ardougne market |
+
+Pickpocketing (`rlscape/sim/thieving.py`, Caleb 2026-10-30: "Targets and stalls") follows the server's Pickpockets
+table and ThievingListeners. A success rolls the target's table: every guaranteed item, then one weighted pick
+(the H.A.M. tables' clue slot gives nothing, as in combat drops); loot that doesn't fit is lost. An attempt needs
+the guaranteed items to fit or a free slot, so non-stackable loot ends the option at a full inventory. The
+character eats at half HP or at the target's largest hit, whichever is higher. Each target is at its server spawn
+nearest Lumbridge, outside the Wilderness and the access table's areas. No option for: rogues (Wilderness only),
+cave goblins (Dorgesh-Kaan, outside the travel model), bearded bandits (no spawns).
+
+The desert targets are south of the Shantay Pass (Caleb, 2026-10-30: model it like the Al Kharid toll). Going south,
+a walk buys a pass from Shantay for 5 coins and hands it to the gate's guard; going north is free. Without 5 coins
+in the inventory the desert is unreachable, and options whose site is there are masked (`rlscape/sim/movement.py`).
+Desert heat on the walk from the gate and the magic carpets aren't modelled.
+
+Stalls (Stall, StallThiefPulse) are in the Ardougne market, each at its merchant's spawn (an estimate to verify).
+A steal takes 3 ticks and a free slot, gives one of the stall's rewards, and empties the stall for its restock time
+(baker 4 ticks, silk 13, fur 25, silver 50, gem 300). 4 in 15 steals are noticed by a market guard within 8 tiles,
+and every stall has one. Then the steal fails and the character runs off and comes back (Caleb, 2026-10-30),
+taking the guard's swings while it disengages and 20 ticks away (both to calibrate). The spice stall is left out:
+the server's Stall table doesn't list Ardougne's spice stall (object 2564).
 
 ## 3. Processing
 
@@ -452,7 +490,7 @@ items; *V* is revisited when they're specified.
 
 | Group | Actions |
 |---|---|
-| Gathering and thieving | 12 |
+| Gathering and thieving | 31 (11 gathering + 15 pickpocket targets + 5 stalls) |
 | Processing | 10 |
 | Combat | 30 |
 | Loot mode | 4 |
@@ -460,7 +498,7 @@ items; *V* is revisited when they're specified.
 | Alchemy | 314 (high and low, 157 each) |
 | Selling | 314 (GE and store, 157 each) |
 | Buying | 113 |
-| **Total in sim v0** | **981** |
+| **Total in sim v0** | **1,000** |
 | Quests (sim v1) | 21 |
 
 Each *V* item adds 7 observation features: its inventory and bank counts, and its 5 actions' mask entries (env

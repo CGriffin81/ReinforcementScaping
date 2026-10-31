@@ -1,7 +1,9 @@
 """Mining options, ported from the server's MiningListener with event-level sampling.
 
 Server mechanics (content/global/skill/gather/mining/MiningListener.kt):
-- an attempt every 4 ticks on ordinary rocks (getDelay); the first comes after one delay too;
+- an attempt every 5 ticks on ordinary rocks: getDelay is 4, but delayScript sets the script's nextExecution and
+  ScriptProcessor runs it only once nextExecution < ticks, so each wait is one tick longer (measured live,
+  scripts/tick_manipulation_test.py); the first attempt comes one wait after the click too;
 - an attempt succeeds if Math.random() * (100 * rate) < Math.random() * ((1 + level - rock level) * (1 + pickaxe
   ratio)), i.e. one uniform roll racing another (uniform_race gives the exact probability);
 - every ore empties the rock (respawnRate != 0); it respawns after getRespawnDuration (rlscape.sim.gathering);
@@ -24,7 +26,7 @@ from rlscape.sim.skills import MAX_XP, SKILL_INDEX
 from rlscape.sim.state import CharacterState
 from rlscape.sim.woodcutting import best_tool
 
-ATTEMPT_TICKS = 4  # MiningListener.getDelay for every rock except rune essence
+ATTEMPT_TICKS = 5  # MiningListener.getDelay (4) for every rock except rune essence, plus delayScript's extra tick
 GEM_CHANCE = 1 / 282
 GEMS = (1623, 1621, 1619, 1617)  # MiningListener.GEM_REWARDS: uncut sapphire, emerald, ruby, diamond
 # SkillingTool.getPickaxe's priority, standard pickaxes only.

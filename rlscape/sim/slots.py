@@ -44,6 +44,7 @@ from rlscape.sim.combat import arrow_land_chance, best_spell, casts_held, fight
 from rlscape.sim.engine import ACTIVITY_TICKS
 from rlscape.sim.equipment import SHIELD, WEAPON, fighter_for, ranged_ready, wield_best
 from rlscape.sim.health import food_healing_held, foods_held, retreat_hp
+from rlscape.sim.movement import reachable
 from rlscape.sim.options import COMPLETED, Option, OptionResult
 from rlscape.sim.state import CharacterState
 
@@ -162,7 +163,8 @@ class FightSlot(Option):
     def available(self, state: CharacterState) -> bool:
         if state.hp <= retreat_hp(state) and not foods_held(state):
             return False  # the fight would retreat before its first swing (rlscape.sim.combat.fight)
-        return self.slots.candidate(state, self.combat_class, self.index, self.style) is not None
+        candidate = self.slots.candidate(state, self.combat_class, self.index, self.style)
+        return candidate is not None and reachable(state, candidate.site.spawn)  # a desert site needs a Shantay pass
 
     def run(self, state: CharacterState, rng: np.random.Generator, budget: int) -> OptionResult:
         candidate = self.slots.candidate(state, self.combat_class, self.index, self.style)

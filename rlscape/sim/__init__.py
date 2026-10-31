@@ -12,7 +12,7 @@ from rlscape.sim.options import Option, OptionResult
 from rlscape.sim.processing import processing_options
 from rlscape.sim.slots import combat_options
 from rlscape.sim.state import CharacterState
-from rlscape.sim.thieving import pickpocket_options
+from rlscape.sim.thieving import pickpocket_options, stall_options
 from rlscape.sim.woodcutting import woodcutting_options
 from rlscape.vocabulary import vocabulary as default_vocabulary
 
@@ -22,7 +22,7 @@ def build_catalog(vocabulary: Iterable[int] | None = None, activity_ticks: int =
     `vocabulary`: by default the catalog's V (rlscape.vocabulary); an empty one leaves only the misc actions. The
     combat slots are ranked for options of `activity_ticks`, which should match the Simulator's."""
     vocabulary = default_vocabulary() if vocabulary is None else tuple(vocabulary)
-    return [*woodcutting_options(), *mining_options(), *fishing_options(), *pickpocket_options(),
+    return [*woodcutting_options(), *mining_options(), *fishing_options(), *pickpocket_options(), *stall_options(),
             *processing_options(), *combat_options(vocabulary, activity_ticks), *inventory_options(vocabulary),
             ReclaimGravestone(), *selling_options(vocabulary), *buying_options()]
 
