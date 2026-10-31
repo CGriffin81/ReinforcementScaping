@@ -2229,3 +2229,120 @@ undecided, record them in open-questions-log." `m002-open-questions`.
 - **Also fixed:** "five v1 skills" in `CLAUDE.md`, `ROADMAP.md` and env
   contract §7 (four since Fletching moved into sim v0), and the ROADMAP's
   "awaiting Caleb" on the signed-off guide.
+
+### Committed; prayer flicking tested live (OQ-3's first part)
+Caleb: "Commit this and go ahead with OQ-3." `m002-prayer-flicking`. The
+skilling slots, Fletching and the open-questions log are main repo `f47b7fb`
+(not pushed).
+- **Answered (OQ-3's first part):** the go-ahead for the fork change the
+  prayer-flicking test needs. The second part, how agents use prayer in
+  combat, stays open (OQ-3, reworded).
+- **Fork change** (`RLCommands.kt`, uncommitted):
+  - `prayer {uid, prayer}` clicks a prayer's button on the prayer tab, as
+    `PacketProcessor.processIfAction` handles a click; with `packet=true` it
+    enqueues the `IfAction` packet a client's click sends.
+  - `state` reports prayer points and the active prayers.
+  - **Bug fixed in `debug_set_levels`:** it set a level but not the current
+    hitpoints or prayer points (`setStaticLevel` leaves them), so a
+    calibration character set to Hitpoints 50 still had 10 hitpoints. It now
+    refills both.
+- **From the source:**
+  - `Prayer.tick`, in each character's tick, counts the ticks in a row with
+    any prayer on, resets the count on a tick with none, and drains only on
+    even counts.
+  - A protection prayer is checked when the attacker swings
+    (`getFormattedHit`, from `adjustBattleState`); an NPC's hit is then 0.
+  - A tick runs the client packets, then the world's pulses, then the bridge,
+    then the characters' ticks. So a prayer turned on by a packet in a swing's
+    tick, and off by one the next tick, is counted once and never drains.
+- **Live test** (`scripts/prayer_flick_test.py`,
+  `results/live/prayer-flicking-20261031-0536.json`). A character with
+  Prayer 43, Hitpoints 99 and Defence 1 fights a lone hill giant (a swing
+  every 6 ticks) for 120 ticks per trial, over 2 rounds:
+
+  | Protect from Melee | Hits landed | Prayer drained |
+  |---|---|---|
+  | none | 13, 11 | 0 |
+  | on throughout | 0, 0 | 8.85 |
+  | flicked: on every other tick, switching parity halfway | the half on the giant's swing ticks: 0, 0; the other: 9, 4 | 0 |
+  | off and on in the same tick, every tick (the OSRS one-tick flick) | 0, 0 | 8.85 |
+
+  - Flicking works: it costs nothing and blocks every swing that falls in a
+    tick with the prayer on. Each hit that landed showed one tick after a tick
+    with the prayer off, so protection counts at the swing, not when the hit
+    lands.
+  - The OSRS one-tick flick doesn't save anything here: `Prayer.tick` only
+    ever sees the prayer on, so it drains as if left on.
+  - A first run against a Falador guard (18 hitpoints) gave the same results,
+    but its fourth trial's fight stopped after 37 ticks, most likely because
+    the earlier trials had worn the guard down. The giant has 35.
+- **Tests:** three live tests in `tests/test_bridge_inputs_live.py` (the
+  prayer button, both ways; the refilled levels; a prayer on every other tick
+  never drains). Full suite with the server up: 246 passed.
+- **Open, for Caleb (OQ-3):** how agents use prayer in combat. Recommended:
+  fights flick automatically wherever the Prayer level allows.
+
+### Decided: fights flick prayers automatically (OQ-3); offensive flicking tested live
+Caleb: "We're going to automatically flick prayers, including the accuracy and
+damage options available. That includes atk and str, but also range and mage,
+if those prayers exist in 2009scape." `m002-prayer-in-combat`. The options
+were (a) fights flick automatically (recommended), (b) a prayer mode the agent
+sets, (c) no prayer in combat.
+- **They exist:** attack (Clarity of Thought 7, Improved Reflexes 16,
+  Incredible Reflexes 34), strength (Burst 4, Superhuman 13, Ultimate 31),
+  ranged (Sharp Eye 8, Hawk Eye 26, Eagle Eye 44: accuracy and max hit),
+  magic (Mystic Will 9, Lore 27, Might 45: accuracy only); Chivalry and Piety
+  need Defence 65/70 and King's Ransom, which isn't in the quest set. Each
+  adds floor(L + bonus x L) to the effective level at the swing.
+- **Live** (`scripts/prayer_offence_test.py`,
+  `results/live/prayer-offence-20261031-0553.json`): Strength 60 punches
+  reached 8 only with Ultimate Strength on in the punch's tick (5 times), never
+  above 7 otherwise; nothing drained. Every gap between a giant's swing and the
+  nearest punch was even: a monster starts swinging on the character's swing
+  ticks. With two even attack speeds the sides never swing in adjacent ticks,
+  so flicking both is free; with an odd speed some swings are adjacent, and
+  flicking both there drains.
+- **Built so far:** `gamedata.server.prayers()` reads PrayerType.
+- **Not built yet:** the sim side (prayer bonuses in the formulas and
+  Fighter, zero damage from a protected style, skipping the offensive flick on
+  swings adjacent to a protection flick), its tests, env contract v1.8 and the
+  catalog's §4.
+
+### Decided and built: defence prayers; prayer flicking in the sim's fights
+Caleb, on the question of defence prayers: "Defence prayers don't need to be
+flicked unless an enemy has multiple damage types or the agent does not have
+access to the protection prayer associated." `m002-prayer-flicking-in-fights`.
+- **Built** (env contract v1.8, decision 24; option catalog §4,
+  "Prayers in fights"):
+  - `rlscape/combat/prayers.py`: what a fight flicks, from
+    `gamedata.server.prayers()` (PrayerType); the swings that get the
+    accuracy and damage prayers
+  - `rlscape/combat/formulas.py`: each player roll takes its prayer's bonus,
+    floor(L + bonus x L), as the swing handlers do
+  - `rlscape/combat/rates.py`: `Fighter.flicks`; a protected style deals
+    nothing; defence (and, against magic, Mystic) prayers raise the defence
+    rolls otherwise; damage per swing mixes boosted and plain swings
+  - `rlscape/sim/combat.py`: each kill's swings follow that pattern
+  - `rlscape/sim/equipment.py`: `fighter_for` gives the fighter its prayers
+- **Multiple damage types:** the sim gives each monster one combat style, so
+  that case isn't modelled; dragonfire stays the gear check.
+- **Agent choices (reversible):**
+  - on a tick next to a monster swing, the monster's tick keeps its prayer
+    (protection or defence) and the character's swing goes without
+  - against magic the defensive flick adds the best Mystic prayer, since
+    magic defence is 70% Magic
+- **Tests:** `tests/test_prayers.py` (7), including Strength 60's max hit of
+  7, and 8 with Ultimate Strength, as measured live.
+- **E1 baselines, 10 seeds x 20 hours** (`results/eval/guide-prayer-20261031`):
+  guide total level 314, total XP 96k, net worth 110k (312, 94k, 108k
+  before); random 234, 102k, 11k (235, 102k, 8k). Neither raises Prayer far
+  (the guide's seed 0 ended at Prayer 5), so they get only the low prayers.
+
+### Committed; the PR for sim v0
+Caleb: "Commit the changes, then create the PR." `m002-commit-and-pr`.
+- Fork `99152ea` on `rl`: the `prayer` command and the `debug_set_levels` fix.
+- The main repo commit after `f47b7fb` holds the prayer-flicking work, with the
+  submodule bump.
+- Pushed the fork's `rl` (3 commits had never been pushed, and `sim-v0`'s
+  submodule pointers name them) and `sim-v0`, then opened a PR from `sim-v0`
+  to `main` with all of sim v0.

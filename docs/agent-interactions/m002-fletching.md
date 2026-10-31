@@ -9,8 +9,7 @@
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS (Fletching built into sim v0 as decided, with the knife spawn; the guide trains it; docs and env
   contract v1.7 updated)
-- Commit: the commit that adds this record holds this work (main repo, branch `sim-v0`; its SHA can only be
-  filled in by a later commit)
+- Commit: main repo `f47b7fb` (branch `sim-v0`)
 
 ## Full Prompt
 

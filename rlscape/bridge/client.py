@@ -116,6 +116,11 @@ class BridgeClient:
         """Click a button of the open chatbox dialogue, e.g. a skill dialogue's "Make 1"."""
         self.request("dialogue_button", uid=uid, interface=interface, button=button)
 
+    def prayer(self, uid: int, prayer: str) -> bool:
+        """Click a prayer's button on the prayer tab (a PrayerType name, e.g. "PROTECT_FROM_MELEE"), turning it on or
+        off. Returns whether it's on afterwards; it can't be toggled with no prayer points left."""
+        return self.request("prayer", uid=uid, prayer=prayer)["active"]
+
     def schedule(self, steps: list[list[dict[str, Any]]]) -> list[dict[str, Any]]:
         """Run ``steps[0]`` this game tick, ``steps[1]`` the next, and so on. A step is a list of commands (dicts with
         ``cmd`` and its fields) run in order, as packets that arrive together are. Returns one ``{tick, results}`` per

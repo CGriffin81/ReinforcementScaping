@@ -1,6 +1,7 @@
-# Environment Contract (v1.7, Signed off)
+# Environment Contract (v1.8, Signed off)
 
-**Status:** v1.7, 2026-10-31. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
+**Status:** v1.8, 2026-10-31. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
+- **v1.8** (2026-10-31, Caleb) has fights flick prayers (§8).
 - **v1.7** (2026-10-31, Caleb) brings Fletching forward into sim v0 (§5), with Fletching skilling slots, a
   fletching task (§3) and 20 fletching inputs in *V*.
 - **v1.6** (2026-10-31, Caleb) replaces the fixed gathering actions with skilling slots and adds their rates to
@@ -216,6 +217,7 @@ from `drop_tables.json`, and spawns from `npc_spawns.json`.
 | gp/hr | expected value (`prices_v2`) of the drops the loot mode keeps × kills/hr. **Not yet subtracted:** consumables used (food, arrows, runes) and entry fees (Brimhaven, Waterbirth). |
 | Risk | expected damage per kill, and the monster's max hit, against HP above the retreat point and the food held (the retreat-aware filter) |
 | Inventory and travel | kills continue until the looted drops fill the free slots, then a bank trip; the walk to the monster is taken out of the duration (*D* = 15 game-minutes = 1,500 ticks) |
+| Prayer | fights flick prayers (option catalog §4): a style the Prayer level can protect against deals nothing, defence prayers count otherwise, and the character's swings get its accuracy and damage prayers except those next to a monster swing. Prayer points never drain. |
 | Ammunition | fighting stops when the arrows or runes run out. Arrows that land and are picked back up stretch the arrows held; melee and crystal bows are unlimited. |
 
 These are *theoretical* rates (expected values). The real server measures the actual ones during calibration
@@ -298,3 +300,8 @@ Caleb signed off both documents on 2026-10-28 (v1.0).
 23. **Fletching is in sim v0** (§5; option catalog §2): woodcutting's logs can be cut where they're chopped, and
     Fletching has its own skilling slots over the server's recipes (bows, stringing where the strung bow is worth
     more than its parts, arrows, darts, bolts). Its bought inputs join *V* by *V*'s rule (option catalog §9).
+
+### Decided (Caleb, 2026-10-31, prayers): v1.8
+24. **Fights flick prayers automatically** (§8; option catalog §4): protection, accuracy and damage prayers, and
+    defence prayers where the monster's style can't be protected against. Flicking costs nothing on 2009Scape
+    (checked live), so it's no action of the agent's; training Prayer is what it decides.

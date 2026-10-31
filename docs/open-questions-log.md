@@ -30,17 +30,6 @@ Started 2026-10-31 (Caleb), from a review of the documentation.
 - **Needed by:** before sim v1 is built, which is before E2.
 - **Status:** not drafted.
 
-### OQ-3. Prayer flicking: the live test's fork change, then whether and how agents use prayer
-- **Raised:** 2026-10-30. Caleb: "We will implement prayer flicking and 3-tick woodcutting if they can be used",
-  after a live test. Tick manipulation has been tested (no method works on 2009Scape). The prayer-flicking test
-  needs a bridge command that toggles a prayer, which is a fork change.
-- **From the source:** `Prayer.tick()` drains only on even counts of consecutive prayer ticks, so flicking would
-  make prayer free on this server.
-- **Questions:** (a) the go-ahead for the prayer-toggle command; (b) after the test, how prayer enters the agents'
-  options. Neither the sim nor the planned executor uses prayers in combat yet.
-- **Decides:** Caleb.
-- **Status:** next in the plan.
-
 ### OQ-4. Bridge commands for the rest of the player's paths
 - **Raised:** 2026-10-30 (option catalog §8, server side).
 - **Question:** the go-ahead for the fork changes that shop buys, putting gear on, bank withdrawals and

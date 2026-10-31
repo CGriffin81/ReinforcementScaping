@@ -27,6 +27,7 @@ FISHING_OPTION = SERVER_CONTENT / "global" / "skill" / "fishing" / "FishingOptio
 FISH_SPOTS = SERVER_CONTENT / "global" / "skill" / "fishing" / "FishSpots.kt"
 PICKPOCKETS = SERVER_CONTENT / "global" / "skill" / "thieving" / "Pickpockets.kt"
 CONSUMABLES = SERVER_CONTENT / "data" / "consumables" / "Consumables.java"
+PRAYER_TYPE = SERVER_CONTENT.parent / "core" / "game" / "node" / "entity" / "player" / "link" / "prayer" / "PrayerType.java"
 SMITHING = SERVER_CONTENT / "global" / "skill" / "smithing"
 COOKABLE_ITEMS = SERVER_CONTENT / "global" / "skill" / "cooking" / "CookableItems.java"
 LOGS = SERVER_CONTENT / "global" / "skill" / "firemaking" / "Log.java"
@@ -956,3 +957,32 @@ def shops() -> dict[int, Shop]:
 def noted_ids() -> dict[int, int]:
     """Item id -> its banknote, for the exported items that have one."""
     return {real: note for note, real in unnoted_ids().items() if note != real}
+
+
+@dataclass(frozen=True)
+class Prayer:
+    """A prayer as PrayerType defines it: the Prayer level it needs, the Defence level (Chivalry and Piety, which
+    PrayerType.permitted also gives King's Ransom as a requirement) and its bonuses, each a fraction added to a
+    skill's effective level in combat (SkillBonus)."""
+
+    name: str
+    level: int
+    defence_level: int
+    bonuses: tuple[tuple[str, float], ...]  # (skill, fraction), e.g. ("strength", 0.15)
+
+    @property
+    def quest(self) -> str | None:
+        return "KINGS_RANSOM" if self.defence_level in (65, 70) else None
+
+
+@cache
+def prayers() -> dict[str, Prayer]:
+    """PrayerType's prayers, by enum name."""
+    skills = {"ATTACK": "attack", "STRENGTH": "strength", "DEFENCE": "defence", "RANGE": "ranged", "MAGIC": "magic"}
+    out = {}
+    for name, level, args in re.findall(r"^	([A-Z_]+)\((\d+), (.*)\),?;?$", PRAYER_TYPE.read_text(encoding="utf-8"), re.M):
+        defence = re.search(r"Sounds\.\w+, (\d+),", args)  # the constructor that takes a Defence requirement
+        bonuses = tuple((skills[s], float(v)) for s, v in re.findall(r"SkillBonus\(Skills\.(\w+), ([\d.]+)\)", args))
+        out[name] = Prayer(name, int(level), int(defence.group(1)) if defence else 1, bonuses)
+    return out
+

@@ -15,6 +15,7 @@ attack) and chinchompas (multi-target) aren't modelled and are never wielded for
 
 from __future__ import annotations
 
+from rlscape.combat.prayers import flicks
 from rlscape.combat.rates import Fighter
 from rlscape.gamedata import server as gd
 from rlscape.sim.skills import SKILLS
@@ -164,8 +165,9 @@ def wield_best(state: CharacterState, combat_class: str) -> int:
 
 
 def fighter_for(state: CharacterState) -> Fighter:
-    """The fighter as currently equipped: levels plus the summed bonuses of everything worn. A thrown weapon ignores
-    the quiver's ranged strength (RangeSwingHandler.calculateHit)."""
+    """The fighter as currently equipped: levels plus the summed bonuses of everything worn, and the prayers its
+    levels and quests give a fight. A thrown weapon ignores the quiver's ranged strength
+    (RangeSwingHandler.calculateHit)."""
     items = gd.items()
     bonuses = list(map(sum, zip(gd.NO_BONUSES, *(items[i].bonuses for i in state.equipment.values()))))
     weapon = state.equipment.get(WEAPON)
@@ -174,4 +176,5 @@ def fighter_for(state: CharacterState) -> Fighter:
         bonuses[gd.RANGED_STRENGTH] -= items[state.equipment[AMMO]].bonuses[gd.RANGED_STRENGTH]
     speed = (items[weapon].attack_speed or UNARMED_SPEED) if weapon is not None else UNARMED_SPEED
     return Fighter(state.level("attack"), state.level("strength"), state.level("defence"), state.level("hitpoints"),
-                   state.level("ranged"), state.level("magic"), tuple(bonuses), speed)
+                   state.level("ranged"), state.level("magic"), tuple(bonuses), speed,
+                   flicks(state.level("prayer"), state.level("defence"), state.progress.quests_complete))

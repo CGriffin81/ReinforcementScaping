@@ -317,6 +317,23 @@ Travel is straight-line tile distance × 1.3 at 1.5 tiles per tick, plus 12 tick
 underground. Dungeons sit 6,400 tiles north of the surface they lie under. All of these constants are to be
 calibrated on the server.
 
+### Prayers in fights (Caleb, 2026-10-31; implemented)
+
+Every fight flicks prayers on its own, with no actions for it (`rlscape/combat/prayers.py`). On 2009Scape a prayer
+that's on only in the ticks that need it never drains (checked live), so prayer points stay full:
+- **On the monster's swing ticks:** the protection prayer for its style if the Prayer level has it (Magic 37,
+  Missiles 40, Melee 43): its hits deal nothing. Otherwise the best defence prayer, and against magic the best Mystic
+  prayer too (Caleb: defence prayers only "unless an enemy has multiple damage types or the agent does not have
+  access to the protection prayer associated"; the sim gives each monster one style).
+- **On the character's swing ticks:** the best accuracy and damage prayers for the class: attack and strength, the
+  ranged prayers (accuracy and max hit) or the Mystic prayers (accuracy). Not on a tick next to a monster swing,
+  since two ticks in a row would drain. A monster starts swinging on the character's swing ticks, so with two even
+  attack speeds that never happens.
+- Chivalry and Piety need King's Ransom, outside the quest set.
+
+The candidate rates, the danger filter and the sim's fights all use it, so a monster whose style the character can
+protect against deals no damage, and training Prayer opens harder monsters.
+
 ### D. Looting decided by the agent (decided)
 
 Caleb's rule is that the agent makes looting decisions. **The design, approved by Caleb on 2026-10-28: a loot mode the agent sets.** It

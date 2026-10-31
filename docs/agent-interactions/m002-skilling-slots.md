@@ -9,8 +9,7 @@
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS (the earlier work committed; skilling slots built and tested; the guide revised; fletching checked
   live, with a proposal for Caleb)
-- Commit: the guide work and sign-off are main repo `7030ede` (branch `sim-v0`); this work is in the commit that
-  adds this record (its SHA can only be filled in by a later commit)
+- Commit: the guide work and sign-off are main repo `7030ede` (branch `sim-v0`); this work is main repo `f47b7fb`
 
 ## Full Prompt
 

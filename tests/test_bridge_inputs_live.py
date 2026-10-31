@@ -1,5 +1,5 @@
-"""Live checks of the bridge's input commands: `schedule`, `item_option`, `use_item`, `dialogue_button`, and their
-`packet` form, which hands the server the packet a client's click would send.
+"""Live checks of the bridge's input commands: `schedule`, `item_option`, `use_item`, `dialogue_button`, `prayer`, and
+their `packet` form, which hands the server the packet a client's click would send.
 
 Needs the forked server running with worldprops/rl.conf; skipped when the server is down.
 """
@@ -78,3 +78,34 @@ def test_herb_on_tar_answers_its_dialogue_the_next_tick(client, uid):
                      [{"cmd": "dialogue_button", "uid": uid, "interface": iface, "button": button, "packet": True}]])
     client.wait(8)
     assert held(client, uid, CLEAN_GUAM) == 0 and held(client, uid, SWAMP_TAR) == 0
+
+
+@pytest.mark.parametrize("packet", [False, True])
+def test_a_prayer_button_turns_the_prayer_on_and_off(client, uid, packet):
+    client.debug_set_levels(uid, {"prayer": 43})
+    for expected in (["PROTECT_FROM_MELEE"], []):
+        client.request("prayer", uid=uid, prayer="PROTECT_FROM_MELEE", packet=packet)
+        client.wait(1)
+        assert client.state(uid)["prayers"] == expected
+
+
+def test_setting_levels_refills_hitpoints_and_prayer_points(client, uid):
+    client.debug_set_levels(uid, {"hitpoints": 50, "prayer": 43})
+    state = client.state(uid)
+    assert (state["hitpoints"], state["prayer_points"]) == (50, 43)
+
+
+def test_a_prayer_on_every_other_tick_never_drains(client, uid):
+    """Prayer.tick drains on every second tick in a row with a prayer on, and a tick with none on resets the count. A
+    click every tick turns the prayer on and off on alternate ticks, so it never drains; left on, it drains 0.15
+    points every 2 ticks (Protect from Melee, no prayer bonus)."""
+    client.debug_set_levels(uid, {"prayer": 43})
+    click = {"cmd": "prayer", "uid": uid, "prayer": "PROTECT_FROM_MELEE", "packet": True}
+    steps = client.schedule([[click, {"cmd": "state", "uid": uid}] for _ in range(20)])
+    on = [step["results"][1]["state"]["prayers"] != [] for step in steps]
+    assert on == [i % 2 == 0 for i in range(1, 21)]  # each click is handled the next tick
+    assert client.state(uid)["prayer_points"] == 43
+    client.schedule([[click]])
+    client.wait(20)
+    assert client.state(uid)["prayer_points"] < 43 - 1
+

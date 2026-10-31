@@ -35,6 +35,7 @@ from math import ceil, inf
 import numpy as np
 
 from rlscape.combat.candidates import PoolEntry, Site
+from rlscape.combat.prayers import boosted_swings
 from rlscape.combat.rates import ESCAPE_ATTACKS, OVERHEAD_TICKS_PER_KILL, Plan, npc_offence, player_offence
 from rlscape.gamedata import server as gd
 from rlscape.sim.energy import MAX_ENERGY
@@ -85,13 +86,26 @@ def roll_drops(table: gd.DropTable | None, rng: np.random.Generator) -> list[tup
     return drops
 
 
-def kill_sequence(hitpoints: int, chance: float, max_hit: int, rng: np.random.Generator) -> np.ndarray:
+def kill_sequence(hitpoints: int, chance: float, max_hit: int, rng: np.random.Generator,
+                  boosted: tuple[float, int, tuple[bool, ...]] | None = None) -> np.ndarray:
     """Cumulative damage after each attack, up to the one that kills: each attack hits with `chance` for uniform
-    0..max_hit. Its length is the number of attacks the kill takes."""
+    0..max_hit. Its length is the number of attacks the kill takes. With `boosted` (chance, max hit, pattern), the
+    attacks the pattern marks, repeating from the kill's first, use the boosted chance and max hit: those that get
+    the flicked accuracy and damage prayers (rlscape.combat.prayers)."""
+    if boosted is not None and all(boosted[2]):
+        chance, max_hit, boosted = boosted[0], boosted[1], None
+    elif boosted is not None and not any(boosted[2]):
+        boosted = None
     parts, done = [], 0
     batch = max(8, ceil(4 * hitpoints / max(chance * max_hit / 2, 0.1)))
     while True:
-        damage = np.cumsum((rng.random(batch) < chance) * rng.integers(0, max_hit + 1, batch)) + done
+        if boosted is None:
+            damage = np.cumsum((rng.random(batch) < chance) * rng.integers(0, max_hit + 1, batch)) + done
+        else:
+            pattern = np.array(boosted[2])
+            on = pattern[(sum(len(p) for p in parts) + np.arange(batch)) % len(pattern)]
+            chances, max_hits = np.where(on, boosted[0], chance), np.where(on, boosted[1], max_hit)
+            damage = np.cumsum((rng.random(batch) < chances) * rng.integers(0, max_hits + 1)) + done
         reached = np.flatnonzero(damage >= hitpoints)
         if reached.size:
             parts.append(damage[:reached[0] + 1])
@@ -216,8 +230,12 @@ def fight(state: CharacterState, rng: np.random.Generator, budget: int, entry: P
             continue
         fighter = fighter_for(state)
         chance, max_hit, speed, _, xp_per_damage = player_offence(fighter, plan, npc)
+        boosted_chance, boosted_max, _, _, _ = player_offence(fighter, plan, npc, boosted=True)
         npc_chance, npc_max, _, _ = npc_offence(fighter, plan, npc)
-        dealt = kill_sequence(npc.hitpoints, chance, max_hit, rng)
+        boosted = None
+        if (boosted_chance, boosted_max) != (chance, max_hit):
+            boosted = (boosted_chance, boosted_max, boosted_swings(int(speed), npc.attack_speed))
+        dealt = kill_sequence(npc.hitpoints, chance, max_hit, rng, boosted)
         possible, pay = _ammunition(state, plan, len(dealt), rng, loot)
         if possible == 0:
             return done(max(elapsed, 1), OUT_OF_AMMO)

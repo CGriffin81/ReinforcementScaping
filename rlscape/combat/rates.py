@@ -8,6 +8,10 @@ Known simplifications, to refine against calibration data:
 - time to kill is HP / damage-per-tick (no overkill or regeneration of the NPC);
 - a constant per-kill overhead covers finding the next target and walking to it;
 - a melee weapon attacks with whichever of stab / slash / crush it has the highest bonus in.
+
+Fights flick prayers (rlscape.combat.prayers): the monster's hits of a style the character can protect itself from
+deal nothing, defence prayers count otherwise, and the character's swings get its accuracy and damage prayers
+except those next to a monster swing.
 """
 
 from __future__ import annotations
@@ -16,6 +20,7 @@ from dataclasses import dataclass
 from math import sqrt
 
 from rlscape.combat import formulas as f
+from rlscape.combat.prayers import NO_FLICKS, Flicks, boosted_share
 from rlscape.gamedata.server import CRUSH, MAGIC, MAGIC_STRENGTH, MELEE_STRENGTH, RANGED, RANGED_STRENGTH, SLASH, STAB, Npc
 
 TICKS_PER_HOUR = 6000
@@ -38,6 +43,7 @@ class Fighter:
     magic: int
     bonuses: tuple[int, ...]
     weapon_speed: int = 4
+    flicks: Flicks = NO_FLICKS  # what the Prayer level gives a fight (rlscape.combat.prayers)
 
 
 @dataclass(frozen=True)
@@ -82,13 +88,17 @@ class Rates:
         return self.damage_taken_per_kill + sigmas * sqrt(self.damage_taken_variance_per_kill) <= budget
 
 
-def player_offence(fighter: Fighter, plan: Plan, npc: Npc) -> tuple[float, int, float, float, dict[str, float]]:
-    """(hit chance, max hit, attack interval in ticks, mean damage per attack, XP per point of damage by skill)."""
+def player_offence(fighter: Fighter, plan: Plan, npc: Npc,
+                   boosted: bool = False) -> tuple[float, int, float, float, dict[str, float]]:
+    """(hit chance, max hit, attack interval in ticks, mean damage per attack, XP per point of damage by skill), for a
+    swing with the class's accuracy and damage prayers flicked (`boosted`) or without."""
+    fl = fighter.flicks if boosted else NO_FLICKS
     if plan.combat_class == "melee":
         attack_type = max((STAB, SLASH, CRUSH), key=lambda i: fighter.bonuses[i])
-        chance = f.hit_chance(f.player_melee_attack_roll(fighter.attack, plan.style, fighter.bonuses[attack_type]),
+        chance = f.hit_chance(f.player_melee_attack_roll(fighter.attack, plan.style, fighter.bonuses[attack_type],
+                                                         fl.attack),
                               f.npc_defence_roll(npc.defence, npc.bonuses[attack_type + 5]))
-        max_hit = f.player_melee_max_hit(fighter.strength, plan.style, fighter.bonuses[MELEE_STRENGTH])
+        max_hit = f.player_melee_max_hit(fighter.strength, plan.style, fighter.bonuses[MELEE_STRENGTH], fl.strength)
         speed = fighter.weapon_speed
         if plan.style == f.CONTROLLED:
             xp = {"attack": XP_PER_DAMAGE / 3, "strength": XP_PER_DAMAGE / 3, "defence": XP_PER_DAMAGE / 3}
@@ -97,9 +107,10 @@ def player_offence(fighter: Fighter, plan: Plan, npc: Npc) -> tuple[float, int, 
             xp = {trained: XP_PER_DAMAGE}
         mean, _ = f.damage_moments(chance, max_hit)
     elif plan.combat_class == "ranged":
-        chance = f.hit_chance(f.player_ranged_attack_roll(fighter.ranged, plan.style, fighter.bonuses[RANGED]),
+        chance = f.hit_chance(f.player_ranged_attack_roll(fighter.ranged, plan.style, fighter.bonuses[RANGED],
+                                                          fl.ranged),
                               f.npc_defence_roll(npc.defence, npc.bonuses[RANGED + 5]))
-        max_hit = f.player_ranged_max_hit(fighter.ranged, plan.style, fighter.bonuses[RANGED_STRENGTH])
+        max_hit = f.player_ranged_max_hit(fighter.ranged, plan.style, fighter.bonuses[RANGED_STRENGTH], fl.ranged)
         speed = fighter.weapon_speed - (1 if plan.style == f.RAPID else 0)
         if plan.style == f.LONGRANGE:
             xp = {"ranged": XP_PER_DAMAGE / 2, "defence": XP_PER_DAMAGE / 2}
@@ -107,7 +118,7 @@ def player_offence(fighter: Fighter, plan: Plan, npc: Npc) -> tuple[float, int, 
             xp = {"ranged": XP_PER_DAMAGE}
         mean, _ = f.damage_moments(chance, max_hit)
     elif plan.combat_class == "magic":
-        chance = f.hit_chance(f.player_magic_attack_roll(fighter.magic, fighter.bonuses[MAGIC]),
+        chance = f.hit_chance(f.player_magic_attack_roll(fighter.magic, fighter.bonuses[MAGIC], fl.magic),
                               f.npc_defence_roll(npc.magic, npc.bonuses[MAGIC + 5]))
         max_hit = f.spell_max_hit(plan.style)
         speed = f.SPELL_ATTACK_SPEED
@@ -120,22 +131,29 @@ def player_offence(fighter: Fighter, plan: Plan, npc: Npc) -> tuple[float, int, 
 
 
 def npc_offence(fighter: Fighter, plan: Plan, npc: Npc) -> tuple[float, int, float, float]:
-    """(hit chance, max hit, mean, variance) of one NPC attack on the player."""
+    """(hit chance, max hit, mean, variance) of one NPC attack on the player. A style the character's protection
+    prayer covers deals nothing (Entity.getFormattedHit); otherwise its defence prayers count."""
     player_style = plan.style if plan.combat_class != "magic" else f.ACCURATE
+    protected = npc.combat_style in fighter.flicks.protects
+    fl = NO_FLICKS if protected else fighter.flicks
     if npc.combat_style == "melee":
         attack_type = npc.melee_attack_type
         chance = f.hit_chance(f.npc_attack_roll(npc.attack, npc.bonuses[attack_type]),
-                              f.player_defence_roll(fighter.defence, player_style, fighter.bonuses[attack_type + 5]))
+                              f.player_defence_roll(fighter.defence, player_style, fighter.bonuses[attack_type + 5],
+                                                    fl.defence))
         max_hit = f.npc_max_hit(npc.strength, npc.bonuses[MELEE_STRENGTH])
     elif npc.combat_style == "ranged":
         chance = f.hit_chance(f.npc_attack_roll(npc.ranged, npc.bonuses[RANGED]),
-                              f.player_defence_roll(fighter.defence, player_style, fighter.bonuses[RANGED + 5]))
+                              f.player_defence_roll(fighter.defence, player_style, fighter.bonuses[RANGED + 5],
+                                                    fl.defence))
         max_hit = f.npc_max_hit(npc.ranged, npc.bonuses[RANGED_STRENGTH])
     else:
         chance = f.hit_chance(f.npc_attack_roll(npc.magic, npc.bonuses[MAGIC]),
                               f.player_magic_defence_roll(fighter.defence, fighter.magic, player_style,
-                                                          fighter.bonuses[MAGIC + 5]))
+                                                          fighter.bonuses[MAGIC + 5], fl.defence, fl.magic))
         max_hit = f.npc_magic_max_hit(npc.magic, npc.bonuses[MAGIC_STRENGTH]) - 1  # the cast rolls 0..max-1
+    if protected:
+        max_hit = 0
     mean, variance = f.damage_moments(chance, max_hit)
     return chance, max_hit, mean, variance
 
@@ -145,7 +163,12 @@ def combat_rates(fighter: Fighter, plan: Plan, npc: Npc, gp_per_kill: float,
     """Rates for fighting `npc` with `plan`, or None if the plan can't hurt it (immune to the class, or 0 damage)."""
     if npc.protect_style == plan.combat_class:
         return None
-    chance, max_hit, speed, mean_damage, xp_per_damage = player_offence(fighter, plan, npc)
+    plain_chance, plain_max, speed, plain_mean, xp_per_damage = player_offence(fighter, plan, npc)
+    chance, max_hit, _, mean_damage, _ = player_offence(fighter, plan, npc, boosted=True)
+    share = boosted_share(int(speed), npc.attack_speed)  # the swings that get the accuracy and damage prayers
+    chance = share * chance + (1 - share) * plain_chance
+    mean_damage = share * mean_damage + (1 - share) * plain_mean
+    max_hit = max_hit if share > 0 else plain_max
     damage_per_tick = mean_damage / speed
     if damage_per_tick <= 0:
         return None
