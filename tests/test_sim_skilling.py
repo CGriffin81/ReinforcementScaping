@@ -37,7 +37,8 @@ def test_each_method_is_kept_or_processed_by_its_counterpart():
     assert "mine_copper_smelt" not in ids and not any(i.startswith("pickpocket") and "_" in i[11:] and
                                                       i.endswith(("_burn", "_cook", "_smelt")) for i in ids)
     by_skill = {s: sum(1 for p in path_options() if p.skill == s) for s in SKILLS}
-    assert by_skill == {"woodcutting": 12, "fishing": 6, "mining": 5, "thieving": 20, "fletching": 36}
+    assert by_skill == {"woodcutting": 12, "fishing": 8, "mining": 7, "thieving": 20, "fletching": 36}  # Al Kharid iron,
+    # Lumbridge Swamp's shrimp: 2 each
 
 
 @needs_server
@@ -56,7 +57,7 @@ def test_the_rate_model_matches_the_simulated_path_at_its_site(path_id, inventor
     for _ in range(60):
         state = character(inventory, **levels)
         state.hp, state.location = state.max_hp(), path.gather.site.tile if hasattr(path.gather, "site") else (
-            path.gather.spots[0] if hasattr(path.gather, "spots") else path.gather.tile)
+            path.gather.start if hasattr(path.gather, "spots") else path.gather.tile)
         before = sum(state.xp)
         result = path.run(state, rng, 1_500)
         xp, ticks = xp + sum(state.xp) - before, ticks + result.ticks

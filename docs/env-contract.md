@@ -1,6 +1,7 @@
-# Environment Contract (v1.8, Signed off)
+# Environment Contract (v1.9, Signed off)
 
-**Status:** v1.8, 2026-10-31. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
+**Status:** v1.9, 2026-10-31. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
+- **v1.9** (2026-10-31, Caleb) has gathering options follow Caleb's rule for aggressive monsters (§7).
 - **v1.8** (2026-10-31, Caleb) has fights flick prayers (§8).
 - **v1.7** (2026-10-31, Caleb) brings Fletching forward into sim v0 (§5), with Fletching skilling slots, a
   fletching task (§3) and 20 fletching inputs in *V*.
@@ -164,6 +165,10 @@ for every step.
     - eating and death checked kill by kill
   - resource depletion and respawn come from the server's data. Competition from other players isn't modelled,
     because ambient bots are off on the server too.
+  - **aggressive monsters at gathering sites** (Caleb, 2026-10-31; option catalog §4): attacks don't stop the
+    gathering, only trivial monsters are fought, and the character runs out of a monster's aggressive range when
+    its hitpoints fall under twice that monster's max hit. Both backends: `ServerEnv` turns auto-retaliate off
+    for gathering (the bridge's `set_retaliate`).
   - **staged:** sim v0 has every family except quests and the four v1 skills. Sim v1 adds the 21 quests and those
     skills before E2.
   - target ≥ 20k decisions per second across `SubprocVecEnv` workers
@@ -305,3 +310,8 @@ Caleb signed off both documents on 2026-10-28 (v1.0).
 24. **Fights flick prayers automatically** (§8; option catalog §4): protection, accuracy and damage prayers, and
     defence prayers where the monster's style can't be protected against. Flicking costs nothing on 2009Scape
     (checked live), so it's no action of the agent's; training Prayer is what it decides.
+
+### Decided (Caleb, 2026-10-31, aggressive monsters): v1.9
+25. **Gathering options follow Caleb's rule for aggressive monsters** (§7; option catalog §4): no fights unless
+    trivial, and running out of a monster's aggressive range when it's dangerous. The server's aggression tolerance
+    counts game ticks (fork), so a sped-up server behaves the same.

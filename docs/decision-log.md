@@ -2346,3 +2346,280 @@ Caleb: "Commit the changes, then create the PR." `m002-commit-and-pr`.
 - Pushed the fork's `rl` (3 commits had never been pushed, and `sim-v0`'s
   submodule pointers name them) and `sim-v0`, then opened a PR from `sim-v0`
   to `main` with all of sim v0.
+
+### Week-2 tests, the speed benchmark, and the first calibration slice
+Caleb: "Keep going with the week-2 tests and calibration".
+`m002-week2-tests-and-calibration`.
+- **Tests** (`tests/test_sim_properties.py`): whole 20-hour episodes of
+  masked random actions run every unmasked action, take time, and never send a
+  count, coins, net worth or hitpoints negative; a seeded trajectory is the
+  same in processes with other string-hash seeds (training's workers).
+- **Benchmark** (`scripts/benchmark_sim.py`): 83 decisions a second in one
+  process, 585 with 16 workers. Caching the nearest bank (each Fletching path
+  asked for it, walking a route to every bank) made it 112 and 804. The
+  contract's target is 20k: OQ-7, for Caleb. Most of the rest is the combat
+  ranker recomputing the enemy pool after each combat level-up.
+- **Calibration, first slice** (`scripts/calibrate.py`): woodcutting at the
+  site, from the site's tile until the inventory is full, at bands 1, 31, 61
+  and 91, against the sim from the same state. Travel and banking wait for
+  bridge commands (OQ-4, extended). Found:
+  - **The swing after a log comes 4 ticks later, not 3** (180 of 185); the
+    code doesn't show why. Now `AFTER_LOG_TICKS`.
+  - **The sites' overheads and counts:** the ticks to the first swing and from
+    a fall to the next swing, and the trees used (normal trees: 14 or more,
+    not 6; oak 3, not 2; yew 2, not 3), now kept with each site
+    (`Site.first_attempt`, `next_attempt`) and used by the sim and the
+    skilling slots' rate model.
+  - **Ambient bots were on.** `rl.conf` had `enable_bots = true` and up to 100
+    bots, against Caleb's decision of 2026-10-28 (env contract §7). Now
+    `enable_bots = false` (fork, uncommitted). The other trees' results came
+    out the same either way, and the live tests pass.
+  - **The runner gets stuck at Draynor** when both near willows are down:
+    `interact` clicks the nearest willow by name, out of reach, and `walk_to`
+    doesn't clear it (OQ-4).
+- **Result** (bots off, 10 runs a case; `results/calibration/
+  gathering-20261031-1440.json`, `-1456.json`), sim over server XP/hr:
+
+  | Site | Band 1 | 31 | 61 | 91 |
+  |---|---|---|---|---|
+  | Normal trees | 1.06 | 0.84 | 0.84 | 0.84 |
+  | Oak | | 0.96 | 0.95 | 0.96 |
+  | Willow (runs that finished) | | 1.02 | 0.82 | 0.89 |
+  | Yew | | | 0.93 | 0.97 |
+
+  All within ±20%. A run holds only 9 or 10 logs (the starter kit fills the
+  rest), so a case's spread is wide: up to 41% of the mean per run.
+- **The guide stalled on Firemaking** once the new rates changed the slots: it
+  cuts its normal logs into arrow shafts, so it never had logs to burn. As
+  for Smithing ("nothing to smith: mine it"), it now chops and burns when it
+  has none (agent fix, for Caleb's review). E1, 10 seeds:
+  guide 311 / 94k / 105k; random 234 / 106k / 6k.
+
+### Decided and built: reachable targets and walk clicks; aggressive monsters; OQ-5 and OQ-6
+Caleb, on the recommendations for the stalled willow runs: "Go ahead with 1
+and 2". `m002-aggressive-monsters`.
+- **Built** (fork `RLCommands.kt`, uncommitted):
+  - `interact` clicks the target with the shortest walk among those the
+    pathfinder reaches (`Pathfinder.find`, not "move near"), searching the
+    character's map region and the eight around it; "none reachable"
+    otherwise. Optional `ids` (one ore at a mixed mine) and `radius`.
+  - `walk_to` with `packet=true` is a client's walk click, which clears what
+    the character was doing.
+  - `debug_nearby` (measurement only) lists what `interact` chooses from.
+  - Live tests: the shortest reachable walk among Draynor Manor's dead trees,
+    some unreachable; a rock picked by id; "none reachable"; a walk click
+    ending a fishing script.
+- **Correction to the week-2 entry: the willow stalls weren't an unreachable
+  willow.** The listing shows all five willows near the site reachable, and the
+  bundled bots' `getNearestNode` already skipped "move near" targets. A trace
+  of a stall: a Dark wizard (aggressive, 7 to 8 tiles from the willows)
+  attacks, auto-retaliate makes the character fight it, and the willow is
+  abandoned. Caleb asked whether it was a random event: it isn't (they're off
+  for RL characters).
+- **Decided (Caleb), for aggressive monsters:** "If an aggressive monster
+  interrupts a gathering action, the agent should try to safespot the monster
+  and return to gathering. If it gets to a dangerous situation, the agent
+  should run to safety." And: "A dangerous situation should be read as current
+  hitpoints is less than twice enemy's max hit." Its details are OQ-8.
+- **OQ-5, answered:** "Yes. Freeze the server as we begin calibration." The
+  server version is frozen from 2026-10-31. (Claude had recommended it; the
+  alternative was approving each upstream sync as it came.)
+- **OQ-6, answered:** "the repository does not need to be public for
+  submission. I likely only need to submit a report." Both repos stay private.
+
+### Decided: no fights on a gathering task unless trivial
+Caleb: "Do not fight monsters if you are on a gathering task, unless it would
+be trivial to defeat them. If the setup's max hit is greater than or equal to
+twice the monster's hitpoints and their max hit is less than .25x the agent's
+health as it enters combat." Then: "I meant if the setup's max hit is at least
+half the monsters max hitpoints. My mistake." `m002-gathering-fights`.
+- **The rule:** a fight is trivial when the setup's max hit is at least half
+  the monster's hitpoints and the monster's max hit is under a quarter of the
+  character's hitpoints as the fight starts. Only then does a gathering
+  character fight; otherwise it keeps gathering, and runs to safety when its
+  hitpoints are under twice the monster's max hit (Caleb's earlier rule).
+- **Still open (OQ-8):** where safety is, safespotting now or later, modelling
+  aggressive monsters in the sim, and the fork changes the server runner needs.
+  Claude asked; Caleb answered with the correction above, so they stay open.
+
+### Decided: safety, safespotting, the sim's aggressive monsters, auto-retaliate
+Caleb, on OQ-8's choices: "Safety is the agent is out of the monster's
+aggressive range. Safespotting while gathering matters most for mining,
+because many mines have bats or scorpions that try to bother players and gate
+low-levels out of the mine. Or in the wilderness, where everything is
+aggressive. Yes, model the aggressive monsters in the sim and recalibrate the
+willows. Create a command to turn auto-retaliate off. Explain what you mean by
+the other two bullets." `m002-aggression-answers`.
+- **Decided:**
+  - safety: out of the monster's aggressive range (the alternatives were the
+    nearest bank, or ending the option there)
+  - safespotting: built with mining, where it matters most (and the
+    Wilderness), not for woodcutting now
+  - the sim models aggressive monsters at gathering sites
+  - a command to turn auto-retaliate off
+- **Built:** `set_retaliate {uid, on}` (fork, uncommitted), as the options
+  tab's button does (`Settings.toggleRetaliating`); `state` reports it; a live
+  test. The calibration runner turns it off for gathering.
+- **Found, with auto-retaliate off** (12 willow runs at band 31): the character
+  never fights and keeps chopping when hit (12 or 13 swings after the first
+  hit). Dark wizards landed 0 to 2 hits a run, 1 to 3 hitpoints in all.
+- **Willows recalibrated** (`results/calibration/gathering-20261031-1611.json`,
+  10 runs a band, every run full): sim over server XP/hr 0.89, 1.07 and 0.91
+  at bands 31, 61 and 91. All within ±20%.
+- **The server's aggression, read for the sim's model:** a monster checks for a
+  target each tick, with a 3-in-11 chance, within 4 tiles (by default); it
+  picks a character whose combat level is at most twice its own; and it stops
+  picking one that has been in the region for 10 minutes. That timer runs on
+  wall-clock time, so a sped-up server applies it late: OQ-9.
+- **Explained, for Caleb's decision:** the two other bridge changes (OQ-8).
+
+### Decided and built: who's attacking, attacking by index, tolerance in ticks; aggressive monsters in the sim
+Caleb: "Go ahead with both OQ-8 changes and OQ-9 option a".
+`m002-aggression-model`.
+- **OQ-8, answered (both):** `state` lists the attackers (each NPC whose
+  combat target is the character: id, index, name, tile, hitpoints), and
+  `interact` takes an NPC `index`. The recommendation was both.
+- **OQ-9, answered (a):** aggression tolerance counts game ticks
+  (`Region.TOLERANCE_TICKS = 1000`, set where the character enters a region),
+  not 10 wall-clock minutes. The alternative was leaving the server and
+  calibrating aggression at 600 ms ticks.
+- **Bug fixed in `debug_set_levels`:** it didn't recompute the combat level, so
+  every calibration character looked level 3 to aggression. Dark wizards
+  (level 7) pick only characters of level 14 or less: the band 31 to 91 willow
+  stalls came from this. The sim now computes the same combat level
+  (`CharacterState.combat_level`, tested against the server).
+- **Measured at the willows** (`scripts/aggression_test.py`,
+  `results/live/aggression-20261031-1634.json`; `scripts/calibrate.py` with the
+  rule): a character standing on the site's tile is "engaged" half the time but
+  never hit (the wizards can't reach it there); one chopping is hit. A
+  woodcutting-only character (combat 3, 10 hitpoints): 4.5 damaging hits a
+  run, 4 flees in 10 runs, a Dark wizard attacking about once every 29 ticks.
+  No engagement starts after 1,000 ticks (tolerance in ticks, live-tested).
+- **The sim** (`rlscape/sim/aggression.py`, in the gathering and fishing
+  loops): a site's aggressors (aggressive, attackable, spawned within 10
+  tiles); those whose level picks the character attack while it gathers, at
+  the willows' measured rate, each attack rolled with the monster's hit chance
+  and max hit against the character; Caleb's rule for trivial fights and
+  running away (FLEE_TICKS measured, 4 flees); tolerance after 1,000 ticks in
+  the region. Other sites use the willows' rates until calibrated. The skilling
+  slots' rate model doesn't price it yet.
+- **Calibration:** the woodcutting-only character at the willows, sim over
+  server XP/hr 0.95 (within ±20%). E1, 10 seeds: guide 310 / 92k / 97k;
+  random 232 / 103k / 14k; no deaths.
+- **Server runner:** `scripts/calibrate.py` applies the rule (`Safety`), and
+  `--levels` sets agent-like characters (woodcutting alone).
+
+### Decided and built: mining calibrated; iron at Al Kharid; safespots
+Caleb: "Move on to mining calibration with safespotting." On Claude's two
+questions: "Iron at Al Kharid (Recommended)" (the alternatives: all its ores
+the sim has, or not now) and, for the bridge command, "Go ahead
+(Recommended)". `m002-mining-calibration`.
+- **Why the question:** none of the sim's four mines has an aggressive monster
+  within reach; the classic scorpion mine, Al Kharid, wasn't a site.
+- **Mining calibrated** (`results/calibration/gathering-20261031-1851.json`, 10
+  runs a case, 14 cases): the server's success per roll matches the sim's
+  formula. A click starts mining's script, which waits 5 ticks before its first
+  roll; from an emptied rock to the next roll is 9 to 10 ticks (the sim had
+  8). Rocks used: copper 2, tin 2, Varrock iron 4, coal 14 (the sim had 3, 3,
+  3, 8). With those (`mining.SITES`), every case is within ±20% (0.89 to 1.12;
+  1.13 to 1.43 before).
+- **Iron at the Al Kharid mine** (`mine_iron_alkharid`, kept or smelted: 81
+  paths): the north cluster's 5 rocks, calibrated the same way (0.92, 1.02,
+  0.96 at bands 31 to 91).
+- **`safespots`** (fork, uncommitted): tiles beside a resource that the
+  character can walk to and no aggressive melee monster that would pick it can
+  hit it on, from the server's own rules (a melee monster hits only a victim
+  orthogonally next to the tiles it covers, and gives up beyond 1.5 times its
+  walk radius from its spawn), any monster size. The runner tries one when
+  attacked (Caleb's rule).
+- **Found:** Al Kharid's iron has no safespot for a level-3 miner: five
+  scorpions (level 14, size 2) reach every rock. Lumbridge Swamp's copper has 15
+  safe tiles. A level-3 miner at Al Kharid: a scorpion attacks about once every
+  20 ticks (max hit 1), about 4 hitpoints per 100 ticks; mining goes on (sim
+  over server 0.92; the sim's hit rate 4.1 per 100 ticks against 4.2). The
+  first safespot query only checked the one attacker; another scorpion guards
+  the tiles it found, and a test character walking there died: now every
+  eligible melee monster counts.
+- **E1, 10 seeds** (`results/eval/guide-mining-20261031`): guide 311 / 98k /
+  108k; random 222 / 93k / 13k (232 / 103k / 14k before: mining is slower on
+  the calibrated sites).
+
+### Decided and built: fishing calibrated; shrimp at Lumbridge Swamp too; Draynor's wizards engage
+Caleb: "Calibrate fishing." Two questions came up (`AskUserQuestion`).
+`m002-fishing-calibration`.
+- **Where to fish shrimp.** Draynor's shrimp spots kill a level-3 fisher.
+  - Two Dark wizards (level 7, magic, max hit 2) attack it, and keep casting
+    as it runs away under Caleb's rule. The sim had running away as safe: in
+    the first trial the server made 187 XP/h, the sim 1,225.
+  - The options:
+    - move `fish_shrimp` to Lumbridge Swamp (recommended)
+    - fish shrimp at both sites (83 paths; Draynor then needs the danger
+      modelled)
+    - keep Draynor only, and model the danger
+    - keep Draynor as a known gap
+  - Caleb: **"Both sites"**. `fish_shrimp_swamp` uses Lumbridge Swamp's three
+    net spots.
+- **The scripted guide.**
+  - The guide fished shrimp at Draynor at combat 4 to 11, and now died there.
+    Seed 0 ended 20 hours with Fishing 4 and Cooking 2.
+  - The options:
+    - the swamp while the wizards would attack (combat 14 or less), then
+      Draynor (recommended)
+    - always the swamp below Fishing 20
+    - leave it at Draynor
+  - Caleb: **"Swamp below combat 15 (Recommended)"**.
+- **Calibrated** (sim over server XP/hr; 10 server runs a case; 80 for
+  Draynor at band 1). The fishing cases drop the starter kit, so a load is 26
+  or 27 fish and the spots move during it, as in training. Every case is
+  within ±20%.
+
+  | Path | Band 1 | 31 | 61 | 91 |
+  |---|---|---|---|---|
+  | `fish_shrimp` (Draynor) | 1.08 | 0.96 | 0.97 | 1.00 |
+  | `fish_shrimp_swamp` | 1.04 | 0.99 | 0.97 | 0.99 |
+  | `fish_fly` | | 1.00 | 0.98 | 0.98 |
+  | `fish_lobster` | | | 0.94 | 0.98 |
+
+  Server runs: `results/calibration/gathering-20261031-2042.json` and
+  `gathering-20261101-0126.json`, `-0134`, `-0153`, `-0203`, `-0219`.
+- **Ported or measured** (`rlscape/sim/fishing.py`):
+  - The first attempt comes 2 ticks after the click beside a spot. The
+    attempt after a catch comes 6 ticks later, not 5 (507 of 532 catches).
+    The slots' rate model counts both.
+  - A spot moves only if the tile it picks has no NPC on it, itself included
+    (`FishingNPC.moveSpot`). So with n spots on a group's t tiles, a move
+    happens with chance 1 − n/t: never for Draynor's two spots on two tiles;
+    0.6 at Barbarian Village and Lumbridge Swamp, 0.62 at Catherby.
+  - The angler starts on the group's first tile with a spot of its kind.
+    Tiles over 20 from it are elsewhere: Lumbridge Swamp's group has one by
+    Lumbridge Castle, 90 tiles north.
+- **Draynor's wizards engage** (40 traced server runs).
+  - One wizard at a time engages (single-way combat). It then casts every 5
+    ticks until the character runs, and goes on casting as it runs.
+  - Per run away: 1.49 damaging hits, and 51% end in death. The rule runs at
+    2 or 3 hitpoints, under twice the wizard's max hit of 2.
+  - The sim spread attacks evenly, so a fisher healed between hits. The
+    sim's aggression now takes a site's measured exposure (`SiteExposure`).
+    At Draynor's shrimp spots: an engagement every 221 ticks per wizard, a
+    5-tick cadence, 3.19 attacks taken per run away, and 60 ticks away and
+    back.
+  - The willows and Al Kharid keep their measured rates (engaged
+    throughout). Checked against their saved server runs: low-level
+    woodcutter 0.91, low-level miner 0.92, mining 0.89 to 1.12.
+  - A character can now die of attacks while it runs, and an option that
+    ends in death ends at the death, not at the start of the wait it died in.
+  - Draynor's level-3 fisher: the server makes 1,292 XP/h with 0.88 deaths
+    a run (80 runs); the sim makes 1,393 (1.08) with 0.82.
+- **For combat calibration:** the Dark wizards' configured attack speed is
+  the default 4, but they cast every 5 ticks (every gap between hits is a
+  multiple of 5).
+- **The runner** (`scripts/calibrate.py`):
+  - fishing cases: a method's spot NPC ids; the shore tile, found by walking
+    off the spot's tile; bait given at setup
+  - a run ends at a death
+  - hits are counted by the rule's mode
+  - the trace records hitpoints, mode and attackers each tick
+  - safespots are tried only against melee attackers, since a caster hits
+    from range
+- **E1** (`results/eval/guide-fishing-20261101`, 10 seeds): guide 316 /
+  94.6k / 103k; random 215 / 90.4k / 9.3k.

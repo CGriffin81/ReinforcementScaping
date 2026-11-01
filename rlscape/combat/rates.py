@@ -130,6 +130,15 @@ def player_offence(fighter: Fighter, plan: Plan, npc: Npc,
     return chance, max_hit, speed, mean, xp
 
 
+def npc_max_hit(npc: Npc) -> int:
+    """The most one of the NPC's attacks can deal, in its combat style (unprotected)."""
+    if npc.combat_style == "melee":
+        return f.npc_max_hit(npc.strength, npc.bonuses[MELEE_STRENGTH])
+    if npc.combat_style == "ranged":
+        return f.npc_max_hit(npc.ranged, npc.bonuses[RANGED_STRENGTH])
+    return f.npc_magic_max_hit(npc.magic, npc.bonuses[MAGIC_STRENGTH]) - 1  # the cast rolls 0..max-1
+
+
 def npc_offence(fighter: Fighter, plan: Plan, npc: Npc) -> tuple[float, int, float, float]:
     """(hit chance, max hit, mean, variance) of one NPC attack on the player. A style the character's protection
     prayer covers deals nothing (Entity.getFormattedHit); otherwise its defence prayers count."""
@@ -141,19 +150,15 @@ def npc_offence(fighter: Fighter, plan: Plan, npc: Npc) -> tuple[float, int, flo
         chance = f.hit_chance(f.npc_attack_roll(npc.attack, npc.bonuses[attack_type]),
                               f.player_defence_roll(fighter.defence, player_style, fighter.bonuses[attack_type + 5],
                                                     fl.defence))
-        max_hit = f.npc_max_hit(npc.strength, npc.bonuses[MELEE_STRENGTH])
     elif npc.combat_style == "ranged":
         chance = f.hit_chance(f.npc_attack_roll(npc.ranged, npc.bonuses[RANGED]),
                               f.player_defence_roll(fighter.defence, player_style, fighter.bonuses[RANGED + 5],
                                                     fl.defence))
-        max_hit = f.npc_max_hit(npc.ranged, npc.bonuses[RANGED_STRENGTH])
     else:
         chance = f.hit_chance(f.npc_attack_roll(npc.magic, npc.bonuses[MAGIC]),
                               f.player_magic_defence_roll(fighter.defence, fighter.magic, player_style,
                                                           fighter.bonuses[MAGIC + 5], fl.defence, fl.magic))
-        max_hit = f.npc_magic_max_hit(npc.magic, npc.bonuses[MAGIC_STRENGTH]) - 1  # the cast rolls 0..max-1
-    if protected:
-        max_hit = 0
+    max_hit = 0 if protected else npc_max_hit(npc)
     mean, variance = f.damage_moments(chance, max_hit)
     return chance, max_hit, mean, variance
 

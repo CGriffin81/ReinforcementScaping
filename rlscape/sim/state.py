@@ -39,6 +39,7 @@ class CharacterState:
     task: str | None = None  # the last activity's task (rlscape.sim.kits): what bank_deposit keeps
     run_energy: float = 100.0  # % (rlscape.sim.energy); a fresh character has it full
     energy_clock: int = 0  # ticks into the current step that run energy accounts for (rlscape.sim.energy)
+    region_since: int = 0  # the tick it entered its map region (64 x 64 tiles): aggression tolerance counts from it
 
     @classmethod
     def fresh(cls) -> CharacterState:
@@ -56,6 +57,15 @@ class CharacterState:
 
     def max_hp(self) -> int:
         return self.level("hitpoints")
+
+    def combat_level(self) -> int:
+        """Skills.calculateCombatLevel: a quarter of Defence, Hitpoints and half Prayer, plus 0.325 of the best of
+        Attack + Strength, Ranged x 1.5 and Magic x 1.5 (each halved and floored before the x 3); summoning adds
+        nothing below 8."""
+        lv = self.level
+        base = 0.25 * (lv("defence") + lv("hitpoints") + (lv("prayer") // 2))
+        style = max(lv("attack") + lv("strength"), lv("ranged") // 2 * 3, lv("magic") // 2 * 3)
+        return int(base + 0.325 * style)
 
     def total_level(self) -> int:
         return sum(level_for_xp(x) for x in self.xp)

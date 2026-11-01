@@ -66,10 +66,10 @@ work.
   upstream (synced to `f279da8` on 2026-10-28, merged into `rl`) and our
   changes live on `rl`. All server modifications go in the fork and are
   committed there first; then this repo's submodule pointer is bumped.
-  Sync upstream again only with Caleb's approval (whether to freeze the
-  server version once calibration starts is OQ-5 in the open-questions log). When syncing,
-  run `git lfs fetch --all upstream` before pushing, or the push is rejected
-  for missing cache objects.
+  The server version is frozen from 2026-10-31, the start of calibration
+  (Caleb): no more upstream syncs. (If one is ever approved, run
+  `git lfs fetch --all upstream` before pushing, or the push is rejected
+  for missing cache objects.)
 - Our server code is `Server/src/main/content/rl/`: `RLBridge.kt` (transport),
   `RLCommands.kt` (commands), and `RLPlayer.kt` (the agent's character).
   - `RLPlayer` is **treated as a human by every game rule**
@@ -81,9 +81,12 @@ work.
   - `worldprops/rl.conf` is the training config: `default.conf` with the
     bridge on, prices frozen, the frozen-price GE buyer and seller on, the
     anti-dragon shield blocked on the GE (Duke Horacio only), random events
-    off for RL characters, and the game port bound to 127.0.0.1.
+    off for RL characters, ambient bots off (`enable_bots = false`, since
+    2026-10-31), and the game port bound to 127.0.0.1.
   - Other fork rule changes: Slayer levels are enforced on attack
-    (`NPC.isAttackable`).
+    (`NPC.isAttackable`); aggression tolerance counts 1,000 game ticks, not
+    10 wall-clock minutes (`Region.isTolerated`), so a sped-up server behaves the
+    same.
 - **GE state:** before running the server for experiments, install the frozen
   2009 GE: `uv run python scripts/install_ge_db.py`. The server must be
   stopped; the old database is backed up. The pipeline is

@@ -34,21 +34,26 @@ Started 2026-10-31 (Caleb), from a review of the documentation.
 - **Raised:** 2026-10-30 (option catalog §8, server side).
 - **Question:** the go-ahead for the fork changes that shop buys, putting gear on, bank withdrawals and
   `bank_deposit_worn` need. Each goes through the player's path, as the rules require.
+- **Decided since** (decision log, 2026-10-31): `interact` picks a reachable target, with an id filter, and walking as
+  a client packet. In reserve: clicking a particular target by its tile, if an executor ever needs it.
 - **Decides:** Caleb, per change.
-- **Needed by:** calibration (`scripts/calibrate.py` runs every option through the bridge) and `ServerEnv`
-  (week 6).
+- **Needed by:** calibration past gathering at the site (banking) and `ServerEnv` (week 6).
 
-### OQ-5. Freeze the server version once calibration starts?
-- **Raised:** 2026-10-28, with the upstream sync (fork `master` at upstream `f279da8`). Until it's decided, each
-  sync needs Caleb's approval (`CLAUDE.md`).
-- **Recommendation:** yes (Claude). An upstream change after calibration could move the server away from what the
-  sim was calibrated against.
-- **Decides:** Caleb.
-- **Needed by:** the start of calibration.
-
-### OQ-6. Do the repositories need to be public for the course submission? (*deferred*)
-- **Raised:** 2026-10-05. On 2026-10-28 Caleb decided that both repos stay private for now.
-- **Reopens:** when the submission's format is known. `Requirements.md` doesn't say.
-- **Note:** a public fork has to include its source (AGPLv3).
-- **Decides:** Caleb.
-- **Needed by:** the report, due 2026-11-30.
+### OQ-7. The sim is far below the contract's 20k decisions a second: optimize, or size E2 to it?
+- **Raised:** 2026-10-31, by the week-2 benchmark (`scripts/benchmark_sim.py`; env contract §7 sets the target).
+- **Measured** (masked random actions, `results/benchmark/sim-speed-20261031-1304.json`): 112 decisions a second in
+  one process, 684 with 8 workers, 804 with 16 (8 cores, so the extra 8 threads add little). Caching the nearest
+  bank had already raised it from 83 and 585. A 20-hour episode is about 450 decisions.
+- **Where the time goes** (one process): the combat ranker recomputing the whole enemy pool after each combat
+  level-up (about 60%: some 26 ms each, every third step for a random agent), the observation's candidate features
+  (about 25%), and running the options themselves (about 5%).
+- **Options:**
+  - **(a) Recommended:** vectorize the rate model over the enemy pool (numpy, tested identical to the scalar model),
+    which should roughly double the speed, to about 1.5k decisions a second with 16 workers. Then size E2's budget
+    to the measured speed: at 1.5k a second, 2M decisions per run take about 25 minutes, and E2's 25 runs about 10
+    hours. (How many decisions PPO needs here isn't known until the sanity ladder runs.)
+  - (b) Go further toward 20k: incremental masks and features, candidates recomputed only when their inputs change,
+    perhaps numba. Days of work, with an uncertain result.
+  - (c) Keep today's 800 a second and size E2 to it: about 42 minutes per 2M-decision run, 17 hours for E2.
+- **Decides:** Caleb (the contract's target and E2's budget).
+- **Needed by:** before training starts (week 3's sanity ladder).

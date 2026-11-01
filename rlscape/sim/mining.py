@@ -20,6 +20,7 @@ from __future__ import annotations
 import numpy as np
 
 from rlscape.gamedata import server as gd
+from rlscape.sim.aggression import SiteExposure
 from rlscape.sim.gathering import Site, gather_depleting, respawn_ticks
 from rlscape.sim.options import Option, OptionResult
 from rlscape.sim.skills import MAX_XP, SKILL_INDEX
@@ -82,11 +83,25 @@ class Mining(Option):
 
 
 # Catalog §2. Rock identifiers are MiningNode's: 1 copper, 2 tin, 6 iron, 8 coal.
+# The counts and attempt times are measured on the server (results/calibration/gathering-20261031-1851.json): the
+# rocks a character clicked, and the mean ticks to the first roll and from a rock running out to the next roll. A click
+# starts mining's script, which waits ATTEMPT_TICKS before its first roll, so those are both 3 to 5 ticks plus that.
+CALIBRATED = "calibrated 2026-10-31 (scripts/calibrate.py)"
 SITES = {
-    "mine_copper": (1, Site((3228, 3147, 0), 3, "estimate, Lumbridge Swamp east mine; verify")),
-    "mine_tin": (2, Site((3226, 3146, 0), 3, "estimate, Lumbridge Swamp east mine; verify")),
-    "mine_iron": (6, Site((3286, 3368, 0), 3, "estimate, Varrock south-east mine; verify")),
-    "mine_coal": (8, Site((3040, 9738, 0), 8, "tile: CoalMiner.mine zone (3027-3054, 9733-9743); count: estimate")),
+    "mine_copper": (1, Site((3228, 3147, 0), 2, f"tile: estimate, Lumbridge Swamp east mine; {CALIBRATED}",
+                            first_attempt=9, next_attempt=9)),
+    "mine_tin": (2, Site((3226, 3146, 0), 2, f"tile: estimate, Lumbridge Swamp east mine; {CALIBRATED}",
+                         first_attempt=9, next_attempt=10)),
+    "mine_iron": (6, Site((3286, 3368, 0), 4, f"tile: estimate, Varrock south-east mine; {CALIBRATED}",
+                          first_attempt=8, next_attempt=10)),
+    "mine_coal": (8, Site((3040, 9738, 0), 14, f"tile: CoalMiner.mine zone (3027-3054, 9733-9743); {CALIBRATED}",
+                          first_attempt=8, next_attempt=10)),
+    # Caleb, 2026-10-31: the Al Kharid mine's north iron, where scorpions roam. No safespot from them there (the
+    # bridge's safespots: every iron rock is within a scorpion's leash); a level-3 miner is attacked by each about once
+    # every 20 ticks (results/calibration/gathering-20261031-1903.json). Its flee time isn't measured yet (no flees).
+    "mine_iron_alkharid": (6, Site((3300, 3310, 0), 5, f"tile and count: the north iron rocks (3296-3303, 3309-3312); "
+                                   f"{CALIBRATED}", first_attempt=9, next_attempt=10,
+                                   exposure=SiteExposure(attack_rate=1 / 20))),
 }
 
 

@@ -25,7 +25,12 @@ def test_methods_follow_the_2009_guides_breakpoints():
     assert [woodcutting_method(n) for n in (1, 14, 15, 29, 30, 60)] == ["wc_logs"] * 2 + ["wc_oak"] * 2 + ["wc_willow"] * 2
     assert mining_method(at_level("mining", 14)) in ("mine_copper", "mine_tin")
     assert mining_method(at_level("mining", 15)) == "mine_iron"
-    assert fishing_method(at_level("fishing", 19)) == "fish_shrimp" and fishing_method(at_level("fishing", 20)) == "fish_fly"
+    assert fishing_method(at_level("fishing", 19)) == "fish_shrimp_swamp"  # combat 3: Draynor's wizards would attack
+    assert fishing_method(at_level("fishing", 20)) == "fish_fly"
+    fighter = at_level("fishing", 19)
+    for skill in ("attack", "strength", "defence"):
+        fighter.xp[SKILL_INDEX[skill]] = float(XP_FOR_LEVEL[20])
+    assert fighter.combat_level() > 14 and fishing_method(fighter) == "fish_shrimp"
     first = {level: thieving_methods(level)[0] for level in (1, 4, 5, 19, 20, 34, 35, 37, 38, 54, 55, 64, 65, 99)}
     assert first == {1: "pickpocket_men", 4: "pickpocket_men", 5: "steal_bakers_stall", 19: "steal_bakers_stall",
                      20: "steal_silk_stall", 34: "steal_silk_stall", 35: "steal_fur_stall", 37: "steal_fur_stall",

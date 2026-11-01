@@ -31,7 +31,7 @@ The world is members-enabled (`rl.conf`), so members areas are allowed.
 | Id | Region | Bank used | Notes |
 |---|---|---|---|
 | `lumbridge` | Lumbridge castle and grounds | castle bank (top floor) | spawn point; range in the castle kitchen |
-| `lumbridge_swamp` | Lumbridge Swamp | Draynor | copper / tin mine; *verify* |
+| `lumbridge_swamp` | Lumbridge Swamp | Draynor | copper / tin mine; *verify*; net fishing |
 | `lumbridge_farms` | cow and chicken fields east of the river | castle bank | `CowKiller`, `ChickenKiller` |
 | `draynor` | Draynor Village | Draynor bank | willows, oaks, net fishing (`DraynorWillows`, `DraynorFisher`) |
 | `varrock` | Varrock | west / east banks | anvil (`VarrockSmither`), south-east mine |
@@ -73,7 +73,11 @@ the strung bow is worth more than the unstrung bow and the bowstring (Caleb): ma
 shortbows. On 2009Scape every one of these is a queued script that a walk or any other action clears (checked
 live), so fletching can't be done on the move or between other actions.
 
-That's 79 paths: woodcutting 12, fishing 6, mining 5, thieving 20, fletching 36.
+That's 83 paths: woodcutting 12, fishing 8, mining 7, thieving 20, fletching 36. Mining's include iron at the Al
+Kharid mine (Caleb, 2026-10-31), kept or smelted, beside Varrock's: scorpions roam it, so it costs a low-level miner
+hitpoints (below). Fishing's include shrimp at Lumbridge Swamp (Caleb, 2026-11-01), kept or cooked, beside
+Draynor's: Draynor's spots are next to the bank, but its Dark wizards make them dangerous for a character of combat
+level 14 or less.
 
 **Rates** come from an analytic model of the same mechanics, over an option of D ticks, as the combat ranker values
 fights: the time, XP and value (`data/prices_v2.csv`) of a unit at the site; for trees and rocks that deplete, a
@@ -94,6 +98,7 @@ The paths' gathering methods (their ids are the path ids of the kept paths):
 | `mine_iron` | Mining 15, pickaxe | iron ore | varrock |
 | `mine_coal` | Mining 30, pickaxe | coal | falador |
 | `fish_shrimp` | Fishing 1, small net | raw shrimps / anchovies | draynor |
+| `fish_shrimp_swamp` | Fishing 1, small net | raw shrimps / anchovies | lumbridge_swamp (its three net spots) |
 | `fish_fly` | Fishing 20, fly rod, feathers in the inventory | raw trout / salmon | barbarian_village |
 | `fish_lobster` | Fishing 40, lobster pot | raw lobster | catherby |
 | `pickpocket_men` | Thieving 1 | 3 coins (stackable, so it never fills the inventory) | lumbridge |
@@ -316,6 +321,26 @@ A candidate's XP/hr and gp/hr cover the option's whole duration, not just the fi
 Travel is straight-line tile distance × 1.3 at 1.5 tiles per tick, plus 12 ticks per change of plane or
 underground. Dungeons sit 6,400 tiles north of the surface they lie under. All of these constants are to be
 calibrated on the server.
+
+### Aggressive monsters at gathering sites (Caleb, 2026-10-31; implemented)
+
+A gathering option (woodcutting, mining, fishing) follows Caleb's rule when an aggressive monster attacks
+(`rlscape/sim/aggression.py`):
+- auto-retaliate is off, so attacks don't stop the gathering (checked on the server);
+- it fights only a trivial monster: the setup's max hit is at least half the monster's hitpoints, and the monster's
+  max hit is under a quarter of the character's hitpoints as the fight starts;
+- when its hitpoints fall under twice the monster's max hit, it runs out of the monster's aggressive range, eats
+  (or waits) until that's no longer so, and walks back.
+
+Which monsters: the aggressive, attackable ones spawned within 10 tiles of the site, that pick a character whose
+combat level is at most twice their own, until it has spent 1,000 ticks in the map region (the server's tolerance,
+in game ticks on the fork). How often they attack and how long running away takes are measured at Draynor's willows
+(a Dark wizard: once every 29 ticks), at Al Kharid's iron (a scorpion: once every 20 ticks) and at Draynor's shrimp
+spots, where nothing blocks the wizards: one engages a low-level fisher about once every 221 ticks, casts every 5
+ticks until the fisher runs, and goes on casting as it runs, so about half its runs away end in death. Other sites use
+the willows' until calibrated. Safespotting (Caleb): the server runner gathers from a tile no aggressive melee monster
+that would pick the character can hit (the bridge's `safespots`), when there's one at the site; the sim has it in
+the measured attack rate. Al Kharid's iron has none for a low-level miner: its five scorpions reach every rock.
 
 ### Prayers in fights (Caleb, 2026-10-31; implemented)
 

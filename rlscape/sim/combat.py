@@ -206,6 +206,7 @@ def die(state: CharacterState, now: int) -> None:
     for item in kept:
         state.add(item)
     state.hp, state.location, state.run_energy = state.max_hp(), RESPAWN, MAX_ENERGY  # Player.finalizeDeath
+    state.region_since = now  # respawned into Lumbridge's region
 
 
 def fight(state: CharacterState, rng: np.random.Generator, budget: int, entry: PoolEntry, plan: Plan, site: Site,

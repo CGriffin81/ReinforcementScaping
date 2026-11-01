@@ -7,6 +7,7 @@ import pytest
 
 from rlscape.gamedata import server as gd
 from rlscape.sim import Simulator, build_catalog
+from rlscape.sim import fishing
 from rlscape.sim.fishing import Fishing
 from rlscape.sim.gathering import WALK_BETWEEN_RESOURCES, Site
 from rlscape.sim.mining import ATTEMPT_TICKS, GEMS, Mining, best_pickaxe, mine_chance, uniform_race
@@ -97,7 +98,7 @@ def test_sampled_fish_follow_the_catch_odds():
     _, weights, _ = option.catch_odds(state)
     rng, shrimps, anchovies = np.random.default_rng(3), 0, 0
     for _ in range(300):
-        state.inventory, state.location = {303: 1}, option.spots[0]
+        state.inventory, state.location = {303: 1}, option.start
         with_level(state, "fishing", 30)
         option.run(state, rng, 100_000)
         shrimps += state.inventory.get(RAW_SHRIMPS, 0)
@@ -106,10 +107,43 @@ def test_sampled_fish_follow_the_catch_odds():
 
 
 @needs_server
+def test_fishing_spots_move_only_onto_free_tiles():
+    """FishingNPC.moveSpot: a spot moves only if the tile it picks has no NPC on it. Draynor's two spots sit on its two
+    tiles, so they never move; Barbarian Village's two have five tiles."""
+    assert gd.fish_spot_counts()["DRAYNOR"] == 2 and Fishing("test", "SMALL_NET", "DRAYNOR").move_chance == 0
+    assert Fishing("test", "LURE", "BARBARIAN").move_chance == pytest.approx(3 / 5)
+    option = Fishing("test", "SMALL_NET", "DRAYNOR")
+    state = with_level(CharacterState.fresh(), "fishing", 40)
+    state.inventory, state.location = {303: 1}, option.start
+    option.run(state, np.random.default_rng(0), 5_000)
+    assert state.location == option.start
+
+
+@needs_server
+def test_fishing_attempts_follow_the_measured_timing():
+    """Where the spot never moves, a load of n fish takes the first attempt's FIRST_ATTEMPT_TICKS, then ATTEMPT_TICKS
+    an attempt, plus AFTER_CATCH_TICKS after each catch but the last (all measured on the server). Combat 40 is beyond
+    Draynor's wizards' notice."""
+    option = Fishing("test", "SMALL_NET", "DRAYNOR")
+    rng, ticks = np.random.default_rng(0), []
+    for _ in range(300):
+        state = CharacterState.fresh()
+        for skill in ("fishing", "attack", "strength", "defence"):
+            with_level(state, skill, 40)
+        state.inventory, state.location = {303: 1}, option.start
+        p_any = option.catch_odds(state)[2]
+        ticks.append(option.run(state, rng, 100_000).ticks)
+        assert sum(n for item, n in state.inventory.items() if item != 303) == 27
+    expected = (fishing.FIRST_ATTEMPT_TICKS - fishing.ATTEMPT_TICKS + 27 * fishing.ATTEMPT_TICKS / p_any
+                + 26 * fishing.AFTER_CATCH_TICKS)
+    assert np.mean(ticks) == pytest.approx(expected, rel=0.03)
+
+
+@needs_server
 def test_lure_fishing_uses_a_feather_per_fish_and_stops_without_them():
     option = Fishing("test", "LURE", "BARBARIAN")
     state = with_level(CharacterState.fresh(), "fishing", 30)
-    state.inventory, state.location = {FLY_ROD: 1, FEATHER: 5}, option.spots[0]
+    state.inventory, state.location = {FLY_ROD: 1, FEATHER: 5}, option.start
     assert "RAINBOW_FISH" not in {f.name for f in option.catch_odds(state)[0]}  # needs stripy feathers
     result = option.run(state, np.random.default_rng(4), 100_000)
     assert result.termination == "inputs_exhausted" and FEATHER not in state.inventory
@@ -122,7 +156,7 @@ def test_fresh_character_can_chop_mine_copper_and_tin_net_shrimp_and_pickpocket(
     sim.reset(seed=0)
     paths = {p.id for p in path_options() if p.available(sim.state)}
     assert paths == {"wc_logs", "wc_logs_burn", "mine_copper", "mine_tin", "fish_shrimp", "fish_shrimp_cook",
-                     "pickpocket_men"}
+                     "fish_shrimp_swamp", "fish_shrimp_swamp_cook", "pickpocket_men"}
     slots = {o.id for o, ok in zip(sim.options, sim.action_mask()) if ok and o.family == "gathering"}
     assert slots == {f"skill_{s}_xp{n}" for s in ("woodcutting", "fishing", "mining") for n in (1, 2)} | {
-        "skill_thieving_xp1"}
+        "skill_thieving_xp1", "skill_fishing_gp1", "skill_fishing_gp2"}  # two shrimp sites: four fishing paths

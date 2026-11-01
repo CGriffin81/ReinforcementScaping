@@ -1,7 +1,8 @@
 """Woodcutting options, ported from the server's WoodcuttingListener with event-level sampling.
 
 Server mechanics (content/global/skill/gather/woodcutting/WoodcuttingListener.kt):
-- a swing every 3 ticks; a swing succeeds if randomDouble(100) < getSkillSuccessChance(low, high, level), where
+- a swing every 3 ticks, and 4 after a swing that got a log (measured on the server, scripts/calibrate.py; the code
+  doesn't show why); a swing succeeds if randomDouble(100) < getSkillSuccessChance(low, high, level), where
   low/high are the tree's base values plus the axe's enum ordinal times the tree's tier modifiers (halved for the
   black axe);
 - each success gives one log and the tree's experience;
@@ -11,9 +12,9 @@ Server mechanics (content/global/skill/gather/woodcutting/WoodcuttingListener.kt
 Sampling (rlscape.sim.gathering): the swings until the next log are one geometric draw; whether the tree falls is
 one Bernoulli draw per log.
 
-Not modelled yet: bird nests (1 in 282 per log). Site tiles and tree counts are estimates to verify on the server
-(a bridge export of the scenery near each site is the planned source), except the willow tile, which is the
-DraynorWillows bot's zone.
+Not modelled yet: bird nests (1 in 282 per log). The sites' tree counts and their first and next attempts are
+measured on the server (scripts/calibrate.py, 2026-10-31); their tiles are the original estimates, which the
+measured first attempt accounts for.
 """
 
 from __future__ import annotations
@@ -29,6 +30,7 @@ from rlscape.sim.skills import MAX_XP, SKILL_INDEX
 from rlscape.sim.state import CharacterState
 
 SWING_TICKS = 3  # delayClock(player, Clocks.SKILLING, 3) after every swing
+AFTER_LOG_TICKS = 1  # the swing after a log comes a tick later (measured: 4 ticks in 180 of 185)
 FELL_CHANCE = 1 / 8  # rollDepletion for trees other than normal and dead trees
 
 # SkillingTool.getHatchet's priority, standard axes only (the class 1-5 hatchets are Dungeoneering-era items).
@@ -89,15 +91,22 @@ class Woodcutting(Option):
             chance=lambda: chop_chance(tree, tool, state.level("woodcutting")),
             collect=collect,
             depletes=lambda: tree.depletes and (tree.always_falls or rng.random() < FELL_CHANCE),
-            respawn=respawn_ticks(tree.respawn_min, tree.respawn_max))
+            respawn=respawn_ticks(tree.respawn_min, tree.respawn_max), after_success=AFTER_LOG_TICKS)
 
 
 # Catalog §2. Tree identifiers are WoodcuttingNode's: 1 normal, 7 oak, 8 willow, 15 yew.
+# The counts and attempt times are measured on the server (results/calibration/gathering-20261031-1319.json): the
+# trees a character clicked there, and the mean ticks to the first swing and from a fall to the next swing.
+CALIBRATED = "calibrated 2026-10-31 (scripts/calibrate.py)"
 SITES = {
-    "wc_logs": (1, Site((3190, 3235, 0), 6, "estimate, west of Lumbridge castle; verify")),
-    "wc_oak": (7, Site((3103, 3245, 0), 2, "estimate, Draynor Village; verify")),
-    "wc_willow": (8, Site((3087, 3232, 0), 4, "tile: DraynorWillows.willowZone (3084-3091, 3225-3239); count: estimate")),
-    "wc_yew": (15, Site((3087, 3475, 0), 3, "estimate, south of Edgeville bank; verify")),
+    "wc_logs": (1, Site((3190, 3235, 0), 14, f"tile: estimate, west of Lumbridge castle; {CALIBRATED}: 14 or more "
+                        "trees", first_attempt=5, next_attempt=6)),
+    "wc_oak": (7, Site((3103, 3245, 0), 3, f"tile: estimate, Draynor Village; {CALIBRATED}", first_attempt=13,
+                       next_attempt=8)),
+    "wc_willow": (8, Site((3087, 3232, 0), 4, f"tile: DraynorWillows.willowZone (3084-3091, 3225-3239); {CALIBRATED}",
+                          first_attempt=2, next_attempt=5)),
+    "wc_yew": (15, Site((3087, 3475, 0), 2, f"tile: estimate, south of Edgeville bank; {CALIBRATED}",
+                        first_attempt=5, next_attempt=8)),
 }
 
 

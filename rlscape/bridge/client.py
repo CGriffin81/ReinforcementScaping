@@ -92,17 +92,47 @@ class BridgeClient:
     def state(self, uid: int) -> dict[str, Any]:
         return self.request("state", uid=uid)["state"]
 
-    def walk_to(self, uid: int, x: int, y: int, z: int = 0) -> None:
-        self.request("walk_to", uid=uid, x=x, y=y, z=z)
+    def walk_to(self, uid: int, x: int, y: int, z: int = 0, packet: bool = False) -> None:
+        """Start walking. With ``packet``, as a client's walk click: it clears what the character was doing and goes at
+        most MAX_PATHFIND_DISTANCE - 1 tiles toward (x, y). Without, the bundled bots' walk, which doesn't."""
+        self.request("walk_to", uid=uid, x=x, y=y, z=z, packet=packet)
 
     def set_run(self, uid: int, on: bool = True) -> bool:
         """Turn run on or off, as the run orb does; returns whether it's on. The server turns it off when run energy
         drops under 1%."""
         return self.request("set_run", uid=uid, on=on)["run"]
 
-    def interact(self, uid: int, name: str, option: str, is_object: bool = True) -> dict[str, Any]:
-        """Use ``option`` on the nearest scenery object (or NPC, with ``is_object=False``) called ``name``."""
-        return self.request("interact", uid=uid, name=name, option=option, object=is_object)
+    def safespots(self, uid: int, name: str, ids: list[int] | None = None, radius: int | None = None,
+                  object: bool = True) -> list[dict[str, Any]]:
+        """Tiles beside scenery (or, ``object=False``, NPCs such as fishing spots) called ``name`` (of ``ids``, within
+        ``radius``) that the character can walk to and no aggressive melee monster that would pick it can hit it on,
+        nearest first."""
+        fields: dict[str, Any] = {"uid": uid, "name": name, "object": object}
+        if ids is not None:
+            fields["ids"] = ids
+        if radius is not None:
+            fields["radius"] = radius
+        return self.request("safespots", **fields)["tiles"]
+
+    def set_retaliate(self, uid: int, on: bool = True) -> bool:
+        """Turn auto-retaliate on or off, as the options tab's button does; off, the character doesn't fight back when
+        attacked."""
+        return self.request("set_retaliate", uid=uid, on=on)["retaliate"]
+
+    def interact(self, uid: int, name: str, option: str, is_object: bool = True, ids: list[int] | None = None,
+                 radius: int | None = None, index: int | None = None) -> dict[str, Any]:
+        """Use ``option`` on the scenery object (or NPC, with ``is_object=False``) called ``name`` (and, with ``ids``, of
+        those ids) that the character can walk to soonest; raises BridgeError ("none reachable") if it can reach
+        none within ``radius`` tiles (default the server's MAX_PATHFIND_DISTANCE). With ``index``, the NPC with that
+        index (e.g. one of ``state()["attackers"]``)."""
+        fields: dict[str, Any] = {"uid": uid, "name": name, "option": option, "object": is_object}
+        if index is not None:
+            fields["index"] = index
+        if ids is not None:
+            fields["ids"] = ids
+        if radius is not None:
+            fields["radius"] = radius
+        return self.request("interact", **fields)
 
     def item_option(self, uid: int, item: int, option: str) -> bool:
         """Click an inventory item's ``option`` ("bury", "eat"); False if the server dropped the click (locked)."""

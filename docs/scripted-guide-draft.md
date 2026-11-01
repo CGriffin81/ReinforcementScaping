@@ -61,7 +61,7 @@ to smith) passes the turn to the next lowest.
 |---|---|---|
 | Woodcutting [22] | normal trees 1–14; oaks 15–40; willows 41+ | `wc_logs`, `wc_oak`, `wc_willow` |
 | Mining [25] | copper and tin before 15; iron from 15 | `mine_copper`, `mine_tin` alternately; `mine_iron` |
-| Fishing [23] | small net to 19; fly fishing from 20 | `fish_shrimp`; `fish_fly` once a fly rod and feathers are bought |
+| Fishing [23] | small net to 19; fly fishing from 20 | `fish_shrimp_swamp` while Draynor's Dark wizards would attack (combat level 14 or less; Caleb, 2026-11-01), then `fish_shrimp`; `fish_fly` once a fly rod and feathers are bought |
 | Melee [24] | monsters by the trained stat's level band; scimitars; the best armour tier the Defence level allows | each stat in its own style, on the melee slot whose monster is in the band, otherwise the top XP slot |
 | Ranged [31] | monks, goblins, chickens to 19; wizards, minotaurs, barbarians from 20; flesh crawlers, moss giants from 30; lesser demons, ankou late; the best shortbow; iron arrows | the ranged slot whose monster is in the band, otherwise the top XP slot; bows and arrows bought |
 | Magic [33] | earth strike at 9, fire strike at 13, …; buy the runes | the top magic XP slot, with runes bought for the best strike or bolt the level allows. The article's curse (19), telekinetic grab (33), crumble undead (39) and high alchemy (55) aren't sim v0 options |

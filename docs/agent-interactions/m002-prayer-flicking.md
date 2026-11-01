@@ -9,7 +9,7 @@
 - Status: SUCCESS (the earlier work committed; the prayer command added on the fork; prayer flicking tested live;
   the use in combat left for Caleb as OQ-3)
 - Commit: the skilling slots, Fletching and the open-questions log are main repo `f47b7fb` (branch `sim-v0`); this
-  work is fork `99152ea` (branch `rl`) and the main repo commit that adds this record (branch `sim-v0`; its SHA can only be filled in by a later commit)
+  work is fork `99152ea` (branch `rl`) and main repo `c505d47` (branch `sim-v0`)
 
 ## Full Prompt
 

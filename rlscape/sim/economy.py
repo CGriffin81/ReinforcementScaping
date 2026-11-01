@@ -30,7 +30,8 @@ import numpy as np
 
 from rlscape.gamedata import server as gd
 from rlscape.sim.kits import GATHERING_TOOLS, kit
-from rlscape.sim.movement import reachable, route_ticks, walk
+from rlscape.sim.energy import weight
+from rlscape.sim.movement import reachable, route_ticks, toll_exempt, walk
 from rlscape.sim.options import COMPLETED, INPUTS_EXHAUSTED, Option, OptionResult
 from rlscape.sim.processing import HAMMER, TINDERBOX
 from rlscape.sim.shops import PLAYER_STOCK, set_stock, stock
@@ -62,8 +63,22 @@ def is_misc(item: int, vocabulary: frozenset[int]) -> bool:
     return item not in vocabulary and item != COINS and not kept_on_deposit(item)
 
 
+_NEAREST_BANK: dict[tuple, gd.Bank] = {}
+NEAREST_BANK_CACHE = 4096
+
+
 def nearest_bank(state: CharacterState) -> gd.Bank:
-    return min(gd.banks(), key=lambda b: route_ticks(state, (b.x, b.y, b.plane)))
+    """The bank with the shortest walk. Every option that banks asks, and a mask asks once per Fletching path, so it's
+    cached on everything route_ticks depends on: the tile, the coins carried (the Al Kharid toll and the Shantay pass),
+    whether Prince Ali Rescue waives the toll, run energy, weight and Agility."""
+    key = (state.location, state.inventory.get(COINS, 0), toll_exempt(state), state.run_energy, weight(state),
+           state.level("agility"))
+    bank = _NEAREST_BANK.get(key)
+    if bank is None:
+        if len(_NEAREST_BANK) >= NEAREST_BANK_CACHE:
+            _NEAREST_BANK.clear()
+        bank = _NEAREST_BANK[key] = min(gd.banks(), key=lambda b: route_ticks(state, (b.x, b.y, b.plane)))
+    return bank
 
 
 def bank_trip(state: CharacterState, budget: int) -> int | None:

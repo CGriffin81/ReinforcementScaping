@@ -423,6 +423,17 @@ def rock_types() -> dict[int, RockType]:
     return out
 
 
+@cache
+def rock_objects() -> dict[int, frozenset[int]]:
+    """MiningNode identifier -> the scenery ids of its rocks with ore (each enum entry is `(full, empty, identifier)`),
+    so a click can pick one ore's rocks at a mixed mine."""
+    out: dict[int, set[int]] = {}
+    for full, _, ident in re.findall(r"^\s*[A-Z_0-9]+\(\s*(\d+),\s*(\d+),\s*\(byte\)\s*(\d+)\)",
+                                     MINING_NODE.read_text(encoding="utf-8"), re.M):
+        out.setdefault(int(ident), set()).add(int(full))
+    return {k: frozenset(v) for k, v in out.items()}
+
+
 @dataclass(frozen=True)
 class FishType:
     """A Fish enum constant."""
@@ -896,6 +907,26 @@ def fish_spot_locations() -> dict[str, tuple[tuple[int, int, int], ...]]:
     return {name: tuple((int(x), int(y), int(z)) for x, y, z in
                         re.findall(r"Location\(\s*(\d+),\s*(\d+),\s*(\d+)\s*\)", body))
             for name, body in re.findall(r"^\s*([A-Z_]+)\(\s*((?:\s*Location\([^)]*\),?)+)\s*\)", text, re.M)}
+
+
+@cache
+def fish_spot_counts() -> dict[str, int]:
+    """FishSpots group -> the fishing spot NPCs spawned on its tiles (any kind: they block each other's moves)."""
+    ids = set().union(*fishing_spot_ids().values())
+    spawned = [tuple(t) for i in ids for t in spawns().get(i, ())]
+    return {name: sum(t in set(tiles) for t in spawned) for name, tiles in fish_spot_locations().items()}
+
+
+@cache
+def fishing_spot_ids() -> dict[str, frozenset[int]]:
+    """FishingOption name -> the fishing spot NPC ids that offer it (FishingSpot: each entry's ids and options), so a
+    click can pick a spot of the right kind where several kinds sit together."""
+    out: dict[str, set[int]] = {}
+    text = (FISH_SPOTS.parent / "FishingSpot.kt").read_text(encoding="utf-8")
+    for ids, options in re.findall(r"intArrayOf\(([^)]*)\)\s*,((?:\s*FishingOption\.[A-Z_]+,?)+)", text):
+        for option in re.findall(r"FishingOption\.([A-Z_]+)", options):
+            out.setdefault(option, set()).update(int(i) for i in re.findall(r"FISHING_SPOT_(\d+)", ids))
+    return {k: frozenset(v) for k, v in out.items()}
 
 
 @dataclass(frozen=True)

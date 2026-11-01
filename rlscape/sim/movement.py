@@ -128,6 +128,8 @@ def walk(state: CharacterState, destination: tuple[int, int, int], budget: int, 
         _pay(state, TOLL)
     if planned.shantay_pass:
         _pay(state, PASS_PRICE)
+    if (destination[0] >> 6, destination[1] >> 6) != (state.location[0] >> 6, state.location[1] >> 6):
+        state.region_since = state.tick + elapsed + ticks  # a new map region: aggression tolerance starts again
     state.location, state.run_energy = destination, energy
     state.energy_clock += ticks
     return ticks
