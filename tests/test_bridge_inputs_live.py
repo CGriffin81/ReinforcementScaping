@@ -235,3 +235,41 @@ def test_safespots_beside_rocks_from_every_melee_aggressor(client, uid):
     client.debug_teleport(uid, 3300, 3310, 0)
     client.wait(2)
     assert client.safespots(uid, "Rocks", sorted(gd.rock_objects()[6]), 10) == []
+
+
+def _tick(client: BridgeClient, uid: int, *cmds: dict) -> dict:
+    return client.schedule([[*cmds, {"cmd": "state", "uid": uid}]])[0]["results"][-1]["state"]
+
+
+def test_a_bank_opens_deposits_and_withdraws_through_the_players_clicks(client, uid):
+    """Draynor's bank, as a client clicks it: the booth, the deposit button and its "Deposit Inventory" option, and
+    a bank slot's "Withdraw All". The bank stays open between the clicks (only messages are dismissed)."""
+    client.debug_teleport(uid, 3094, 3243, 0)
+    client.wait(2)
+    _tick(client, uid, {"cmd": "interact", "uid": uid, "name": "Bank booth", "option": "Use-quickly", "object": True,
+                        "ids": [2213], "packet": True})
+    states = [_tick(client, uid) for _ in range(3)]
+    assert [s["interface"] for s in states[1:]] == [762, 762]
+    held_before = len(states[-1]["inventory"])
+    _tick(client, uid, {"cmd": "interface_button", "uid": uid, "interface": 762, "button": 18, "packet": True})
+    assert _tick(client, uid)["chatbox"] == 232  # Deposit Inventory / Worn Equipment / Beast of Burden / Cancel
+    _tick(client, uid, {"cmd": "dialogue_button", "uid": uid, "interface": 232, "button": 2, "packet": True})
+    state = _tick(client, uid)
+    assert not state["inventory"] and len(state["bank"]) >= held_before
+    coins = next(i for i, stack in enumerate(state["bank"]) if stack["id"] == 995)
+    _tick(client, uid, {"cmd": "interface_item", "uid": uid, "interface": 762, "child": 73, "slot": coins,
+                        "item": 995, "option": 6, "packet": True})
+    assert held(client, uid, 995) == 25
+
+
+def test_a_planned_route_is_walked_as_clicks(client, uid):
+    """The planner's route from the spawn to Draynor's bank is what the server walks: the same number of tiles."""
+    from rlscape.bridge.walker import walk_route
+    from rlscape.routes import surface
+
+    world = surface()
+    start = client.state(uid)["location"]
+    walk = walk_route(client, uid, world, (3092, 3245, 0))
+    moved = sum(max(abs(a[0] - b[0]), abs(a[1] - b[1])) for a, b in zip(walk.tiles, walk.tiles[1:]))
+    assert walk.arrived and walk.replans == 0
+    assert moved == world.steps((start["x"], start["y"], 0), (3092, 3245, 0))

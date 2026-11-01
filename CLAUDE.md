@@ -92,6 +92,8 @@ work.
   stopped; the old database is backed up. The pipeline is
   `export_item_definitions.py` → `fetch_ge_history.py` →
   `build_price_tables.py`.
+- **Travel map:** `scripts/export_collision.py` (server running) writes the surface's collision map and doors
+  to `data/travel/`, which `rlscape/routes.py` plans walking routes on.
 - **Net worth** uses `data/prices_v2.csv`: max(high alchemy − nature rune,
   January 2009 GE price). `prices_v1` is superseded.
 - Build from `server/Server`: `mvnw.cmd -B package -DskipTests` (about 3 min

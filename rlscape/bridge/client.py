@@ -146,6 +146,17 @@ class BridgeClient:
         """Click a button of the open chatbox dialogue, e.g. a skill dialogue's "Make 1"."""
         self.request("dialogue_button", uid=uid, interface=interface, button=button)
 
+    def interface_button(self, uid: int, interface: int, button: int, option: int = 1) -> bool:
+        """Click a button of an open interface (the bank's deposit button, 762/18, say) with its right-click option
+        (1 to 10); False if the server dropped the click (locked)."""
+        return self.request("interface_button", uid=uid, interface=interface, button=button, option=option)["handled"]
+
+    def interface_item(self, uid: int, interface: int, child: int, slot: int, item: int, option: int) -> bool:
+        """Click an item's option in an open interface's container: the bank's withdraw 1, 5, 10, X or All (762/73,
+        options 1, 2, 3, 5, 6), say; False if the server dropped the click (locked)."""
+        return self.request("interface_item", uid=uid, interface=interface, child=child, slot=slot, item=item,
+                            option=option)["handled"]
+
     def prayer(self, uid: int, prayer: str) -> bool:
         """Click a prayer's button on the prayer tab (a PrayerType name, e.g. "PROTECT_FROM_MELEE"), turning it on or
         off. Returns whether it's on afterwards; it can't be toggled with no prayer points left."""
@@ -156,6 +167,11 @@ class BridgeClient:
         ``cmd`` and its fields) run in order, as packets that arrive together are. Returns one ``{tick, results}`` per
         step, each result being that command's response; failures don't raise or stop the rest."""
         return self.request("schedule", steps=steps)["steps"]
+
+    def debug_collision(self, x0: int, y0: int, x1: int, y1: int, z: int = 0) -> dict[str, Any]:
+        """Data export only (the travel planner's map): the area's collision flags, row by row from (x0, y0), and its
+        doors and gates. Never exposed to the agent."""
+        return self.request("debug_collision", x0=x0, y0=y0, x1=x1, y1=y1, z=z)
 
     def debug_set_levels(self, uid: int, levels: dict[str, int]) -> None:
         """Setup only (tests, calibration): set skills' levels, by skill name. Never exposed to the agent."""

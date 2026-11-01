@@ -322,6 +322,13 @@ Travel is straight-line tile distance × 1.3 at 1.5 tiles per tick, plus 12 tick
 underground. Dungeons sit 6,400 tiles north of the surface they lie under. All of these constants are to be
 calibrated on the server.
 
+**Travel as decided (Caleb, 2026-11-01; being built).** Walks follow routes planned on the server's own collision
+map (`rlscape/routes.py`, `data/travel/`), the server walker clicks along them, and the sim will use the planned
+lengths with the measured overheads instead of straight line × 1.3. Travel will include boats (the fixed ships and
+the charters), the standard teleport spells, the home teleport, teleport jewellery and teleport tablets: every
+walk takes the fastest way the character can use at the time (levels, quests, and the runes, coins, jewellery or
+tablets it carries), paying for it, on both backends.
+
 ### Aggressive monsters at gathering sites (Caleb, 2026-10-31; implemented)
 
 A gathering option (woodcutting, mining, fishing) follows Caleb's rule when an aggressive monster attacks

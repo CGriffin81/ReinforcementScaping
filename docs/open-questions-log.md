@@ -30,15 +30,6 @@ Started 2026-10-31 (Caleb), from a review of the documentation.
 - **Needed by:** before sim v1 is built, which is before E2.
 - **Status:** not drafted.
 
-### OQ-4. Bridge commands for the rest of the player's paths
-- **Raised:** 2026-10-30 (option catalog §8, server side).
-- **Question:** the go-ahead for the fork changes that shop buys, putting gear on, bank withdrawals and
-  `bank_deposit_worn` need. Each goes through the player's path, as the rules require.
-- **Decided since** (decision log, 2026-10-31): `interact` picks a reachable target, with an id filter, and walking as
-  a client packet. In reserve: clicking a particular target by its tile, if an executor ever needs it.
-- **Decides:** Caleb, per change.
-- **Needed by:** calibration past gathering at the site (banking) and `ServerEnv` (week 6).
-
 ### OQ-7. The sim is far below the contract's 20k decisions a second: optimize, or size E2 to it?
 - **Raised:** 2026-10-31, by the week-2 benchmark (`scripts/benchmark_sim.py`; env contract §7 sets the target).
 - **Measured** (masked random actions, `results/benchmark/sim-speed-20261031-1304.json`): 112 decisions a second in

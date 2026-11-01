@@ -2623,3 +2623,109 @@ Caleb: "Calibrate fishing." Two questions came up (`AskUserQuestion`).
     from range
 - **E1** (`results/eval/guide-fishing-20261101`, 10 seeds): guide 316 /
   94.6k / 103k; random 215 / 90.4k / 9.3k.
+
+### Decided and built (part): travel on the server's map, banking by clicks; boats and teleports decided
+Caleb: "Commit this, then move on to travel and banking." Committed: fork
+`84102f9`, main repo `346afd8`. Then, mid-work: "Make sure travel includes
+charter boats and teleports." Four questions (`AskUserQuestion`);
+`m002-travel-and-banking`.
+- **How long walks are made on the server.** A walk click goes at most 24
+  tiles in a straight line and the server's pathfinder only searches near
+  the character, so a long walk is a route of clicks.
+  - The options:
+    - export the server's collision map and plan routes in Python, which
+      the sim can use too (recommended)
+    - hand-made waypoints per trip, as the bundled bots do
+    - a server-side walker
+  - Caleb: **"Collision map + planner (Recommended)"**.
+- **Bank commands (OQ-4, answered).** OQ-4 asked for the go-ahead on the
+  fork changes for shop buys, putting gear on, bank withdrawals and
+  `bank_deposit_worn`.
+  - The options:
+    - two generic player-path commands, `interface_button` and
+      `interface_item` (recommended)
+    - bank-specific commands
+    - deposits only for now
+  - Caleb: **"Generic interface clicks (Recommended)"**. These cover bank
+    deposits (worn items too), withdrawals and shop buys. Gear goes on with
+    `item_option` ("Wield", "Wear").
+- **Who chooses a boat or teleport.**
+  - The options:
+    - every walk takes the fastest way the character can use, automatically,
+      paying from what it carries (recommended)
+    - free transports automatic and paid ones as agent actions
+    - all transports as agent actions
+  - Caleb: **"Fastest usable, auto (Recommended)"**.
+- **Which teleports.**
+  - The options:
+    - the standard spells and the home teleport (recommended)
+    - also teleport jewellery and tablets, whose items join V
+    - spells only
+  - Caleb: **"Also jewellery and tablets"**. Which items and charges join
+    V is OQ-10.
+- **Built** (fork, uncommitted):
+  - `debug_collision`: an area's collision flags and its doors and gates;
+    tests and data export only
+  - `interface_button` and `interface_item`: the client's IfAction packet
+  - in the state: the open interface, the open chatbox dialogue and the
+    last 20 game messages, as a player sees them (the messages are kept by
+    `PacketDispatch.sendMessage` for RL characters)
+  - the bridge's auto-dismissal (an earlier agent interpretation, decision
+    log 2026-10-05) closed every interface each tick, the bank included. It
+    now dismisses only messages, and leaves choice menus and the interfaces
+    a character opens to use (bank, deposit box, shop, GE, ship charter)
+    open. Reversible.
+- **Built** (main repo):
+  - `scripts/export_collision.py` and `data/travel/`: the surface from x 2304
+    to 3839 and y 2688 to 4031, and 920 doors and gates
+  - `rlscape/routes.py`: the server's step rules
+    (`SmartPathfinder.checkSingleTraversal`'s masks); doors are steps that
+    cost opening them; the toll gate and locked doors are excluded
+  - `rlscape/bridge/walker.py`: clicks along the route, opening doors
+  - `scripts/calibrate_travel.py`
+- **Measured:**
+  - The server walks the planned length exactly: 144 tiles planned, 144
+    walked.
+  - Walking: ticks ≈ steps / 2 + 2.3 + 0.083 × steps, from 15 to 166
+    steps, running. The 2.3 is the start; the rest is a standing tick
+    about every 18 and odd-length hops.
+  - Banking: 7 ticks from clicking a booth to an empty inventory (the sim
+    has 8).
+  - The sim's walks against the server, on 12 site-to-bank trips: short
+    trips 0.50 to 0.73, long ones 0.91 to 1.02
+    (`results/calibration/travel-20261101-1336.json`). The sim's nearest
+    bank by straight line is sometimes wrong: Al Kharid instead of
+    Lumbridge's castle bank or Draynor; the Grand Exchange instead of
+    Edgeville.
+- **Found:**
+  - The bridge's direct `interact` registers a click after the tick's
+    pulses. Interactions run as scripts (bank booths, for one) then cancel
+    themselves ("I can't reach that!"), so executors click as packets.
+  - The bank opens one tile before the character arrives when the last hop
+    is odd, and still stays open.
+- **Next:**
+  - the sim on planned routes (a table between the places it travels, with
+    the measured overheads)
+  - stairs and ladders (Lumbridge's castle bank), the dungeons' maps (the
+    coal site), banking at the Grand Exchange
+  - the transports: ships, charters, spells, the home teleport, jewellery
+    and tablets
+  - then recalibrate
+
+### Decided: the state fields approved; OQ-10 answered (teleport items)
+Caleb: "Approve the state fields, commit, then switch the sim to planned
+routes. For OQ-10, all teleport jewelry at all charge levels are usable for
+teleporting and should be purchasable at any charge level as well. Notably,
+there are some teleport items that are consumable like teleport tablets".
+`m002-planned-routes`.
+- **The state fields** (fork): the open interface, the open chatbox dialogue
+  and the last 20 game messages. Approved; committed.
+- **OQ-10, answered.** The question was which teleport jewellery and tablets
+  join V, at which charges. Claude's starting point: the server's teleport
+  jewellery that reaches the sim's map, and the standard teleport tablets,
+  each charge state its own item.
+  - Caleb: every piece of teleport jewellery, at every charge level, is
+    usable for teleporting and buyable at any charge level.
+  - Consumable teleport items, such as teleport tablets, count too.
+  - The items list comes from the server's data when the transports are
+    built (a catalog and env contract change).
