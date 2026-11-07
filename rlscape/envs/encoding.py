@@ -14,7 +14,7 @@ Parts, in order (sizes for vocabulary V, A access rules, N actions):
 | wealth | 2 | log1p(coins) and log1p(net worth), over log1p(10M) |
 | inventory | V + 1 | log1p(count) / log1p(28) per V item; free slots / 28 |
 | bank | V | log1p(count) / log1p(10k) per V item |
-| equipment | 11 | tier / top tier of the best item carried (worn or in the inventory) per role, 0 for none |
+| equipment | 12 | tier / top tier of the best item carried (worn or in the inventory) per role, 0 for none |
 | region | 12 | one-hot: the catalog's 11 regions, or elsewhere |
 | combat_candidates | 18 × 5 | per slot: XP/hr, gp/hr, damage per hour vs HP and food, travel, open |
 | skilling_candidates | 20 × 5 | per slot: the slot's skill's XP/hr, its processing counterpart's XP/hr, gp/hr, travel, open |
@@ -53,6 +53,7 @@ from rlscape.combat.access import access_rules, unlocked_rules
 from rlscape.combat.candidates import COMBAT_CLASSES, LOOT_MODES
 from rlscape.gamedata import server as gd
 from rlscape.sim.energy import MAX_ENERGY, weight
+from rlscape.sim.equipment import AVAS_DEVICES
 from rlscape.sim.health import food_healing_held, poison_cover
 from rlscape.sim.potions import ALL_POTIONS, antifire_cover, doses_held
 from rlscape.sim.mining import PICKAXE_PRIORITY
@@ -76,9 +77,10 @@ XP_HR_SCALE, GP_HR_SCALE = log1p(1_000_000), log1p(1_000_000)
 TRAVEL_SCALE_TICKS = 1_500  # 15 game-minutes, the default activity duration
 
 # Equipment slots (EquipmentContainer)
-HEAD, WEAPON, BODY, SHIELD, LEGS, AMMO = 0, 3, 4, 5, 7, 13
+HEAD, CAPE, WEAPON, BODY, SHIELD, LEGS, AMMO = 0, 1, 3, 4, 5, 7, 13
+# cape: Ava's devices, the attractor 1 and the accumulator 2 (Caleb, 2026-11-07, OQ-28)
 EQUIPMENT_ROLES = ("melee_weapon", "ranged_weapon", "staff", "ammunition", "head", "body", "legs", "shield", "axe",
-                   "pickaxe", "fishing_gear")
+                   "pickaxe", "fishing_gear", "cape")
 METALS = ("bronze", "iron", "steel", "black", "mithril", "adamant", "rune", "dragon")
 BOW_WOODS = ("", "oak", "willow", "maple", "yew", "magic")  # "" is the plain shortbow or longbow
 STAFF_KINDS = ("staff", "staff of", "battlestaff", "mystic")
@@ -154,7 +156,7 @@ def _top_tiers() -> dict[str, int]:
     return {"melee_weapon": len(METALS), "ranged_weapon": len(BOW_WOODS), "staff": len(STAFF_KINDS),
             "ammunition": len(METALS), "head": len(METALS), "body": len(METALS), "legs": len(METALS),
             "shield": len(METALS), "axe": max(tools["axe"].values()), "pickaxe": max(tools["pickaxe"].values()),
-            "fishing_gear": max(tools["fishing_gear"].values())}
+            "fishing_gear": max(tools["fishing_gear"].values()), "cape": len(AVAS_DEVICES)}
 
 
 @cache
@@ -175,6 +177,8 @@ def item_roles(item: int) -> tuple[tuple[str, int], ...]:
             out.append(("melee_weapon", metal))
     elif slot in (HEAD, BODY, LEGS, SHIELD, AMMO):
         out.append(({HEAD: "head", BODY: "body", LEGS: "legs", SHIELD: "shield", AMMO: "ammunition"}[slot], metal))
+    elif slot == CAPE and item in AVAS_DEVICES:
+        out.append(("cape", AVAS_DEVICES.index(item) + 1))
     return tuple(out)
 
 

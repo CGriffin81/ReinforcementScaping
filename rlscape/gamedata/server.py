@@ -37,6 +37,7 @@ SKILLING_TOOL = SERVER_CONTENT / "data" / "skill" / "SkillingTool.java"
 COMBAT_SPELL_DIR = SERVER_CONTENT.parent / "core" / "game" / "node" / "entity" / "combat" / "spell"
 MODERN_SPELLS = SERVER_CONTENT / "global" / "skill" / "magic" / "modern"
 PRICES = REPO / "data" / "prices_v2.csv"
+AVA_INTERFERENCE = REPO / "data" / "ava_interference.csv"
 ITEM_DEFINITIONS = REPO / "data" / "item_definitions.csv"  # scripts/export_item_definitions.py (cache)
 NPC_DEFINITIONS = REPO / "data" / "npc_definitions.csv"  # scripts/export_npc_definitions.py (cache)
 BANKS = REPO / "data" / "banks.csv"  # curated bank tiles; see the file's "check" column
@@ -196,6 +197,22 @@ def _int(value, default: int) -> int:
         return int(value)
     except (TypeError, ValueError):
         return default
+
+
+@cache
+def ava_interfering_items() -> frozenset[int]:
+    """Chest armour that stops Ava's devices: chest pieces whose worn model is one of AvasDevice.metalBodies (the
+    server's own list, exported by scripts/export_ava_interference.py). Only the chest slot counts."""
+    with AVA_INTERFERENCE.open(newline="", encoding="utf-8") as f:
+        return frozenset(int(r["item_id"]) for r in csv.DictReader(f))
+
+
+@cache
+def destroy_only_items() -> frozenset[int]:
+    """Items whose inventory option is Destroy, not Drop (item_configs' destroy flag: Ava's devices, quest items,
+    Slayer heads). The server has no Drop for them (checked live for Ava's devices, 2026-11-07)."""
+    return frozenset(int(raw["id"]) for raw in json.loads((SERVER_CONFIGS / "item_configs.json").read_text(
+        encoding="utf-8")) if raw.get("destroy") == "true")
 
 
 @cache

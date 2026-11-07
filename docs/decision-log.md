@@ -3971,3 +3971,167 @@ one target a band, at the first band its level allows).
   market is crowded with ones it can't reach. One runner a server ran
   normally. Results files are now named by target and band, as several
   runs can share a server.
+
+### Ava's devices: the agent can buy them (Caleb)
+2026-11-07, `m002-commit-and-avas-devices`. Asked whether the server has Ava's
+devices, Caleb decided: "Our agents can buy them from Ava for a nominal fee."
+How they're modelled is OQ-28. Found in the server's source:
+- **Have them:** Ava's attractor and accumulator (`AvasDevice.kt`,
+  `RangeSwingHandler.getDropRate`, `AvaDialogue.java`): cape slot,
+  untradeable. Wearing one needs Animal Magnetism, which every RL character
+  has. It starts without one, because the quest's `finish` gives the device
+  and our completion sets flags only.
+- **Getting one:** Ava, in Draynor Manor at (3093, 3357), sells an attractor
+  for 999 gp, as often as asked. At 50 Ranged she upgrades it to the
+  accumulator for 75 steel arrows. Her dialogue's choices should work with the
+  bridge's `interact` and `dialogue_button` (untested). Getting there is
+  untested too: the manor's front doors open only from outside
+  (`DraynorManorPlugin`), and our travel map has no crossings in the manor.
+- **Ammunition:** with either device worn, 80% of shots go back to the quiver.
+  Not with chinchompas or a bolt rack, and not over a metal chest body. Of the
+  other 20%, none land below Ranged 22, half land from 22 to 81, and
+  two-thirds from 82. So the arrows used fall from every shot to 1 in 5, and
+  the arrow piles from 80–89% of shots to at most 13% (OQ-27). Both devices
+  save the same on this server.
+- **Attraction:** every 300 game ticks, a worn device gives a random iron or
+  steel item: about 127 gp each for the attractor and 201 for the accumulator
+  (`prices_v2`). A matching ammunition item goes to the quiver; anything else
+  goes to the inventory, or to the ground if the inventory is full. That's 20
+  a game hour, 11 of them taking a slot for the attractor. Operating the
+  device turns this off.
+- **Bonuses:** the attractor +2 ranged attack and +2 magic defence; the
+  accumulator +4 and +4, and +1 slash defence.
+
+### Decided: OQ-27 (d); Ava's devices on the GE (OQ-28's first part)
+Caleb, 2026-11-07: "OQ27 - Option d. Does the attractor have a required range
+level for equip? Also, let's flag ava's devices as buyable at the GE - with a
+price of 2,500 for attractor and 10,000 for accumulator - and add them to the
+vocabulary so that we don't have to teach the agent Draynor Manor."
+`m002-devices-on-the-ge`.
+- **OQ-27, answered: (d).** The question was how ranged's arrow pickups are
+  modelled.
+  - The options:
+    - (a) count the arrow piles in the sim's fights, with one pickup time
+      for every class;
+    - (b) keep the per-drop constant, and list the two ranged cases as known
+      gaps;
+    - (c) the runner picks up arrows only when nothing attacks it;
+    - (d) recommended, after Caleb's account of how rangers play. Ranged
+      fights safespot on both backends. A ranged candidate needs a safespot,
+      unless its expected damage is trivial: no more than the hitpoints
+      regenerated meanwhile. Arrows are picked up between kills when the walk
+      takes no hits, otherwise just before the oldest pile despawns (200
+      game ticks after its first arrow). A trip costs the walk from the
+      safespot and back, plus a pickup a pile, with one pickup time for
+      every class. Refit.
+  - Caleb: (d). Not built yet.
+- **OQ-28's first part, answered: the GE sells both devices.** The question
+  was what's bought.
+  - The options: (a) the attractor only, from Ava (recommended); (b) the
+    attractor, and the upgrade to the accumulator from Ava.
+  - Caleb: both, on the GE, at 2,500 and 10,000 gp, and in *V*, so the agent
+    needn't learn Draynor Manor.
+- **Caleb's question, answered from the source:** neither device needs a
+  Ranged level. Their item configs have no requirements, and the only check
+  is Animal Magnetism, which every character has. Ava's 50 Ranged gates only
+  her upgrade, which the GE skips: a level-3 character can wear the
+  accumulator (OQ-28).
+- **Built:**
+  - **Prices** (`scripts/build_price_tables.py`, `SET_PRICES`): the frozen
+    database gets a price row for each device, as the server's `::allowge`
+    would. Both join the historical list, so the frozen seller sells them
+    and the frozen buyer buys them back at the same prices. `prices_v2`
+    values them there (source `ge_set`). The alchemy term doesn't apply,
+    since the spell refuses untradeable items. Checked against the committed
+    database, nothing else changed. Installed into the three instances.
+  - **Sim:** `buy_ge_10498` and `buy_ge_10499`, one at a time while nothing
+    as good is held; the accumulator outranks the attractor. *V* 216.
+  - **Masked actions:** the devices' alchemy and store-sale actions stay
+    masked, as on the server. So does their drop: the game offers Destroy,
+    not Drop (checked live; `gd.destroy_only_items`). `drop_misc` now leaves
+    destroy-only items as well (59 appear in drop tables: Slayer heads and
+    quest items).
+  - **Not yet:** the devices' effects (OQ-28's open parts). A worn device
+    saves no arrows in the sim yet.
+  - **Sizes:** *V* 216, 153 buys (116 at the GE), 1,330 actions, 2,118
+    observation features. Env contract v1.16 (to confirm), which also
+    corrects v1.15's pickup times to the refit's 5 and 18 ticks.
+  - **Tests:** the buy, its mask, and the dead actions. Live: both devices
+    bought at the set prices, the attractor worn, no Drop, the accumulator
+    sold back for 10,000.
+  - **Agent choices (reversible):**
+    - every *V* item keeps its five actions, with the devices' four dead
+      ones masked, rather than a layout per item;
+    - the devices can be sold back, since the frozen buyer's list is the
+      seller's;
+    - destroy-only misc items aren't dropped.
+
+### Decided and built: what Ava's devices do (OQ-28); the interference rule found narrower (OQ-29)
+Caleb, 2026-11-07: "Avas devices attraction effects do not work if any metal
+items are equipped. That needs to be understood when modeling the behavior.
+OQ28 - Wear the devices only in ranged combat. Have the item collection turned
+off. Most of those items are not as valuable as the space they would
+otherwise take. Modeling drop behavior because of the junk items isn't worth
+the time or additional complexity. 2, option i 3, Implement a level 50 ranged
+skill requirement for the accumulator, no requirement for the attractor. 4.
+a" `m002-device-rules`.
+- **OQ-28, answered.** The question was what the devices do once bought.
+  1. **When it's worn.** The options: (a) in ranged fights, with attraction
+     on (recommended); (b) always, attraction everywhere; (c) in ranged
+     fights, with attraction off. Caleb: (c), because the attracted items
+     aren't worth their slots or the modelling.
+  2. **The accumulator's ammunition** (Caleb's question). The options: (i)
+     keep the 80% catch and gather the missed shots that would land
+     (recommended); (ii) use the normal roll, gathering every landing shot.
+     Caleb: (i).
+  3. **A Ranged level for the accumulator.** The options: (a) 50 Ranged to
+     wear it (recommended); (b) none. Caleb: (a), and none for the attractor.
+  4. **The observation.** The options: (a) a cape role (recommended); (b)
+     the buy masks. Caleb: (a).
+- **Built in the fork** (uncommitted):
+  - `RangeSwingHandler.useAmmo`: with the accumulator worn, a shot its catch
+    missed that would land goes back to the quiver; breaks still break. The
+    attractor's still land.
+  - `item_configs.json`: the accumulator requires Ranged 50, which the
+    server's equip check enforces.
+  - `RLCommands`: `spawn` switches the devices' attraction off, a saved
+    setting as operating a device sets it. `item_definitions` exports each
+    item's worn model.
+- **Built in the sim:**
+  - `equipment.shot_outcomes`: a shot's chances of going back to the quiver
+    and of landing, ported from `getDropRate` and `useAmmo`. Fights
+    (`_ammunition`) and the ranking's held shots (`slots._attacks_held`)
+    use it.
+  - `wield_best`: a ranged fight wears the best device carried, over any
+    other cape. Other fights take it off (`hinders`).
+  - The ranged gear withdrawal brings the best device out first.
+  - `can_wear` reads the accumulator's Ranged 50 from the config, so its buy
+    is masked below 50.
+  - The cape role: E 12, 2,119 features.
+- **The interference rule, found** (Caleb's note): the server's rule is
+  narrower than "any metal item". OQ-29 has the details and the choice.
+  - Built as the server has it: `data/ava_interference.csv`
+    (`scripts/export_ava_interference.py`, the server's own models).
+  - Agent choice (reversible): a ranger wearing a device leaves interfering
+    chest armour off, as magic leaves metal off.
+- **Measured** on the rebuilt server: at Ranged 1 the accumulator is refused
+  ("You need a Ranged level of 50 to wear this."), and at 50 it goes on.
+  Wearing the attractor for 305 ticks attracted nothing. Shooting cows at
+  Ranged 50: with no device, 58 of the 70 arrows used landed (0.83; the
+  formula's 0.86); with the attractor, 13 of 20 (0.65; the formula's 0.5,
+  within the noise of 20); with the accumulator, none of the 6 used (its own
+  piles counted by each pile's key; a first count by tile picked up the
+  previous run's piles and missed successive piles on a tile).
+- **Tests:** `tests/test_sim_avas_devices.py`: the rolls, the outcomes, the
+  interference, arrows used over 20,000 shots, the level, the loadout, the
+  withdrawal, the cape role.
+
+### Fixed: the live tests' worker group under xdist
+2026-11-07, `m002-device-rules`. `tests/conftest.py` marks the live tests
+`xdist_group("server")` so that `-n 8 --dist loadgroup` keeps them on one
+worker. The mark never took effect, because xdist's own collection hook,
+which turns groups into the test ids' `@server`, ran before ours. Live tests
+from different files then ran on several workers at once, each setting the
+one tick speed, and a full parallel run hung (a bridge request waiting
+past 20 minutes). Ours now runs first (`tryfirst`): all 53 live tests on one
+worker, and the whole suite, 348 tests, passed in 4 minutes.

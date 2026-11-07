@@ -1,8 +1,11 @@
-# Environment Contract (v1.15, Signed off)
+# Environment Contract (v1.16, Signed off)
 
-**Status:** v1.15, 2026-11-07. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
+**Status:** v1.16, 2026-11-07. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
+- **v1.16** (2026-11-07; to confirm) adds Ava's attractor and accumulator to *V* and the GE buys (Caleb: the GE
+  sells them at 2,500 and 10,000 gp), and a cape role to the equipment part for them (OQ-28): 1,330 actions,
+  2,119 features.
 - **v1.15** (2026-11-07; to confirm) refits the combat-rate model's per-kill overhead (§8: 3 ticks, from 10 and 8)
-  and adds a measured pickup time for each drop the loot mode keeps (3 ticks melee, 10 ranged); the time to kill
+  and adds a measured pickup time for each drop the loot mode keeps (5 ticks melee, 18 ranged); the time to kill
   counts the last hit's overkill (Caleb).
 - **v1.14** (2026-11-06; to confirm) puts poison and a dragon's breath in the combat-rate model's risk (§8), ported
   from the server, less the shares the antipoison and antifire carried cover, and combat potions' boosts in the
@@ -104,7 +107,7 @@ roughly [0, 1].
 | Inventory | V + 1 | log1p(count) / log1p(28) per vocabulary item; free slots / 28 |
 | Bank | V | log1p(count) / log1p(10k) per vocabulary item |
 | Potions | 11 × 2 | each potion's doses (antipoison, super antipoison, the eight combat potions, antifire; any dose, noted or not): log1p(doses) / log1p(112) in the inventory, / log1p(10k) in the bank. Only the four-dose potions are in *V* (OQ-25) |
-| Equipment | E | tier index / max tier per slot: weapon (melee / ranged / staff), ammunition, head, body, legs, shield; tools (axe, pickaxe, fishing gear) |
+| Equipment | E | tier index / max tier per slot: weapon (melee / ranged / staff), ammunition, head, body, legs, shield; tools (axe, pickaxe, fishing gear); cape (Ava's devices: attractor 1, accumulator 2) |
 | Region | R | one-hot over the catalog's regions |
 | Combat candidates | C × 5 | for each candidate slot: XP/hr, gp/hr, expected damage taken per hour vs food held, travel minutes, Slayer / level eligibility (option catalog §4) |
 | Skilling candidates | 20 × 5 | per skilling slot (option catalog §2): the gathering skill's XP/hr, its processing counterpart's XP/hr, gp/hr, travel, open; scaled as the combat candidates |
@@ -117,11 +120,11 @@ roughly [0, 1].
 Inventory and bank are separate because banking is now the agent's decision. *V* is the item vocabulary in the
 option catalog.
 
-**As built** (`rlscape/envs/encoding.py`, 2026-10-30): E = 11 roles (weapons for melee, ranged and magic,
+**As built** (`rlscape/envs/encoding.py`, 2026-10-30): E = 12 roles (weapons for melee, ranged and magic,
 ammunition, head, body, legs, shield, axe, pickaxe, fishing gear), R = 12 (the catalog's 11 regions and
 "elsewhere"), C = 18 slots (6 per combat class). The encoder's docstring lists how each part is scaled. With the
-catalog as built (1,318 actions, *V* = 214) the vector has 2,102 features (v1.12 dropped the quest part's 64; v1.13
-added 7 buys and 27 items; v1.14 11 buys, 11 items and the potions part's 22).
+catalog as built (1,330 actions, *V* = 216) the vector has 2,119 features (v1.12 dropped the quest part's 64; v1.13
+added 7 buys and 27 items; v1.14 11 buys, 11 items and the potions part's 22; v1.16 2 buys, 2 items and the cape role).
 
 **Left out on purpose:** GE prices. They're frozen, so a price snapshot would be a constant.
 
@@ -247,13 +250,13 @@ from `drop_tables.json`, and spawns from `npc_spawns.json`.
 
 | Quantity | How it's computed |
 |---|---|
-| Kills/hr | from hit chance and max hit against the NPC's defence and HP (the expected swings until their damage reaches its HP, the last hit's overkill included, as the simulator's fights deal it), plus a measured overhead per kill for finding and reaching the next target (3 ticks; magic taken as ranged), and a measured pickup time for each drop the loot mode keeps (3 ticks melee, 10 ranged, which covers its arrows; magic taken as melee). A site short of the monster holds kills to one every (respawn + fighting) / spawns ticks: spawns of it within 15 tiles (`npc_spawns.json`), its `respawn_delay` (`npc_configs.json`). In the simulator each of a site's monsters has its own respawn, and nothing attacks while the character waits. |
+| Kills/hr | from hit chance and max hit against the NPC's defence and HP (the expected swings until their damage reaches its HP, the last hit's overkill included, as the simulator's fights deal it), plus a measured overhead per kill for finding and reaching the next target (3 ticks; magic taken as ranged), and a measured pickup time for each drop the loot mode keeps (5 ticks melee, 18 ranged, which covers its arrows; magic taken as melee). A site short of the monster holds kills to one every (respawn + fighting) / spawns ticks: spawns of it within 15 tiles (`npc_spawns.json`), its `respawn_delay` (`npc_configs.json`). In the simulator each of a site's monsters has its own respawn, and nothing attacks while the character waits. |
 | XP/hr | combat XP and Hitpoints XP for the chosen style, plus the spell's base XP on every magic cast |
 | gp/hr | expected value (`prices_v2`) of the drops the loot mode keeps × kills/hr. **Not yet subtracted:** consumables used (food, arrows, runes) and entry fees (Brimhaven, Waterbirth). |
 | Risk | expected damage per kill, poison included (the server's Poison timer; prayer doesn't stop it) and a dragon's breath behind the shield (one swing in three, 0 to 5), less the shares the antipoison and antifire carried cover, and the monster's max hit, against HP above the retreat point and the food held (the retreat-aware filter). The fighter's levels are as its carried potions boost them at the fight's start |
 | Inventory and travel | kills continue until the looted drops fill the free slots, then a bank trip; the walk to the monster is taken out of the duration (*D* = 15 game-minutes = 1,500 ticks) |
 | Prayer | fights flick prayers (option catalog §4): a style the Prayer level can protect against deals nothing, defence prayers count otherwise, and the character's swings get its accuracy and damage prayers except those next to a monster swing. Prayer points never drain. |
-| Ammunition | fighting stops when the arrows or runes run out. Arrows that land and are picked back up stretch the arrows held; melee and crystal bows are unlimited. |
+| Ammunition | fighting stops when the arrows or runes run out. Arrows that land and are picked back up stretch the arrows held, and so do Ava's devices: worn, a device sends 80% of shots back to the quiver, and the accumulator also gathers the shots it misses that would land (`equipment.shot_outcomes`, from `RangeSwingHandler`). Melee and crystal bows are unlimited. |
 
 These are *theoretical* rates (expected values). The real server measures the actual ones during calibration
 (E6).

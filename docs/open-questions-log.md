@@ -111,16 +111,25 @@ Started 2026-10-31 (Caleb), from a review of the documentation.
 - **Since:** Caleb cut quests on 2026-11-06 (every quest the server has is complete from the start), so sim v1 is
   the four skills only. The level-3 start stays.
 
-### OQ-27. How should ranged's arrow pickups be modelled?
-- **Raised:** 2026-11-07, refitting the pickup time with the runner looting between kills (decision log).
-- **Now:** a pickup costs a constant time a drop the loot mode keeps (5 ticks melee, 18 ranged). The sim recovers a
-  ranged fighter's landed arrows with the kill, free; the server's runner takes each arrow pile as it lands, a few a
-  kill. Ranged's 18 ticks a drop stands in for both, so it fits where a monster's drops and arrow piles go together
-  (unicorns 0.96, moss giants 0.90) and not elsewhere: Black Knights 1.21 and band-1 women 1.27 outside ±20%.
+### OQ-29. Which armour stops Ava's devices?
+- **Raised:** 2026-11-07. Caleb noted that the devices don't work while any metal item is worn. The server's rule is
+  narrower (decision log).
+- **The server's rule** (`AvasDevice.isInterfered`, `RangeSwingHandler.getDropRate`):
+  - Only the chest piece counts, and only if its worn model is one of three (`AvasDevice.metalBodies`). That's 38
+    pieces (`data/ava_interference.csv`): the metal platebodies and chainbodies, trimmed, gilded, Zamorak and Guthix,
+    white, and the Temple Knight hauberks.
+  - It leaves out the iron chainbody, the Saradomin platebody and the dragon chainbody, whose models aren't listed,
+    and every helm, legs, shield, glove and boot.
+  - Interference stops only the device's 80% catch. The other 20% of shots still take the device's narrower roll, and
+    the accumulator still gathers those.
+  - Ava's own dialogue on the server says the device won't work with "certain metallic chest armours".
+- **Now:** the server's rule on both backends. A ranger wearing a device leaves interfering chest armour off, so
+  in the sim the device always works.
 - **Options:**
-  - **(a) Recommended:** count the arrow piles in the sim's fights (a pickup a pile of landed arrows, the piles a kill
-    measured on the server), with one pickup time for every class; refit.
-  - (b) Keep the per-drop constant and list the two ranged cases as known gaps.
-  - (c) Have the runner pick up arrows only when nothing attacks it (a pile at a time, between kills), and refit.
-- **Decides:** Caleb (how the gate's looting runs behave, and what the sim models).
-- **Needed by:** before the gate closes for combat.
+  - **(a) Recommended:** keep the server's rule. Both backends agree, and the loadout keeps the device working.
+  - (b) Fix the server's gaps (a fork change): interference stops the whole device, and every metal chest piece
+    interferes, adding the three left out. Still chest only, as Ava says.
+  - (c) Caleb's rule (a fork change): any metal item worn stops the device. It needs a definition of metal, such as
+    the metals in item names (bronze to dragon). A ranger wearing a device would then leave all metal off.
+- **Decides:** Caleb (a game rule on both backends).
+- **Needed by:** before the combat gate closes.

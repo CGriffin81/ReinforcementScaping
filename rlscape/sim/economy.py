@@ -317,7 +317,7 @@ class Drop(Option):
         self.item = item
 
     def available(self, state: CharacterState) -> bool:
-        return state.inventory.get(self.item, 0) > 0
+        return state.inventory.get(self.item, 0) > 0 and self.item not in gd.destroy_only_items()
 
     def run(self, state: CharacterState, rng: np.random.Generator, budget: int) -> OptionResult:
         return OptionResult(min(_drop(state, self.item), budget), COMPLETED)
@@ -330,11 +330,15 @@ class DropMisc(Option):
         self.id = "drop_misc"
         self.vocabulary = vocabulary
 
+    def _targets(self, state: CharacterState) -> list[int]:
+        """Misc items the server can drop (destroy-only ones have no Drop)."""
+        return [i for i in state.inventory if is_misc(i, self.vocabulary) and i not in gd.destroy_only_items()]
+
     def available(self, state: CharacterState) -> bool:
-        return any(is_misc(item, self.vocabulary) for item in state.inventory)
+        return bool(self._targets(state))
 
     def run(self, state: CharacterState, rng: np.random.Generator, budget: int) -> OptionResult:
-        ticks = sum(_drop(state, item) for item in [i for i in state.inventory if is_misc(i, self.vocabulary)])
+        ticks = sum(_drop(state, item) for item in self._targets(state))
         return OptionResult(min(max(ticks, 1), budget), COMPLETED)
 
 

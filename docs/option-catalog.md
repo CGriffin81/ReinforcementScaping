@@ -433,8 +433,8 @@ is never a no-op (agent choice, 2026-10-29).
 | `bank_withdraw_<food>` | one per GE food tier (mackerel, tuna, monkfish, shark): walk to the nearest bank, bank the banknotes held of that food, and withdraw it into the free slots. 4 actions (§8). |
 | `bank_deposit_worn` | walk to the nearest bank; bank the worn gear (the banker's "deposit worn items"), except what `bank_deposit` keeps (tools, ammunition), so a worn axe or pickaxe stays on. Masked unless something else is worn (§8). |
 | `bank_withdraw_for_sale` | walk to the nearest bank and take out produce to sell, as banknotes (the bank's withdraw-as-note setting), so each item's stack fits in one slot, the most valuable stacks first, up to the free slots. Produce is what `bank_deposit` banks, apart from the gear the character would take out to fight (`bank_withdraw_gear_<class>`) and items that neither note nor stack. Caleb, 2026-10-30. |
-| `drop_<item>` | drop every unit of one vocabulary item from the inventory (dropped items leave net worth) |
-| `drop_misc` | drop every non-vocabulary item |
+| `drop_<item>` | drop every unit of one vocabulary item from the inventory (dropped items leave net worth); masked for items the game offers Destroy for, not Drop (Ava's devices) |
+| `drop_misc` | drop every non-vocabulary item, but those the game offers Destroy for |
 | `reclaim_gravestone` | after a death outside the Wilderness: walk back to the gravestone and take back everything in it. Masked unless a gravestone exists and the walk fits in its remaining time (it lasts 200 ticks; env contract §1). |
 
 ## 6. Magic: alchemy
@@ -626,9 +626,14 @@ drop table, gems, herbs, seeds), the rule proposed 5 more, added by Caleb: rune 
 rune 2h sword, an earth talisman and mithril bolts. Then the potions (Caleb): antipoison, super antipoison, the
 eight combat potions and antifire, the four-dose potions alone (OQ-25, Caleb). The lower doses aren't in *V* but
 stay consumable: fights drink any dose, deposits keep them, the misc actions leave them be, and the observation
-counts each potion's doses (env contract §3). 214 in all.
+counts each potion's doses (env contract §3). Then Ava's attractor and accumulator, which the GE sells at Caleb's
+prices (2026-11-07). They're untradeable in the game, so their alchemy, store-sale and drop actions stay masked (the
+game offers Destroy, not Drop); the GE buys them back at the same prices. A ranged fight wears the best device
+carried (no other fight does), with its attraction off: it saves ammunition, and the accumulator, which needs
+Ranged 50, also gathers the shots its catch misses that would land (Caleb, OQ-28). 216 in all.
 
-**Size (*V* = 214: the 156 accepted, 20 fletching inputs added by the same rule on 2026-10-31, and 38 on 2026-11-06;
+**Size (*V* = 216: the 156 accepted, 20 fletching inputs added by the same rule on 2026-10-31, 38 on 2026-11-06 and 2
+on 2026-11-07;
 selling as "all in the inventory"):**
 
 | Group | Actions |
@@ -637,11 +642,11 @@ selling as "all in the inventory"):**
 | Processing | 10 |
 | Combat | 30 |
 | Loot mode | 4 |
-| Inventory | 2 deposits + 10 processing withdrawals + 5 gathering-kit withdrawals + 1 take knife + 215 drops (214 + misc) + 1 reclaim gravestone + 3 gear + 4 food tiers + 1 any food + 1 for sale = 243 |
-| Alchemy | 430 (high and low, 215 each) |
-| Selling | 430 (GE and store, 215 each) |
-| Buying | 151 (114 at the GE, with the knife, 19 fletching inputs, the anti-dragon shield, 6 quest items, 2 antipoisons, 8 combat potions and antifire; 37 at shops) |
-| **Total in sim v0** | **1,318** |
+| Inventory | 2 deposits + 10 processing withdrawals + 5 gathering-kit withdrawals + 1 take knife + 217 drops (216 + misc) + 1 reclaim gravestone + 3 gear + 4 food tiers + 1 any food + 1 for sale = 245 |
+| Alchemy | 434 (high and low, 217 each) |
+| Selling | 434 (GE and store, 217 each) |
+| Buying | 153 (116 at the GE, with the knife, 19 fletching inputs, the anti-dragon shield, 6 quest items, 2 antipoisons, 8 combat potions and antifire, and Ava's 2 devices; 37 at shops) |
+| **Total in sim v0** | **1,330** |
 
 Each *V* item adds 7 observation features: its inventory and bank counts, and its 5 actions' mask entries (env
 contract §3).

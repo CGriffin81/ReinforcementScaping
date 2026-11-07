@@ -41,9 +41,9 @@ from rlscape.combat.candidates import (COMBAT_CLASSES, DRAGONFIRE_NPCS, DRAGONFI
 from rlscape.combat.ranking import CandidateRanker
 from rlscape.combat.rates import Plan
 from rlscape.gamedata import server as gd
-from rlscape.sim.combat import arrow_land_chance, best_spell, casts_held, fight
+from rlscape.sim.combat import best_spell, casts_held, fight
 from rlscape.sim.engine import ACTIVITY_TICKS
-from rlscape.sim.equipment import SHIELD, WEAPON, fighter_for, ranged_ready, wield_best
+from rlscape.sim.equipment import SHIELD, WEAPON, fighter_for, ranged_ready, shot_outcomes, wield_best
 from rlscape.sim.health import food_healing_held, foods_held, poison_cover, retreat_hp
 from rlscape.sim.movement import reach, reachable
 from rlscape.sim.options import COMPLETED, Option, OptionResult
@@ -155,8 +155,8 @@ def _attacks_held(armed: CharacterState, plan: Plan, loot) -> float:
         if ranged.weapon_type == "DEGRADING":
             return inf
         stack, ammo = armed.worn(ranged.ammo_slot), armed.equipment[ranged.ammo_slot]
-        recovered = arrow_land_chance(armed.level("ranged")) if ranged.drop_ammo and loot(ammo) else 0.0
-        return stack / (1 - recovered)
+        back, landed = shot_outcomes(armed)  # Ava's device sends some back to the quiver
+        return stack / (1 - back - (landed if loot(ammo) else 0.0))
     return inf
 
 

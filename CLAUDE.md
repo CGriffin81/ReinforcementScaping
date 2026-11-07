@@ -98,6 +98,9 @@ work.
     (`homeTeleport`); being hit keeps an entity "in combat" for 17 game ticks,
     not 10 wall-clock seconds (`combat-time`: `CombatPulse`, `Entity.inCombat`,
     `MapZone.checkMulti`), which single-combat areas and logging out read.
+  - Ava's devices (2026-11-07): the accumulator needs 50 Ranged and gathers back
+    the shots its 80% catch misses that would land; `spawn` switches the
+    devices' attraction off.
 - **GE state:** before running the server for experiments, install the frozen
   2009 GE: `uv run python scripts/install_ge_db.py`. The server must be
   stopped; the old database is backed up. The pipeline is
@@ -106,7 +109,8 @@ work.
 - **Travel map:** `scripts/export_collision.py` (server running) writes the surface's collision map and doors
   to `data/travel/`, which `rlscape/routes.py` plans walking routes on.
 - **Net worth** uses `data/prices_v2.csv`: max(high alchemy − nature rune,
-  January 2009 GE price). `prices_v1` is superseded.
+  January 2009 GE price). `prices_v1` is superseded. Ava's devices, untradeable
+  in the game, are on the frozen GE at Caleb's set prices (2,500 and 10,000 gp).
 - Build from `server/Server`: `mvnw.cmd -B package -DskipTests` (about 3 min
   cold, about 1 min incremental).
 - Run from `server/Server` (the working directory matters for `data/`):

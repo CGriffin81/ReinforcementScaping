@@ -44,7 +44,7 @@ from rlscape.combat.rates import (BREATH_CHANCE, DRAGONFIRE_NPCS, ESCAPE_ATTACKS
                                   PICKUP_TICKS, POISON_CHANCE, Plan, breath_max, npc_offence, player_offence)
 from rlscape.gamedata import server as gd
 from rlscape.sim.energy import MAX_ENERGY
-from rlscape.sim.equipment import WEAPON, fighter_for, ranged_ready, wield_best
+from rlscape.sim.equipment import WEAPON, fighter_for, land_chance, ranged_ready, shot_outcomes, wield_best
 from rlscape.sim.health import advance_poison, apply_poison, eat_one, regenerate, retreat_hp
 from rlscape.sim.movement import route_ticks, walk
 from rlscape.sim.potions import drink_antifire, drink_boosts
@@ -150,9 +150,9 @@ def attacks_to_kill(hitpoints: int, chance: float, max_hit: int, rng: np.random.
 
 
 def arrow_land_chance(ranged_level: int) -> float:
-    """RangeSwingHandler.useAmmo: a fired shot lands under the target unless randomize(int(5 × (1 + level / 100)))
-    is 0, which breaks it (Ava's devices aren't modelled). 4 in 5 at level 1, 8 in 9 at 99."""
-    return 1 - 1 / int(5 * (1.0 + ranged_level * 0.01))
+    """RangeSwingHandler.useAmmo, with no Ava's device: a fired shot lands under the target unless randomize(int(5 x
+    (1 + level / 100))) is 0, which breaks it. 4 in 5 at level 1, 8 in 9 at 99 (equipment.land_chance)."""
+    return land_chance(ranged_level)
 
 
 def spell_runes(state: CharacterState, spell: str) -> dict[int, int]:
@@ -191,8 +191,10 @@ def _ammunition(state: CharacterState, plan: Plan, attacks: int, rng: np.random.
         if ranged.weapon_type == "DEGRADING":
             return attacks, lambda k: None
         slot = ranged.ammo_slot
-        if ranged.drop_ammo and loot(state.equipment[slot]):  # landed shots come straight back
-            lost = np.cumsum(rng.random(attacks) >= arrow_land_chance(state.level("ranged")))
+        back, landed = shot_outcomes(state)  # Ava's device sends some back to the quiver
+        kept = back + (landed if loot(state.equipment[slot]) else 0.0)  # landed shots come straight back
+        if kept > 0:
+            lost = np.cumsum(rng.random(attacks) >= kept)
         else:
             lost = np.arange(1, attacks + 1)
 

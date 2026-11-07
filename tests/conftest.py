@@ -7,6 +7,7 @@ from __future__ import annotations
 import pytest
 
 
+@pytest.hookimpl(tryfirst=True)  # before xdist's own hook, which reads the groups into the test ids (`@server`)
 def pytest_collection_modifyitems(config, items):
     for item in items:
         if item.path.name.endswith("_live.py"):
