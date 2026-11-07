@@ -8,8 +8,7 @@
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: PARTIAL (inventory, alchemy and selling are built and tested; buying waits for Caleb's review of a draft
   action list)
-- Commit: main repo: the commit that adds this record, on branch `sim-v0` (its SHA can only be filled in by a later
-  commit)
+- Commit: main repo `59d7a31` (branch `sim-v0`)
 
 ## Full Prompt
 

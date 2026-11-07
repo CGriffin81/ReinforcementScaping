@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from rlscape.bridge import BridgeClient, BridgeError
+from rlscape.bridge import BridgeClient
 from rlscape.gamedata import server as gd
 from test_bridge_live import bridge_reachable
 
@@ -223,17 +223,22 @@ def test_frozen_seller_ignores_items_without_a_2009_price(client, character):
     assert slots[0]["completed"] == 0
 
 
-def test_anti_dragon_shield_is_not_tradeable_on_the_ge(client, character):
-    """rl.conf blocks the anti-dragon shield (and its note) on the GE: it only comes from Duke Horacio."""
+def test_the_anti_dragon_shield_is_bought_on_the_ge_at_its_2009_price(client, character):
+    """rl.conf blocked the shield on the GE (Duke Horacio's alone) until Caleb opened it on 2026-11-06: the frozen
+    seller fills a buy at its January 2009 price, 301 gp."""
+    assert ANTI_DRAGON_SHIELD in historical_ids(), "precondition: has a 2009 price"
     uid = character["uid"]
+    price = {p["id"]: p["value"] for p in client.ge_snapshot()["prices"]}[ANTI_DRAGON_SHIELD]
+    assert price == 301
     client.debug_teleport(uid, *GE)
     client.debug_give(uid, COINS, 1000)
-    client.debug_give(uid, ANTI_DRAGON_SHIELD, 1)
     client.wait(3)
-    with pytest.raises(BridgeError, match="can't be traded on the GE"):
-        client.ge_offer(uid, item=ANTI_DRAGON_SHIELD, amount=1, price=500)
-    with pytest.raises(BridgeError, match="can't be traded on the GE"):
-        client.ge_offer(uid, item=ANTI_DRAGON_SHIELD, amount=1, price=1, sell=True)
+    client.ge_offer(uid, item=ANTI_DRAGON_SHIELD, amount=1, price=price)
+    assert wait_for_state(client, uid, "COMPLETED")[0]["completed"] == 1
+    client.ge_collect(uid)
+    client.wait(1)
+    after = client.state(uid)
+    assert amount_of(after, ANTI_DRAGON_SHIELD) == 1 and amount_of(after, COINS) == 1000 - price
 
 
 def test_slayer_level_blocks_attacks(client, character):

@@ -20,8 +20,8 @@ Parts, in order (sizes for vocabulary V, A access rules, N actions):
 | skilling_candidates | 20 × 5 | per slot: the slot's skill's XP/hr, its processing counterpart's XP/hr, gp/hr, travel, open |
 | loot_mode | 4 | one-hot |
 | task | 12 | one-hot: the last activity's task, which decides what bank_deposit keeps (rlscape.sim.kits) |
+| potions | 11 × 2 | each potion's doses in the inventory and the bank, log1p-scaled (four-dose potions alone are in V) |
 | access | A | 0/1 per access rule (data/access_areas.csv order) |
-| quests | 21 × 3 + 1 | not started / underway / complete per quest; quest points / 32 |
 | mask | N | the action mask |
 | preference | 2 | (w_s, w_b), only for the preference-conditioned agent (E4) |
 
@@ -52,9 +52,9 @@ import numpy as np
 from rlscape.combat.access import access_rules, unlocked_rules
 from rlscape.combat.candidates import COMBAT_CLASSES, LOOT_MODES
 from rlscape.gamedata import server as gd
-from rlscape.quests import DRAGON_SLAYER_QUEST_POINTS, QUEST_SET
 from rlscape.sim.energy import MAX_ENERGY, weight
-from rlscape.sim.health import food_healing_held
+from rlscape.sim.health import food_healing_held, poison_cover
+from rlscape.sim.potions import ALL_POTIONS, antifire_cover, doses_held
 from rlscape.sim.mining import PICKAXE_PRIORITY
 from rlscape.sim.options import Option
 from rlscape.sim.skilling import K_GP, K_XP, SkillSlot
@@ -70,6 +70,7 @@ OBSERVED_SKILLS = tuple(s for s in SKILLS if s not in ("farming", "hunter", "con
 MAX_TOTAL_LEVEL = 2376
 WEALTH_SCALE = log1p(10_000_000)
 INVENTORY_SCALE, BANK_SCALE = log1p(INVENTORY_SLOTS), log1p(10_000)
+POTION_INVENTORY_SCALE = log1p(4 * INVENTORY_SLOTS)  # every slot a four-dose potion
 MAX_WEIGHT = 100.0  # kg
 XP_HR_SCALE, GP_HR_SCALE = log1p(1_000_000), log1p(1_000_000)
 TRAVEL_SCALE_TICKS = 1_500  # 15 game-minutes, the default activity duration
@@ -102,7 +103,6 @@ CANDIDATE_FEATURES = ("xp_per_hour", "gp_per_hour", "damage_vs_food", "travel", 
 SKILLING_FEATURES = ("gather_xp_per_hour", "process_xp_per_hour", "gp_per_hour", "travel", "open")
 TASKS = ("none", "woodcutting", "mining", "fishing:SMALL_NET", "fishing:LURE", "fishing:LOBSTER_CAGE", "thieving",
          "fletching", "processing", "combat:melee", "combat:ranged", "combat:magic")
-QUEST_STAGES = ("not_started", "underway", "complete")
 
 
 @dataclass(frozen=True)
@@ -219,8 +219,8 @@ class ObsEncoder:
                                               for f in SKILLING_FEATURES)),
             Part("loot_mode", tuple(f"loot_{m}" for m in LOOT_MODES)),
             Part("task", tuple(f"task_{t}" for t in TASKS)),
+            Part("potions", tuple(f"{name}_doses_{where}" for name in ALL_POTIONS for where in ("inventory", "bank"))),
             Part("access", tuple(f"access_{r}" for r in self.rules)),
-            Part("quests", (*(f"{q}_{s}" for q in QUEST_SET for s in QUEST_STAGES), "quest_points")),
             Part("mask", tuple(f"mask_{o.id}" for o in options)),
         ]
         if preference:
@@ -255,8 +255,10 @@ class ObsEncoder:
         obs[p["skilling_candidates"]] = self._skilling(state)
         obs[p["loot_mode"].start + LOOT_MODES.index(state.loot_mode)] = 1.0
         obs[p["task"].start + TASKS.index(_task_key(state.task))] = 1.0
+        obs[p["potions"]] = [min(log1p(doses_held(container, name)) / scale, 1.0) for name in ALL_POTIONS
+                             for container, scale in ((state.inventory, POTION_INVENTORY_SCALE),
+                                                      (state.bank, BANK_SCALE))]
         obs[p["access"]] = self._access(state)
-        obs[p["quests"]] = _quests(state)
         obs[p["mask"]] = mask
         if self.preference:
             obs[p["preference"]] = weights
@@ -275,12 +277,16 @@ class ObsEncoder:
         if self.slots is None:
             return out
         reserves = max(state.hp + food_healing_held(state), 1.0)
+        # the poison and the breath the antipoison and antifire carried keep off
+        cover, fire_cover = poison_cover(state, self.slots.duration_ticks), antifire_cover(state, self.slots.duration_ticks)
         n = 0
         for combat_class in COMBAT_CLASSES:
             for index in range(2 * K):
                 candidate = self.slots.candidate(state, combat_class, index)
                 if candidate is not None:
-                    danger = candidate.rates.damage_taken_per_hour / reserves
+                    rates = candidate.rates
+                    danger = (rates.damage_taken_per_hour - cover * rates.poison_per_hour
+                              - fire_cover * rates.breath_per_hour) / reserves
                     out[n:n + len(CANDIDATE_FEATURES)] = (
                         min(log1p(sum(candidate.xp_per_hour.values())) / XP_HR_SCALE, 1.0),
                         _signed_log(candidate.gp_per_hour, GP_HR_SCALE),
@@ -329,16 +335,6 @@ def _skill(xp: float) -> tuple[float, float]:
         return 1.0, 0.0
     low, high = XP_FOR_LEVEL[level], XP_FOR_LEVEL[level + 1]
     return level / MAX_LEVEL, (xp - low) / (high - low)
-
-
-def _quests(state: CharacterState) -> list[float]:
-    done, underway = state.progress.quests_complete, state.progress.quests_underway
-    out = []
-    for quest in QUEST_SET:
-        stage = 2 if quest in done else 1 if quest in underway else 0
-        out += [float(stage == i) for i in range(len(QUEST_STAGES))]
-    points = sum(qp for quest, qp in QUEST_SET.items() if quest in done)
-    return [*out, min(points / DRAGON_SLAYER_QUEST_POINTS, 1.0)]
 
 
 __all__ = ["ObsEncoder", "item_roles", "region_of"]

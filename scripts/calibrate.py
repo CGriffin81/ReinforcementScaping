@@ -36,7 +36,7 @@ from typing import Any
 
 import numpy as np
 
-from rlscape.bridge.client import BridgeClient
+from rlscape.bridge.client import BridgeClient, run_suffix
 from rlscape.combat import formulas as f
 from rlscape.combat.prayers import flicks
 from rlscape.combat.rates import npc_max_hit
@@ -192,7 +192,9 @@ class Safety:
         self.threat_max = 0
         self.safe_from: set[int] = set()  # attackers (by index) asked about in their current attack
         self.spot: tuple[int, int] | None = None
-        self.counts = {"flees": 0, "fights": 0, "eaten": 0, "ticks_away": 0, "safespots": 0, "no_safespot": 0}
+        self.counts = {"flees": 0, "fights": 0, "eaten": 0, "eat_clicks": 0, "ticks_away": 0, "safespots": 0,
+                       "no_safespot": 0}
+        self.food: int | None = None  # food carried at the last reading
 
     def _safespot(self, attacker: dict[str, Any], here: tuple[int, int]) -> list[dict[str, Any]] | None:
         """Caleb: "try to safespot the monster and return to gathering". A tile beside the resource the attacker can't
@@ -225,6 +227,11 @@ class Safety:
 
     def step(self, state: dict[str, Any]) -> list[dict[str, Any]] | None:
         """This tick's commands, or None to go on gathering."""
+        # food eaten is what the inventory loses, not the clicks: a bite lands a tick after its click
+        heals = gd.food_healing()
+        now = sum(i["amount"] for i in state["inventory"] if i["id"] in heals)
+        self.counts["eaten"] += max((self.food if self.food is not None else now) - now, 0)
+        self.food = now
         loc = state["location"]
         here, hp, attackers = (loc["x"], loc["y"]), state["hitpoints"], state["attackers"]
         npcs = gd.npcs()
@@ -276,7 +283,7 @@ class Safety:
                 return [{"cmd": "walk_to", "uid": self.uid, "x": self.site[0], "y": self.site[1], "packet": True}]
             food = next((i["id"] for i in state["inventory"] if i["id"] in gd.food_healing()), None)
             if food is not None:
-                self.counts["eaten"] += 1
+                self.counts["eat_clicks"] += 1
                 return [{"cmd": "item_option", "uid": self.uid, "item": food, "option": "Eat", "packet": True}]
             return []  # no food: wait for hitpoints to come back
         # returning
@@ -465,7 +472,7 @@ def main() -> None:
                       f"sim {row['sim']['deaths']:.2f}")
         finally:
             client.set_tick_ms(old_ms)
-    out = REPO / "results" / "calibration" / f"gathering-{datetime.now():%Y%m%d-%H%M}.json"
+    out = REPO / "results" / "calibration" / f"gathering-{datetime.now():%Y%m%d-%H%M}{run_suffix(args.tick_ms)}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps({"args": vars(args), "cases": results}, indent=1))
     print(f"saved {out.relative_to(REPO)}")

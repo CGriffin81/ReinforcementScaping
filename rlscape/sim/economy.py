@@ -37,6 +37,7 @@ from rlscape.sim.processing import HAMMER, TINDERBOX
 from rlscape.sim.shops import PLAYER_STOCK, set_stock, stock
 from rlscape.sim.skills import MAX_XP, SKILL_INDEX
 from rlscape.sim.state import COINS, CharacterState
+from rlscape.sim.transport import home_ready, usable_teleports
 from rlscape.sim.woodcutting import best_tool
 from rlscape.travel import BANKING_TICKS
 
@@ -49,11 +50,13 @@ ALCHEMY = {True: (55, 5, 65.0), False: (21, 3, 31.0)}  # high?: (Magic level, fi
 
 
 def kept_on_deposit(item: int) -> bool:
-    """Tools, food, ammunition, runes and fishing bait stay in the inventory when banking."""
+    """Tools, food, potions (any dose: OQ-25), ammunition, runes and fishing bait stay in the inventory when banking."""
     items, tools = gd.items(), {t.item for t in gd.skilling_tools().values()}
     fishing = {m.tool for m in gd.fishing_methods().values()} | {b for m in gd.fishing_methods().values() for b in m.bait}
     definition = items.get(item)
+    from rlscape.sim.potions import DOSES  # imported here: potions imports health, which the economy's users import
     return (item in tools or item in fishing or item in (HAMMER, TINDERBOX, gd.KNIFE) or item in gd.food_healing()
+            or item in DOSES
             or (definition is not None and (definition.equipment_slot == AMMO_SLOT
                                             or definition.name.lower().endswith(" rune"))))
 
@@ -69,10 +72,12 @@ NEAREST_BANK_CACHE = 4096
 
 def nearest_bank(state: CharacterState) -> gd.Bank:
     """The bank with the shortest walk. Every option that banks asks, and a mask asks once per Fletching path, so it's
-    cached on everything route_ticks depends on: the tile, the coins carried (the Al Kharid toll and the Shantay pass),
-    whether Prince Ali Rescue waives the toll, run energy, weight and Agility."""
+    cached on everything route_ticks depends on: the tile, the coins carried (the Al Kharid toll, the Shantay pass,
+    fares), whether Prince Ali Rescue waives the toll, run energy, weight and Agility, the teleports it can use and
+    whether the home teleport is ready, and quests (boats). Not whether Entrana's monks would let it board: that only
+    matters on Entrana, which has no bank."""
     key = (state.location, state.inventory.get(COINS, 0), toll_exempt(state), state.run_energy, weight(state),
-           state.level("agility"))
+           state.level("agility"), usable_teleports(state), home_ready(state), state.progress.quests_complete)
     bank = _NEAREST_BANK.get(key)
     if bank is None:
         if len(_NEAREST_BANK) >= NEAREST_BANK_CACHE:

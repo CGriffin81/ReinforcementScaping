@@ -53,6 +53,9 @@ from rlscape.sim.woodcutting import skill_success_chance
 from rlscape.travel import travel_ticks
 
 SUCCESS_TICKS = 2  # player.lock(2) after a successful pickpocket
+# Measured beyond the lock or stun, per attempt: the click on a target that moves about, and its walk (2026-11-06,
+# scripts/calibrate_thieving.py at Lumbridge's men, bands 1 and 31: 0.41 to 0.46 in 4 runs)
+ATTEMPT_OVERHEAD_TICKS = 0.44
 STEAL_TICKS = 3  # StallThiefPulse.reward: the steal resolves when ++ticks % 3 == 0, on a 1-tick pulse
 NOTICE_CHANCE = 4 / 15  # StallThiefPulse.success: RandomFunction.random(15) < 4
 NOTICE_RANGE = 8  # RegionManager.getLocalNPCs(location, 8): within 8 tiles on each axis
@@ -177,22 +180,23 @@ class Pickpocket(Option):
                 return OptionResult(elapsed, INVENTORY_FULL, regenerated=True)
             p = pickpocket_chance(target, state.level("thieving"))
             left = budget - elapsed
+            success_ticks = SUCCESS_TICKS + ATTEMPT_OVERHEAD_TICKS
             successes = int(rng.geometric(1 - p)) - 1 if p < 1 else left  # successes before the next failure
-            if successes * SUCCESS_TICKS + target.stun_ticks > left:
-                successes = min(successes, left // SUCCESS_TICKS)
+            if round(successes * success_ticks + target.stun_ticks + ATTEMPT_OVERHEAD_TICKS) > left:
+                successes = min(successes, int(left // success_ticks))
                 made = self._succeed(state, rng, successes)
                 if made < successes:
-                    step = made * SUCCESS_TICKS
+                    step = round(made * success_ticks)
                     regenerate(state, step)
                     return OptionResult(elapsed + step, INVENTORY_FULL, regenerated=True)
                 regenerate(state, left)
                 return OptionResult(budget, COMPLETED, regenerated=True)
             made = self._succeed(state, rng, successes)
             if made < successes:  # the inventory filled: the next attempt never happens
-                step = made * SUCCESS_TICKS
+                step = round(made * success_ticks)
                 regenerate(state, step)
                 return OptionResult(elapsed + step, INVENTORY_FULL, regenerated=True)
-            step = successes * SUCCESS_TICKS + target.stun_ticks
+            step = round(successes * success_ticks + target.stun_ticks + ATTEMPT_OVERHEAD_TICKS)
             elapsed += step
             regenerate(state, step)
             state.hp -= server_random(rng, target.stun_damage_min, target.stun_damage_max)

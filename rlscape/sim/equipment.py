@@ -32,7 +32,8 @@ def can_wear(state: CharacterState, item: int) -> bool:
     definition = gd.items().get(item)
     if definition is None or definition.equipment_slot is None:
         return False
-    if any(state.level(SKILLS[skill]) < level for skill, level in definition.requirements.items()):
+    # a requirement on a skill the sim doesn't have (the cache gives index 24 on a few items) can't be met
+    if any(skill >= len(SKILLS) or state.level(SKILLS[skill]) < level for skill, level in definition.requirements.items()):
         return False
     quest = gd.equip_quest_locks().get(item)
     return quest is None or quest in state.progress.quests_complete
@@ -129,9 +130,11 @@ def _wield_weapon(state: CharacterState, weapon: int) -> bool:
     return True
 
 
-def wield_best(state: CharacterState, combat_class: str) -> int:
+def wield_best(state: CharacterState, combat_class: str, protect: frozenset[int] = frozenset()) -> int:
     """Wield the best weapon (ranged: weapon and ammunition) for the class and the best armour per slot from the
-    inventory; the ticks it takes. For magic, armour that hinders it is taken off (room allowing) and not put on."""
+    inventory; the ticks it takes. For magic, armour that hinders it is taken off (room allowing) and not put on.
+    `protect`: shields against the monster's special damage (candidates.special_damage_shields). If the character
+    carries one and wears none, it wears the best of them in place of the best shield by defence."""
     items, worn = gd.items(), 0
     if combat_class == "ranged":
         kits = ranged_kits(state)
@@ -157,6 +160,10 @@ def wield_best(state: CharacterState, combat_class: str) -> int:
             worn += 1
         options = [i for i in state.inventory if can_wear(state, i) and items[i].equipment_slot == slot
                    and not hinders(i, combat_class)]
+        if slot == SHIELD and state.equipment.get(SHIELD) not in protect and any(i in protect for i in options):
+            _put_on(state, slot, max((i for i in options if i in protect), key=defence_score))
+            worn += 1
+            continue
         best = max(options, key=defence_score, default=None)
         if best is not None and (slot not in state.equipment or defence_score(best) > defence_score(state.equipment[slot])):
             _put_on(state, slot, best)
@@ -165,8 +172,8 @@ def wield_best(state: CharacterState, combat_class: str) -> int:
 
 
 def fighter_for(state: CharacterState) -> Fighter:
-    """The fighter as currently equipped: levels plus the summed bonuses of everything worn, and the prayers its
-    levels and quests give a fight. A thrown weapon ignores the quiver's ranged strength
+    """The fighter as currently equipped: levels (as potions boost them) plus the summed bonuses of everything worn,
+    and the prayers its levels and quests give a fight. A thrown weapon ignores the quiver's ranged strength
     (RangeSwingHandler.calculateHit)."""
     items = gd.items()
     bonuses = list(map(sum, zip(gd.NO_BONUSES, *(items[i].bonuses for i in state.equipment.values()))))
@@ -175,6 +182,6 @@ def fighter_for(state: CharacterState) -> Fighter:
     if ranged is not None and ranged.ammo_slot != AMMO and AMMO in state.equipment:
         bonuses[gd.RANGED_STRENGTH] -= items[state.equipment[AMMO]].bonuses[gd.RANGED_STRENGTH]
     speed = (items[weapon].attack_speed or UNARMED_SPEED) if weapon is not None else UNARMED_SPEED
-    return Fighter(state.level("attack"), state.level("strength"), state.level("defence"), state.level("hitpoints"),
-                   state.level("ranged"), state.level("magic"), tuple(bonuses), speed,
+    return Fighter(state.boosted("attack"), state.boosted("strength"), state.boosted("defence"),
+                   state.level("hitpoints"), state.boosted("ranged"), state.boosted("magic"), tuple(bonuses), speed,
                    flicks(state.level("prayer"), state.level("defence"), state.progress.quests_complete))

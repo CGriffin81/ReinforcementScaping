@@ -14,6 +14,7 @@ from rlscape.combat.access import (
     meets_slayer_level,
     parse_requirement,
     relevant,
+    start_progress,
     unlocked_rules,
 )
 from rlscape.combat.candidates import Character, enemy_pool, select_candidates
@@ -95,10 +96,17 @@ def test_fresh_character_is_offered_reachable_monsters_only():
     starter = tuple(map(sum, zip(gd.items()[1277].bonuses, gd.items()[1171].bonuses)))
     fresh = Fighter(1, 1, 1, 10, 1, 1, starter, 4)
     plans = {"melee": (fresh, [Plan("melee", f.AGGRESSIVE), Plan("melee", f.ACCURATE)])}
-    lumbridge = Character((3222, 3218, 0), 10, 10, 8, 26, None)
-    names = {c.entry.npc.name for c in select_candidates(enemy_pool(), plans, lumbridge, 1500)["melee"]}
-    assert "Cow" in names
-    assert not names & {"Cockroach drone", "Undead chicken", "Undead cow"}  # the gated gp/hr slots before the table
+
+    def offered(progress: Progress) -> set[str]:
+        lumbridge = Character((3222, 3218, 0), 10, 10, 8, 26, None, progress=progress)
+        return {c.entry.npc.name for c in select_candidates(enemy_pool(), plans, lumbridge, 1500)["melee"]}
+
+    nothing_done = offered(Progress())
+    assert {"Goblin", "Man"} <= nothing_done  # Lumbridge's (men outrank cows for gp since the herb and seed tables)
+    assert not nothing_done & {"Cockroach drone", "Undead chicken", "Undead cow"}  # the gated gp/hr slots
+    every_quest = offered(start_progress())  # a new character's (Caleb, 2026-11-06)
+    assert every_quest & {"Undead chicken", "Undead cow"}  # Morytania's: Priest in Peril is complete
+    assert "Cockroach drone" not in every_quest  # the Stronghold of Player Safety: its test is a miniquest, not flagged
 
 
 def test_reduced_progress_keeps_access_and_merges_what_access_ignores():

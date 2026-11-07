@@ -10,7 +10,8 @@ Server mechanics:
 - smithing (SmithingPulse, Bars, SmithingType, BarType): with a hammer at an anvil, an item 4 ticks after the
   previous one (after a first tick); each item uses its type's bars and gives the bar type's experience per bar.
   The option makes the "best" item the level and bars allow: the most bars per item (the most experience per action),
-  then the most valuable per bar. Leftover bars go into the next best item that fits.
+  then the most valuable per bar, held until the bars run short ("Make All"). Leftover bars go into the next best
+  item that fits, after SMITH_NEXT_ITEM_TICKS (measured).
 - cooking (StandardCookingPulse, CookableItems, CookingRewrite): an item every 4 ticks on a fire or 5 on a range
   (after a first tick); burnt if randomDouble(100) > getSkillSuccessChance(low, high, level), with the fire's or the
   range's bounds. Most food cooks on any fire, so with a tinderbox and a log the option lights one where the
@@ -21,8 +22,9 @@ Server mechanics:
 - firemaking (FireMakingPulse, firemaking.Log): with a tinderbox, a light attempt every 3 ticks that succeeds if
   ceil((L*50 - req*15) / req / 3 * 4) >= random(99), with L = level + 1; then a step aside. A log lit within 2 ticks
   of the last fire lights at once (setLastFire = now + 2), so after the first log each one in the line costs only the
-  step and the next use (CHAIN_TICKS, to calibrate).
-- burying bones (BoneBuryListener, Bones): a bone every 2 ticks.
+  step and the next use (CHAIN_TICKS, measured); now and then the step is blocked and the character steps off its
+  fire and lights afresh (FIRE_BLOCKED_CHANCE, measured).
+- burying bones (BoneBuryListener, Bones): a bone every 3 ticks (the skilling clock's 2, measured as 3).
 
 Stations come from data/stations.csv: some tiles from server code, the rest estimates to verify.
 """
@@ -44,13 +46,24 @@ from rlscape.sim.woodcutting import skill_success_chance
 HAMMER, TINDERBOX = 2347, 590
 SMELT_TICKS = 5  # SmeltingPulse: a bar when ++ticks % 5 == 0
 SMITH_TICKS = 4  # SmithingPulse: setDelay(4)
+# Starting the next item when the last one's bars run short: "Make All" keeps the pulse going after its last item
+# until it finds too few bars (a dialogue), and the anvil's interface is opened again. Measured on the server: 9 ticks
+# (5 platebodies and claws in 39 ticks against 30; scripts/calibrate_processing.py, 2026-11-07).
+SMITH_NEXT_ITEM_TICKS = 9
 RANGE_TICKS = 5  # StandardCookingPulse: 5 on a range, 4 on a fire
 FIRE_TICKS = 4
 RANGE_ONLY = frozenset({2307, 1889, 6006})  # CookingRewrite: bread dough, uncooked cake, barley
 FIRST_TICK = 1  # smithing and cooking pulses spend their first tick setting the delay
 LIGHT_TICKS = 3  # FireMakingPulse: an attempt when ++ticks % 3 == 0
-CHAIN_TICKS = 2  # one step plus the next log's use, inside the 2-tick relight window; calibrate
-BURY_TICKS = 2  # BoneBuryListener: delayClock(SKILLING, 2)
+CHAIN_TICKS = 2  # one step plus the next log's use, inside the 2-tick relight window (measured: 55 ticks for 27 logs)
+# FireMakingPulse steps aside after each fire (moveStep); now and then the way is blocked (a passer-by) and the
+# character is left on its fire, where nothing lights: it steps off and lights the next log afresh. Measured on the
+# server: 13 times in 312 chained logs, about 4.6 ticks each (scripts/calibrate_processing.py, 2026-11-07).
+FIRE_BLOCKED_CHANCE = 0.04
+FIRE_STEP_OFF_TICKS = 4
+# BoneBuryListener: delayClock(SKILLING, 2); measured on the server, a bone every 3 ticks however fast the clicks
+# (clicked every tick, 20 bones in 60 ticks, at 100 and 600 ms; scripts/calibrate_processing.py, 2026-11-07)
+BURY_TICKS = 3
 QUEST_LOCKED_TYPES = {"TYPE_DART_TIP": "THE_TOURIST_TRAP", "TYPE_CLAWS": "DEATH_PLATEAU"}  # SmithingPulse checks
 
 
@@ -133,14 +146,19 @@ class Smith(Option):
         elapsed = _walk_to(state, nearest_station(state, "anvil"), budget)
         if elapsed is None:
             return OptionResult(budget, COMPLETED)
-        elapsed = min(elapsed + FIRST_TICK, budget)
+        elapsed, making = min(elapsed + FIRST_TICK, budget), None
         while True:
-            item = self.best_item(state)
+            # "Make All" holds its item until the bars run short, level-ups along the way or not; then the next best
+            if making is not None and state.inventory.get(self.bar, 0) >= making.bars:
+                item = making
+            else:
+                item = self.best_item(state)
             if item is None:
                 return OptionResult(elapsed, INPUTS_EXHAUSTED)
-            if elapsed + SMITH_TICKS > budget:
+            step = SMITH_TICKS + (SMITH_NEXT_ITEM_TICKS if making is not None and item != making else 0)
+            if elapsed + step > budget:
                 return OptionResult(budget, COMPLETED)
-            elapsed += SMITH_TICKS
+            elapsed, making = elapsed + step, item
             _remove(state, self.bar, item.bars)
             state.add(item.product, item.amount)
             _gain(state, "smithing", item.experience_per_bar * item.bars)
@@ -257,7 +275,9 @@ class BurnLogs(Option):
             elapsed += step
             _remove(state, item)
             _gain(state, "firemaking", xp)
-            chained = True
+            chained = rng.random() >= FIRE_BLOCKED_CHANCE
+            if not chained:  # left on its fire: a step off, then the next log from scratch
+                elapsed = min(elapsed + FIRE_STEP_OFF_TICKS, budget)
 
 
 class BuryBones(Option):

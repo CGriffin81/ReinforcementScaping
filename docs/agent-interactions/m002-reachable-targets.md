@@ -7,7 +7,7 @@
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS (recommendations given; no code changed)
-- Commit: the main repo commit that adds this record (branch `sim-v0`; its SHA can only be filled in by a later commit)
+- Commit: main repo `346afd8` (branch `sim-v0`)
 
 ## Full Prompt
 

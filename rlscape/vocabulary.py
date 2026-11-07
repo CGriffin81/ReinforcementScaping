@@ -1,6 +1,8 @@
-"""The item vocabulary V (option catalog §9): 156 items, accepted by Caleb on 2026-10-30 (`docs/vocabulary-draft.md`),
-and 20 fletching inputs added on 2026-10-31 by the same rule (every item the agent can buy), when Caleb brought
-Fletching forward: 176.
+"""The item vocabulary V (option catalog §9): 156 items, accepted by Caleb on 2026-10-30 (`docs/vocabulary-draft.md`);
+20 fletching inputs added on 2026-10-31 by the same rule (every item the agent can buy), when Caleb brought Fletching
+forward; 16 on 2026-11-06, which the rule proposes once every quest the server has is complete and the anti-dragon
+shield is bought on the GE (Caleb); the 6 quest-gear buys of the same day (OQ-24); and 5 the rule proposes once the
+drop tables' shared sub-tables are modelled (Caleb): 203. Nothing has been taken out.
 
 Each item in V gets its own drop, alchemy and sell actions and its own inventory and bank features; everything else
 is misc. V is fixed before training, so `data/vocabulary.csv` is frozen. `scripts/draft_vocabulary.py` regenerates

@@ -1125,8 +1125,8 @@ item_id,name,unnoted_id,high_alch,high_alch_net,ge_price_2009,value,source
 1523,Lockpick,1523,12,-217,55,55,ge_2009
 1524,Lockpick,1523,12,-217,55,55,ge_2009
 1539,Steel nails,1539,31,-198,24,24,ge_2009
-1540,Anti-dragon shield,1540,12,-217,301,0,ge_blocked
-1541,Anti-dragon shield,1540,12,-217,301,0,ge_blocked
+1540,Anti-dragon shield,1540,12,-217,301,301,ge_2009
+1541,Anti-dragon shield,1540,12,-217,301,301,ge_2009
 1550,Garlic,1550,2,-227,20,20,ge_2009
 1551,Garlic,1550,2,-227,20,20,ge_2009
 1577,Pete's candlestick,1577,3,-226,,0,floor_0

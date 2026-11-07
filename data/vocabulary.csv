@@ -175,3 +175,41 @@ item_id,name,groups
 9379,Mithril bolts (unf),bought;consumed
 9380,Adamant bolts(unf),bought;consumed
 9381,Runite bolts (unf),bought;consumed
+227,Vial of water,drop
+449,Adamantite ore,drop
+536,Dragon bones,drop
+1109,Mithril chainbody,drop
+1213,Rune dagger,drop
+1315,Mithril 2h sword,drop;smithed
+1540,Anti-dragon shield,bought
+1751,Blue dragonhide,drop
+1753,Green dragonhide,drop
+3349,Blamish ochre shell,drop
+3361,Blamish blue shell,drop
+3363,Thin snail,drop
+3367,Fat snail,drop
+4289,Raw chicken,drop
+5100,Limpwurt seed,drop
+5106,Poison ivy seed,drop
+1215,Dragon dagger,bought
+1305,Dragon longsword,bought
+3749,Archer helm,bought
+3751,Berserker helm,bought
+3753,Warrior helm,bought
+3755,Farseer helm,bought
+892,Rune arrow,drop
+985,Tooth half of a key,drop
+1319,Rune 2h sword,drop
+1440,Earth talisman,drop
+9142,Mithril bolts,drop
+2446,Antipoison(4),bought
+2448,Super antipoison(4),bought
+113,Strength potion(4),bought
+2428,Attack potion(4),bought
+2432,Defence potion(4),bought
+2436,Super attack(4),bought
+2440,Super strength(4),bought
+2442,Super defence(4),bought
+2444,Ranging potion(4),bought
+2452,Antifire potion(4),bought
+3040,Magic potion(4),bought

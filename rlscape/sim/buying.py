@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from rlscape.combat.candidates import ANTI_DRAGON_SHIELD, DRAGONFIRE_PROTECTION
 from rlscape.gamedata import server as gd
 from rlscape.sim.economy import (GE_TICKS, GE_TILE, STORE_TICKS, bank_notes, bank_trip, banked_or_noted,
                                  kept_on_deposit)
@@ -54,8 +55,9 @@ from rlscape.sim.equipment import (
     weapon_score,
 )
 from rlscape.sim.mining import PICKAXE_PRIORITY
-from rlscape.sim.movement import TOLL, route_ticks, toll_exempt, uses_toll_gate, walk
+from rlscape.sim.movement import TOLL, pays_toll, route_ticks, walk
 from rlscape.sim.options import COMPLETED, Option, OptionResult
+from rlscape.sim.potions import ANTIFIRE, FOUR_DOSES
 from rlscape.sim.processing import HAMMER
 from rlscape.sim.shops import affordable_units, purchase_cost, set_stock, stock, unit_price
 from rlscape.sim.state import COINS, CharacterState
@@ -84,11 +86,22 @@ PROCESSING_INPUTS = (335, 377, 371, 1521, 1519, 1517, 1515, 2351, 2353, 2359)
 KNIFE = 946
 FLETCHING_INPUTS = (1777, 39, 40, 41, 42, 43, 44, 819, 820, 821, 822, 823, 824, 9375, 9377, 9378, 9379, 9380, 9381)
 
+# Quest gear (Caleb, 2026-11-06, OQ-24): the dragon dagger and longsword (Lost City) as a melee tier above rune, and the
+# four Fremennik helms (the Fremennik Trials) as helms. Their own groups: the scripted guide climbs SCIMITARS and ARMOUR.
+DRAGON_WEAPONS = (1215, 1305)  # dragon dagger, dragon longsword
+FREMENNIK_HELMS = (3751, 3749, 3755, 3753)  # berserker, archer, farseer, warrior
+# Antipoison (Caleb, 2026-11-06): the four-dose potions, one a buy, so each comes as a potion, not a banknote
+ANTIPOISONS = (2448, 2446)  # super antipoison(4), antipoison(4)
+# Combat potions and antifire (Caleb, 2026-11-06; rlscape.sim.potions): the four-dose ones, one a buy
+COMBAT_POTIONS = FOUR_DOSES + (ANTIFIRE[0],)
 # shops.json ids. Zeke's is listed twice (135 and 150); Shops.startup maps the shopkeeper to the later one.
 BOBS, NURMOFS, GERRANTS, LUMBRIDGE_STORE, ZEKES, LOWES, AUBURYS, ZAFFS, WYDINS = 54, 124, 144, 25, 150, 47, 114, 140, 77
 
+# The anti-dragon shield (Caleb, 2026-11-06): on the GE, once Duke Horacio's alone. Fights against dragonfire monsters
+# put it on (equipment.wield_best's `protect`).
 GE_ITEMS = (AXES + PICKAXES + FISHING_TOOLS + BAIT_AND_FEATHERS + (HAMMER,) + SCIMITARS + ARMOUR + SHORTBOWS + ARROWS
-            + RUNES + STAVES + FOOD_TIERS + PROCESSING_INPUTS + (KNIFE,) + FLETCHING_INPUTS)
+            + RUNES + STAVES + FOOD_TIERS + PROCESSING_INPUTS + (KNIFE,) + FLETCHING_INPUTS + (ANTI_DRAGON_SHIELD,)
+            + DRAGON_WEAPONS + FREMENNIK_HELMS + ANTIPOISONS + COMBAT_POTIONS)
 SHOP_ITEMS = {**dict.fromkeys(AXES[:2], BOBS), **dict.fromkeys(PICKAXES, NURMOFS),
               **dict.fromkeys(FISHING_TOOLS + BAIT_AND_FEATHERS, GERRANTS), HAMMER: LUMBRIDGE_STORE,
               **dict.fromkeys(SCIMITARS[:3], ZEKES), **dict.fromkeys(SHORTBOWS + ARROWS, LOWES),
@@ -97,9 +110,10 @@ LOTS = {**dict.fromkeys(ARROWS + RUNES, 100), **dict.fromkeys(BAIT_AND_FEATHERS,
         **dict.fromkeys(FOOD_TIERS + (BREAD,), 100),
         **dict.fromkeys(PROCESSING_INPUTS + FLETCHING_INPUTS, 1_000)}  # 1 for the rest
 # role -> how the upgrade check compares; items without a role (consumables) have no upgrade check
-ROLES = {**dict.fromkeys(AXES, "axe"), **dict.fromkeys(PICKAXES, "pickaxe"), **dict.fromkeys(SCIMITARS, "melee"),
-         **dict.fromkeys(SHORTBOWS, "ranged"), **dict.fromkeys(ARMOUR, "armour"),
-         **dict.fromkeys(FISHING_TOOLS + (HAMMER, KNIFE) + STAVES, "unique")}
+ROLES = {**dict.fromkeys(AXES, "axe"), **dict.fromkeys(PICKAXES, "pickaxe"),
+         **dict.fromkeys(SCIMITARS + DRAGON_WEAPONS, "melee"), **dict.fromkeys(SHORTBOWS, "ranged"),
+         **dict.fromkeys(ARMOUR + FREMENNIK_HELMS, "armour"),
+         **dict.fromkeys(FISHING_TOOLS + (HAMMER, KNIFE, ANTI_DRAGON_SHIELD) + STAVES, "unique")}
 TOOL_CHAINS = {"axe": (HATCHET_PRIORITY, "woodcutting"), "pickaxe": (PICKAXE_PRIORITY, "mining")}
 GEAR_CLASSES = ("melee", "ranged", "magic")
 
@@ -225,7 +239,7 @@ class BuyShop(Option):
                 and usable(state, self.item) and is_upgrade(state, self.item))
 
     def _toll(self, state: CharacterState, origin: tuple[int, int, int]) -> int:
-        return TOLL if uses_toll_gate(origin, self.tile) and not toll_exempt(state) else 0
+        return TOLL if pays_toll(state, origin, self.tile) else 0
 
     def run(self, state: CharacterState, rng: np.random.Generator, budget: int) -> OptionResult:
         elapsed, in_stock = 0, stock(state, self.shop, self.item, state.tick)
@@ -258,8 +272,9 @@ class BuyShop(Option):
 def gear_to_withdraw(state: CharacterState, combat_class: str) -> list[int]:
     """Bank items that beat what the character carries or wears for a combat class, in the order they're taken: the
     weapon (ranged: the weapon and ammunition of the best kit) first, for magic every banked rune (a deposit for
-    another task banks them), then armour, the biggest defence gain first (for magic, none that hinders it). Only
-    what the character can wear."""
+    another task banks them), then armour, the biggest defence gain first (for magic, none that hinders it), then an
+    anti-dragon shield if none is carried, for the fights against dragonfire monsters (not behind a two-handed
+    weapon). Only what the character can wear."""
     items, carried = gd.items(), set(state.inventory) | set(state.equipment.values())
     bank = frozenset(i for i in state.bank if i in items and can_wear(state, i))
     out: list[int] = []
@@ -289,7 +304,11 @@ def gear_to_withdraw(state: CharacterState, combat_class: str) -> list[int]:
                     and can_wear(state, i) and not hinders(i, combat_class)), default=None)
         if best is not None and defence_score(best) > (0 if worn is None else worn):
             gains.append((defence_score(best) - (worn or 0), best))
-    return out + [item for _, item in sorted(gains, reverse=True)]
+    out += [item for _, item in sorted(gains, reverse=True)]
+    guards = sorted(i for i in bank & DRAGONFIRE_PROTECTION if not hinders(i, combat_class))
+    if guards and not two_handed and not carried & DRAGONFIRE_PROTECTION and guards[0] not in out:
+        out.append(guards[0])
+    return out
 
 
 class BankWithdrawGear(Option):

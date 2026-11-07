@@ -9,8 +9,7 @@
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: PARTIAL (melee fights, drops, death and gravestones are built and tested; ranged, magic, candidate-slot
   actions and loot-mode actions come next)
-- Commit: main repo: the commit that adds this record, on branch `sim-v0` (its SHA can only be filled in by a later
-  commit)
+- Commit: main repo `59d7a31` (branch `sim-v0`)
 
 ## Full Prompt
 

@@ -3,7 +3,7 @@
 A long walk is a series of walk clicks (WorldspaceWalk packets, as the bridge's walk_to with packet=true sends): each
 to the farthest tile of the route within HOP tiles, and the next one once the character is within AHEAD tiles of it,
 so a running character doesn't stop between them. A closed door on the route is opened first (the bridge's interact,
-"Open", from the tile before it). If the character stops short of the end, the rest is planned again from where it
+"Open", from the tile before it), and a crossing (rlscape.routes.CROSSINGS) is crossed with its own option. If the character stops short of the end, the rest is planned again from where it
 stands.
 """
 
@@ -17,8 +17,12 @@ from rlscape.routes import Map
 
 HOP = 20  # tiles to the next click: within the server's MAX_PATHFIND_DISTANCE (25) and a minimap's reach
 AHEAD = 3  # click the next waypoint when this close to the current one
-STUCK_TICKS = 6  # not moving this long short of a waypoint: plan again
+STUCK_TICKS = 3  # not moving this long short of a waypoint (a click dropped while busy, say): plan again
 MAX_TICKS = 3000
+CROSSING_WAIT = 6  # ticks to let a crossing's own movement finish before clicking on (a click would cancel it)
+# A crossing's (scenery name, option), by id; doors are "Open"
+CROSSING_CLICKS = {23271: ("Wilderness Ditch", "Cross"), 190: ("Gate", "Open"), 1967: ("Tree Door", "Open"),
+                   1968: ("Tree Door", "Open"), 35549: ("Gate", "Pay-toll(10gp)"), 35551: ("Gate", "Pay-toll(10gp)")}
 
 
 def chebyshev(a: tuple[int, ...], b: tuple[int, ...]) -> int:
@@ -44,11 +48,11 @@ def _here(state: dict[str, Any]) -> tuple[int, int, int]:
 
 def _next_waypoint(route: list[tuple[int, int, int]], at: int, world: Map,
                    opened: set[tuple[int, int]]) -> tuple[int, dict | None]:
-    """From route index `at`: the index of the next click, and the door to open there first if the route goes
-    through a closed one within HOP tiles (then the click is the tile before it)."""
+    """From route index `at`: the index of the next click, and the door or crossing to use there first if the route
+    goes through one within HOP tiles (then the click is the tile before it)."""
     j = at
     while j + 1 < len(route) and chebyshev(route[j + 1], route[at]) <= HOP:
-        door = world.door_between(route[j], route[j + 1])
+        door = world.door_between(route[j], route[j + 1]) or world.crossing_between(route[j], route[j + 1])
         if door is not None and (door["x"], door["y"]) not in opened:
             return j, door
         j += 1
@@ -64,6 +68,7 @@ def walk_route(client: BridgeClient, uid: int, world: Map, goal: tuple[int, int,
         return out
     at, waypoint, door, still = 0, None, None, 0
     opened: set[tuple[int, int]] = set()
+    crossing_to, waited = None, 0  # the far side of a crossing being made
     pending: list[dict[str, Any]] = []
     while out.ticks < max_ticks:
         step = client.schedule([[*pending, {"cmd": "state", "uid": uid}]])[0]
@@ -73,6 +78,11 @@ def walk_route(client: BridgeClient, uid: int, world: Map, goal: tuple[int, int,
         if here == goal:
             out.arrived = True
             break
+        if crossing_to is not None:  # let the gate or ditch move the character through
+            waited += 1
+            if here != crossing_to and waited < CROSSING_WAIT:
+                continue
+            crossing_to = None
         nearest = min(range(at, len(route)), key=lambda i: (chebyshev(route[i], here), -i))
         if chebyshev(route[nearest], here) <= 1:
             at = nearest  # how far along the route the character is
@@ -82,12 +92,16 @@ def walk_route(client: BridgeClient, uid: int, world: Map, goal: tuple[int, int,
             if route is None:
                 break
             at, waypoint, door, still = 0, None, None, 0
+            opened.clear()  # a click the server dropped (the character still busy, say) is tried again
             out.replans += 1
-        if door is not None:  # heading for a door: open it once there
+        if door is not None:  # heading for a door or crossing: use it once there
             if chebyshev(here, route[waypoint]) <= 1 and not state["moving"]:
+                name, option = CROSSING_CLICKS.get(int(door["id"]), (str(door["name"]), "Open"))
                 try:
-                    client.interact(uid, str(door["name"]), "Open", ids=[int(door["id"])], radius=3)
+                    client.interact(uid, name, option, ids=[int(door["id"])], radius=3)
                     out.doors += 1
+                    if world.crossing_between(route[waypoint], route[waypoint + 1]) is not None:
+                        crossing_to, waited = route[waypoint + 1], 0
                 except BridgeError:
                     pass  # it's open already (no "Open" option): walk on
                 opened.add((door["x"], door["y"]))
@@ -100,4 +114,5 @@ def walk_route(client: BridgeClient, uid: int, world: Map, goal: tuple[int, int,
                 x, y, z = route[waypoint]
                 pending = [{"cmd": "walk_to", "uid": uid, "x": x, "y": y, "z": z, "packet": True}]
                 out.clicks += 1
+                still = 0  # standing still counts from the click (a walk starts a tick or two after it)
     return out

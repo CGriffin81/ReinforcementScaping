@@ -79,6 +79,8 @@ class Npc:
     protect_style: str | None  # the combat class this NPC is immune to, if any
     aggressive: bool
     poisonous: bool
+    respawn: int = 17  # ticks from its death to its respawn (respawn_delay; NPC.java's default 17)
+    poison_amount: int = 0  # the severity its swings poison with (poison_amount), if poisonous
 
     @property
     def melee_attack_type(self) -> int:
@@ -108,11 +110,44 @@ class DropEntry:
     def special(self) -> bool:
         return self.item_id in SPECIAL_DROP_SLOTS
 
+    def expected(self, stacks: bool = False) -> dict[int, float]:
+        """The expected count of each item this entry gives when it drops: its item, or for a sub-table's slot what
+        that table gives (WeightBasedTable.convertWeightedItems); "nothing" and clue scrolls give nothing. With
+        `stacks`, the expected number of ground items instead: one a drop, whatever its amount."""
+        if not self.item_id:
+            return {}
+        if not self.special:
+            return {self.item_id: 1.0 if stacks else self.mean_amount}
+        table = sub_tables().get(self.item_id, ())
+        rolls = self.mean_amount if self.item_id in MULTI_ROLL_SLOTS else 1.0
+        total, out = sum(e.weight for e in table), {}
+        for entry in table:
+            if entry.item_id and total > 0:
+                amount = 1.0 if stacks else entry.mean_amount
+                out[entry.item_id] = out.get(entry.item_id, 0.0) + rolls * entry.weight / total * amount
+        return out
+
 
 # WeightBasedTable's placeholder ids that stand for a sub-table, not an item: the rare drop table (31), clue scrolls
 # (1, 5733, 12070), CELEDT (799), and the uncommon seed, herb, gem, rare seed and allotment seed tables (14422-14430).
-# Their sub-tables aren't modelled yet, so they count as nothing (understating some monsters' loot).
 SPECIAL_DROP_SLOTS = frozenset({31, 1, 5733, 12070, 799, 14422, 14424, 14426, 14428, 14430})
+# The shared sub-tables (data/configs/shared_tables/*.xml) the slots roll, ported 2026-11-06 after the drop probe
+# (scripts/probe_drops.py). Clue scrolls aren't modelled: they drop nothing.
+SUB_TABLE_FILES = {31: "RDT", 799: "CELEDT", 14422: "USDT", 14424: "HDT", 14426: "GDT", 14428: "RSDT", 14430: "ASDT"}
+MULTI_ROLL_SLOTS = frozenset({14422, 14424})  # WeightBasedTable.isSpecialSlot: these roll random(min, max) times
+
+
+@cache
+def sub_tables() -> dict[int, tuple[DropEntry, ...]]:
+    """Slot id -> its shared sub-table's entries (id 0 is nothing; the rare drop table keeps its nothings, which only
+    a ring of wealth removes). Each is one weighted pick: RareDropTable's roll, and for the others
+    RandomFunction.rollWeightedChanceTable."""
+    out = {}
+    for slot, name in SUB_TABLE_FILES.items():
+        text = (SERVER_CONFIGS / "shared_tables" / f"{name}.xml").read_text(encoding="utf-8")
+        out[slot] = tuple(DropEntry(int(i), int(low), int(high), float(w)) for i, low, high, w in re.findall(
+            r'<item id="(\d+)" minAmt="(\d+)" maxAmt="(\d+)" weight="([\d.]+)"', text))
+    return out
 
 
 @dataclass
@@ -124,17 +159,19 @@ class DropTable:
     charm: list[DropEntry] = field(default_factory=list)
     tertiary: list[DropEntry] = field(default_factory=list)
 
-    def expected_items(self) -> dict[int, float]:
-        """Expected count of each item per kill."""
+    def expected_items(self, stacks: bool = False) -> dict[int, float]:
+        """Expected count of each item per kill, the sub-tables' included; with `stacks`, of its ground items (a
+        pickup each)."""
         expected: dict[int, float] = {}
         for entry in self.guaranteed:
-            if entry.item_id and not entry.special:
-                expected[entry.item_id] = expected.get(entry.item_id, 0.0) + entry.mean_amount
+            for item, count in entry.expected(stacks).items():
+                expected[item] = expected.get(item, 0.0) + count
         for table in (self.main, self.charm, self.tertiary):
             total = sum(e.weight for e in table)
             for entry in table:
-                if entry.item_id and not entry.special and total > 0:
-                    expected[entry.item_id] = expected.get(entry.item_id, 0.0) + entry.weight / total * entry.mean_amount
+                if total > 0:
+                    for item, count in entry.expected(stacks).items():
+                        expected[item] = expected.get(item, 0.0) + entry.weight / total * count
         return expected
 
     def expected_value(self, values: dict[int, int]) -> float:
@@ -204,6 +241,8 @@ def npcs() -> dict[int, Npc]:
             protect_style=COMBAT_STYLES[int(protect)] if protect not in (None, "") else None,
             aggressive=raw.get("aggressive") == "true",
             poisonous=raw.get("poisonous") == "true",
+            respawn=_int(raw.get("respawn_delay"), 17),
+            poison_amount=_int(raw.get("poison_amount"), 0),
         )
     return out
 
@@ -312,6 +351,28 @@ def slayer_levels() -> dict[int, int]:
 def quest_names() -> frozenset[str]:
     """The server's Quests enum names (content/data/Quests.kt), the vocabulary for quest requirements."""
     return frozenset(re.findall(r"^\s+([A-Z_0-9]+)\(\"", QUESTS.read_text(encoding="utf-8"), re.M))
+
+
+@cache
+def implemented_quests() -> frozenset[str]:
+    """The quests the server has (a Quest subclass it registers, @Initializable), by Quests enum name: 68 of the
+    enum's 150. The bridge's `spawn` completes exactly these. The server can't mark the others complete: content
+    behind one stays shut, or (where it checks ContentAPI.hasRequirement) opens once the character meets that quest's
+    own requirements, which the sim doesn't model. A live test checks the list against the running server's."""
+    out = set()
+    for path in SERVER_CONTENT.rglob("*"):
+        if path.suffix not in (".kt", ".java"):
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        found = re.search(r":\s*Quest\(\s*Quests\.([A-Z_0-9]+)", text) or (
+            re.search(r"extends\s+Quest\b", text) and re.search(r"super\(\s*Quests\.([A-Z_0-9]+)", text))
+        if found and re.search(r"^\s*@Initializable", text, re.M):  # not commented out (unfinished quests)
+            out.add(found.group(1))
+    return frozenset(out - UNREGISTERED_QUESTS)
+
+
+# Marked @Initializable, but the running server doesn't register it: not in QuestRepository (checked live, 2026-11-06)
+UNREGISTERED_QUESTS = frozenset({"A_SOULS_BANE"})
 
 
 @cache

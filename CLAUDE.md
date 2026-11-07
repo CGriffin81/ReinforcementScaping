@@ -21,14 +21,18 @@ validated on a local 2009Scape server.
 - External references (papers, code, data sources, related work) are listed in `docs/resources.md`,
   numbered to continue the proposal's bibliography. Add a resource there when the project starts using it.
 
-Fixed decisions: every episode starts from a fresh level-3 character; training
-episodes are 20 game-hours with checkpoints every 2 game-hours; combat is in
-scope. Simulator (2026-10-28):
+Fixed decisions: every episode starts from a fresh level-3 character with
+the starter kit; training episodes are 20 game-hours with checkpoints every 2
+game-hours; combat is in scope. Quests are out (2026-11-06): every quest the
+server has (68) is complete from the start, as flags only (quest points and
+unlocks, no XP or items), and there are no quest options. Simulator
+(2026-10-28):
 - event-level sampling
-- quests and four more skills (Crafting, Agility, Herblore, Runecrafting)
-  arrive in sim v1, before E2; Fletching was brought into sim v0 (2026-10-31)
+- four more skills (Crafting, Agility, Herblore, Runecrafting) arrive in sim
+  v1, before E2; Fletching was brought into sim v0 (2026-10-31)
 - ambient bots off on the server for calibration and E6
-- a ±20% sim-to-server gate before E2 (env contract §7)
+- a ±20% sim-to-server gate before E2 (env contract §7), calibrated at 50 ms
+  ticks with a speed check at 600 ms (2026-11-06)
 
 ## Collaboration mode
 
@@ -74,19 +78,26 @@ work.
   `RLCommands.kt` (commands), and `RLPlayer.kt` (the agent's character).
   - `RLPlayer` is **treated as a human by every game rule**
     (`isArtificial() == false`). Session plumbing uses
-    `Player.hasClientSession()` instead.
+    `Player.hasClientSession()` instead. Each has its own account uid
+    (1,000,000,000 + its bridge uid, in `Repository.uid_map`), which kill
+    credit and drops, gravestones and GE offers go by. `spawn` completes every
+    quest the server has (`completeEveryQuest`).
   - Config: `server.tick_ms`, `server.bind_address`, `world.ge_freeze_prices`,
     `world.ge_frozen_buyer`, `world.ge_frozen_seller`, `world.ge_blocked_items`,
     and the `[rl]` section (`bridge_enabled`, `bridge_port`, `random_events`).
   - `worldprops/rl.conf` is the training config: `default.conf` with the
-    bridge on, prices frozen, the frozen-price GE buyer and seller on, the
-    anti-dragon shield blocked on the GE (Duke Horacio only), random events
-    off for RL characters, ambient bots off (`enable_bots = false`, since
-    2026-10-31), and the game port bound to 127.0.0.1.
+    bridge on, prices frozen, the frozen-price GE buyer and seller on,
+    nothing blocked on the GE (the anti-dragon shield was, until
+    2026-11-06), random events off for RL characters, ambient bots off (`enable_bots = false`, since
+    2026-10-31), dev mode off (`dev = false`, since 2026-11-07: it changes drop and catch rates), and
+    the game port bound to 127.0.0.1.
   - Other fork rule changes: Slayer levels are enforced on attack
     (`NPC.isAttackable`); aggression tolerance counts 1,000 game ticks, not
     10 wall-clock minutes (`Region.isTolerated`), so a sped-up server behaves the
-    same.
+    same; the home teleport waits 3,000 game ticks (30 minutes) between casts
+    (`homeTeleport`); being hit keeps an entity "in combat" for 17 game ticks,
+    not 10 wall-clock seconds (`combat-time`: `CombatPulse`, `Entity.inCombat`,
+    `MapZone.checkMulti`), which single-combat areas and logging out read.
 - **GE state:** before running the server for experiments, install the frozen
   2009 GE: `uv run python scripts/install_ge_db.py`. The server must be
   stopped; the old database is backed up. The pipeline is
@@ -105,7 +116,17 @@ work.
 - The world only ticks fully while the server can reach the internet (its
   connectivity check).
 - Python: `uv sync`, `uv run pytest` (live bridge tests skip when the server
-  is down), and `uv run python scripts/gate_check.py`.
+  is down), and `uv run python scripts/gate_check.py`. In parallel:
+  `uv run pytest -n 8 --dist loadgroup` (the live tests stay on one worker).
+- More servers at once (Caleb, 2026-11-06): `uv run python
+  scripts/server_instances.py 2 3` writes `results/servers/rl-<n>.conf`
+  (world n, bridge port 43610 + n - 1, its own GE under
+  `data/eco/instance-<n>`); start each like the first with that config, and
+  point a script or the tests at one with `RL_BRIDGE_PORT`. Each world has
+  its own tick speed. One server also takes several scripts at once, each
+  with its own characters (the bridge serves each connection on a thread):
+  set its tick first, keep their sites apart, and give the live tests a
+  server of their own (they set the tick).
 - Database: not needed with the current config (auth and account persistence
   are off). `docker compose -f infra/docker-compose.db.yml up -d` starts
   MariaDB on 127.0.0.1:3306 if it's ever needed.

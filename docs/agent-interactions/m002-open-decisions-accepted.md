@@ -7,8 +7,7 @@
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS
-- Commit: fork `81fb106` (branch `rl`); main repo: the commit that adds this record, on branch
-  `env-contract-and-combat-model` (its SHA can only be filled in by a later commit)
+- Commit: fork `81fb106` (branch `rl`); main repo `ac4e3e7` (branch `env-contract-and-combat-model`)
 
 ## Full Prompt
 

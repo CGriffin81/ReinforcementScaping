@@ -1,6 +1,23 @@
-# Environment Contract (v1.9, Signed off)
+# Environment Contract (v1.15, Signed off)
 
-**Status:** v1.9, 2026-10-31. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
+**Status:** v1.15, 2026-11-07. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
+- **v1.15** (2026-11-07; to confirm) refits the combat-rate model's per-kill overhead (§8: 3 ticks, from 10 and 8)
+  and adds a measured pickup time for each drop the loot mode keeps (3 ticks melee, 10 ranged); the time to kill
+  counts the last hit's overkill (Caleb).
+- **v1.14** (2026-11-06; to confirm) puts poison and a dragon's breath in the combat-rate model's risk (§8), ported
+  from the server, less the shares the antipoison and antifire carried cover, and combat potions' boosts in the
+  fighter (Caleb added the potions); a potions part in §3, each potion's doses carried, with only the four-dose
+  potions in *V* (OQ-25, Caleb); *V* 214 (§3's sizes).
+- **v1.13** (2026-11-06, Caleb) sells the anti-dragon shield on the GE (§9, decision 8) and grows *V* to 192 by its
+  rule with every quest complete, then 198 with the quest gear the buy list took on (OQ-24), then 203 with what the
+  drop tables' sub-tables bring (§3's sizes).
+- **v1.12** (2026-11-06, Caleb) takes quests out: every quest the server has is complete from the start, as flags
+  only (§1), the observation loses its quest part (§3), and sim v1 brings only the four skills (§7). The gate keeps
+  the fast tick with a speed check, and judges gp/hr by its parts (§7).
+- **v1.11** (2026-11-05; to confirm) measures the combat-rate model's per-kill overhead and adds respawn waits at
+  sites short of monsters (§8), from the combat calibration.
+- **v1.10** (2026-11-01, Caleb) has every trip take the fastest way the character can use, teleports and boats
+  included, paying for it; the home teleport waits 30 minutes, and a place with no way there is unreachable (§7).
 - **v1.9** (2026-10-31, Caleb) has gathering options follow Caleb's rule for aggressive monsters (§7).
 - **v1.8** (2026-10-31, Caleb) has fights flick prayers (§8).
 - **v1.7** (2026-10-31, Caleb) brings Fletching forward into sim v0 (§5), with Fletching skilling slots, a
@@ -26,6 +43,9 @@ through the bridge). Any policy, baseline or logger written against it runs on e
 - **Game time:** 1 tick = 0.6 s. Durations are reported in ticks.
 - **Episode:** `reset(seed)` produces a fresh level-3 character exactly as it leaves Tutorial Island, at
   Lumbridge (3233, 3230), with the starter kit and 25 coins in the bank.
+- **Quests:** every quest the server has (68, worth 126 quest points) is complete from the start (Caleb, 2026-11-06),
+  as flags only: the quest points and the unlocks come with them, no quest XP or items. There are no quest options.
+  The quests the server lacks stay incomplete, and so does the content behind them in the sim.
 - **Horizon:** 20 game-hours = 120,000 ticks. Checkpoints every 2 game-hours (12,000 ticks).
 - **Decision structure:** a semi-MDP. Each `step(option)` runs one option until it ends and returns its
   duration τ in ticks.
@@ -83,14 +103,14 @@ roughly [0, 1].
 | Wealth | 2 | log1p(coins) / log1p(10M); log1p(net worth) / log1p(10M) |
 | Inventory | V + 1 | log1p(count) / log1p(28) per vocabulary item; free slots / 28 |
 | Bank | V | log1p(count) / log1p(10k) per vocabulary item |
+| Potions | 11 × 2 | each potion's doses (antipoison, super antipoison, the eight combat potions, antifire; any dose, noted or not): log1p(doses) / log1p(112) in the inventory, / log1p(10k) in the bank. Only the four-dose potions are in *V* (OQ-25) |
 | Equipment | E | tier index / max tier per slot: weapon (melee / ranged / staff), ammunition, head, body, legs, shield; tools (axe, pickaxe, fishing gear) |
 | Region | R | one-hot over the catalog's regions |
 | Combat candidates | C × 5 | for each candidate slot: XP/hr, gp/hr, expected damage taken per hour vs food held, travel minutes, Slayer / level eligibility (option catalog §4) |
 | Skilling candidates | 20 × 5 | per skilling slot (option catalog §2): the gathering skill's XP/hr, its processing counterpart's XP/hr, gp/hr, travel, open; scaled as the combat candidates |
 | Loot mode | 4 | one-hot: all / valuable / vocabulary / none (option catalog §4.D) |
 | Task | 12 | one-hot: the last activity's task (none, woodcutting, mining, the three fishing methods, thieving, fletching, processing, the three combat classes), which decides what `bank_deposit` keeps (option catalog §5) |
-| Access | A | 0/1 per access rule (`data/access_areas.csv`, A = 55 today; `access.unlocked_rules`): unlocked by quests, items held, levels or coins (option catalog §4.C) |
-| Quests | Q × 3 + 1 | stage one-hot (not started / underway / complete) per curated quest; quest points / 32 |
+| Access | A | 0/1 per access rule (`data/access_areas.csv`, A = 55 today; `access.unlocked_rules`): unlocked by quests, items held, levels or coins (option catalog §4.C). Rules decided by quests alone are constant, since the quests are complete from the start |
 | Mask | N | the action mask |
 | Preference | 2 | (w_s, w_b), for the E4 agent only |
 
@@ -100,7 +120,8 @@ option catalog.
 **As built** (`rlscape/envs/encoding.py`, 2026-10-30): E = 11 roles (weapons for melee, ranged and magic,
 ammunition, head, body, legs, shield, axe, pickaxe, fishing gear), R = 12 (the catalog's 11 regions and
 "elsewhere"), C = 18 slots (6 per combat class). The encoder's docstring lists how each part is scaled. With the
-catalog as built (1,110 actions, *V* = 176) the vector has 1,860 features.
+catalog as built (1,318 actions, *V* = 214) the vector has 2,102 features (v1.12 dropped the quest part's 64; v1.13
+added 7 buys and 27 items; v1.14 11 buys, 11 items and the potions part's 22).
 
 **Left out on purpose:** GE prices. They're frozen, so a price snapshot would be a constant.
 
@@ -124,8 +145,8 @@ catalog as built (1,110 actions, *V* = 176) the vector has 1,860 features.
 - from sim v0 (15): Attack, Strength, Defence, Hitpoints, Ranged, Magic, Prayer, Woodcutting, Mining, Smithing,
   Fishing, Cooking, Firemaking, Thieving, and Fletching (brought forward by Caleb, 2026-10-31)
 - added in sim v1, before E2 (4): Crafting, Agility, Herblore, Runecrafting (Caleb, 2026-10-28).
-  Herblore needs Druidic Ritual and Runecrafting needs Rune Mysteries, both in the quest set. Agility levels also
-  open the Agility shortcuts in the access table.
+  Herblore needs Druidic Ritual and Runecrafting needs Rune Mysteries, both complete from the start (§1). Agility
+  levels also open the Agility shortcuts in the access table.
 
 **Requirement checks only:** Slayer. There are no tasks, so it stays at 1 and Slayer-locked monsters stay out.
 
@@ -169,8 +190,15 @@ for every step.
     gathering, only trivial monsters are fought, and the character runs out of a monster's aggressive range when
     its hitpoints fall under twice that monster's max hit. Both backends: `ServerEnv` turns auto-retaliate off
     for gathering (the bridge's `set_retaliate`).
-  - **staged:** sim v0 has every family except quests and the four v1 skills. Sim v1 adds the 21 quests and those
-    skills before E2.
+  - **travel** (Caleb, 2026-11-01; option catalog §4): every trip takes the fastest way the character can use
+    then, paying for it: walking on the server's collision map, the home teleport, teleport spells, jewellery,
+    tablets, the seed pod, ships and charters. The home teleport can be cast once every 30 minutes (a fork change,
+    counted in game ticks). A place nothing the character can use reaches is unreachable for it: its options are
+    masked. Both backends: `ServerEnv` takes the same transports by the player's clicks (`rlscape/bridge/travel.py`).
+  - **staged:** sim v0 has every family except the four v1 skills, which sim v1 adds before E2. Quests are out
+    (v1.12).
+  - **aggressive monsters near a combat site** (Caleb, 2026-11-06, OQ-19): a fight ignores every monster but its
+    target. They're measured on the server first, and modelled only if they move the rates beyond ±20%.
   - target ≥ 20k decisions per second across `SubprocVecEnv` workers
 - **`ServerEnv`:**
   - `reset` reinstalls the frozen GE database. This is required, not optional: GE offers outlive the
@@ -181,7 +209,7 @@ for every step.
     crowding.
   - not seedable (world randomness); reported as such
   - options run through human-path actions only, never `debug_*`
-  - its inputs (clicks, item options, item-on-item, dialogue choices) go as client packets (the bridge's
+  - its inputs (clicks, item options, item-on-item, item-on-scenery, dialogue choices) go as client packets (the bridge's
     `packet` option), so the server handles them in its packet phase, before the world's pulses, exactly as a
     client's. Handled directly, a bridge command runs after the pulses, and an item option's effect lands a
     tick late (Caleb, 2026-10-30)
@@ -196,16 +224,18 @@ for every step.
   - **Skills:** the trainable skills (§5) are set to the band level, the rest stay at 1. Fresh means all 1s with
     10 Hitpoints.
   - **Gear:** non-fresh characters spawn with the starter kit and 100 gp × total level, and buy their own gear on
-    the GE. They buy the best their levels and quests allow, in this priority: the tool for the option being
-    calibrated, then the weapon, then armour by defence per gp.
-  - **Quests,** cumulative by band:
-    - fresh: none
-    - 11–21: Cook's Assistant, Sheep Shearer, Rune Mysteries, Romeo & Juliet
-    - 31–41: adds the rest of the 32-quest-point route
-    - 51 and up: all 21, including Dragon Slayer
-  - **Setup only:** stats and quests are set by calibration-only bridge commands (`debug_set_levels`,
-    `debug_complete_quest`), never exposed to the agent. Each unlock that a debug-completed quest grants (rune
-    platebody, Crandor, the Duke's shield) is live-tested before it's relied on.
+    the GE. They buy the best their levels allow, in this priority: the tool for the option being calibrated, then
+    the weapon, then armour by defence per gp.
+  - **Quests:** at every band, every quest the server has is complete, as `spawn` makes it (§1).
+  - **Setup only:** stats are set by a calibration-only bridge command (`debug_set_levels`), never exposed to the
+    agent. Each quest unlock the sim relies on is live-tested before it's relied on (so far the rune platebody and
+    Morytania's border).
+  - **Tick speed** (Caleb, 2026-11-06, OQ-21): calibration runs the server at 50 ms ticks, 12× real time. The gate
+    includes a speed check: a few cases from each calibrated family rerun at 600 ms, which must agree with the fast
+    runs within their run-to-run noise.
+  - **gp/hr where rare drops make up the loot** (Caleb, 2026-11-06, OQ-20): the mean of about 10 short runs can't
+    settle it, so the gate takes its parts. The drop tables are checked item by item over about 200 kills per
+    monster, and the looting overhead is gated through kills/hr, XP/hr and the time to a full inventory.
   - **Runs:** each option is calibrated at the bands where it's unlocked, about 10 runs each. Parallel calibration
     characters never share a spot.
 
@@ -217,10 +247,10 @@ from `drop_tables.json`, and spawns from `npc_spawns.json`.
 
 | Quantity | How it's computed |
 |---|---|
-| Kills/hr | from hit chance and max hit against the NPC's defence and HP, plus a fixed 6-tick overhead per kill for finding and reaching the next target. **Respawn waits aren't modelled yet.** |
+| Kills/hr | from hit chance and max hit against the NPC's defence and HP (the expected swings until their damage reaches its HP, the last hit's overkill included, as the simulator's fights deal it), plus a measured overhead per kill for finding and reaching the next target (3 ticks; magic taken as ranged), and a measured pickup time for each drop the loot mode keeps (3 ticks melee, 10 ranged, which covers its arrows; magic taken as melee). A site short of the monster holds kills to one every (respawn + fighting) / spawns ticks: spawns of it within 15 tiles (`npc_spawns.json`), its `respawn_delay` (`npc_configs.json`). In the simulator each of a site's monsters has its own respawn, and nothing attacks while the character waits. |
 | XP/hr | combat XP and Hitpoints XP for the chosen style, plus the spell's base XP on every magic cast |
 | gp/hr | expected value (`prices_v2`) of the drops the loot mode keeps × kills/hr. **Not yet subtracted:** consumables used (food, arrows, runes) and entry fees (Brimhaven, Waterbirth). |
-| Risk | expected damage per kill, and the monster's max hit, against HP above the retreat point and the food held (the retreat-aware filter) |
+| Risk | expected damage per kill, poison included (the server's Poison timer; prayer doesn't stop it) and a dragon's breath behind the shield (one swing in three, 0 to 5), less the shares the antipoison and antifire carried cover, and the monster's max hit, against HP above the retreat point and the food held (the retreat-aware filter). The fighter's levels are as its carried potions boost them at the fight's start |
 | Inventory and travel | kills continue until the looted drops fill the free slots, then a bank trip; the walk to the monster is taken out of the duration (*D* = 15 game-minutes = 1,500 ticks) |
 | Prayer | fights flick prayers (option catalog §4): a style the Prayer level can protect against deals nothing, defence prayers count otherwise, and the character's swings get its accuracy and damage prayers except those next to a monster swing. Prayer points never drain. |
 | Ammunition | fighting stops when the arrows or runes run out. Arrows that land and are picked back up stretch the arrows held; melee and crystal bows are unlimited. |
@@ -252,9 +282,9 @@ These are *theoretical* rates (expected values). The real server measures the ac
 
 7. **Quests:** every quest should eventually be completable. This stage's set is 21 quests: the 32-quest-point
    route, Waterfall Quest, nine more quests, and Dragon Slayer. One action per quest (option catalog §10). Dragon
-   Slayer unlocks rune platebodies and green d'hide bodies.
+   Slayer unlocks rune platebodies and green d'hide bodies. *Superseded by 27 (v1.12): quests are out.*
 8. **The anti-dragon shield comes only from Duke Horacio** (once Dragon Slayer is underway). `rl.conf` sets
-   `world.ge_blocked_items = "1540,1541"`, so the GE won't trade it.
+   `world.ge_blocked_items = "1540,1541"`, so the GE won't trade it. *Superseded by 29 (v1.13): the GE sells it.*
 
 ### Decided (Caleb, 2026-10-28)
 9. **The Wilderness is in the enemy pool.** PvP is off in `rl.conf` and training has no other players, so its monsters
@@ -269,7 +299,8 @@ Caleb signed off both documents on 2026-10-28 (v1.0).
 
 ### Decided (Caleb, 2026-10-28, simulation review): v1.1
 12. **Event-level sampling** in the simulator (§7).
-13. **Staging:** quests and the five new skills arrive in sim v1, before E2.
+13. **Staging:** quests and the five new skills arrive in sim v1, before E2. *Fletching came into sim v0 (v1.7);
+    quests are out (v1.12).*
 14. **Five more trainable skills:** Fletching, Crafting, Agility, Herblore, Runecrafting (§5), for 19 in all.
 15. **Ambient bots off** on the server for calibration and E6 (§7).
 16. **The sim-to-server gate** before E2 is ±20%, and the calibration characters are as described in §7.
@@ -315,3 +346,24 @@ Caleb signed off both documents on 2026-10-28 (v1.0).
 25. **Gathering options follow Caleb's rule for aggressive monsters** (§7; option catalog §4): no fights unless
     trivial, and running out of a monster's aggressive range when it's dangerous. The server's aggression tolerance
     counts game ticks (fork), so a sped-up server behaves the same.
+
+### Decided (Caleb, 2026-11-01, travel and banking): v1.10
+26. **Travel takes the fastest usable way, automatically** (§7; option catalog §4): walks, teleports (the home
+    teleport, the standard spells, every teleport jewellery item at every charge, tablets, the Grand seed pod) and
+    boats (the fixed ships and the charters), whichever is fastest for what the character can use, paid from what it
+    carries. They aren't agent actions. Which teleport items join *V* follows OQ-10's answer (decision log,
+    2026-11-01). The home teleport waits 30 minutes between casts (OQ-13), and a place with no way there is
+    unreachable (OQ-12).
+
+### Decided (Caleb, 2026-11-06, quests out): v1.12
+27. **Quests are out of the experiment, and complete from the start** (§1): every quest the server has, as flags only,
+    so no quest blocks content. The level-3 start with the starter kit stays (a start at level 30 with 10,000 gp was
+    considered and dropped). The observation's quest part goes (§3). Supersedes 7, and 13 for quests.
+28. **The gate keeps the fast tick, with a speed check, and judges gp/hr by its parts** (§7; OQ-21, OQ-20).
+
+### Decided (Caleb, 2026-11-06, the shield and V): v1.13
+29. **The anti-dragon shield is bought on the GE** at its 2009 price (OQ-22), and fights against dragonfire monsters
+    put on a carried one (option catalog §4.B). Supersedes 8.
+30. ***V* is redrafted by its rule with every quest complete** (OQ-23): 16 items added, none taken out (option
+    catalog §9). The buy list takes the dragon dagger and longsword and the Fremennik helms (OQ-24), which join *V*,
+    and so do the 5 items the rule proposes once the drop tables' sub-tables are modelled.

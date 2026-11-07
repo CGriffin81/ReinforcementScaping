@@ -36,17 +36,20 @@ from math import inf
 import numpy as np
 
 from rlscape.combat import formulas as f
-from rlscape.combat.candidates import COMBAT_CLASSES, LOOT_MODES, Candidate, Character, enemy_pool, loot_rule
+from rlscape.combat.candidates import (COMBAT_CLASSES, DRAGONFIRE_NPCS, DRAGONFIRE_PROTECTION, LOOT_MODES, Candidate,
+                                      Character, enemy_pool, loot_rule)
 from rlscape.combat.ranking import CandidateRanker
 from rlscape.combat.rates import Plan
 from rlscape.gamedata import server as gd
 from rlscape.sim.combat import arrow_land_chance, best_spell, casts_held, fight
 from rlscape.sim.engine import ACTIVITY_TICKS
 from rlscape.sim.equipment import SHIELD, WEAPON, fighter_for, ranged_ready, wield_best
-from rlscape.sim.health import food_healing_held, foods_held, retreat_hp
-from rlscape.sim.movement import reachable
+from rlscape.sim.health import food_healing_held, foods_held, poison_cover, retreat_hp
+from rlscape.sim.movement import reach, reachable
 from rlscape.sim.options import COMPLETED, Option, OptionResult
+from rlscape.sim.potions import antifire_cover, drink_boosts
 from rlscape.sim.state import CharacterState
+from rlscape.sim.transport import home_ready
 
 K = 3  # monsters per list: 3 by XP/hr, then 3 by gp/hr
 MELEE_STYLES = (f.ACCURATE, f.AGGRESSIVE, f.DEFENSIVE)
@@ -98,29 +101,47 @@ class CombatSlots:
         return loot_rule(state.loot_mode, self.vocabulary)
 
     def _rank(self, state: CharacterState) -> None:
-        """Rank each class for the character armed for it: its own gear, shield and free slots."""
+        """Rank each class for the character armed for it: its own gear, shield and free slots. Dragonfire monsters
+        are ranked for it wearing an anti-dragon shield it carries, as their fight would (wield_best's `protect`)."""
         ranker, progress, food = shared_ranker(), state.access_progress(), food_healing_held(state)
-        self._slots, self._styles, fighters = {}, [], {}
+        cover, fire_cover = poison_cover(state, self.duration_ticks), antifire_cover(state, self.duration_ticks)
+        where = reach(state)
+        self._slots, self._styles, fighters, shielded = {}, [], {}, {}
         for combat_class in COMBAT_CLASSES:
-            armed = replace(state, inventory=dict(state.inventory), equipment=dict(state.equipment),
-                            worn_amounts=dict(state.worn_amounts))
-            wield_best(armed, combat_class)
+            armed = _armed(state, combat_class)
             plans = _plans(armed, combat_class)
             if not plans:
                 continue
             fighters[combat_class] = fighter = fighter_for(armed)
+            if armed.equipment.get(SHIELD) not in DRAGONFIRE_PROTECTION:
+                guarded = _armed(state, combat_class, DRAGONFIRE_PROTECTION)
+                if guarded.equipment.get(SHIELD) in DRAGONFIRE_PROTECTION:
+                    shielded[combat_class] = fighter_for(guarded)
             character = Character(state.location, state.max_hp(), state.hp, food, armed.free_slots(),
                                   armed.equipment.get(SHIELD), state.loot_mode, progress,
-                                  _attacks_held(armed, plans[0], self.loot(state)))
+                                  _attacks_held(armed, plans[0], self.loot(state)), home_ready(state), where,
+                                  poison_cover=cover, antifire_cover=fire_cover)
             self._slots[combat_class] = ranker.select({combat_class: (fighter, plans)}, character, self.duration_ticks,
-                                                      K, self.vocabulary)[combat_class]
-        fighter = fighters["melee"]
+                                                      K, self.vocabulary, shielded)[combat_class]
         for candidate in self._slots["melee"]:
             i = _pool_index()[candidate.entry.npc.id]
+            dragon = candidate.entry.npc.id in DRAGONFIRE_NPCS and "melee" in shielded
+            fighter = shielded["melee"] if dragon else fighters["melee"]
             self._styles.append(frozenset(
                 s for s in MELEE_STYLES
                 if (r := ranker.rates(fighter, Plan("melee", s))[i]) is not None
-                and r.passes_retreat_filter(state.max_hp(), state.hp, food)))
+                and r.passes_retreat_filter(state.max_hp(), state.hp, food, poison_cover=cover,
+                                            antifire_cover=fire_cover)))
+
+
+def _armed(state: CharacterState, combat_class: str, protect: frozenset[int] = frozenset()) -> CharacterState:
+    """A copy of the character after the fight's first steps for the class: wielding (equipment.wield_best) and its
+    potions (potions.drink_boosts)."""
+    armed = replace(state, inventory=dict(state.inventory), equipment=dict(state.equipment),
+                    worn_amounts=dict(state.worn_amounts), boosts=dict(state.boosts))
+    wield_best(armed, combat_class, protect)
+    drink_boosts(armed, combat_class)  # and as it starts: boosted by the potions it carries
+    return armed
 
 
 def _attacks_held(armed: CharacterState, plan: Plan, loot) -> float:

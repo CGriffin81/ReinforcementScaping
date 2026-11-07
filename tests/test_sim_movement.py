@@ -9,15 +9,16 @@ import pytest
 from rlscape.combat.access import Progress
 from rlscape.gamedata import server as gd
 from rlscape.sim import Simulator, build_catalog
-from rlscape.sim.movement import (GATE_NORTH, GATE_SOUTH, PASS_PRICE, TOLL, in_desert, reachable, route_ticks,
-                                  uses_toll_gate, walk)
+from rlscape.sim.movement import (GATE_NORTH, GATE_SOUTH, PASS_PRICE, TOLL, TOLL_EAST, TOLL_WEST, _walking, in_desert,
+                                  reachable, route_ticks, uses_toll_gate, walk)
 from rlscape.sim.skills import SKILL_INDEX, XP_FOR_LEVEL
 from rlscape.sim.state import COINS, CharacterState
 from rlscape.sim.thieving import pickpocket_options
-from rlscape.travel import path
+from rlscape.travel import overhead, path
 
 needs_server = pytest.mark.skipif(not gd.SERVER_CONTENT.exists(), reason="server submodule missing")
 LUMBRIDGE, AL_KHARID_FURNACE, VARROCK = (3222, 3218, 0), (3274, 3186, 0), (3212, 3424, 0)
+JUST_WEST_OF_THE_GATE = (3255, 3228, 0)
 
 
 def at(tile: tuple[int, int, int], coins: int = 0, **progress) -> CharacterState:
@@ -38,7 +39,7 @@ def test_the_gate_lies_between_lumbridge_and_al_kharid_only():
 def test_the_toll_is_paid_from_the_inventory_both_ways():
     state = at(LUMBRIDGE, coins=25)
     assert walk(state, AL_KHARID_FURNACE, 10_000) is not None and state.inventory[COINS] == 25 - TOLL
-    walk(state, LUMBRIDGE, 10_000)
+    walk(state, JUST_WEST_OF_THE_GATE, 10_000)  # to Lumbridge itself, the home teleport would be faster
     assert state.inventory[COINS] == 25 - 2 * TOLL
 
 
@@ -53,7 +54,8 @@ def test_prince_ali_rescue_waives_the_toll():
 def test_without_coins_the_walk_goes_round_the_fence():
     broke, paying = at(LUMBRIDGE), at(LUMBRIDGE, coins=TOLL)
     assert route_ticks(broke, AL_KHARID_FURNACE) > route_ticks(paying, AL_KHARID_FURNACE)
-    assert route_ticks(paying, AL_KHARID_FURNACE) == ceil(path(LUMBRIDGE, AL_KHARID_FURNACE)[0] / 2)  # runs all the way
+    through = path(LUMBRIDGE, TOLL_WEST)[0] + 1 + path(TOLL_EAST, AL_KHARID_FURNACE)[0]  # the planned legs and the gate
+    assert route_ticks(paying, AL_KHARID_FURNACE) == ceil(through / 2 + overhead(through))  # runs all the way
     ticks = walk(broke, AL_KHARID_FURNACE, 10_000)
     assert ticks == route_ticks(at(LUMBRIDGE), AL_KHARID_FURNACE) and broke.location == AL_KHARID_FURNACE
 
@@ -68,7 +70,8 @@ def test_nothing_is_paid_when_the_budget_runs_out_on_the_way():
 def test_cooking_pays_the_toll_to_reach_al_kharids_range():
     sim = Simulator(build_catalog())
     sim.reset(seed=0)
-    sim.state.inventory = {317: 5, COINS: 20}  # raw shrimps; no Cook's Assistant, so not the castle range
+    sim.state.inventory = {317: 5, COINS: 20}  # raw shrimps
+    sim.state.progress = Progress()  # no Cook's Assistant, so not the castle range; no Prince Ali Rescue, so the toll
     info = sim.step([o.id for o in sim.options].index("cook_fish")).info
     assert info["items_delta"]["inventory"][COINS] == -TOLL
     assert sim.state.location == next(s.tile for s in gd.stations() if s.name == "Al Kharid" and s.kind == "range")
@@ -88,7 +91,8 @@ def test_the_desert_lies_south_of_the_shantay_pass():
 def test_going_south_buys_a_shantay_pass_and_coming_back_is_free():
     state = at(AL_KHARID_FURNACE, coins=20)
     assert walk(state, POLLNIVNEACH, 10_000) is not None and state.inventory[COINS] == 20 - PASS_PRICE
-    assert walk(state, AL_KHARID_FURNACE, 10_000) is not None and state.inventory[COINS] == 20 - PASS_PRICE
+    back = _walking(state, POLLNIVNEACH, AL_KHARID_FURNACE, state.inventory[COINS])  # on foot (a teleport may beat it)
+    assert back.on_foot and not back.shantay_pass and not back.toll
     inside = at(BANDIT_CAMP)  # within the desert, nothing to pay
     assert walk(inside, POLLNIVNEACH, 10_000) is not None and inside.location == POLLNIVNEACH
 

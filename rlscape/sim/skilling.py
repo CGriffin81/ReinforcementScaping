@@ -53,8 +53,9 @@ from rlscape.sim.processing import (CHAIN_TICKS, FIRST_TICK, LIGHT_TICKS, RANGE_
                                     BurnLogs, Cook, Smelt, light_chance)
 from rlscape.sim.slots import _fingerprint
 from rlscape.sim.state import INVENTORY_SLOTS, CharacterState
-from rlscape.sim.thieving import (FLEE_TICKS, STEAL_TICKS, SUCCESS_TICKS, Pickpocket, StealFromStall,
-                                  pickpocket_chance, pickpocket_options, stall_options)
+from rlscape.sim.thieving import (ATTEMPT_OVERHEAD_TICKS, FLEE_TICKS, STEAL_TICKS, SUCCESS_TICKS, Pickpocket,
+                                  StealFromStall, pickpocket_chance, pickpocket_options, stall_options)
+from rlscape.sim.transport import home_ready
 from rlscape.sim.woodcutting import AFTER_LOG_TICKS, FELL_CHANCE, SWING_TICKS, Woodcutting, best_hatchet, chop_chance, \
     skill_success_chance, woodcutting_options
 from rlscape.travel import BANKING_TICKS, travel_ticks
@@ -251,7 +252,7 @@ def _unit(path: Path, state: CharacterState, load: int) -> _Unit | None:
                                                    if l.item != gd.CLUE_SLOT_EASY]
         value = sum(w * _mean_amount(l.min_amount, l.max_amount) * values.get(l.item, 0) for l, w in loot)
         slots = sum(w for l, w in loot if l.item not in stackable)
-        per_attempt = p * SUCCESS_TICKS + (1 - p) * target.stun_ticks
+        per_attempt = p * SUCCESS_TICKS + (1 - p) * target.stun_ticks + ATTEMPT_OVERHEAD_TICKS
         return _Unit(per_attempt / p, target.experience, value, slots) if p > 0 else None
     if isinstance(g, StealFromStall):
         stall, n = g.stall, g.notice
@@ -302,7 +303,7 @@ def _fletch_rate(path: FletchAtBank, state: CharacterState, duration_ticks: int)
     load = max(min(held, size) if size is not None else held, 1)
     load_ticks = FLETCH_FIRST + (ceil(load / r.units_per_stage) - 1) * r.stage_ticks + BANKING_TICKS
     bank = nearest_bank(state)
-    travel = travel_ticks(state.location, (bank.x, bank.y, bank.plane)) + BANKING_TICKS
+    travel = travel_ticks(state.location, (bank.x, bank.y, bank.plane), home_ready(state)) + BANKING_TICKS
     loads = min(held / load, max(duration_ticks - travel, 0.0) / load_ticks)
     per_hour = loads * load * TICKS_PER_HOUR / duration_ticks
     gain = r.per_unit * values.get(r.product, 0) - sum(n * values.get(item, 0) for item, n in r.inputs)
@@ -321,7 +322,7 @@ def path_rate(path: Path, state: CharacterState, duration_ticks: int = ACTIVITY_
     if unit is None or unit.ticks <= 0:
         return None
     site = _site(path.gather)
-    travel = travel_ticks(state.location, site)
+    travel = travel_ticks(state.location, site, home_ready(state))
     bank_trip = 2 * _nearest_bank_ticks(site) + BANKING_TICKS
     if path.process is None:
         if unit.slots > 0:  # the inventory fills: a bank trip per load

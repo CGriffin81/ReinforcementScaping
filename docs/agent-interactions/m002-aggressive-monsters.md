@@ -9,7 +9,7 @@
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS (the approved bridge changes built and tested; the stalls' real cause found; Caleb's decisions
   recorded; the aggression rule's details open as OQ-8)
-- Commit: fork `84102f9` (branch `rl`) and the main repo commit that adds this record (branch `sim-v0`; its SHA can only be filled in by a later commit)
+- Commit: fork `84102f9` (branch `rl`) and main repo `346afd8` (branch `sim-v0`)
 
 ## Full Prompt
 

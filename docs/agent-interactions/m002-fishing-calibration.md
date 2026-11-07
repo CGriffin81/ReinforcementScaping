@@ -7,7 +7,7 @@
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS (every fishing case within ±20%; shrimp at Lumbridge Swamp too; Draynor's danger modelled)
-- Commit: the main repo commit that adds this record (branch `sim-v0`; its SHA can only be filled in by a later commit)
+- Commit: main repo `346afd8` (branch `sim-v0`)
 
 ## Full Prompt
 

@@ -7,8 +7,7 @@
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS
-- Commit: fork `1f8665b` (merge into `rl`; fork `master` → `f279da8`); main repo: the commit that adds this record, on
-  branch `sync-upstream-2009scape` (its SHA can only be filled in by a later commit)
+- Commit: fork `1f8665b` (merge into `rl`; fork `master` → `f279da8`); main repo `a99bfb6` (branch `sync-upstream-2009scape`)
 
 ## Full Prompt
 

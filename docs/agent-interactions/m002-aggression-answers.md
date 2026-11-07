@@ -8,7 +8,7 @@
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: PARTIAL (auto-retaliate built and the willows recalibrated; the sim's aggressive monsters not built yet,
   waiting on OQ-8 and OQ-9)
-- Commit: fork `84102f9` (branch `rl`) and the main repo commit that adds this record (branch `sim-v0`; its SHA can only be filled in by a later commit)
+- Commit: fork `84102f9` (branch `rl`) and main repo `346afd8` (branch `sim-v0`)
 
 ## Full Prompt
 

@@ -6,8 +6,10 @@ common drops from the enemy pool. This script applies that rule to the simulator
 the draft proposes it.
 
 The drop ranking repeats the candidate selection the agent sees (3 monsters by XP/hr and 3 by gp/hr per combat
-class) over the calibration bands (env contract §7: levels, gear and quests by band) and 18 hub towns, with loot
-mode "all", and records each drop's expected gp/hr in every selected fight. A drop counts as valuable when its best
+class) over the calibration bands (env contract §7: levels and gear by band; every quest the server has is complete,
+as for a new character since 2026-11-06) and 18 hub towns, with loot mode "all", and records each drop's expected
+gp/hr in every selected fight. Melee and magic also carry an anti-dragon shield, which fights against dragonfire
+monsters put on (bought on the GE since 2026-11-06), so dragons are swept too. A drop counts as valuable when its best
 gp/hr reaches DROP_GP_PER_HOUR somewhere, and as common when it drops in at least MIN_DROP_FIGHTS selected fights.
 
 The `proposed` column is Claude's recommendation, for Caleb to check. Rows the rule names but the recommendation
@@ -25,14 +27,14 @@ import csv
 import sys
 import time
 from collections import defaultdict
+from dataclasses import replace
 from pathlib import Path
 
 from rlscape.combat import formulas as f
-from rlscape.combat.access import Progress
-from rlscape.combat.candidates import Character, enemy_pool, select_candidates
+from rlscape.combat.access import start_progress
+from rlscape.combat.candidates import ANTI_DRAGON_SHIELD, Character, enemy_pool, select_candidates
 from rlscape.combat.rates import Fighter, Plan
 from rlscape.gamedata import server as gd
-from rlscape.quests import QUEST_SET
 from rlscape.sim import fishing, mining, processing, woodcutting
 from rlscape.sim.buying import GE_ITEMS, SHOP_ITEMS
 from rlscape.sim.economy import WITHDRAW_RECIPES
@@ -55,20 +57,6 @@ HUBS = {"Lumbridge": (3222, 3218, 0), "Varrock": (3212, 3424, 0), "Falador": (29
         "Catherby": (2809, 3436, 0), "Yanille": (2606, 3093, 0), "Rellekka": (2643, 3676, 0), "Canifis": (3493, 3488, 0),
         "Port Phasmatys": (3687, 3467, 0), "Shilo": (2852, 2955, 0), "Gnome Stronghold": (2449, 3436, 0),
         "Pollnivneach": (3359, 2974, 0), "Burthorpe": (2899, 3546, 0), "Brimhaven": (2760, 3178, 0)}
-# Quests by band (env contract §7), cumulative.
-EARLY = ("COOKS_ASSISTANT", "SHEEP_SHEARER", "RUNE_MYSTERIES", "ROMEO_JULIET")
-ROUTE = ("COOKS_ASSISTANT", "ROMEO_JULIET", "GOBLIN_DIPLOMACY", "ERNEST_THE_CHICKEN", "PRINCE_ALI_RESCUE",
-         "DRUIDIC_RITUAL", "SHEEP_HERDER", "MURDER_MYSTERY", "PIRATES_TREASURE", "DORICS_QUEST")
-
-
-def quests_for(level: int) -> frozenset[str]:
-    if level >= 51:
-        return frozenset(QUEST_SET)
-    if level >= 31:
-        return frozenset(EARLY + ROUTE)
-    return frozenset(EARLY) if level >= 11 else frozenset()
-
-
 def produced_and_consumed() -> dict[int, set[str]]:
     groups: dict[int, set[str]] = defaultdict(set)
     for tree, _ in woodcutting.SITES.values():
@@ -77,13 +65,15 @@ def produced_and_consumed() -> dict[int, set[str]]:
         groups[gd.rock_types()[rock].reward].add("gathered")
     for gem in mining.GEMS:
         groups[gem].add("gathered")
-    for method, _ in fishing.SITES.values():
+    for method, *_ in fishing.SITES.values():
         for fish in gd.fishing_methods()[method].fish:
             groups[gd.fish_types()[fish].item].add("gathered")
     for tools, inputs in WITHDRAW_RECIPES.values():
         if isinstance(inputs, tuple):
             for item, _ in inputs:
                 groups[item].add("consumed")
+    # what drinking leaves (the lower doses, the vial) stays misc (Caleb, 2026-11-06, OQ-25): only the bought
+    # four-dose potions are in V, and the observation counts each potion's doses
     for option in processing.processing_options():
         if isinstance(option, processing.Smelt):
             groups[option.bar.product].add("processed")
@@ -99,7 +89,6 @@ def smithed_products(option: processing.Smith) -> set[int]:
     """Every item the smith option can make: its best item for each level and number of bars held."""
     out = set()
     state = CharacterState.fresh()
-    state.progress = Progress(quests_complete=frozenset(QUEST_SET))
     state.inventory = {processing.HAMMER: 1}
     for level in range(1, 100):
         state.xp[SKILL_INDEX["smithing"]] = float(XP_FOR_LEVEL[level])
@@ -132,11 +121,16 @@ def drop_sweep() -> dict[int, tuple[float, int, str]]:
                  "ranged": (Fighter(1, 1, level, hp, level, 1, bonuses(gear(RANGED, level)), 4),
                             [Plan("ranged", f.RAPID)]),
                  "magic": (Fighter(1, 1, level, hp, 1, level, bonuses(MAGIC_GEAR), 5), [Plan("magic", spell)])}
+        # the same fighters with the anti-dragon shield in place of the kiteshield (melee) or added (magic)
+        shielded_melee = [ANTI_DRAGON_SHIELD if gd.items()[i].equipment_slot == 5 else i for i in gear(MELEE, level)]
+        dragonfire = {"melee": Fighter(level, level, level, hp, 1, 1, bonuses(shielded_melee), 4),
+                      "magic": Fighter(1, 1, level, hp, 1, level, bonuses(MAGIC_GEAR + [ANTI_DRAGON_SHIELD]), 5)}
         levels = tuple((s, level) for s in ("attack", "strength", "defence", "hitpoints", "ranged", "magic"))
-        progress = Progress(quests_complete=quests_for(level), levels=levels, coins=100 * level * 7)
+        progress = replace(start_progress(), levels=levels, coins=100 * level * 7)
         for hub, location in HUBS.items():
             character = Character(location, hp, hp, 180, 13, 1201 if level >= 40 else None, "all", progress)
-            for combat_class, candidates in select_candidates(pool, plans, character, 1500, k=3).items():
+            for combat_class, candidates in select_candidates(pool, plans, character, 1500, k=3,
+                                                              dragonfire=dragonfire).items():
                 for c in candidates:
                     if c.entry.drops is None:
                         continue

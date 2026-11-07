@@ -6,6 +6,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from rlscape.combat.access import Progress
 from rlscape.gamedata import server as gd
 from rlscape.sim import build_catalog
 from rlscape.sim.buying import (
@@ -33,6 +34,7 @@ needs_server = pytest.mark.skipif(not gd.SERVER_CONFIGS.exists(), reason="server
 IRON_AXE, STEEL_AXE, RUNE_AXE, HAMMER, FISHING_ROD, STAFF_OF_AIR = 1349, 1353, 1359, 2347, 307, 1381
 SHARK, SHARK_NOTE, TUNA, BREAD, AIR, BRONZE_ARROW, IRON_BAR, IRON_BAR_NOTE = 385, 386, 361, 2309, 556, 882, 2351, 2352
 RUNE_HELM, RUNE_BODY, IRON_SCIMITAR, SHORTBOW, BRONZE_SWORD = 1163, 1127, 1323, 841, 1277
+DRAGON_LONGSWORD, BERSERKER_HELM = 1305, 3751
 RNG = np.random.default_rng(0)
 
 
@@ -45,9 +47,9 @@ def character(inventory: dict[int, int], bank: dict[int, int] | None = None, **l
 
 
 @needs_server
-def test_the_catalog_has_133_buys_and_9_withdrawals():
+def test_the_catalog_has_151_buys_and_9_withdrawals():
     ids = [o.id for o in buying_options()]
-    assert sum(i.startswith("buy_ge_") for i in ids) == 96 and sum(i.startswith("buy_shop_") for i in ids) == 37
+    assert sum(i.startswith("buy_ge_") for i in ids) == 114 and sum(i.startswith("buy_shop_") for i in ids) == 37
     assert [i for i in ids if i.startswith("bank_withdraw")] == [
         "bank_withdraw_gear_melee", "bank_withdraw_gear_ranged", "bank_withdraw_gear_magic",
         *(f"bank_withdraw_{food}" for food in FOOD_TIERS), "bank_withdraw_food", "bank_withdraw_for_sale"]
@@ -118,6 +120,7 @@ def test_a_shop_buy_short_of_coins_stops_at_a_bank_first():
 def test_buying_at_zekes_pays_the_al_kharid_toll_too():
     price = purchase_cost(150, IRON_SCIMITAR, 10, 1)
     state = character({COINS: price + TOLL})  # at the Lumbridge spawn, west of the gate
+    state.progress = Progress()  # before Prince Ali Rescue, which a new character has done (no toll)
     BuyShop(IRON_SCIMITAR).run(state, RNG, 10_000)
     assert state.inventory == {IRON_SCIMITAR: 1}
 
@@ -132,7 +135,16 @@ def test_buys_are_masked_unless_affordable_usable_an_upgrade_and_with_room():
     assert not BuyGE(RUNE_AXE).available(character({COINS: rich}, woodcutting=40))
     assert BuyGE(RUNE_AXE).available(character({COINS: rich}, woodcutting=41))  # the tool's level, not Attack's
     assert BuyGE(RUNE_HELM).available(character({COINS: rich}, defence=40))  # pieces: no quest for the helm
-    assert not BuyGE(RUNE_BODY).available(character({COINS: rich}, defence=40))  # the body needs Dragon Slayer
+    assert not BuyGE(DRAGON_LONGSWORD).available(character({COINS: rich}, attack=59))
+    assert BuyGE(DRAGON_LONGSWORD).available(character({COINS: rich}, attack=60))  # Lost City is done (OQ-24)
+    assert BuyGE(BERSERKER_HELM).available(character({COINS: rich}, defence=45))  # the Fremennik Trials too
+    no_quests = character({COINS: rich}, defence=45, attack=60)
+    no_quests.progress = Progress()
+    assert not BuyGE(DRAGON_LONGSWORD).available(no_quests) and not BuyGE(BERSERKER_HELM).available(no_quests)
+    no_quests = character({COINS: rich}, defence=40)
+    no_quests.progress = Progress()
+    assert not BuyGE(RUNE_BODY).available(no_quests)  # the body needs Dragon Slayer
+    assert BuyGE(RUNE_BODY).available(character({COINS: rich}, defence=40))  # which a new character has done
     assert not BuyGE(FISHING_ROD).available(character({COINS: rich}, {FISHING_ROD: 1}))
     assert not BuyGE(STAFF_OF_AIR).available(character({COINS: rich, STAFF_OF_AIR: 1}))
     assert BuyGE(TUNA).available(character({COINS: rich, TUNA: 20}))  # consumables have no upgrade check

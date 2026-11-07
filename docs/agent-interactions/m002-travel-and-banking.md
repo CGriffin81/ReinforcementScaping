@@ -10,8 +10,7 @@
 - Status: PARTIAL (committed as asked; walking routes, the walker, banking clicks and the first travel measurements
   built; the sim's travel on planned routes and the transports are next)
 - Commit: the earlier work is fork `84102f9` (branch `rl`) and main repo `346afd8` (branch `sim-v0`); this work is
-  fork `8fe7cda` (branch `rl`, with the state fields Caleb approved next) and the main repo commit that adds this
-  record (branch `sim-v0`; its SHA can only be filled in by a later commit)
+  fork `8fe7cda` (branch `rl`, with the state fields Caleb approved next) and main repo `da7a105` (branch `sim-v0`)
 
 ## Full Prompt
 

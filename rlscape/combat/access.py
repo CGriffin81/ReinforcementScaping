@@ -33,7 +33,8 @@ MINIQUESTS = frozenset({"PLAYER_SAFETY_TEST"})  # not in the server's Quests enu
 
 @dataclass(frozen=True)
 class Progress:
-    """What the character has done and holds, as far as access is concerned. The default is a fresh character."""
+    """What the character has done and holds, as far as access is concerned. The default has done nothing; a new
+    character starts from start_progress()."""
 
     quests_complete: frozenset[str] = frozenset()
     quests_underway: frozenset[str] = frozenset()
@@ -43,6 +44,15 @@ class Progress:
 
     def level(self, skill: str) -> int:
         return dict(self.levels).get(skill, 1)
+
+
+@cache
+def start_progress() -> Progress:
+    """A new character's progress: every quest the server implements is complete (Caleb, 2026-11-06: quests are out of
+    the experiment, and flagged complete so they block no content). Flags only: the bridge's `spawn` gives the quest
+    points and the unlocks that come with them, no quest XP or items. The quests the server lacks stay incomplete
+    (gd.implemented_quests), and so does the Player Safety test, a miniquest outside the server's quest list."""
+    return Progress(quests_complete=gd.implemented_quests())
 
 
 Term = tuple[str, ...]

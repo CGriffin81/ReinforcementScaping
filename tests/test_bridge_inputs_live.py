@@ -67,6 +67,49 @@ def test_knife_on_logs_then_make_1_arrow_shafts(client, uid, packet):
     assert held(client, uid, LOGS) == 1 and held(client, uid, ARROW_SHAFT) == 15
 
 
+def test_raw_fish_used_on_a_range_cooks_it(client, uid):
+    """`use_item_on` (Caleb, 2026-11-07): raw shrimps on Lumbridge Castle's range (object 114; Cook's Assistant, which
+    `spawn` completes), as a client's UseWithScenery packet. The server walks the character there and cooks it (one
+    raw item cooks at once, CookingRewrite): the shrimps cooked or burnt, and the walk done."""
+    RAW_SHRIMPS = 317
+    for item in {i["id"] for i in client.state(uid)["inventory"]}:
+        client.item_option(uid, item, "Drop")
+    client.wait(2)
+    client.debug_give(uid, RAW_SHRIMPS, 1)
+    client.debug_teleport(uid, 3208, 3214, 0)  # the castle kitchen, a few steps from the range
+    client.wait(2)
+    out = client.use_item_on(uid, RAW_SHRIMPS, "Cooking range", ids=[114])
+    assert out["id"] == 114 and out["queued"]
+    client.wait(12)
+    state = client.state(uid)
+    assert held(client, uid, RAW_SHRIMPS) == 0 and len(state["inventory"]) == 1  # shrimps, or burnt
+    with pytest.raises(Exception, match="none reachable"):
+        client.use_item_on(uid, state["inventory"][0]["id"], "Furnace", radius=10)
+
+
+def test_a_bar_on_an_anvil_and_raw_fish_on_a_range_open_their_interfaces_and_they_stay_open(client, uid):
+    """`use_item_on`: a bronze bar on Varrock's south-east anvil, with a hammer, opens the smithing interface (300);
+    two raw shrimps on Lumbridge Castle's range, cooking's how-many (chatbox 307). The bridge leaves both open for the
+    next click, as it leaves the furnace's bars (311)."""
+    HAMMER, BRONZE_BAR, RAW_SHRIMPS = 2347, 2349, 317
+    for item, amount in ((HAMMER, 1), (BRONZE_BAR, 1), (RAW_SHRIMPS, 2)):
+        client.debug_give(uid, item, amount)
+    client.debug_teleport(uid, 3247, 3407, 0)
+    client.wait(2)
+    client.use_item_on(uid, BRONZE_BAR, "Anvil")
+    client.wait(8)
+    assert client.state(uid)["interface_id"] == 300
+    client.wait(3)
+    assert client.state(uid)["interface_id"] == 300  # still open
+    client.debug_teleport(uid, 3208, 3214, 0)
+    client.wait(2)
+    client.use_item_on(uid, RAW_SHRIMPS, "Cooking range", ids=[114])
+    client.wait(8)
+    assert client.state(uid)["chatbox_id"] == 307
+    client.wait(3)
+    assert client.state(uid)["chatbox_id"] == 307
+
+
 def test_herb_on_tar_answers_its_dialogue_the_next_tick(client, uid):
     """UseWithHandler opens the tar dialogue in a 1-tick pulse, and the bridge leaves a skill dialogue open."""
     for item, amount in ((CLEAN_GUAM, 1), (SWAMP_TAR, 15), (PESTLE_AND_MORTAR, 1)):
@@ -248,8 +291,13 @@ def test_a_bank_opens_deposits_and_withdraws_through_the_players_clicks(client, 
     client.wait(2)
     _tick(client, uid, {"cmd": "interact", "uid": uid, "name": "Bank booth", "option": "Use-quickly", "object": True,
                         "ids": [2213], "packet": True})
-    states = [_tick(client, uid) for _ in range(3)]
-    assert [s["interface"] for s in states[1:]] == [762, 762]
+    # the booth opens the bank a tick or two after the click (one more when the server is loaded, as under the full
+    # suite in parallel); then it stays open
+    states = [_tick(client, uid)]
+    while states[-1]["interface"] != 762 and len(states) < 6:
+        states.append(_tick(client, uid))
+    states.append(_tick(client, uid))
+    assert [s["interface"] for s in states[-2:]] == [762, 762]
     held_before = len(states[-1]["inventory"])
     _tick(client, uid, {"cmd": "interface_button", "uid": uid, "interface": 762, "button": 18, "packet": True})
     assert _tick(client, uid)["chatbox"] == 232  # Deposit Inventory / Worn Equipment / Beast of Burden / Cancel
@@ -260,6 +308,71 @@ def test_a_bank_opens_deposits_and_withdraws_through_the_players_clicks(client, 
     _tick(client, uid, {"cmd": "interface_item", "uid": uid, "interface": 762, "child": 73, "slot": coins,
                         "item": 995, "option": 6, "packet": True})
     assert held(client, uid, 995) == 25
+
+
+def on_ground(client: BridgeClient, uid: int, item: int) -> list[dict]:
+    return [i for i in client.ground_items(uid) if i["id"] == item]
+
+
+@pytest.mark.parametrize("packet", [False, True])
+def test_a_dropped_item_is_seen_on_the_ground_and_taken_back(client, uid, packet):
+    """`ground_items` lists the character's own drop on its tile; `take` walks back to it and picks it up, as a
+    click on the item does; with nothing left to take, it fails."""
+    client.debug_give(uid, BONES, 1)
+    client.item_option(uid, BONES, "Drop")
+    client.wait(2)
+    here = client.state(uid)["location"]
+    assert [(i["location"], i["own"], i["amount"]) for i in on_ground(client, uid, BONES)] == [(here, True, 1)]
+    key = on_ground(client, uid, BONES)[0]["key"]
+    client.walk_to(uid, here["x"] + 3, here["y"], packet=True)
+    client.wait(4)
+    assert [i["key"] for i in on_ground(client, uid, BONES)] == [key]  # the same item, the same key
+    assert client.request("take", uid=uid, item=BONES, packet=packet)["target"] == here
+    client.wait(6)
+    assert held(client, uid, BONES) == 1 and not on_ground(client, uid, BONES)
+    with pytest.raises(Exception, match="none reachable"):
+        client.take(uid, BONES)
+
+
+def test_another_character_doesnt_see_a_drop_while_its_private(client, uid):
+    """Each bridge character has its own account uid (RLPlayer), which drops are private to."""
+    client.debug_give(uid, BONES, 1)
+    client.item_option(uid, BONES, "Drop")
+    client.wait(2)
+    here = client.state(uid)["location"]
+    other = client.spawn()["uid"]
+    try:
+        assert not [i for i in on_ground(client, other, BONES) if i["location"] == here]
+        with pytest.raises(Exception, match="none reachable"):
+            client.take(other, BONES)
+    finally:
+        client.despawn(other)
+
+
+CHICKENS = (3234, 3295, 0)  # the pen north of Lumbridge's cow field
+
+
+def test_a_kills_drop_is_the_killers_own_and_taken_from_its_tile(client, uid):
+    """A chicken always drops bones, which only its killer sees at first; `take` by tile picks them up."""
+    client.debug_set_levels(uid, {"attack": 40, "strength": 40})  # a hit or two a chicken
+    client.debug_teleport(uid, *CHICKENS)
+    client.wait(2)
+    already = {(i["location"]["x"], i["location"]["y"]) for i in on_ground(client, uid, BONES)}
+    client.interact(uid, "Chicken", "Attack", is_object=False)
+    dropped = []
+    for _ in range(40):
+        client.wait(1)
+        dropped = [i for i in on_ground(client, uid, BONES) if (i["location"]["x"], i["location"]["y"]) not in already]
+        if dropped:
+            break
+    assert dropped and dropped[0]["own"]
+    tile = (dropped[0]["location"]["x"], dropped[0]["location"]["y"])
+    client.take(uid, BONES, tile=tile)
+    for _ in range(10):
+        client.wait(1)
+        if held(client, uid, BONES):
+            break
+    assert held(client, uid, BONES) == 1
 
 
 def test_a_planned_route_is_walked_as_clicks(client, uid):
@@ -273,3 +386,65 @@ def test_a_planned_route_is_walked_as_clicks(client, uid):
     moved = sum(max(abs(a[0] - b[0]), abs(a[1] - b[1])) for a, b in zip(walk.tiles, walk.tiles[1:]))
     assert walk.arrived and walk.replans == 0
     assert moved == world.steps((start["x"], start["y"], 0), (3092, 3245, 0))
+
+
+def test_the_home_teleport_waits_30_minutes_of_game_ticks():
+    """The home teleport can be cast once every 3,000 ticks (the fork's cooldown, as in January 2009): cast, then
+    refused with the time left, then cast again once that many ticks have passed. At 15 ms ticks that's 45 seconds."""
+    from rlscape.gamedata.transports import HOME, HOME_COOLDOWN_TICKS, SPELLBOOK
+
+    varrock, cast = (3212, 3428, 0), {"cmd": "interface_button", "interface": SPELLBOOK, "button": 0, "packet": True}
+
+    def home(c: BridgeClient, uid: int) -> dict:
+        state = _tick(c, uid, {**cast, "uid": uid})
+        for _ in range(30):
+            loc = state["location"]
+            if max(abs(loc["x"] - HOME[0]), abs(loc["y"] - HOME[1])) <= 3:
+                break
+            state = _tick(c, uid)
+        return state
+
+    with BridgeClient() as c:
+        c.set_tick_ms(15)
+        uid = c.spawn()["uid"]
+        try:
+            c.debug_teleport(uid, *varrock)
+            c.wait(2)
+            assert c.state(uid)["home_teleport_ready_in"] == 0
+            state = home(c, uid)
+            assert state["location"]["y"] < 3300  # in Lumbridge
+            assert HOME_COOLDOWN_TICKS - 30 <= state["home_teleport_ready_in"] <= HOME_COOLDOWN_TICKS
+            c.debug_teleport(uid, *varrock)
+            c.wait(2)
+            state = home(c, uid)
+            assert state["location"]["y"] > 3400  # still in Varrock
+            assert any("You need to wait another 30 minutes to cast this spell." in m for m in state["messages"])
+            c.wait(state["home_teleport_ready_in"])
+            assert home(c, uid)["location"]["y"] < 3300
+        finally:
+            c.despawn(uid)
+            c.set_tick_ms(600)
+
+
+def test_the_bridge_flicks_protection_so_no_swing_lands_and_no_prayer_drains(client):
+    """`flick`: each tick the bridge clicks Protect from Melee on for a swing due next tick and off after, so a lone
+    hill giant (a swing every 6 ticks) never hits a Defence-1 character, and prayer points never drain (Prayer.tick
+    drains only on even counts of ticks in a row with a prayer on). Without it, the giant hits (the flicking test,
+    decision log 2026-10-31: 13 and 11 hits in 120 ticks)."""
+    uid = client.spawn()["uid"]
+    try:
+        client.debug_set_levels(uid, {"prayer": 43, "hitpoints": 99, "attack": 1, "strength": 1, "defence": 1})
+        client.debug_teleport(uid, 2439, 3214, 0)  # the hill giant's lone spawn (npc 117)
+        client.wait(3)
+        assert client.flick(uid)
+        client.request("interact", uid=uid, name="Hill Giant", option="Attack", object=False, packet=True)
+        client.wait(6)
+        start = client.state(uid)
+        steps = client.schedule([[{"cmd": "state", "uid": uid}] for _ in range(120)])
+        states = [s["results"][0]["state"] for s in steps]
+        assert states[-1]["target"] == "Hill Giant" or any(s["target"] for s in states)  # it fought
+        assert min(s["hitpoints"] for s in states) == start["hitpoints"]  # no swing landed
+        assert states[-1]["prayer_points"] == start["prayer_points"]  # none drained
+        assert sum("PROTECT_FROM_MELEE" in s["prayers"] for s in states) >= 120 // 6 - 1  # on for the swings
+    finally:
+        client.despawn(uid)

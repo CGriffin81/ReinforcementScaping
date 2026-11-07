@@ -129,7 +129,7 @@ def test_the_frozen_buyer_pays_the_2009_price_and_skips_items_without_one():
     state = character({LOGS: 10, LOGS_NOTE: 5, no_price: 1})
     SellGE(vocabulary=frozenset()).run(state, np.random.default_rng(7), 10_000)
     assert state.inventory == {no_price: 1, COINS: 15 * prices[LOGS]}  # banknotes sell as their item
-    assert 1540 not in prices  # the anti-dragon shield is GE-blocked
+    assert prices[1540] == 301  # the anti-dragon shield: on the GE since 2026-11-06 (Caleb), at its 2009 price
 
 
 @needs_server

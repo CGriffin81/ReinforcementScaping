@@ -9,7 +9,9 @@ from rlscape.combat.access import Progress
 from rlscape.gamedata import server as gd
 from rlscape.sim import build_catalog
 from rlscape.sim.fletching import FIRST_TICK, Fletch, FletchAtBank, path_recipes, worth_stringing
+from rlscape.sim.economy import PICKUP_TICKS
 from rlscape.sim.kits import kit
+from rlscape.sim.movement import route_ticks
 from rlscape.sim.skilling import path_options, path_rate
 from rlscape.sim.skills import SKILL_INDEX, XP_FOR_LEVEL
 from rlscape.sim.state import CharacterState
@@ -58,6 +60,7 @@ def test_cutting_takes_a_log_every_3_ticks_after_a_first_tick():
 def test_darts_need_the_tourist_trap_and_come_ten_a_stage():
     craft = Fletch(gd.fletching_recipes()["bronze_dart"])
     state = character({FEATHER: 25, BRONZE_DART_TIP: 25})
+    state.progress = Progress()  # no quests (a new character has done every quest the server has)
     assert not craft.available(state)
     state.progress = Progress(quests_complete=frozenset({"THE_TOURIST_TRAP"}))
     result = craft.run(state, np.random.default_rng(0), 1_000)
@@ -109,5 +112,6 @@ def test_a_fresh_character_takes_the_knife_in_lumbridge_castle():
     state = CharacterState.fresh()
     assert take.available(state)
     result = take.run(state, np.random.default_rng(0), 1_500)
-    assert state.inventory[KNIFE] == 1 and state.location == (3205, 3212, 0) and result.ticks < 30
+    walked = route_ticks(CharacterState.fresh(), (3205, 3212, 0))  # the planned walk through the castle
+    assert state.inventory[KNIFE] == 1 and state.location == (3205, 3212, 0) and result.ticks == walked + PICKUP_TICKS
     assert not take.available(state)  # one is held

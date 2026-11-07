@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
 
-from rlscape.combat.access import Progress, relevant
+from rlscape.combat.access import Progress, relevant, start_progress
 from rlscape.gamedata import server as gd
 from rlscape.sim.skills import SKILL_INDEX, SKILLS, XP_FOR_LEVEL, capped_total_xp, level_for_xp, skill_measure
 
@@ -30,7 +30,7 @@ class CharacterState:
     worn_amounts: dict[int, int] = field(default_factory=dict)
     location: tuple[int, int, int] = SPAWN
     loot_mode: str = "valuable"
-    progress: Progress = Progress()
+    progress: Progress = field(default_factory=start_progress)  # every quest complete (start_progress)
     regen_counter: int = 0  # ticks into the current hitpoint-regeneration cycle (rlscape.sim.health)
     dropped: dict[int, int] = field(default_factory=dict)  # dropped during the current step (the engine reports it)
     gravestone: object | None = None  # rlscape.sim.combat.Gravestone after a death outside the Wilderness
@@ -40,10 +40,17 @@ class CharacterState:
     run_energy: float = 100.0  # % (rlscape.sim.energy); a fresh character has it full
     energy_clock: int = 0  # ticks into the current step that run energy accounts for (rlscape.sim.energy)
     region_since: int = 0  # the tick it entered its map region (64 x 64 tiles): aggression tolerance counts from it
+    home_teleport_ready: int = 0  # the tick from which the home teleport can be cast again (rlscape.sim.transport)
+    poison_severity: int = 0  # the poison on the character (rlscape.sim.health); 0 when there's none
+    poison_clock: int = 0  # ticks into its 30-tick cycle
+    poison_immune_until: int = 0  # the tick an antipoison's immunity runs out (rlscape.sim.health)
+    boosts: dict[str, int] = field(default_factory=dict)  # skill -> a potion's boost, still on (rlscape.sim.potions)
+    antifire_until: int = 0  # the tick an antifire potion's immunity runs out (rlscape.sim.potions)
 
     @classmethod
     def fresh(cls) -> CharacterState:
-        """A level-3 character exactly as it leaves Tutorial Island (env contract §1)."""
+        """A level-3 character exactly as it leaves Tutorial Island, with every quest the server has complete (env
+        contract §1)."""
         xp = [0.0] * len(SKILLS)
         xp[SKILL_INDEX["hitpoints"]] = float(XP_FOR_LEVEL[FRESH_HITPOINTS_LEVEL])
         inventory, bank = gd.starter_kit()
@@ -54,6 +61,10 @@ class CharacterState:
 
     def level(self, skill: str) -> int:
         return level_for_xp(self.xp[SKILL_INDEX[skill]])
+
+    def boosted(self, skill: str) -> int:
+        """The level a potion has raised it to, as fights use it; the level itself without one."""
+        return self.level(skill) + self.boosts.get(skill, 0)
 
     def max_hp(self) -> int:
         return self.level("hitpoints")
