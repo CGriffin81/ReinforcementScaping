@@ -105,7 +105,9 @@ FLY_ROD, FEATHERS, FEATHER_REORDER = 309, 314, 50
 IRON_ARROWS, ARROW_REORDER = 884, 50
 RUNE_REORDER = 30  # casts of the guide's spell held (inventory and bank); below it, its scarcest rune is bought
 FOOD = 10  # pieces of food to keep; raw fish are cooked only below it
-KIT_WITHDRAWAL = {"fish_shrimp": "bank_withdraw_for_fish_shrimp", "fish_fly": "bank_withdraw_for_fish_fly"}
+KIT_WITHDRAWAL = {"fish_shrimp": "bank_withdraw_for_fish_shrimp", "fish_shrimp_swamp": "bank_withdraw_for_fish_shrimp",
+                  "fish_fly": "bank_withdraw_for_fish_fly"}
+DRAYNOR_WIZARDS_PICK = 14  # Draynor's Dark wizards (level 7) pick a character of combat level 14 or less
 COMBAT = ("attack", "strength", "defence")
 SKILLS = (*COMBAT, "ranged", "magic", "prayer", "woodcutting", "firemaking", "fletching", "fishing", "cooking",
           "mining", "smithing", "thieving")  # SCHEDULE: the lowest of these starts the next stint
@@ -158,8 +160,14 @@ def mining_method(state: CharacterState) -> str:
     return "mine_copper" if copper <= tin else "mine_tin"
 
 
+def shrimp_method(state: CharacterState) -> str:
+    """Caleb (2026-11-01): Lumbridge Swamp's shrimp while Draynor's wizards would attack the character, Draynor's
+    (next to its bank) after."""
+    return "fish_shrimp_swamp" if state.combat_level() <= DRAYNOR_WIZARDS_PICK else "fish_shrimp"
+
+
 def fishing_method(state: CharacterState) -> str:
-    return "fish_fly" if state.level("fishing") >= 20 else "fish_shrimp"
+    return "fish_fly" if state.level("fishing") >= 20 else shrimp_method(state)
 
 
 def thieving_methods(level: int) -> list[str]:
@@ -287,6 +295,10 @@ class ScriptedGuidePolicy:
             yield from self._process_carried(state, skill)
             if skill in PROCESSING:
                 yield f"bank_withdraw_for_{PROCESSING[skill]}"
+                if skill == "firemaking":  # no logs to burn (Fletching cuts them all): chop and burn them, as [39]
+                    trees = dict.fromkeys((woodcutting_method(state.level("woodcutting")), "wc_oak", "wc_logs"))
+                    yield from self._slots_holding(env, state, [f"{tree}_burn" for tree in trees])
+                    yield "bank_withdraw_for_woodcutting"  # the axe and tinderbox
             else:
                 for metal in smithing_metals(state.level("smithing")):
                     yield from (f"bank_withdraw_for_smith_{metal}", f"bank_withdraw_for_smelt_{metal}")
@@ -303,7 +315,7 @@ class ScriptedGuidePolicy:
             yield "skill_fletching_xp1"
         else:
             method = self._method(state, skill)
-            fallback = ["fish_shrimp"] if skill == "fishing" else []  # no fly rod or feathers yet
+            fallback = [shrimp_method(state)] if skill == "fishing" else []  # no fly rod or feathers yet
             yield from self._slots_holding(env, state, [method, *fallback])
             yield KIT_WITHDRAWAL.get(method, f"bank_withdraw_for_{skill}")  # its tool from the bank
             if skill == "fishing":

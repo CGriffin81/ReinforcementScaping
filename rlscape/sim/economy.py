@@ -30,12 +30,14 @@ import numpy as np
 
 from rlscape.gamedata import server as gd
 from rlscape.sim.kits import GATHERING_TOOLS, kit
-from rlscape.sim.movement import reachable, route_ticks, walk
+from rlscape.sim.energy import weight
+from rlscape.sim.movement import reachable, route_ticks, toll_exempt, walk
 from rlscape.sim.options import COMPLETED, INPUTS_EXHAUSTED, Option, OptionResult
 from rlscape.sim.processing import HAMMER, TINDERBOX
 from rlscape.sim.shops import PLAYER_STOCK, set_stock, stock
 from rlscape.sim.skills import MAX_XP, SKILL_INDEX
 from rlscape.sim.state import COINS, CharacterState
+from rlscape.sim.transport import home_ready, usable_teleports
 from rlscape.sim.woodcutting import best_tool
 from rlscape.travel import BANKING_TICKS
 
@@ -48,11 +50,13 @@ ALCHEMY = {True: (55, 5, 65.0), False: (21, 3, 31.0)}  # high?: (Magic level, fi
 
 
 def kept_on_deposit(item: int) -> bool:
-    """Tools, food, ammunition, runes and fishing bait stay in the inventory when banking."""
+    """Tools, food, potions (any dose: OQ-25), ammunition, runes and fishing bait stay in the inventory when banking."""
     items, tools = gd.items(), {t.item for t in gd.skilling_tools().values()}
     fishing = {m.tool for m in gd.fishing_methods().values()} | {b for m in gd.fishing_methods().values() for b in m.bait}
     definition = items.get(item)
+    from rlscape.sim.potions import DOSES  # imported here: potions imports health, which the economy's users import
     return (item in tools or item in fishing or item in (HAMMER, TINDERBOX, gd.KNIFE) or item in gd.food_healing()
+            or item in DOSES
             or (definition is not None and (definition.equipment_slot == AMMO_SLOT
                                             or definition.name.lower().endswith(" rune"))))
 
@@ -62,8 +66,24 @@ def is_misc(item: int, vocabulary: frozenset[int]) -> bool:
     return item not in vocabulary and item != COINS and not kept_on_deposit(item)
 
 
+_NEAREST_BANK: dict[tuple, gd.Bank] = {}
+NEAREST_BANK_CACHE = 4096
+
+
 def nearest_bank(state: CharacterState) -> gd.Bank:
-    return min(gd.banks(), key=lambda b: route_ticks(state, (b.x, b.y, b.plane)))
+    """The bank with the shortest walk. Every option that banks asks, and a mask asks once per Fletching path, so it's
+    cached on everything route_ticks depends on: the tile, the coins carried (the Al Kharid toll, the Shantay pass,
+    fares), whether Prince Ali Rescue waives the toll, run energy, weight and Agility, the teleports it can use and
+    whether the home teleport is ready, and quests (boats). Not whether Entrana's monks would let it board: that only
+    matters on Entrana, which has no bank."""
+    key = (state.location, state.inventory.get(COINS, 0), toll_exempt(state), state.run_energy, weight(state),
+           state.level("agility"), usable_teleports(state), home_ready(state), state.progress.quests_complete)
+    bank = _NEAREST_BANK.get(key)
+    if bank is None:
+        if len(_NEAREST_BANK) >= NEAREST_BANK_CACHE:
+            _NEAREST_BANK.clear()
+        bank = _NEAREST_BANK[key] = min(gd.banks(), key=lambda b: route_ticks(state, (b.x, b.y, b.plane)))
+    return bank
 
 
 def bank_trip(state: CharacterState, budget: int) -> int | None:
@@ -297,7 +317,7 @@ class Drop(Option):
         self.item = item
 
     def available(self, state: CharacterState) -> bool:
-        return state.inventory.get(self.item, 0) > 0
+        return state.inventory.get(self.item, 0) > 0 and self.item not in gd.destroy_only_items()
 
     def run(self, state: CharacterState, rng: np.random.Generator, budget: int) -> OptionResult:
         return OptionResult(min(_drop(state, self.item), budget), COMPLETED)
@@ -310,11 +330,15 @@ class DropMisc(Option):
         self.id = "drop_misc"
         self.vocabulary = vocabulary
 
+    def _targets(self, state: CharacterState) -> list[int]:
+        """Misc items the server can drop (destroy-only ones have no Drop)."""
+        return [i for i in state.inventory if is_misc(i, self.vocabulary) and i not in gd.destroy_only_items()]
+
     def available(self, state: CharacterState) -> bool:
-        return any(is_misc(item, self.vocabulary) for item in state.inventory)
+        return bool(self._targets(state))
 
     def run(self, state: CharacterState, rng: np.random.Generator, budget: int) -> OptionResult:
-        ticks = sum(_drop(state, item) for item in [i for i in state.inventory if is_misc(i, self.vocabulary)])
+        ticks = sum(_drop(state, item) for item in self._targets(state))
         return OptionResult(min(max(ticks, 1), budget), COMPLETED)
 
 

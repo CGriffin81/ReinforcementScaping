@@ -7,8 +7,8 @@
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS (committed both repos, pushed, and opened the PR)
-- Commit: fork `99152ea` (branch `rl`) and the main repo commit that adds this record (branch `sim-v0`; its SHA can only be filled in by a later commit). The PR from `sim-v0` to `main` is opened after that
-  commit, so its number goes in a later commit too.
+- Commit: fork `99152ea` (branch `rl`) and main repo `c505d47` (branch `sim-v0`); the PR from `sim-v0` to `main` is
+  [CGriffin81/ReinforcementScaping#6](https://github.com/CGriffin81/ReinforcementScaping/pull/6) (merged).
 
 ## Full Prompt
 

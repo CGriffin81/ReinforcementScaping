@@ -14,6 +14,7 @@ from rlscape.sim.skills import SKILL_INDEX, SKILLS, XP_FOR_LEVEL, capped_total_x
 from rlscape.sim.skilling import slot_holding
 from rlscape.sim.state import SPAWN, CharacterState
 from rlscape.sim.woodcutting import (
+    AFTER_LOG_TICKS,
     SWING_TICKS,
     Site,
     Woodcutting,
@@ -84,12 +85,13 @@ def test_best_hatchet_respects_the_level_requirement():
 
 @needs_server
 def test_sampled_logs_match_the_server_success_chance():
-    """With felling switched off, ticks per log average SWING_TICKS / chop_chance."""
+    """With felling switched off, ticks per log average SWING_TICKS / chop_chance, plus the tick the swing after a log
+    waits (AFTER_LOG_TICKS, measured on the server), for all but the last log."""
     option = Woodcutting("test", 1, Site((3190, 3235, 0), 1, "test"))
     option.tree = dataclasses.replace(option.tree, respawn_min=-1, respawn_max=-1)
     state = with_level(CharacterState.fresh(), "woodcutting", 40)
     state.location = option.site.tile
-    expected = SWING_TICKS / chop_chance(option.tree, best_hatchet(state), 40)
+    expected = SWING_TICKS / chop_chance(option.tree, best_hatchet(state), 40) + AFTER_LOG_TICKS * 26 / 27
     rng, per_log = np.random.default_rng(0), []
     for _ in range(300):
         state.inventory = {BRONZE_AXE: 1}

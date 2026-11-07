@@ -11,11 +11,13 @@ from rlscape.combat.candidates import (
     enemy_pool,
     evaluate,
     loot_per_kill,
+    pickups_per_kill,
     loot_rule,
     travel_ticks,
 )
 from rlscape.combat.rates import Fighter, Plan, Rates, combat_rates
 from rlscape.gamedata import server as gd
+from rlscape.travel import overhead, path
 
 needs_data = pytest.mark.skipif(not (gd.SERVER_CONFIGS.exists() and gd.NPC_DEFINITIONS.exists()),
                                 reason="server submodule or data/npc_definitions.csv missing")
@@ -41,7 +43,8 @@ def test_retreat_filter_needs_one_affordable_kill():
 
 
 def test_travel_counts_plane_and_underground_changes():
-    assert travel_ticks((3200, 3200, 0), (3215, 3200, 0)) == pytest.approx(15 * 1.3 / 1.5)
+    steps = path((3200, 3200, 0), (3215, 3200, 0))[0]  # the planned walk (rlscape.travel)
+    assert travel_ticks((3200, 3200, 0), (3215, 3200, 0)) == pytest.approx(steps / 1.5 + overhead(steps))
     surface_to_dungeon = travel_ticks((3100, 3500, 0), (3100, 3500 + 6400, 0))
     assert surface_to_dungeon == pytest.approx(12)  # same column, one level change
 
@@ -54,6 +57,10 @@ def test_loot_rule_keeps_stackables_and_valuables_only_when_asked():
     assert slots_all == pytest.approx(3) and slots_valuable == pytest.approx(1)  # only the 116 gp hide is >= 100
     assert gp_valuable == pytest.approx(gd.item_values()[1739])
     assert loot_per_kill(cow_drops, loot_rule("none")) == (0.0, 0.0)
+    # a pickup a drop, whatever its amount (rates.with_pickups times them)
+    assert pickups_per_kill(cow_drops, loot_rule("all")) == pytest.approx(3, abs=0.1)  # and, rarely, a stackable
+    assert pickups_per_kill(cow_drops, loot_rule("valuable")) == pytest.approx(1, abs=0.1)
+    assert pickups_per_kill(cow_drops, loot_rule("none")) == 0.0
 
 
 @needs_data
@@ -64,6 +71,33 @@ def test_pool_drops_unattackable_placeholder_and_unkillable_npcs():
     assert "Master Farmer" not in names  # no "Attack" option in the cache
     assert 1935 not in ids  # Ice troll with placeholder stats
     assert not any("dummy" in n.lower() for n in names)
+
+
+@needs_data
+def test_hazards_are_never_targets_there_but_still_aggressors():
+    """Taverley dungeon's Black Knights east of the lesser demons and the moss giants west of the Fishing Guild: no
+    site there, though the monsters' other sites stay; and the aggression model still counts them by a site near
+    them."""
+    from rlscape.sim.aggression import site_aggressors
+
+    knights = next(e for e in enemy_pool() if e.npc.id == 178)
+    spawns = {s.spawn for s in knights.sites}
+    assert (2895, 9710, 0) in spawns and not any(9796 <= y <= 9815 for _, y, _ in spawns)
+    assert sum(a.npc.id == 178 for a in site_aggressors((2940, 9806, 0))) == 2
+    giants = next(e for e in enemy_pool() if e.npc.id == 112)  # west of the Fishing Guild (Caleb, 2026-11-06)
+    spawns = {s.spawn for s in giants.sites}
+    assert (2825, 3249, 0) in spawns and not any(2545 <= x <= 2566 and 3394 <= y <= 3417 for x, y, _ in spawns)
+
+
+@needs_data
+def test_the_yanille_dungeon_is_out_of_the_project():
+    """Caleb, 2026-11-06: no monster in the Yanille Agility Dungeon is a target; the same monsters elsewhere are."""
+    inside = [(e.npc.name, s.spawn) for e in enemy_pool() for s in e.sites
+              if 2544 <= s.spawn[0] <= 2631 and 9481 <= s.spawn[1] <= 9587 and s.spawn[2] == 0]
+    assert inside == []
+    druids = next(e for e in enemy_pool() if e.npc.id == 2547)
+    assert [s.spawn for s in druids.sites] == [(3116, 9926, 0)]  # Edgeville dungeon's
+    assert not any(e.npc.id == 205 for e in enemy_pool())  # Salarin the Twisted spawns only there
 
 
 @needs_data

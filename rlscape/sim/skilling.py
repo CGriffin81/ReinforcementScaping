@@ -38,12 +38,13 @@ import numpy as np
 from rlscape.combat.access import parse_requirement
 from rlscape.gamedata import server as gd
 from rlscape.sim.engine import ACTIVITY_TICKS
+from rlscape.sim.fishing import AFTER_CATCH_TICKS, FIRST_ATTEMPT_TICKS
 from rlscape.sim.fishing import ATTEMPT_TICKS as FISH_TICKS
 from rlscape.sim.economy import nearest_bank
 from rlscape.sim.fishing import Fishing, fishing_options
 from rlscape.sim.fletching import FIRST_TICK as FLETCH_FIRST
 from rlscape.sim.fletching import FletchAtBank, FletchLogs, fletching_paths
-from rlscape.sim.gathering import WALK_BETWEEN_RESOURCES, respawn_ticks
+from rlscape.sim.gathering import respawn_ticks, site_offsets
 from rlscape.sim.kits import kit
 from rlscape.sim.mining import ATTEMPT_TICKS as MINE_TICKS
 from rlscape.sim.mining import Mining, best_pickaxe, mine_chance, mining_options
@@ -52,9 +53,10 @@ from rlscape.sim.processing import (CHAIN_TICKS, FIRST_TICK, LIGHT_TICKS, RANGE_
                                     BurnLogs, Cook, Smelt, light_chance)
 from rlscape.sim.slots import _fingerprint
 from rlscape.sim.state import INVENTORY_SLOTS, CharacterState
-from rlscape.sim.thieving import (FLEE_TICKS, STEAL_TICKS, SUCCESS_TICKS, Pickpocket, StealFromStall,
-                                  pickpocket_chance, pickpocket_options, stall_options)
-from rlscape.sim.woodcutting import FELL_CHANCE, SWING_TICKS, Woodcutting, best_hatchet, chop_chance, \
+from rlscape.sim.thieving import (ATTEMPT_OVERHEAD_TICKS, FLEE_TICKS, STEAL_TICKS, SUCCESS_TICKS, Pickpocket,
+                                  StealFromStall, pickpocket_chance, pickpocket_options, stall_options)
+from rlscape.sim.transport import home_ready
+from rlscape.sim.woodcutting import AFTER_LOG_TICKS, FELL_CHANCE, SWING_TICKS, Woodcutting, best_hatchet, chop_chance, \
     skill_success_chance, woodcutting_options
 from rlscape.travel import BANKING_TICKS, travel_ticks
 
@@ -112,7 +114,7 @@ class Path(Option):
 def _site(gather: Option) -> tuple[int, int, int]:
     """Where a gathering method works: its site, fishing spot or target."""
     if isinstance(gather, Fishing):
-        return gather.spots[0]
+        return gather.start
     return gather.site.tile if isinstance(gather, (Woodcutting, Mining)) else gather.tile
 
 
@@ -188,17 +190,19 @@ REPLAYS = 32  # sampled loads per depleting-site rate, under a fixed seed
 
 
 @lru_cache(maxsize=8192)
-def _depleting(chance: float, attempt_ticks: int, fall: float, respawn: int, resources: int, load: int) -> float:
+def _depleting(chance: float, attempt_ticks: int, fall: float, respawn: int, resources: int, load: int,
+               first: int = 0, between: int = 3, after_success: int = 0) -> float:
     """Ticks per unit over one load of `load` units at a site of `resources` that each deplete with chance `fall`
-    and respawn after `respawn` ticks. A resource that rarely depletes (a tree falls 1 in 8) costs the walk to
+    and respawn after `respawn` ticks, with the site's offsets (rlscape.sim.gathering.site_offsets) and the ticks
+    the attempt after a success waits. A resource that rarely depletes (a tree falls 1 in 8) costs the move to
     another now and then. One that always does (rocks, normal trees) is replayed REPLAYS times under
-    rlscape.sim.gathering's rules, sampling the attempts: whether the site runs out (and the walk is skipped while
+    rlscape.sim.gathering's rules, sampling the attempts: whether the site runs out (and the move is skipped while
     the character waits for a regrowth) depends on how the attempts fall, so the mean time isn't enough."""
     if fall < 1:
-        return attempt_ticks / chance + fall * WALK_BETWEEN_RESOURCES
+        return (first + load * (attempt_ticks / chance + fall * between) + (load - 1) * after_success) / load
     rng, total = np.random.default_rng(0), 0.0
     for _ in range(REPLAYS):
-        standing, regrowing, elapsed = resources, [], 0.0
+        standing, regrowing, elapsed, extra = resources, [], float(first), 0
         for attempts in rng.geometric(chance, size=load):
             while regrowing and regrowing[0] <= elapsed:
                 heapq.heappop(regrowing)
@@ -206,11 +210,12 @@ def _depleting(chance: float, attempt_ticks: int, fall: float, respawn: int, res
             if standing == 0:
                 elapsed = heapq.heappop(regrowing)
                 standing = 1
-            elapsed += attempts * attempt_ticks
+            elapsed += extra + attempts * attempt_ticks
+            extra = after_success
             standing -= 1
             heapq.heappush(regrowing, elapsed + respawn)
             if standing > 0:
-                elapsed += WALK_BETWEEN_RESOURCES
+                elapsed += between
         total += elapsed
     return total / (REPLAYS * load)
 
@@ -222,21 +227,24 @@ def _unit(path: Path, state: CharacterState, load: int) -> _Unit | None:
         tree, p = g.tree, chop_chance(g.tree, best_hatchet(state), state.level("woodcutting"))
         fall = 0.0 if not tree.depletes else 1.0 if tree.always_falls else FELL_CHANCE
         respawn = respawn_ticks(tree.respawn_min, tree.respawn_max)
-        return _Unit(_depleting(round(p, 3), SWING_TICKS, fall, respawn, g.site.resources, load), tree.experience,
-                     values.get(tree.reward, 0), 1.0)
+        first, between = site_offsets(g.site, SWING_TICKS)
+        return _Unit(_depleting(round(p, 3), SWING_TICKS, fall, respawn, g.site.resources, load, first, between,
+                                AFTER_LOG_TICKS), tree.experience, values.get(tree.reward, 0), 1.0)
     if isinstance(g, Mining):
         rock, p = g.rock, mine_chance(g.rock, best_pickaxe(state), state.level("mining"))
         if p <= 0:
             return None
         respawn = respawn_ticks(rock.respawn_min, rock.respawn_max)
-        return _Unit(_depleting(round(p, 3), MINE_TICKS, 1.0, respawn, g.site.resources, load), rock.experience,
-                     values.get(rock.reward, 0), 1.0)
+        first, between = site_offsets(g.site, MINE_TICKS)
+        return _Unit(_depleting(round(p, 3), MINE_TICKS, 1.0, respawn, g.site.resources, load, first, between),
+                     rock.experience, values.get(rock.reward, 0), 1.0)
     if isinstance(g, Fishing):
         fish, weights, p_any = g.catch_odds(state)
         if p_any <= 0:
             return None
         bait = values.get(g.method.bait[0], 0) if g.method.bait else 0
-        return _Unit(FISH_TICKS / p_any, float(np.dot(weights, [f.experience for f in fish])),
+        ticks = FISH_TICKS / p_any + (AFTER_CATCH_TICKS * (load - 1) + FIRST_ATTEMPT_TICKS - FISH_TICKS) / load
+        return _Unit(ticks, float(np.dot(weights, [f.experience for f in fish])),
                      float(np.dot(weights, [values.get(f.item, 0) for f in fish])) - bait, 1.0)
     if isinstance(g, Pickpocket):
         target, p = g.target, pickpocket_chance(g.target, state.level("thieving"))
@@ -244,7 +252,7 @@ def _unit(path: Path, state: CharacterState, load: int) -> _Unit | None:
                                                    if l.item != gd.CLUE_SLOT_EASY]
         value = sum(w * _mean_amount(l.min_amount, l.max_amount) * values.get(l.item, 0) for l, w in loot)
         slots = sum(w for l, w in loot if l.item not in stackable)
-        per_attempt = p * SUCCESS_TICKS + (1 - p) * target.stun_ticks
+        per_attempt = p * SUCCESS_TICKS + (1 - p) * target.stun_ticks + ATTEMPT_OVERHEAD_TICKS
         return _Unit(per_attempt / p, target.experience, value, slots) if p > 0 else None
     if isinstance(g, StealFromStall):
         stall, n = g.stall, g.notice
@@ -295,7 +303,7 @@ def _fletch_rate(path: FletchAtBank, state: CharacterState, duration_ticks: int)
     load = max(min(held, size) if size is not None else held, 1)
     load_ticks = FLETCH_FIRST + (ceil(load / r.units_per_stage) - 1) * r.stage_ticks + BANKING_TICKS
     bank = nearest_bank(state)
-    travel = travel_ticks(state.location, (bank.x, bank.y, bank.plane)) + BANKING_TICKS
+    travel = travel_ticks(state.location, (bank.x, bank.y, bank.plane), home_ready(state)) + BANKING_TICKS
     loads = min(held / load, max(duration_ticks - travel, 0.0) / load_ticks)
     per_hour = loads * load * TICKS_PER_HOUR / duration_ticks
     gain = r.per_unit * values.get(r.product, 0) - sum(n * values.get(item, 0) for item, n in r.inputs)
@@ -314,7 +322,7 @@ def path_rate(path: Path, state: CharacterState, duration_ticks: int = ACTIVITY_
     if unit is None or unit.ticks <= 0:
         return None
     site = _site(path.gather)
-    travel = travel_ticks(state.location, site)
+    travel = travel_ticks(state.location, site, home_ready(state))
     bank_trip = 2 * _nearest_bank_ticks(site) + BANKING_TICKS
     if path.process is None:
         if unit.slots > 0:  # the inventory fills: a bank trip per load

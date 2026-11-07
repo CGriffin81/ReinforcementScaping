@@ -8,11 +8,15 @@ until the time budget, a full inventory, running out of food, or death:
   no food, retreating: the monster gets ESCAPE_ATTACKS more swings and the option ends out_of_food;
 - XP follows CombatSwingHandler: 4 per damage to the style's skill and 1.33 to Hitpoints, for the monster's HP;
   magic also gives the spell's base XP on every cast, hit or splash (MagicSpell.addExperience);
-- each kill rolls its drop table (WeightBasedTable.roll) and keeps what the loot mode picks up;
+- each kill rolls its drop table (WeightBasedTable.roll) and keeps what the loot mode picks up, PICKUP_TICKS a drop
+  (measured, as the overhead);
+- the site has `site.spawns` of the monster, each back `respawn` ticks after it dies: the next kill starts when one
+  is there, after the class's OVERHEAD_TICKS_PER_KILL to reach it (both measured, scripts/calibrate_combat.py). Waiting, nothing
+  attacks;
 - ranged fires one arrow, bolt or thrown weapon per attack from the worn stack (RangeSwingHandler.useAmmo). A shot
   lands under the target with arrow_land_chance (the rest break) and is picked straight back up when the loot mode
-  takes that item, so with looting only broken shots run the stack down. The pick-up time is in the per-kill
-  overhead (calibrate). Magic casts the spell chosen for the fight, paying its runes per cast (a worn elemental staff
+  takes that item, so with looting only broken shots run the stack down. Walking to them is in ranged's
+  PICKUP_TICKS. Magic casts the spell chosen for the fight, paying its runes per cast (a worn elemental staff
   stands in for its rune; MagicStaff). Either ends the option out_of_ammo when the stack or the runes run out,
   charging the attacks made. Casting each spell by hand is assumed, at the autocast rate (5 ticks), so magic
   doesn't need a staff (an agent choice; the server's autocast does).
@@ -34,14 +38,16 @@ from math import ceil, inf
 
 import numpy as np
 
-from rlscape.combat.candidates import PoolEntry, Site
+from rlscape.combat.candidates import PoolEntry, Site, special_damage_shields
 from rlscape.combat.prayers import boosted_swings
-from rlscape.combat.rates import ESCAPE_ATTACKS, OVERHEAD_TICKS_PER_KILL, Plan, npc_offence, player_offence
+from rlscape.combat.rates import (BREATH_CHANCE, DRAGONFIRE_NPCS, ESCAPE_ATTACKS, OVERHEAD_TICKS_PER_KILL,
+                                  PICKUP_TICKS, POISON_CHANCE, Plan, breath_max, npc_offence, player_offence)
 from rlscape.gamedata import server as gd
 from rlscape.sim.energy import MAX_ENERGY
-from rlscape.sim.equipment import WEAPON, fighter_for, ranged_ready, wield_best
-from rlscape.sim.health import eat_one, regenerate, retreat_hp
+from rlscape.sim.equipment import WEAPON, fighter_for, land_chance, ranged_ready, shot_outcomes, wield_best
+from rlscape.sim.health import advance_poison, apply_poison, eat_one, regenerate, retreat_hp
 from rlscape.sim.movement import route_ticks, walk
+from rlscape.sim.potions import drink_antifire, drink_boosts
 from rlscape.sim.options import COMPLETED, DIED, INVENTORY_FULL, OUT_OF_AMMO, OUT_OF_FOOD, Option, OptionResult
 from rlscape.sim.skills import MAX_XP, SKILL_INDEX
 from rlscape.sim.state import CharacterState
@@ -66,23 +72,48 @@ def _amount(entry: gd.DropEntry, rng: np.random.Generator) -> int:
                                                                                            entry.max_amount))
 
 
+def _pick(entries, rng: np.random.Generator) -> gd.DropEntry | None:
+    """One weighted pick, or None from an empty table."""
+    total = sum(e.weight for e in entries)
+    if total <= 0:
+        return None
+    pick = rng.random() * total
+    for entry in entries:
+        pick -= entry.weight
+        if pick <= 0:
+            return entry
+    return entries[-1]
+
+
+def _items(entry: gd.DropEntry, rng: np.random.Generator) -> list[tuple[int, int]]:
+    """What a dropped entry gives (WeightBasedTable.convertWeightedItems): its item, or for a sub-table's slot that
+    table's pick, as many times as its amount for the herb and uncommon seed slots. "Nothing" and clue scrolls give
+    nothing."""
+    if not entry.item_id:
+        return []
+    if not entry.special:
+        return [(entry.item_id, _amount(entry, rng))]
+    table = gd.sub_tables().get(entry.item_id)
+    if table is None:
+        return []  # a clue scroll
+    out = []
+    for _ in range(_amount(entry, rng) if entry.item_id in gd.MULTI_ROLL_SLOTS else 1):
+        picked = _pick(table, rng)
+        if picked is not None and picked.item_id:
+            out.append((picked.item_id, _amount(picked, rng)))
+    return out
+
+
 def roll_drops(table: gd.DropTable | None, rng: np.random.Generator) -> list[tuple[int, int]]:
     """WeightBasedTable.roll: every guaranteed entry, then one weighted pick from each of the main, charm and
-    tertiary tables. "Nothing" and the sub-table placeholders (rare drop table, gems, herbs, seeds, clues) give
-    nothing, as gd.SPECIAL_DROP_SLOTS explains."""
+    tertiary tables; a sub-table's slot rolls that table (_items)."""
     if table is None:
         return []
-    drops = [(e.item_id, _amount(e, rng)) for e in table.guaranteed if e.item_id and not e.special]
+    drops = [item for e in table.guaranteed for item in _items(e, rng)]
     for entries in (table.main, table.charm, table.tertiary):
-        total = sum(e.weight for e in entries)
-        if total > 0:
-            pick = rng.random() * total
-            for entry in entries:
-                pick -= entry.weight
-                if pick <= 0:
-                    if entry.item_id and not entry.special:
-                        drops.append((entry.item_id, _amount(entry, rng)))
-                    break
+        picked = _pick(entries, rng)
+        if picked is not None:
+            drops += _items(picked, rng)
     return drops
 
 
@@ -119,9 +150,9 @@ def attacks_to_kill(hitpoints: int, chance: float, max_hit: int, rng: np.random.
 
 
 def arrow_land_chance(ranged_level: int) -> float:
-    """RangeSwingHandler.useAmmo: a fired shot lands under the target unless randomize(int(5 × (1 + level / 100)))
-    is 0, which breaks it (Ava's devices aren't modelled). 4 in 5 at level 1, 8 in 9 at 99."""
-    return 1 - 1 / int(5 * (1.0 + ranged_level * 0.01))
+    """RangeSwingHandler.useAmmo, with no Ava's device: a fired shot lands under the target unless randomize(int(5 x
+    (1 + level / 100))) is 0, which breaks it. 4 in 5 at level 1, 8 in 9 at 99 (equipment.land_chance)."""
+    return land_chance(ranged_level)
 
 
 def spell_runes(state: CharacterState, spell: str) -> dict[int, int]:
@@ -160,8 +191,10 @@ def _ammunition(state: CharacterState, plan: Plan, attacks: int, rng: np.random.
         if ranged.weapon_type == "DEGRADING":
             return attacks, lambda k: None
         slot = ranged.ammo_slot
-        if ranged.drop_ammo and loot(state.equipment[slot]):  # landed shots come straight back
-            lost = np.cumsum(rng.random(attacks) >= arrow_land_chance(state.level("ranged")))
+        back, landed = shot_outcomes(state)  # Ava's device sends some back to the quiver
+        kept = back + (landed if loot(state.equipment[slot]) else 0.0)  # landed shots come straight back
+        if kept > 0:
+            lost = np.cumsum(rng.random(attacks) >= kept)
         else:
             lost = np.arange(1, attacks + 1)
 
@@ -206,6 +239,9 @@ def die(state: CharacterState, now: int) -> None:
     for item in kept:
         state.add(item)
     state.hp, state.location, state.run_energy = state.max_hp(), RESPAWN, MAX_ENERGY  # Player.finalizeDeath
+    state.poison_severity = state.poison_clock = state.poison_immune_until = 0  # both timers clear on death
+    state.boosts, state.antifire_until = {}, 0  # the stats are restored; the immunity clears
+    state.region_since = now  # respawned into Lumbridge's region
 
 
 def fight(state: CharacterState, rng: np.random.Generator, budget: int, entry: PoolEntry, plan: Plan, site: Site,
@@ -217,17 +253,30 @@ def fight(state: CharacterState, rng: np.random.Generator, budget: int, entry: P
         detail = {"target": npc.id, "target_name": npc.name, "style": plan.style, "site": site.spawn, "kills": kills}
         return OptionResult(ticks, termination, regenerated, detail)
 
+    def poisoned_to_death(ticks: int) -> OptionResult | None:
+        """After time passed outside a kill's swings (poison advanced in bulk): the death, if the poison killed."""
+        if state.hp > 0:
+            return None
+        die(state, state.tick + ticks)
+        return done(max(ticks, 1), DIED)
+
     elapsed = walk(state, site.spawn, budget)
     if elapsed is None:
         return done(budget, COMPLETED, regenerated=False)
     regenerate(state, elapsed)
-    wielding = wield_best(state, plan.combat_class)
+    if (dead := poisoned_to_death(elapsed)) is not None:
+        return dead
+    wielding = wield_best(state, plan.combat_class, special_damage_shields(entry.npc))  # its anti-dragon shield
     elapsed = min(elapsed + wielding, budget)
+    ready = [0] * max(site.spawns, 1)  # when each of the site's monsters is next there to fight (ticks into the option)
     while True:
         if state.hp <= retreat_hp(state):
             if not eat_one(state):
                 return done(max(elapsed, 1), OUT_OF_FOOD)
             continue
+        if (drank := drink_boosts(state, plan.combat_class)) and elapsed + drank >= budget:
+            return done(budget, COMPLETED)
+        elapsed += drank  # potions, if it carries them (rlscape.sim.potions)
         fighter = fighter_for(state)
         chance, max_hit, speed, _, xp_per_damage = player_offence(fighter, plan, npc)
         boosted_chance, boosted_max, _, _, _ = player_offence(fighter, plan, npc, boosted=True)
@@ -235,6 +284,16 @@ def fight(state: CharacterState, rng: np.random.Generator, budget: int, entry: P
         boosted = None
         if (boosted_chance, boosted_max) != (chance, max_hit):
             boosted = (boosted_chance, boosted_max, boosted_swings(int(speed), npc.attack_speed))
+        here = min(range(len(ready)), key=ready.__getitem__)  # the one back first
+        if ready[here] > elapsed:  # every one of them is dead: wait for a respawn
+            if ready[here] >= budget:
+                regenerate(state, budget - elapsed)
+                return poisoned_to_death(budget) or done(budget, COMPLETED)
+            regenerate(state, ready[here] - elapsed)
+            elapsed = ready[here]
+            if (dead := poisoned_to_death(elapsed)) is not None:
+                return dead
+            continue  # eat, if the poison brought HP to the retreat point
         dealt = kill_sequence(npc.hitpoints, chance, max_hit, rng, boosted)
         possible, pay = _ammunition(state, plan, len(dealt), rng, loot)
         if possible == 0:
@@ -250,9 +309,18 @@ def fight(state: CharacterState, rng: np.random.Generator, budget: int, entry: P
         ticks = possible * speed
         swings = int(ticks // npc.attack_speed)
         hits = (rng.random(swings) < npc_chance) * rng.integers(0, npc_max + 1, swings)
-        ended, eating = None, 0
+        if npc.id in DRAGONFIRE_NPCS:  # a third of its swings are breath, behind the shield the gear check requires
+            elapsed += drink_antifire(state, state.tick + elapsed)
+            fire = breath_max(state.tick + elapsed < state.antifire_until)
+            hits = np.where(rng.random(swings) < BREATH_CHANCE, rng.integers(0, fire + 1, swings), hits)
+        ended, eating, poisoned_to = None, 0, 0  # poisoned_to: ticks into the kill the poison has been advanced to
         for j, hit in enumerate(hits):
+            swing_at = (j + 1) * npc.attack_speed + eating
+            advance_poison(state, swing_at - poisoned_to, state.tick + elapsed + poisoned_to)
+            poisoned_to = swing_at
             state.hp -= int(hit)
+            if npc.poisonous and rng.random() < POISON_CHANCE:
+                eating += apply_poison(state, npc.poison_amount, state.tick + elapsed + swing_at)  # a dose drunk
             if state.hp > 0 and state.hp <= retreat_hp(state):
                 if eat_one(state):
                     eating += EAT_DELAY_TICKS
@@ -267,7 +335,10 @@ def fight(state: CharacterState, rng: np.random.Generator, budget: int, entry: P
                 fought = min((j + 1) * npc.attack_speed + eating, ticks, budget - elapsed)
                 charge(min(int(fought // speed), possible))
                 elapsed += fought
-                regenerate(state, fought)
+                regenerate(state, fought, poison=False)
+                advance_poison(state, max(fought - poisoned_to, 0))
+                if ended == OUT_OF_FOOD and state.hp <= 0:
+                    ended = DIED  # the poison went on
                 if ended == DIED:
                     die(state, state.tick + elapsed)
                 return done(max(elapsed, 1), ended)
@@ -276,19 +347,32 @@ def fight(state: CharacterState, rng: np.random.Generator, budget: int, entry: P
             fought = min(ticks + eating, budget - elapsed)
             charge(min(int(fought // speed), possible))
             elapsed += fought
-            regenerate(state, fought)
-            return done(max(elapsed, 1), OUT_OF_AMMO)
-        step = ticks + eating + OVERHEAD_TICKS_PER_KILL
+            regenerate(state, fought, poison=False)
+            advance_poison(state, max(fought - poisoned_to, 0))
+            return poisoned_to_death(elapsed) or done(max(elapsed, 1), OUT_OF_AMMO)
+        step = ticks + eating + OVERHEAD_TICKS_PER_KILL[plan.combat_class]
         if elapsed + step > budget:
-            regenerate(state, budget - elapsed)
-            return done(budget, COMPLETED)
+            regenerate(state, budget - elapsed, poison=False)
+            advance_poison(state, max(budget - elapsed - poisoned_to, 0))
+            return poisoned_to_death(budget) or done(budget, COMPLETED)
+        ready[here] = elapsed + ticks + eating + npc.respawn  # it died at the end of the fight
         elapsed += step
-        regenerate(state, step)
+        regenerate(state, step, poison=False)
+        advance_poison(state, max(step - poisoned_to, 0))
         charge(possible)
         kills += 1
-        for item, amount in roll_drops(entry.drops, rng):
-            if loot(item):
-                state.add(item, amount)
+        if (dead := poisoned_to_death(elapsed)) is not None:
+            return dead  # after the kill, before the loot
+        picked = sum(1 for item, amount in roll_drops(entry.drops, rng) if loot(item) and state.add(item, amount))
+        if picked:  # a pickup each, after the kill
+            pickup = min(PICKUP_TICKS[plan.combat_class] * picked, budget - elapsed)
+            elapsed += pickup
+            regenerate(state, pickup, poison=False)
+            advance_poison(state, pickup)
+            if (dead := poisoned_to_death(elapsed)) is not None:
+                return dead
+            if elapsed >= budget:
+                return done(budget, COMPLETED)
         if state.free_slots() == 0 and any(loot(i) and i not in stackable for i, _ in (entry.drops.expected_items()
                                                                                        .items() if entry.drops else ())):
             return done(elapsed, INVENTORY_FULL)

@@ -37,6 +37,7 @@ SKILLING_TOOL = SERVER_CONTENT / "data" / "skill" / "SkillingTool.java"
 COMBAT_SPELL_DIR = SERVER_CONTENT.parent / "core" / "game" / "node" / "entity" / "combat" / "spell"
 MODERN_SPELLS = SERVER_CONTENT / "global" / "skill" / "magic" / "modern"
 PRICES = REPO / "data" / "prices_v2.csv"
+AVA_INTERFERENCE = REPO / "data" / "ava_interference.csv"
 ITEM_DEFINITIONS = REPO / "data" / "item_definitions.csv"  # scripts/export_item_definitions.py (cache)
 NPC_DEFINITIONS = REPO / "data" / "npc_definitions.csv"  # scripts/export_npc_definitions.py (cache)
 BANKS = REPO / "data" / "banks.csv"  # curated bank tiles; see the file's "check" column
@@ -79,6 +80,8 @@ class Npc:
     protect_style: str | None  # the combat class this NPC is immune to, if any
     aggressive: bool
     poisonous: bool
+    respawn: int = 17  # ticks from its death to its respawn (respawn_delay; NPC.java's default 17)
+    poison_amount: int = 0  # the severity its swings poison with (poison_amount), if poisonous
 
     @property
     def melee_attack_type(self) -> int:
@@ -108,11 +111,44 @@ class DropEntry:
     def special(self) -> bool:
         return self.item_id in SPECIAL_DROP_SLOTS
 
+    def expected(self, stacks: bool = False) -> dict[int, float]:
+        """The expected count of each item this entry gives when it drops: its item, or for a sub-table's slot what
+        that table gives (WeightBasedTable.convertWeightedItems); "nothing" and clue scrolls give nothing. With
+        `stacks`, the expected number of ground items instead: one a drop, whatever its amount."""
+        if not self.item_id:
+            return {}
+        if not self.special:
+            return {self.item_id: 1.0 if stacks else self.mean_amount}
+        table = sub_tables().get(self.item_id, ())
+        rolls = self.mean_amount if self.item_id in MULTI_ROLL_SLOTS else 1.0
+        total, out = sum(e.weight for e in table), {}
+        for entry in table:
+            if entry.item_id and total > 0:
+                amount = 1.0 if stacks else entry.mean_amount
+                out[entry.item_id] = out.get(entry.item_id, 0.0) + rolls * entry.weight / total * amount
+        return out
+
 
 # WeightBasedTable's placeholder ids that stand for a sub-table, not an item: the rare drop table (31), clue scrolls
 # (1, 5733, 12070), CELEDT (799), and the uncommon seed, herb, gem, rare seed and allotment seed tables (14422-14430).
-# Their sub-tables aren't modelled yet, so they count as nothing (understating some monsters' loot).
 SPECIAL_DROP_SLOTS = frozenset({31, 1, 5733, 12070, 799, 14422, 14424, 14426, 14428, 14430})
+# The shared sub-tables (data/configs/shared_tables/*.xml) the slots roll, ported 2026-11-06 after the drop probe
+# (scripts/probe_drops.py). Clue scrolls aren't modelled: they drop nothing.
+SUB_TABLE_FILES = {31: "RDT", 799: "CELEDT", 14422: "USDT", 14424: "HDT", 14426: "GDT", 14428: "RSDT", 14430: "ASDT"}
+MULTI_ROLL_SLOTS = frozenset({14422, 14424})  # WeightBasedTable.isSpecialSlot: these roll random(min, max) times
+
+
+@cache
+def sub_tables() -> dict[int, tuple[DropEntry, ...]]:
+    """Slot id -> its shared sub-table's entries (id 0 is nothing; the rare drop table keeps its nothings, which only
+    a ring of wealth removes). Each is one weighted pick: RareDropTable's roll, and for the others
+    RandomFunction.rollWeightedChanceTable."""
+    out = {}
+    for slot, name in SUB_TABLE_FILES.items():
+        text = (SERVER_CONFIGS / "shared_tables" / f"{name}.xml").read_text(encoding="utf-8")
+        out[slot] = tuple(DropEntry(int(i), int(low), int(high), float(w)) for i, low, high, w in re.findall(
+            r'<item id="(\d+)" minAmt="(\d+)" maxAmt="(\d+)" weight="([\d.]+)"', text))
+    return out
 
 
 @dataclass
@@ -124,17 +160,19 @@ class DropTable:
     charm: list[DropEntry] = field(default_factory=list)
     tertiary: list[DropEntry] = field(default_factory=list)
 
-    def expected_items(self) -> dict[int, float]:
-        """Expected count of each item per kill."""
+    def expected_items(self, stacks: bool = False) -> dict[int, float]:
+        """Expected count of each item per kill, the sub-tables' included; with `stacks`, of its ground items (a
+        pickup each)."""
         expected: dict[int, float] = {}
         for entry in self.guaranteed:
-            if entry.item_id and not entry.special:
-                expected[entry.item_id] = expected.get(entry.item_id, 0.0) + entry.mean_amount
+            for item, count in entry.expected(stacks).items():
+                expected[item] = expected.get(item, 0.0) + count
         for table in (self.main, self.charm, self.tertiary):
             total = sum(e.weight for e in table)
             for entry in table:
-                if entry.item_id and not entry.special and total > 0:
-                    expected[entry.item_id] = expected.get(entry.item_id, 0.0) + entry.weight / total * entry.mean_amount
+                if total > 0:
+                    for item, count in entry.expected(stacks).items():
+                        expected[item] = expected.get(item, 0.0) + entry.weight / total * count
         return expected
 
     def expected_value(self, values: dict[int, int]) -> float:
@@ -159,6 +197,22 @@ def _int(value, default: int) -> int:
         return int(value)
     except (TypeError, ValueError):
         return default
+
+
+@cache
+def ava_interfering_items() -> frozenset[int]:
+    """Chest armour that stops Ava's devices: chest pieces whose worn model is one of AvasDevice.metalBodies (the
+    server's own list, exported by scripts/export_ava_interference.py). Only the chest slot counts."""
+    with AVA_INTERFERENCE.open(newline="", encoding="utf-8") as f:
+        return frozenset(int(r["item_id"]) for r in csv.DictReader(f))
+
+
+@cache
+def destroy_only_items() -> frozenset[int]:
+    """Items whose inventory option is Destroy, not Drop (item_configs' destroy flag: Ava's devices, quest items,
+    Slayer heads). The server has no Drop for them (checked live for Ava's devices, 2026-11-07)."""
+    return frozenset(int(raw["id"]) for raw in json.loads((SERVER_CONFIGS / "item_configs.json").read_text(
+        encoding="utf-8")) if raw.get("destroy") == "true")
 
 
 @cache
@@ -204,6 +258,8 @@ def npcs() -> dict[int, Npc]:
             protect_style=COMBAT_STYLES[int(protect)] if protect not in (None, "") else None,
             aggressive=raw.get("aggressive") == "true",
             poisonous=raw.get("poisonous") == "true",
+            respawn=_int(raw.get("respawn_delay"), 17),
+            poison_amount=_int(raw.get("poison_amount"), 0),
         )
     return out
 
@@ -315,6 +371,28 @@ def quest_names() -> frozenset[str]:
 
 
 @cache
+def implemented_quests() -> frozenset[str]:
+    """The quests the server has (a Quest subclass it registers, @Initializable), by Quests enum name: 68 of the
+    enum's 150. The bridge's `spawn` completes exactly these. The server can't mark the others complete: content
+    behind one stays shut, or (where it checks ContentAPI.hasRequirement) opens once the character meets that quest's
+    own requirements, which the sim doesn't model. A live test checks the list against the running server's."""
+    out = set()
+    for path in SERVER_CONTENT.rglob("*"):
+        if path.suffix not in (".kt", ".java"):
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        found = re.search(r":\s*Quest\(\s*Quests\.([A-Z_0-9]+)", text) or (
+            re.search(r"extends\s+Quest\b", text) and re.search(r"super\(\s*Quests\.([A-Z_0-9]+)", text))
+        if found and re.search(r"^\s*@Initializable", text, re.M):  # not commented out (unfinished quests)
+            out.add(found.group(1))
+    return frozenset(out - UNREGISTERED_QUESTS)
+
+
+# Marked @Initializable, but the running server doesn't register it: not in QuestRepository (checked live, 2026-11-06)
+UNREGISTERED_QUESTS = frozenset({"A_SOULS_BANE"})
+
+
+@cache
 def starter_kit() -> tuple[tuple[tuple[int, int], ...], tuple[tuple[int, int], ...]]:
     """(inventory, bank) as (item id, amount): what a character leaves Tutorial Island with. CharacterDesign's
     STARTER_PACK and STARTER_BANK, which the bridge's `spawn` also gives."""
@@ -421,6 +499,17 @@ def rock_types() -> dict[int, RockType]:
             out[label] = RockType(label, int(f["reward"]), int(f["level"]), float(f["experience"]),
                                   float(f["rate"]), *_respawn_bounds(f["respawnRate"]))
     return out
+
+
+@cache
+def rock_objects() -> dict[int, frozenset[int]]:
+    """MiningNode identifier -> the scenery ids of its rocks with ore (each enum entry is `(full, empty, identifier)`),
+    so a click can pick one ore's rocks at a mixed mine."""
+    out: dict[int, set[int]] = {}
+    for full, _, ident in re.findall(r"^\s*[A-Z_0-9]+\(\s*(\d+),\s*(\d+),\s*\(byte\)\s*(\d+)\)",
+                                     MINING_NODE.read_text(encoding="utf-8"), re.M):
+        out.setdefault(int(ident), set()).add(int(full))
+    return {k: frozenset(v) for k, v in out.items()}
 
 
 @dataclass(frozen=True)
@@ -896,6 +985,26 @@ def fish_spot_locations() -> dict[str, tuple[tuple[int, int, int], ...]]:
     return {name: tuple((int(x), int(y), int(z)) for x, y, z in
                         re.findall(r"Location\(\s*(\d+),\s*(\d+),\s*(\d+)\s*\)", body))
             for name, body in re.findall(r"^\s*([A-Z_]+)\(\s*((?:\s*Location\([^)]*\),?)+)\s*\)", text, re.M)}
+
+
+@cache
+def fish_spot_counts() -> dict[str, int]:
+    """FishSpots group -> the fishing spot NPCs spawned on its tiles (any kind: they block each other's moves)."""
+    ids = set().union(*fishing_spot_ids().values())
+    spawned = [tuple(t) for i in ids for t in spawns().get(i, ())]
+    return {name: sum(t in set(tiles) for t in spawned) for name, tiles in fish_spot_locations().items()}
+
+
+@cache
+def fishing_spot_ids() -> dict[str, frozenset[int]]:
+    """FishingOption name -> the fishing spot NPC ids that offer it (FishingSpot: each entry's ids and options), so a
+    click can pick a spot of the right kind where several kinds sit together."""
+    out: dict[str, set[int]] = {}
+    text = (FISH_SPOTS.parent / "FishingSpot.kt").read_text(encoding="utf-8")
+    for ids, options in re.findall(r"intArrayOf\(([^)]*)\)\s*,((?:\s*FishingOption\.[A-Z_]+,?)+)", text):
+        for option in re.findall(r"FishingOption\.([A-Z_]+)", options):
+            out.setdefault(option, set()).update(int(i) for i in re.findall(r"FISHING_SPOT_(\d+)", ids))
+    return {k: frozenset(v) for k, v in out.items()}
 
 
 @dataclass(frozen=True)

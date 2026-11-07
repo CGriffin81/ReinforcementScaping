@@ -85,6 +85,7 @@ def test_smithing_makes_the_most_bars_per_item_the_level_allows():
 def test_the_lumbridge_range_needs_cooks_assistant():
     state = character({RAW_SHRIMPS: 1})
     state.location = (3211, 3215, 0)  # standing in the castle kitchen
+    state.progress = Progress()  # no quests (a new character has done every quest the server has)
     assert nearest_station(state, "range").name != "Lumbridge Castle"
     state.progress = Progress(quests_complete=frozenset({"COOKS_ASSISTANT"}))
     assert nearest_station(state, "range").name == "Lumbridge Castle"
@@ -95,6 +96,7 @@ def test_burn_rate_matches_the_range_bounds():
     option, rng, cooked, total = Cook("cook_fish"), np.random.default_rng(2), 0, 0
     for _ in range(300):
         state = character({RAW_SHRIMPS: 20}, cooking=10)
+        state.progress = Progress()  # no Cook's Assistant: the Lumbridge Castle range would cook better
         option.run(state, rng, 10_000)  # Al Kharid range: the plain range bounds
         cooked += state.inventory.get(SHRIMPS, 0)
         total += 20

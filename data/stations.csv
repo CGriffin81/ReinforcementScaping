@@ -1,6 +1,6 @@
 kind,name,x,y,plane,object,requires,check
 furnace,Lumbridge,3226,3254,0,,,"from the server: SmeltingPulse's Lumbridge diary check, Location(3226, 3254)"
-furnace,Edgeville,3107,3500,0,,,"from the server: SmeltingPulse's Varrock armour check, Location(3107, 3500)"
+furnace,Edgeville,3107,3500,0,26814,never,"from the server: SmeltingPulse's Varrock armour check, Location(3107, 3500); locked: FurnaceOptionPlugin refuses object 26814 (its Smelt option and ore used on it) until the Varrock Diary's easy tasks are done, which no character does (checked 2026-11-07)"
 furnace,Al Kharid,3274,3186,0,,,estimate; verify
 furnace,Falador,2974,3369,0,,,estimate; verify
 anvil,Varrock south-east,3247,3404,0,,,"from the server: SmithingPulse's Varrock diary check, Location(3247, 3404)"

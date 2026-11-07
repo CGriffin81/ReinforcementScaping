@@ -8,7 +8,7 @@
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: PARTIAL (the decision recorded and the offensive prayers tested live; the sim side not built)
-- Commit: the main repo commit that adds this record (branch `sim-v0`; its SHA can only be filled in by a later commit)
+- Commit: main repo `c505d47` (branch `sim-v0`)
 
 ## Full Prompt
 

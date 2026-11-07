@@ -9,8 +9,10 @@ import pytest
 from rlscape.combat import formulas as f
 from rlscape.combat.access import Progress
 from rlscape.combat.candidates import Character, enemy_pool, select_candidates
+from rlscape import travel
 from rlscape.combat.rates import Plan, combat_rates
 from rlscape.gamedata import server as gd
+from rlscape.gamedata.transports import HOME
 from rlscape.sim import Simulator, build_catalog
 from rlscape.sim.equipment import fighter_for, wield_best
 from rlscape.sim.skills import SKILL_INDEX, XP_FOR_LEVEL
@@ -20,7 +22,7 @@ from rlscape.vocabulary import vocabulary
 
 needs_data = pytest.mark.skipif(not (gd.SERVER_CONFIGS.exists() and gd.NPC_DEFINITIONS.exists()),
                                 reason="server submodule or data/npc_definitions.csv missing")
-SHRIMPS, BREAD, BRONZE_SWORD, WOODEN_SHIELD = 315, 2309, 1277, 1171
+SHRIMPS, BREAD, BRONZE_SWORD, WOODEN_SHIELD, BRONZE_DAGGER = 315, 2309, 1277, 1171, 1205
 SHORTBOW, BRONZE_ARROW, MIND_RUNE = 841, 882, 558
 
 
@@ -59,17 +61,20 @@ def test_slots_are_the_reference_ranking_for_the_character_as_armed():
     state = sim.reset(seed=0)
     slots = next(o for o in sim.options if o.family == "combat").slots
     # By hand, for each class: what its fight wields from the starter kit, the free slots that leaves (18 used at
-    # spawn), 10 HP, 8 HP of starter food, the valuable loot mode, and fresh access.
+    # spawn), 10 HP, 8 HP of starter food, the valuable loot mode, fresh access, the home teleport ready, and where a
+    # character with no coins can get to (no boats, no Shantay pass).
     melee = armed_by_hand({3: BRONZE_SWORD, 5: WOODEN_SHIELD})  # 12 free
     ranged = armed_by_hand({3: SHORTBOW, 13: BRONZE_ARROW}, {13: 25})  # two-handed, so no shield; 12 free
-    magic = armed_by_hand({5: WOODEN_SHIELD})  # no staff in the kit; wind strike (25 air, 15 mind runes); 11 free
+    # no staff in the kit; the bronze dagger (+1 magic attack) and the shield; wind strike (25 air, 15 mind runes)
+    magic = armed_by_hand({3: BRONZE_DAGGER, 5: WOODEN_SHIELD})  # 12 free
     # Ammunition: unlimited for melee; 25 arrows of which 4 in 5 land and are picked back up: 125 shots in
     # expectation; 15 casts of wind strike (the mind runes run out first).
     cases = {"melee": (melee, 12, WOODEN_SHIELD, [Plan("melee", s) for s in MELEE_STYLES], inf),
              "ranged": (ranged, 12, None, [Plan("ranged", s) for s in RANGED_STYLES], 25 / (1 / 5)),
-             "magic": (magic, 11, WOODEN_SHIELD, [Plan("magic", "wind_strike")], 15)}
+             "magic": (magic, 12, WOODEN_SHIELD, [Plan("magic", "wind_strike")], 15)}
     for combat_class, (armed, free, shield, plans, attacks) in cases.items():
-        character = Character(SPAWN, 10, 10, 8, free, shield, "valuable", Progress(), attacks)
+        character = Character(SPAWN, 10, 10, 8, free, shield, "valuable", Progress(), attacks, True,
+                              travel.reach(SPAWN, (HOME,), (), False))
         reference = select_candidates(enemy_pool(), {combat_class: (fighter_for(armed), plans)}, character,
                                       1500, vocabulary=frozenset(vocabulary()))[combat_class]  # the catalog's V
         ours = [slots.candidate(state, combat_class, i) for i in range(len(reference))]

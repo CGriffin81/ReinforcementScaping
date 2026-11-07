@@ -13,9 +13,9 @@ from rlscape.sim.skilling import slot_holding
 from rlscape.sim.state import CharacterState
 from rlscape.combat.access import rules_at
 from rlscape.sim.combat import in_wilderness
-from rlscape.sim.thieving import (FLEE_TICKS, LEFT_OUT, PICKPOCKET_TARGETS, STALLS, STEAL_TICKS, SUCCESS_TICKS,
-                                  StealFromStall, pickpocket_chance, pickpocket_options, server_random,
-                                  stall_options)
+from rlscape.sim.thieving import (ATTEMPT_OVERHEAD_TICKS, FLEE_TICKS, LEFT_OUT, PICKPOCKET_TARGETS, STALLS,
+                                  STEAL_TICKS, SUCCESS_TICKS, StealFromStall, pickpocket_chance,
+                                  pickpocket_options, server_random, stall_options)
 
 needs_server = pytest.mark.skipif(not gd.SERVER_CONTENT.exists(), reason="server submodule missing")
 COINS, SHRIMPS, BREAD, LOBSTER = 995, 315, 2309, 379
@@ -87,10 +87,10 @@ def test_fresh_character_pickpockets_until_the_food_runs_out():
 
 @needs_server
 def test_sampled_coin_rate_matches_the_success_chance():
-    """With HP to spare (no eating), coins per tick = 3p / (2p + 5(1 - p))."""
+    """With HP to spare (no eating), coins per tick = 3p / (2p + 5(1 - p) + the measured overhead an attempt)."""
     option = pickpocket_options()[0]  # men
     p = pickpocket_chance(option.target, 40)
-    expected = 3 * p / (SUCCESS_TICKS * p + option.target.stun_ticks * (1 - p))
+    expected = 3 * p / (SUCCESS_TICKS * p + option.target.stun_ticks * (1 - p) + ATTEMPT_OVERHEAD_TICKS)
     rng, coins, ticks = np.random.default_rng(2), 0, 0
     for _ in range(300):
         state = with_level(with_level(CharacterState.fresh(), "hitpoints", 99), "thieving", 40)

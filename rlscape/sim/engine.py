@@ -7,13 +7,14 @@ option families exist to make an action space worth encoding.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import numpy as np
 
 from rlscape.sim.energy import rest
+from rlscape.sim.combat import die
 from rlscape.sim.health import regenerate
-from rlscape.sim.options import COMPLETED, HORIZON, Option
+from rlscape.sim.options import COMPLETED, DIED, HORIZON, Option
 from rlscape.sim.skills import SKILLS
 from rlscape.sim.state import CharacterState
 
@@ -72,6 +73,9 @@ class Simulator:
             raise RuntimeError(f"option {option.id!r} took {result.ticks} ticks with a budget of {budget}")
         if not result.regenerated:
             regenerate(state, result.ticks)
+        if state.hp <= 0:  # poison, in an option that doesn't fight (fights handle their own deaths)
+            die(state, state.tick + result.ticks)
+            result = replace(result, termination=DIED)
         rest(state, result.ticks - state.energy_clock)  # run energy: the ticks not spent walking
         state.tick += result.ticks
         truncated = state.tick >= self.horizon_ticks

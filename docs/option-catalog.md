@@ -1,6 +1,8 @@
-# Option Catalog (v1.2, Signed off)
+# Option Catalog (v1.3, Signed off)
 
-**Status:** v1.2, 2026-10-30. It replaces §8's buying table with Caleb's buying decisions (2026-10-29 and 30): the
+**Status:** v1.3, 2026-11-06: quests are out, and every quest the server has is complete from the start (Caleb;
+§10); the anti-dragon shield, the dragon dagger and longsword and the Fremennik helms are bought on the GE (§4.B,
+§8), and *V* has 27 more items (§9). v1.2, 2026-10-30, replaces §8's buying table with Caleb's buying decisions (2026-10-29 and 30): the
 buy actions, the gear and food withdrawals (§5), and run energy and weight for travel. It also adds `smith_mithril`
 (§3), so bought mithril bars can be smithed. v1.1 (2026-10-28) added five more trainable skills for sim v1 (§3.5);
 Fletching has since been brought into sim v0 (2026-10-31, §2), and the other four's options are an open question
@@ -31,7 +33,7 @@ The world is members-enabled (`rl.conf`), so members areas are allowed.
 | Id | Region | Bank used | Notes |
 |---|---|---|---|
 | `lumbridge` | Lumbridge castle and grounds | castle bank (top floor) | spawn point; range in the castle kitchen |
-| `lumbridge_swamp` | Lumbridge Swamp | Draynor | copper / tin mine; *verify* |
+| `lumbridge_swamp` | Lumbridge Swamp | Draynor | copper / tin mine; *verify*; net fishing |
 | `lumbridge_farms` | cow and chicken fields east of the river | castle bank | `CowKiller`, `ChickenKiller` |
 | `draynor` | Draynor Village | Draynor bank | willows, oaks, net fishing (`DraynorWillows`, `DraynorFisher`) |
 | `varrock` | Varrock | west / east banks | anvil (`VarrockSmither`), south-east mine |
@@ -73,7 +75,11 @@ the strung bow is worth more than the unstrung bow and the bowstring (Caleb): ma
 shortbows. On 2009Scape every one of these is a queued script that a walk or any other action clears (checked
 live), so fletching can't be done on the move or between other actions.
 
-That's 79 paths: woodcutting 12, fishing 6, mining 5, thieving 20, fletching 36.
+That's 83 paths: woodcutting 12, fishing 8, mining 7, thieving 20, fletching 36. Mining's include iron at the Al
+Kharid mine (Caleb, 2026-10-31), kept or smelted, beside Varrock's: scorpions roam it, so it costs a low-level miner
+hitpoints (below). Fishing's include shrimp at Lumbridge Swamp (Caleb, 2026-11-01), kept or cooked, beside
+Draynor's: Draynor's spots are next to the bank, but its Dark wizards make them dangerous for a character of combat
+level 14 or less.
 
 **Rates** come from an analytic model of the same mechanics, over an option of D ticks, as the combat ranker values
 fights: the time, XP and value (`data/prices_v2.csv`) of a unit at the site; for trees and rocks that deplete, a
@@ -94,6 +100,7 @@ The paths' gathering methods (their ids are the path ids of the kept paths):
 | `mine_iron` | Mining 15, pickaxe | iron ore | varrock |
 | `mine_coal` | Mining 30, pickaxe | coal | falador |
 | `fish_shrimp` | Fishing 1, small net | raw shrimps / anchovies | draynor |
+| `fish_shrimp_swamp` | Fishing 1, small net | raw shrimps / anchovies | lumbridge_swamp (its three net spots) |
 | `fish_fly` | Fishing 20, fly rod, feathers in the inventory | raw trout / salmon | barbarian_village |
 | `fish_lobster` | Fishing 40, lobster pot | raw lobster | catherby |
 | `pickpocket_men` | Thieving 1 | 3 coins (stackable, so it never fills the inventory) | lumbridge |
@@ -215,9 +222,9 @@ dragon NPC handlers):
 
 | Special damage | Protection required to qualify |
 |---|---|
-| Dragonfire (all dragons) | anti-dragon shield equipped. It comes only from Duke Horacio, once Dragon Slayer is underway (§10). An antifire potion is a v1 option. |
+| Dragonfire (all dragons) | an anti-dragon shield worn or carried: a fight against a dragonfire monster puts a carried one on (`wield_best`'s `protect`), and the ranking rates the monster for the character wearing it. Bought on the GE since 2026-11-06 (Caleb; §8). Behind the shield a third of a dragon's swings are breath, 0 to 5 each (`rlscape.combat.rates`); an antifire potion carried stops it (shield and potion: complete immunity, as in 2009), and the ranking takes off the share its doses cover |
 | Monsters that block a combat style (`protect_style`) | ruled out for the blocked class only |
-| Poison | no gear check; poison damage is to be added to the expected-damage estimate (**not implemented yet**) |
+| Poison | no gear check; its damage is in the expected damage (2026-11-06): a poisonous monster's swings poison 4 times in 10, hit or miss, so a protection prayer doesn't stop it, and the poison hits every 30 ticks (`rlscape.combat.rates`). Antipoison carried (§8) takes off the share its doses cover: a dose cures it and keeps it off for 150 ticks, or 600 for the super, and fights drink one when poisoned |
 | Slayer-gear monsters (wall beasts, banshees and so on) | already Slayer-locked; also need their item |
 
 The dragonfire list comes from the server's NPC classes: `ChromaticDragonNPC`, `MetalDragonNPC`,
@@ -238,6 +245,16 @@ holds or what it's doing must be available.
   this rule the agent could farm, say, level-90 zombies with level-10 stats. The rule flags 124 of 1,184 attackable
   spawned NPCs.
 - **unkillable training dummies are excluded:** the server fully restores ids 4474 and 7891.
+- **hazards aren't targets where they spawn** (`HAZARDS`, Caleb, 2026-11-05): Taverley dungeon's two Black
+  Knights east of the lesser demons, whom the server doesn't let a character attack; only that pair (Caleb,
+  2026-11-06), since the dungeon's other Black Knights fight as usual. The four moss giants west of the Fishing
+  Guild too (Caleb, 2026-11-06), for the same reason; the other moss giants stay targets.
+- **the Yanille Agility Dungeon is out of the project** (`IGNORED_AREAS`, Caleb, 2026-11-06): no monster in it is a
+  target (zombies, a giant bat, skeletons, poison spiders, chaos druids, Salarin the Twisted); the same monsters
+  elsewhere are. Its inner room is past a pile of rubble that takes Agility 67, and Salarin there, whom only the
+  strike spells hurt, holds a character in single combat. They stay in the world, so as aggressive
+  monsters they still attack a gathering character near them (§2); a fight ignores them, as it does every monster
+  but its target. Monsters near a fight are measured on the server before they're modelled (OQ-19, answered).
 - **each monster keeps one site per map region** (a spawn and its nearest bank, from `data/banks.csv`). Each decision
   picks the site with the best rate from the character's location, counting the walk there and the bank trips.
 
@@ -303,7 +320,8 @@ any other. Dying there loses everything but 3 items, because there's no gravesto
 - Light sources (the server has no dark zones) and Slayer gear (earmuffs, face masks) aren't modelled. Slayer gear
   doesn't matter while Slayer stays at 1.
 
-Quests are agent options (§10). While one is underway, its monsters and the areas it opens are available.
+Quests aren't options (§10): every quest the server has is complete from the start, so the areas those quests open are
+available, and the monsters fought only while a quest is underway never are.
 
 ### Inventory and travel in the rates (implemented)
 
@@ -312,10 +330,58 @@ A candidate's XP/hr and gp/hr cover the option's whole duration, not just the fi
   arrows, banknotes, summoning charms) cost no new slot.
 - **Bank trips:** each full inventory costs the round trip to the site's nearest bank, plus 8 ticks of banking.
 - **Getting there:** the walk from the character's location is taken out of the option's duration.
+- **Between kills** (measured on the server, 2026-11-05): 10 ticks to find and reach the next monster for melee, 8
+  for ranged (magic as ranged, uncalibrated). Where a site has few of the monster, kills wait for respawns: at most
+  one every (respawn + fighting) / spawns ticks, with the spawns within 15 tiles and the monster's respawn delay. So
+  of two sites, the one with more of the monster can be worth the longer walk.
 
-Travel is straight-line tile distance × 1.3 at 1.5 tiles per tick, plus 12 ticks per change of plane or
-underground. Dungeons sit 6,400 tiles north of the surface they lie under. All of these constants are to be
-calibrated on the server.
+Travel (Caleb, 2026-11-01) is the planned route on the server's own collision map (`rlscape/routes.py`,
+`data/travel/`) in steps, at 1.5 tiles per tick for estimates (walks use run energy), plus the measured overheads
+(2.3 ticks to start, 0.083 a step) and 12 ticks per change of plane or underground. Upper floors and dungeons are
+anchored at the surface tile they lie over or under (dungeons sit 6,400 tiles north of it). The planner crosses the
+Wilderness ditch, the Gnome Stronghold's gate and the Grand Tree's doors, and the Al Kharid toll gate when the toll
+is paid. Off its map, or upstairs or underground where it can't join two places (their stairs and ladders aren't
+mapped yet), it's still straight-line distance × 1.3. The server walker clicks along the same routes.
+
+**Unreachable places (Caleb, 2026-11-01).** A place no way the model knows reaches, for any character, is
+unreachable: walking, the crossings, the Shantay gate, every teleport and every boat, from Lumbridge. That's 231 of
+the 2,792 places the sim travels to, mostly quest areas no way the model knows reaches, and pens and cells. A place the character
+can't get to now (an island without the fare or a teleport) is unreachable for it until it can: its options are
+masked, and the combat slots skip it. Ways the model doesn't know yet (some items, Agility shortcuts, quest steps)
+are OQ-16.
+
+**Transports (Caleb, 2026-11-01; built).** Travel includes the home teleport, the standard teleport spells, every
+teleport jewellery item at every charge (usable and buyable at any charge), the teleport tablets, the Grand seed pod,
+the fixed ships and the charters (`rlscape/gamedata/transports.py`, from
+the server's source and data). Every walk takes the fastest way the character can use at the time, paying for it,
+on both backends: walking; a teleport, then a walk; a walk to a boat, the boat, then a walk; or a teleport, a walk,
+a boat and a walk. What it can use depends on its levels, its quests, and the runes (or staves), coins, jewellery
+or tablets it carries; teleports aren't possible above Wilderness level 20 (jewellery: 30), and Entrana's boat
+takes no one with weapons or armour. Jewellery loses a charge per use; tablets and seed pods are used up. The home
+teleport is free, once every 30 minutes (Caleb, 2026-11-01; a fork change, counted in game ticks). Travel estimates
+for candidates take the better of walking and the home teleport then a walk, when it's ready; trips an option repeats
+(bank trips) walk. The Ectophial is left out: this server doesn't implement Ghosts Ahoy (Caleb, 2026-11-01). The times are measured on the server: 27 trips, every one within ±20% (decision log, 2026-11-01). The
+teleport items aren't in *V* yet.
+
+### Aggressive monsters at gathering sites (Caleb, 2026-10-31; implemented)
+
+A gathering option (woodcutting, mining, fishing) follows Caleb's rule when an aggressive monster attacks
+(`rlscape/sim/aggression.py`):
+- auto-retaliate is off, so attacks don't stop the gathering (checked on the server);
+- it fights only a trivial monster: the setup's max hit is at least half the monster's hitpoints, and the monster's
+  max hit is under a quarter of the character's hitpoints as the fight starts;
+- when its hitpoints fall under twice the monster's max hit, it runs out of the monster's aggressive range, eats
+  (or waits) until that's no longer so, and walks back.
+
+Which monsters: the aggressive, attackable ones spawned within 10 tiles of the site, that pick a character whose
+combat level is at most twice their own, until it has spent 1,000 ticks in the map region (the server's tolerance,
+in game ticks on the fork). How often they attack and how long running away takes are measured at Draynor's willows
+(a Dark wizard: once every 29 ticks), at Al Kharid's iron (a scorpion: once every 20 ticks) and at Draynor's shrimp
+spots, where nothing blocks the wizards: one engages a low-level fisher about once every 221 ticks, casts every 5
+ticks until the fisher runs, and goes on casting as it runs, so about half its runs away end in death. Other sites use
+the willows' until calibrated. Safespotting (Caleb): the server runner gathers from a tile no aggressive melee monster
+that would pick the character can hit (the bridge's `safespots`), when there's one at the site; the sim has it in
+the measured attack rate. Al Kharid's iron has none for a low-level miner: its five scorpions reach every rock.
 
 ### Prayers in fights (Caleb, 2026-10-31; implemented)
 
@@ -329,7 +395,7 @@ that's on only in the ticks that need it never drains (checked live), so prayer 
   ranged prayers (accuracy and max hit) or the Mystic prayers (accuracy). Not on a tick next to a monster swing,
   since two ticks in a row would drain. A monster starts swinging on the character's swing ticks, so with two even
   attack speeds that never happens.
-- Chivalry and Piety need King's Ransom, outside the quest set.
+- Chivalry and Piety need King's Ransom, which the server doesn't have, so they stay locked.
 
 The candidate rates, the danger filter and the sim's fights all use it, so a monster whose style the character can
 protect against deals no damage, and training Prayer opens harder monsters.
@@ -367,8 +433,8 @@ is never a no-op (agent choice, 2026-10-29).
 | `bank_withdraw_<food>` | one per GE food tier (mackerel, tuna, monkfish, shark): walk to the nearest bank, bank the banknotes held of that food, and withdraw it into the free slots. 4 actions (§8). |
 | `bank_deposit_worn` | walk to the nearest bank; bank the worn gear (the banker's "deposit worn items"), except what `bank_deposit` keeps (tools, ammunition), so a worn axe or pickaxe stays on. Masked unless something else is worn (§8). |
 | `bank_withdraw_for_sale` | walk to the nearest bank and take out produce to sell, as banknotes (the bank's withdraw-as-note setting), so each item's stack fits in one slot, the most valuable stacks first, up to the free slots. Produce is what `bank_deposit` banks, apart from the gear the character would take out to fight (`bank_withdraw_gear_<class>`) and items that neither note nor stack. Caleb, 2026-10-30. |
-| `drop_<item>` | drop every unit of one vocabulary item from the inventory (dropped items leave net worth) |
-| `drop_misc` | drop every non-vocabulary item |
+| `drop_<item>` | drop every unit of one vocabulary item from the inventory (dropped items leave net worth); masked for items the game offers Destroy for, not Drop (Ava's devices) |
+| `drop_misc` | drop every non-vocabulary item, but those the game offers Destroy for |
 | `reclaim_gravestone` | after a death outside the Wilderness: walk back to the gravestone and take back everything in it. Masked unless a gravestone exists and the walk fits in its remaining time (it lasts 200 ticks; env contract §1). |
 
 ## 6. Magic: alchemy
@@ -407,7 +473,7 @@ run energy and weight in `rlscape/sim/energy.py`).
     ticks.
   - **Paying:** the coins for the whole purchase must be in the inventory.
 
-**Actions** (133 buys; every shop kept, including those that never beat the GE on price):
+**Actions** (151 buys; every shop kept, including those that never beat the GE on price):
 
 | Group | Items | GE | Shop | Lot |
 |---|---|---|---|---|
@@ -425,8 +491,14 @@ run energy and weight in `rlscape/sim/energy.py`).
 | Processing inputs | raw trout, lobster, swordfish; oak, willow, maple, yew logs; iron, steel, mithril bars | all 10 | none | 1,000 |
 | Fletching (2026-10-31) | knife | yes | none | 1 |
 | Fletching inputs (2026-10-31) | bowstring; bronze to rune arrowtips and dart tips; bronze to runite unfinished bolts (19) | all | none | 1,000 |
+| Anti-dragon shield (2026-11-06) | the anti-dragon shield, masked while one is held | yes | none | 1 |
+| Quest weapons (2026-11-06, OQ-24) | dragon dagger and longsword (Attack 60, Lost City), a melee tier above rune | both | none | 1 |
+| Quest helms (2026-11-06, OQ-24) | berserker, archer, farseer and warrior helms (Defence 45, the Fremennik Trials) | all 4 | none | 1 |
+| Antipoison (2026-11-06) | antipoison(4) and super antipoison(4), one a buy so each comes as a potion | both | none | 1 |
+| Combat potions (2026-11-06) | attack, strength, defence, their supers, ranging, magic (4); fights drink to keep the boost (`rlscape.sim.potions`) | all 8 | none | 1 |
+| Antifire (2026-11-06) | antifire potion(4); fights against dragons drink one when the last runs out | yes | none | 1 |
 
-That's 96 GE actions and 37 shop actions. A knife is also free: `take_knife` (§5) picks up Lumbridge Castle's. Every bought item joins the vocabulary *V* (§9), so its sell, alch and
+That's 114 GE actions and 37 shop actions. A knife is also free: `take_knife` (§5) picks up Lumbridge Castle's. Every bought item joins the vocabulary *V* (§9), so its sell, alch and
 drop actions exist.
 
 **How a buy works:**
@@ -453,6 +525,9 @@ drop actions exist.
   - **Shops only:** in stock.
 - **Armour as pieces:** the rune full helm, platelegs and kiteshield can be bought at Defence 40; only the rune
   platebody waits for Dragon Slayer.
+- **The quest gear** is scored like the rest: the dragon longsword beats the rune scimitar, the dragon dagger
+  doesn't; the berserker and warrior helms beat the rune full helm on defence. The archer and farseer helms' ranged
+  and magic bonuses count for nothing until armour is chosen per combat class (see "Not used").
 
 **Food:** four GE tiers and bread.
 
@@ -538,11 +613,28 @@ consumed, 57 more bought, and the 50 drops. Noted items count as their items; co
 a 2009 GE price and can be alched.
 
 Every other item is **misc**. It still counts in net worth, and is handled by the `*_misc` actions. *V* is fixed
-before training, so the action space doesn't change during the study. Sim v1's four skills and quests will add
-items; *V* is revisited when they're specified (`docs/open-questions-log.md`, OQ-2).
+before training, so the action space doesn't change during the study. Sim v1's four skills will add items; *V* is
+revisited when they're specified (`docs/open-questions-log.md`, OQ-2).
 
-**Size (*V* = 176: the 156 accepted and 20 fletching inputs added by the same rule on 2026-10-31; selling as "all
-in the inventory"):**
+**Redrafted with every quest complete (Caleb, 2026-11-06; OQ-23).** The rule, rerun with every quest the server has
+complete and an anti-dragon shield against dragonfire, proposes 179 items. The 16 not in *V* were added: the shield;
+from dragons, dragon bones, green and blue dragonhide, adamantite ore and a rune dagger; from Morytania and Port
+Phasmatys, Blamish shells, snails, raw chicken, two seeds and a mithril chainbody; a vial of water and a mithril 2h
+sword. Nothing was taken out, though 13 items in *V* aren't proposed now (decision log). The quest gear the buy
+list took on (OQ-24) joined as bought items, and once the drop tables' shared sub-tables were modelled (the rare
+drop table, gems, herbs, seeds), the rule proposed 5 more, added by Caleb: rune arrows, the tooth half of a key, a
+rune 2h sword, an earth talisman and mithril bolts. Then the potions (Caleb): antipoison, super antipoison, the
+eight combat potions and antifire, the four-dose potions alone (OQ-25, Caleb). The lower doses aren't in *V* but
+stay consumable: fights drink any dose, deposits keep them, the misc actions leave them be, and the observation
+counts each potion's doses (env contract §3). Then Ava's attractor and accumulator, which the GE sells at Caleb's
+prices (2026-11-07). They're untradeable in the game, so their alchemy, store-sale and drop actions stay masked (the
+game offers Destroy, not Drop); the GE buys them back at the same prices. A ranged fight wears the best device
+carried (no other fight does), with its attraction off: it saves ammunition, and the accumulator, which needs
+Ranged 50, also gathers the shots its catch misses that would land (Caleb, OQ-28). 216 in all.
+
+**Size (*V* = 216: the 156 accepted, 20 fletching inputs added by the same rule on 2026-10-31, 38 on 2026-11-06 and 2
+on 2026-11-07;
+selling as "all in the inventory"):**
 
 | Group | Actions |
 |---|---|
@@ -550,12 +642,11 @@ in the inventory"):**
 | Processing | 10 |
 | Combat | 30 |
 | Loot mode | 4 |
-| Inventory | 2 deposits + 10 processing withdrawals + 5 gathering-kit withdrawals + 1 take knife + 177 drops (176 + misc) + 1 reclaim gravestone + 3 gear + 4 food tiers + 1 any food + 1 for sale = 205 |
-| Alchemy | 354 (high and low, 177 each) |
-| Selling | 354 (GE and store, 177 each) |
-| Buying | 133 (96 at the GE, with the knife and 19 fletching inputs; 37 at shops) |
-| **Total in sim v0** | **1,110** |
-| Quests (sim v1) | 21 |
+| Inventory | 2 deposits + 10 processing withdrawals + 5 gathering-kit withdrawals + 1 take knife + 217 drops (216 + misc) + 1 reclaim gravestone + 3 gear + 4 food tiers + 1 any food + 1 for sale = 245 |
+| Alchemy | 434 (high and low, 217 each) |
+| Selling | 434 (GE and store, 217 each) |
+| Buying | 153 (116 at the GE, with the knife, 19 fletching inputs, the anti-dragon shield, 6 quest items, 2 antipoisons, 8 combat potions and antifire, and Ava's 2 devices; 37 at shops) |
+| **Total in sim v0** | **1,330** |
 
 Each *V* item adds 7 observation features: its inventory and bank counts, and its 5 actions' mask entries (env
 contract §3).
@@ -566,92 +657,20 @@ decisions, because activities stop at a full inventory.
 
 ## 10. Quests
 
-### Decisions (Caleb, 2026-10-27)
+**Out of the experiment (Caleb, 2026-11-06).** There are no quest options. Every quest the server has is complete from
+the start, so no quest blocks content (env contract §1, v1.12):
+- **Which:** the 68 quests the server registers, worth 126 quest points (`gd.implemented_quests`). The `Quests` enum
+  lists 150; the server can't complete the other 82, and the sim keeps the content behind them shut (the decision
+  log has the server's rule for them).
+- **Flags only:** the quest points and the unlocks come with them, no quest XP or items. The bridge's `spawn` sets
+  them (`RLCommands.completeEveryQuest`).
+- **What that opens:** 21 of the access table's 55 rules (Morytania, Crandor, West Ardougne, the Fremennik Isles,
+  Waterbirth, Trollheim and others), 123 quest-locked items (the rune platebody and green d'hide body, the dragon
+  dagger and longsword, the crystal bow and shield, the Fremennik Trials' gear), the toll gate, the Lumbridge Castle
+  range, darts, and quest-locked teleports and charters. Herblore and Runecrafting need no quest work in sim v1.
+- **The anti-dragon shield is bought on the GE** (Caleb, 2026-11-06, OQ-22), at its January 2009 price of 301 gp,
+  reversing the 2026-10-27 decision that it come only from Duke Horacio. `rl.conf` blocks nothing on the GE now. The
+  Duke would still give one (`DukeHoracioDialogue`), but there's no option to ask him (§4.B, §8).
 
-- **Every quest should eventually be completable by the agents.** That's a long-term goal: the server implements
-  70 quests worth 132 quest points.
-- **This stage's quest set** is the curated 32-quest-point route **plus Waterfall Quest, the nine backups, and
-  Dragon Slayer**. That's 21 quests.
-- **Dragon Slayer unlocks rune platebodies and green d'hide bodies.** Caleb confirmed this and the server
-  enforces it (`ItemQuestRequirementListener`). The exact list is every rune platebody, including trimmed and god
-  versions, and the green d'hide body, including trimmed. Blue, red and black d'hide bodies aren't locked.
-- **The anti-dragon shield is only obtainable from Duke Horacio,** who gives one once Dragon Slayer is underway,
-  or again after it's complete if it was lost (`DukeHoracioDialogue`).
-  - The fork's new setting `world.ge_blocked_items` stops the GE trading it at all: no buying from the frozen
-    seller, no selling, no bot stock. `rl.conf` sets it to `1540,1541` (the shield and its banknote).
-  - No authentic shop or drop table has it. The only shop that lists it ("Magic Emporium", 150,000 stock) has no
-    NPC attached and is among the inauthentic shops the catalog excludes.
-  - The shield has no equip requirement, so once the Duke hands it over it can be worn freely.
-
-So the path to dragons is a chain of investments:
-
-> 32 quest points → start Dragon Slayer → the Duke's shield → dragons in the enemy pool (green dragon bones
-> 1,908 gp each) and, after Elvarg, rune platebodies.
-
-That's the kind of delayed payoff H1 tests.
-
-### The quest set (21 quests, all implemented in 2009Scape)
-
-Requirements come from `core/game/requirement/Requirement.kt` (`QuestRequirements`). Quest points come from each
-quest class's constructor. The "involves" column is a summary to *verify on the server* while each executor
-script is written.
-
-**The 32-quest-point route**
-
-| Quest | QP | Where | Involves | Combat |
-|---|---|---|---|---|
-| Cook's Assistant | 1 | Lumbridge | egg, bucket of milk, pot of flour; 300 Cooking XP | none |
-| Romeo & Juliet | 5 | Varrock | messages, cadava berries, the apothecary | none |
-| Goblin Diplomacy | 5 | Goblin Village | three goblin mails, dyed | goblins, for mail |
-| Ernest the Chicken | 4 | Draynor Manor | lever puzzle, oil can, pressure gauge, rubber tube | none |
-| Prince Ali Rescue | 3 | Al Kharid, Draynor | disguise, key imprint, rope, beer | none |
-| Druidic Ritual | 4 | Taverley | four raw meats dipped in the Taverley Dungeon cauldron | animated armour nearby (*risk*) |
-| Sheep Herder | 4 | East Ardougne | protective clothing (100 gp), herd sheep | none |
-| Murder Mystery | 3 | Sinclair Mansion | clues and fingerprints | none |
-| Pirate's Treasure | 2 | Port Sarim, Karamja, Falador | rum smuggling, dig in Falador Park | gardener (level 4) |
-| Doric's Quest | 1 | north of Falador | clay, copper and iron ore; 1,300 Mining XP | none |
-
-**For XP**
-
-| Quest | QP | Reward |
-|---|---|---|
-| Waterfall Quest | 1 | 13,750 Attack + 13,750 Strength XP; no combat |
-
-**Former backups, now in the set**
-
-| Quest | QP | Requirement or note |
-|---|---|---|
-| Witch's Potion | 1 | kill a rat; 325 Magic XP |
-| Imp Catcher | 1 | four beads from imps |
-| The Restless Ghost | 1 | skeleton (level 13) |
-| Rune Mysteries | 1 | errand |
-| Sheep Shearer | 1 | spin wool |
-| Monk's Friend | 1 | errand |
-| Black Knights' Fortress | 3 | needs 12 QP |
-| Vampire Slayer | 3 | Count Draynor (level 34) |
-| Demon Slayer | 3 | Delrith (level 27) |
-
-**Goal**
-
-| Quest | QP | Requirement or note |
-|---|---|---|
-| Dragon Slayer | 2 | needs 32 QP; three map pieces, a ship to Crandor, Elvarg (level 83); the Duke's shield is needed for Elvarg |
-
-**Total available:** 32 + 1 + 15 + 2 = **50 quest points**. The 32 needed for Dragon Slayer can come from any mix
-of them, so the agent decides which quests are worth their time.
-
-### How quests become options
-
-- **One action per quest**, `quest_<name>`, which runs the quest from its current stage to completion.
-- It's masked until the quest's requirements are met: skills, quest points and prerequisite quests.
-- Items the quest needs are bought or gathered inside the option, so its duration and coin cost include them.
-- Quests whose last step is a fight (Vampire Slayer, Demon Slayer, Dragon Slayer, The Restless Ghost) only
-  unlock once that fight passes the danger filter (§4.B) for the character's current stats, gear and food.
-- While a quest is underway, its monsters join the enemy pool and the areas it opens join the access table (§4.C).
-- The observation gets each quest's stage and the character's quest points (env contract §3).
-- **Simulator:** each quest is a macro-option with a duration estimate, item and coin costs, and the server's
-  rewards.
-- **Real server:** each needs a scripted walkthrough in the executor. A quest that proves broken in 2009Scape is
-  dropped from the set and logged.
-
-**Size:** 21 quest actions, about 452 actions in total.
+The quest set this section planned before (21 quests and their options, decided 2026-10-27; 23 with OQ-11's two on
+2026-11-01) is in the decision log. OQ-11's open reading ("a later episode") no longer matters.

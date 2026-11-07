@@ -37,25 +37,33 @@ Agent choices (reversible, for Caleb's review):
 
 from __future__ import annotations
 
+from math import inf
+
 import numpy as np
 
+from rlscape.combat.candidates import ANTI_DRAGON_SHIELD, DRAGONFIRE_PROTECTION
 from rlscape.gamedata import server as gd
 from rlscape.sim.economy import (GE_TICKS, GE_TILE, STORE_TICKS, bank_notes, bank_trip, banked_or_noted,
                                  kept_on_deposit)
 from rlscape.sim.equipment import (
     ARMOUR_SLOTS,
+    AVAS_DEVICES,
+    CAPE,
     SHIELD,
     WEAPON,
+    best_device,
     can_wear,
     defence_score,
     hinders,
     kit_score,
+    leaves_off,
     ranged_kits,
     weapon_score,
 )
 from rlscape.sim.mining import PICKAXE_PRIORITY
-from rlscape.sim.movement import TOLL, route_ticks, toll_exempt, uses_toll_gate, walk
+from rlscape.sim.movement import TOLL, pays_toll, route_ticks, walk
 from rlscape.sim.options import COMPLETED, Option, OptionResult
+from rlscape.sim.potions import ANTIFIRE, FOUR_DOSES
 from rlscape.sim.processing import HAMMER
 from rlscape.sim.shops import affordable_units, purchase_cost, set_stock, stock, unit_price
 from rlscape.sim.state import COINS, CharacterState
@@ -84,11 +92,26 @@ PROCESSING_INPUTS = (335, 377, 371, 1521, 1519, 1517, 1515, 2351, 2353, 2359)
 KNIFE = 946
 FLETCHING_INPUTS = (1777, 39, 40, 41, 42, 43, 44, 819, 820, 821, 822, 823, 824, 9375, 9377, 9378, 9379, 9380, 9381)
 
+# Quest gear (Caleb, 2026-11-06, OQ-24): the dragon dagger and longsword (Lost City) as a melee tier above rune, and the
+# four Fremennik helms (the Fremennik Trials) as helms. Their own groups: the scripted guide climbs SCIMITARS and ARMOUR.
+DRAGON_WEAPONS = (1215, 1305)  # dragon dagger, dragon longsword
+FREMENNIK_HELMS = (3751, 3749, 3755, 3753)  # berserker, archer, farseer, warrior
+# Antipoison (Caleb, 2026-11-06): the four-dose potions, one a buy, so each comes as a potion, not a banknote
+ANTIPOISONS = (2448, 2446)  # super antipoison(4), antipoison(4)
+# Combat potions and antifire (Caleb, 2026-11-06; rlscape.sim.potions): the four-dose ones, one a buy
+COMBAT_POTIONS = FOUR_DOSES + (ANTIFIRE[0],)
 # shops.json ids. Zeke's is listed twice (135 and 150); Shops.startup maps the shopkeeper to the later one.
 BOBS, NURMOFS, GERRANTS, LUMBRIDGE_STORE, ZEKES, LOWES, AUBURYS, ZAFFS, WYDINS = 54, 124, 144, 25, 150, 47, 114, 140, 77
 
+# Ava's devices (Caleb, 2026-11-07; equipment.AVAS_DEVICES): the GE sells them at the prices he set, 2,500 and 10,000
+# gp (scripts/build_price_tables.py), so the agent needn't learn Draynor Manor. The accumulator outranks the attractor
+# and needs Ranged 50.
+
+# The anti-dragon shield (Caleb, 2026-11-06): on the GE, once Duke Horacio's alone. Fights against dragonfire monsters
+# put it on (equipment.wield_best's `protect`).
 GE_ITEMS = (AXES + PICKAXES + FISHING_TOOLS + BAIT_AND_FEATHERS + (HAMMER,) + SCIMITARS + ARMOUR + SHORTBOWS + ARROWS
-            + RUNES + STAVES + FOOD_TIERS + PROCESSING_INPUTS + (KNIFE,) + FLETCHING_INPUTS)
+            + RUNES + STAVES + FOOD_TIERS + PROCESSING_INPUTS + (KNIFE,) + FLETCHING_INPUTS + (ANTI_DRAGON_SHIELD,)
+            + DRAGON_WEAPONS + FREMENNIK_HELMS + ANTIPOISONS + COMBAT_POTIONS + AVAS_DEVICES)
 SHOP_ITEMS = {**dict.fromkeys(AXES[:2], BOBS), **dict.fromkeys(PICKAXES, NURMOFS),
               **dict.fromkeys(FISHING_TOOLS + BAIT_AND_FEATHERS, GERRANTS), HAMMER: LUMBRIDGE_STORE,
               **dict.fromkeys(SCIMITARS[:3], ZEKES), **dict.fromkeys(SHORTBOWS + ARROWS, LOWES),
@@ -97,9 +120,11 @@ LOTS = {**dict.fromkeys(ARROWS + RUNES, 100), **dict.fromkeys(BAIT_AND_FEATHERS,
         **dict.fromkeys(FOOD_TIERS + (BREAD,), 100),
         **dict.fromkeys(PROCESSING_INPUTS + FLETCHING_INPUTS, 1_000)}  # 1 for the rest
 # role -> how the upgrade check compares; items without a role (consumables) have no upgrade check
-ROLES = {**dict.fromkeys(AXES, "axe"), **dict.fromkeys(PICKAXES, "pickaxe"), **dict.fromkeys(SCIMITARS, "melee"),
-         **dict.fromkeys(SHORTBOWS, "ranged"), **dict.fromkeys(ARMOUR, "armour"),
-         **dict.fromkeys(FISHING_TOOLS + (HAMMER, KNIFE) + STAVES, "unique")}
+ROLES = {**dict.fromkeys(AXES, "axe"), **dict.fromkeys(PICKAXES, "pickaxe"),
+         **dict.fromkeys(SCIMITARS + DRAGON_WEAPONS, "melee"), **dict.fromkeys(SHORTBOWS, "ranged"),
+         **dict.fromkeys(ARMOUR + FREMENNIK_HELMS, "armour"),
+         **dict.fromkeys(FISHING_TOOLS + (HAMMER, KNIFE, ANTI_DRAGON_SHIELD) + STAVES, "unique"),
+         **dict.fromkeys(AVAS_DEVICES, "ava")}
 TOOL_CHAINS = {"axe": (HATCHET_PRIORITY, "woodcutting"), "pickaxe": (PICKAXE_PRIORITY, "mining")}
 GEAR_CLASSES = ("melee", "ranged", "magic")
 
@@ -116,7 +141,7 @@ def usable(state: CharacterState, item: int) -> bool:
     role = ROLES.get(item)
     if role in TOOL_CHAINS:
         return _tool_rank(item, role, state) is not None
-    if role in ("melee", "ranged", "armour") or item in STAVES or item in ARROWS:
+    if role in ("melee", "ranged", "armour", "ava") or item in STAVES or item in ARROWS:
         return can_wear(state, item)
     return True
 
@@ -134,6 +159,8 @@ def is_upgrade(state: CharacterState, item: int) -> bool:
         return True
     if role == "unique":
         return item not in held
+    if role == "ava":  # an attractor while neither is held, the accumulator while it isn't
+        return AVAS_DEVICES.index(item) > max((AVAS_DEVICES.index(i) for i in held if i in AVAS_DEVICES), default=-1)
     if role in TOOL_CHAINS:
         rank, ranks = _tool_rank(item, role, state), [r for i in held if (r := _tool_rank(i, role, state)) is not None]
         return rank is not None and rank < min(ranks, default=len(TOOL_CHAINS[role][0]))
@@ -225,7 +252,7 @@ class BuyShop(Option):
                 and usable(state, self.item) and is_upgrade(state, self.item))
 
     def _toll(self, state: CharacterState, origin: tuple[int, int, int]) -> int:
-        return TOLL if uses_toll_gate(origin, self.tile) and not toll_exempt(state) else 0
+        return TOLL if pays_toll(state, origin, self.tile) else 0
 
     def run(self, state: CharacterState, rng: np.random.Generator, budget: int) -> OptionResult:
         elapsed, in_stock = 0, stock(state, self.shop, self.item, state.tick)
@@ -258,8 +285,9 @@ class BuyShop(Option):
 def gear_to_withdraw(state: CharacterState, combat_class: str) -> list[int]:
     """Bank items that beat what the character carries or wears for a combat class, in the order they're taken: the
     weapon (ranged: the weapon and ammunition of the best kit) first, for magic every banked rune (a deposit for
-    another task banks them), then armour, the biggest defence gain first (for magic, none that hinders it). Only
-    what the character can wear."""
+    another task banks them), then armour, the biggest defence gain first (for magic, none that hinders it), then an
+    anti-dragon shield if none is carried, for the fights against dragonfire monsters (not behind a two-handed
+    weapon). Only what the character can wear."""
     items, carried = gd.items(), set(state.inventory) | set(state.equipment.values())
     bank = frozenset(i for i in state.bank if i in items and can_wear(state, i))
     out: list[int] = []
@@ -281,15 +309,25 @@ def gear_to_withdraw(state: CharacterState, combat_class: str) -> list[int]:
         if combat_class == "magic":
             out += sorted(i for i in state.bank if i in gd.rune_ids().values())
     two_handed = weapon is not None and items[weapon].two_handed
+    device = combat_class == "ranged" and best_device(carried | bank) is not None
     gains = []
     for slot in ARMOUR_SLOTS + (() if two_handed else (SHIELD,)):
-        best = max((i for i in bank if items[i].equipment_slot == slot and not hinders(i, combat_class)),
+        if slot == CAPE and device:  # a ranged fight wears its best device (equipment.wield_best): first out
+            pick, now = best_device(bank), best_device(carried)
+            if pick is not None and (now is None or AVAS_DEVICES.index(pick) > AVAS_DEVICES.index(now)):
+                gains.append((inf, pick))
+            continue
+        best = max((i for i in bank if items[i].equipment_slot == slot and not leaves_off(i, combat_class, device)),
                    key=defence_score, default=None)
         worn = max((defence_score(i) for i in carried if i in items and items[i].equipment_slot == slot
-                    and can_wear(state, i) and not hinders(i, combat_class)), default=None)
+                    and can_wear(state, i) and not leaves_off(i, combat_class, device)), default=None)
         if best is not None and defence_score(best) > (0 if worn is None else worn):
             gains.append((defence_score(best) - (worn or 0), best))
-    return out + [item for _, item in sorted(gains, reverse=True)]
+    out += [item for _, item in sorted(gains, reverse=True)]
+    guards = sorted(i for i in bank & DRAGONFIRE_PROTECTION if not hinders(i, combat_class))
+    if guards and not two_handed and not carried & DRAGONFIRE_PROTECTION and guards[0] not in out:
+        out.append(guards[0])
+    return out
 
 
 class BankWithdrawGear(Option):

@@ -13,10 +13,10 @@ from rlscape.sim import Simulator, build_catalog
 from rlscape.sim.combat import die
 from rlscape.sim.economy import BankDepositWorn
 from rlscape.sim.energy import drain_per_run_tick, restore_per_tick, walk_plan, weight
-from rlscape.sim.movement import route_ticks, walk
+from rlscape.sim.movement import route_ticks, timed, walk
 from rlscape.sim.skills import SKILL_INDEX, XP_FOR_LEVEL
 from rlscape.sim.state import COINS, CharacterState
-from rlscape.travel import path
+from rlscape.travel import overhead, path
 
 needs_server = pytest.mark.skipif(not gd.SERVER_CONFIGS.exists(), reason="server submodule missing")
 SHARK, SHARK_NOTE, RUNE_BODY, RUNE_LEGS, BOOTS_OF_LIGHTNESS = 385, 386, 1127, 1079, 88
@@ -89,7 +89,8 @@ def test_plate_slows_a_long_walk_once_energy_runs_out():
 def test_walking_spends_energy_and_the_rest_of_the_step_restores_it():
     state = character()
     ticks = walk(state, VARROCK, 10_000)
-    assert state.run_energy == pytest.approx(100 - ticks * 0.55, abs=0.6)  # ran there
+    lost = overhead(path(LUMBRIDGE, VARROCK)[0])  # starting and pausing, resting (rlscape.travel)
+    assert state.run_energy == pytest.approx(100 - (ticks - lost) * 0.55 + lost * restore_per_tick(1), abs=0.6)
     sim = Simulator(build_catalog())
     sim.reset(seed=0)
     sim.state.inventory, sim.state.run_energy = {BONES: 20}, 0.0
@@ -103,7 +104,7 @@ def test_a_second_walk_starts_with_the_energy_restored_since_the_first():
     first = walk(state, VARROCK, 10_000)
     expected = deepcopy(state)
     expected.run_energy = min(expected.run_energy + 200 * restore_per_tick(1), 100.0)
-    ticks, energy = walk_plan(expected, [path(VARROCK, north)])
+    ticks, energy = timed(expected, [path(VARROCK, north)])
     walk(state, north, 10_000, elapsed=first + 200)  # 200 ticks after arriving
     assert state.run_energy == pytest.approx(energy) and state.energy_clock == first + 200 + ceil(ticks)
 

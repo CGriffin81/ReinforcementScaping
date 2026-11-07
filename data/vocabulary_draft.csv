@@ -4,248 +4,287 @@ item_id,name,groups,proposed,note,value,ge_price_2009,stackable,best_drop_gp_per
 331,Raw salmon,consumed;gathered,yes,,70,70,False,,,
 335,Raw trout,bought;consumed;gathered,yes,,30,30,False,,,
 377,Raw lobster,bought;consumed;gathered,yes,,285,285,False,,,
-436,Copper ore,consumed;gathered,yes,,72,72,False,216,317,"Woman (melee, level 21, Catherby)"
-438,Tin ore,consumed;gathered,yes,,34,34,False,177,372,"Black Knight (ranged, level 99, Draynor)"
-440,Iron ore,consumed;drop;gathered,yes,,99,99,False,1063,125,"Tower guard (ranged, level 99, Yanille)"
-453,Coal,consumed;drop;gathered,yes,,177,177,False,5808,81,"Giant ant worker (ranged, level 99, Shilo)"
+436,Copper ore,consumed;gathered,yes,,72,72,False,131,60,"Man (melee, level 11, Edgeville)"
+438,Tin ore,consumed;gathered,yes,,34,34,False,108,141,"Black Knight (ranged, level 99, Falador)"
+440,Iron ore,consumed;gathered,yes,,99,99,False,1000,350,"Tower guard (ranged, level 99, Yanille)"
+453,Coal,consumed;drop;gathered,yes,,177,177,False,1111,345,"Eduard (ranged, level 99, Canifis)"
 1511,Logs,gathered,yes,,32,32,False,,,
 1515,Yew logs,bought;gathered,yes,,467,467,False,,,
 1519,Willow logs,bought;gathered,yes,,18,18,False,,,
 1521,Oak logs,bought;gathered,yes,,26,26,False,,,
-1617,Uncut diamond,gathered,yes,,3760,3760,False,,,
-1619,Uncut ruby,gathered,yes,,1803,1803,False,,,
-1621,Uncut emerald,gathered,yes,,985,985,False,,,
-1623,Uncut sapphire,gathered,yes,,616,616,False,,,
+1617,Uncut diamond,gathered,yes,,3760,3760,False,320,1112,"Moss giant (ranged, level 99, Varrock)"
+1619,Uncut ruby,gathered,yes,,1803,1803,False,613,1112,"Moss giant (ranged, level 99, Varrock)"
+1621,Uncut emerald,gathered,yes,,985,985,False,670,1112,"Moss giant (ranged, level 99, Varrock)"
+1623,Uncut sapphire,gathered,yes,,616,616,False,838,1112,"Moss giant (ranged, level 99, Varrock)"
 10138,Raw rainbow fish,consumed;gathered,yes,,205,205,False,,,
 315,Shrimps,processed,yes,,4,4,False,,,
 319,Anchovies,processed,yes,,151,151,False,,,
 329,Salmon,processed,yes,,59,59,False,,,
 333,Trout,processed,yes,,31,31,False,,,
 373,Swordfish,processed,yes,,376,376,False,,,
-379,Lobster,processed,yes,,228,228,False,311,16,"Black demon (magic, level 99, Catherby)"
+379,Lobster,processed,yes,,228,228,False,283,8,"Black demon (magic, level 99, Falador)"
 2140,Cooked chicken,processed,yes,,12,12,False,,,
 2142,Cooked meat,processed,yes,,31,31,False,,,
 2349,Bronze bar,consumed;processed,yes,,180,180,False,,,
 2351,Iron bar,bought;consumed;processed,yes,,235,235,False,,,
-2353,Steel bar,bought;consumed;drop;processed,yes,,629,629,False,6550,399,"Black Knight (ranged, level 99, Draynor)"
+2353,Steel bar,bought;consumed;drop;processed,yes,,629,629,False,5136,476,"Moss giant (ranged, level 99, Varrock)"
 10136,Rainbow fish,processed,yes,,128,128,False,,,
+41,Steel arrowtips,bought;smithed,yes,,32,32,True,,,
+819,Bronze dart tip,bought;smithed,yes,,22,22,True,,,
+822,Mithril dart tip,bought;smithed,yes,,76,76,True,,,
 1067,Iron platelegs,bought;smithed,yes,,182,182,False,,,
-1115,Iron platebody,bought;smithed,yes,,370,370,False,70,1,"Guard (magic, level 1, Falador)"
+1115,Iron platebody,bought;smithed,yes,,370,370,False,69,1,"Guard (magic, level 1, Falador)"
 1119,Steel platebody,bought;smithed,yes,,1306,1306,False,,,
 1121,Mithril platebody,bought;smithed,yes,,3380,3380,False,,,
 1159,Mithril full helm,bought;smithed,yes,,929,929,False,,,
-1181,Mithril sq shield,drop;smithed,yes,,936,936,False,1493,51,"Ice warrior (ranged, level 99, Burthorpe)"
-1197,Mithril kiteshield,bought;smithed,yes,,1326,1326,False,602,16,"Black demon (magic, level 99, Catherby)"
+1181,Mithril sq shield,drop;smithed,yes,,936,936,False,2937,313,"Eduard (ranged, level 99, Canifis)"
+1197,Mithril kiteshield,bought;smithed,yes,,1326,1326,False,548,291,"Black demon (magic, level 99, Falador)"
 1267,Iron pickaxe,bought;smithed,yes,,209,209,False,,,
 1269,Steel pickaxe,bought;smithed,yes,,576,576,False,,,
 1273,Mithril pickaxe,bought;smithed,yes,,658,658,False,,,
-1299,Mithril longsword,drop;smithed,yes,,845,845,False,1785,1,"Cyclops (ranged, level 99, Gnome Stronghold)"
-1311,Steel 2h sword,drop;smithed,yes,,500,500,False,2113,1,"Cyclops (ranged, level 99, Gnome Stronghold)"
-1353,Steel axe,bought;smithed,yes,,100,100,False,284,3,"Lesser demon (magic, level 61, Falador)"
-1355,Mithril axe,bought;smithed,yes,,235,235,False,,,
-1424,Steel mace,drop;smithed,yes,,113,113,False,1177,365,"Black Knight (ranged, level 99, Draynor)"
+1353,Steel axe,bought;smithed,yes,,100,100,False,628,279,"Eduard (ranged, level 99, Canifis)"
+1355,Mithril axe,bought;smithed,yes,,235,235,False,276,283,"Green dragon (melee, level 99, Edgeville)"
+9375,Bronze bolts (unf),bought;smithed,yes,,9,9,True,,,
+9377,Iron bolts (unf),bought;smithed,yes,,18,18,True,,,
+9378,Steel bolts (unf),bought;smithed,yes,,43,43,True,,,
+9379,Mithril bolts (unf),bought;smithed,yes,,73,73,True,,,
 371,Raw swordfish,bought;consumed,yes,,425,425,False,,,
-2132,Raw beef,consumed;drop,yes,,59,59,False,4187,48,"Cow calf (magic, level 1, Seers)"
-2138,Raw chicken,consumed;drop,yes,,59,59,False,14935,71,"Chicken (melee, level 21, Falador)"
+2132,Raw beef,consumed;drop,yes,,59,59,False,1851,279,"Eduard (ranged, level 99, Canifis)"
+2138,Raw chicken,consumed;drop,yes,,59,59,False,5776,299,"Chicken (ranged, level 1, Ardougne)"
 2359,Mithril bar,bought;consumed,yes,,1191,1191,False,,,
+39,Bronze arrowtips,bought,yes,,10,10,True,,,
+40,Iron arrowtips,bought,yes,,13,13,True,,,
+42,Mithril arrowtips,bought,yes,,50,50,True,,,
+43,Adamant arrowtips,bought,yes,,133,133,True,,,
+44,Rune arrowtips,bought,yes,,451,451,True,,,
+113,Strength potion(4),bought,yes,,938,938,False,,,
 301,Lobster pot,bought,yes,,70,70,False,,,
 307,Fishing rod,bought,yes,,60,60,False,,,
 309,Fly fishing rod,bought,yes,,77,77,False,,,
 311,Harpoon,bought,yes,,47,47,False,,,
-313,Fishing bait,bought,yes,,2,2,True,181,57,"Zombie (magic, level 11, Draynor)"
-314,Feather,bought;drop,yes,,6,6,True,9493,71,"Chicken (melee, level 21, Falador)"
+313,Fishing bait,bought,yes,,2,2,True,170,60,"Zombie (magic, level 11, Draynor)"
+314,Feather,bought;drop,yes,,6,6,True,4661,60,"Undead chicken (ranged, level 11, Port Phasmatys)"
 355,Mackerel,bought,yes,,10,10,False,,,
 361,Tuna,bought,yes,,79,79,False,,,
 385,Shark,bought,yes,,845,845,False,,,
-554,Fire rune,bought;drop,yes,,9,9,True,3255,926,"Lesser demon (magic, level 61, Falador)"
-555,Water rune,bought;drop,yes,,16,16,True,5880,491,"Giant ant worker (ranged, level 99, Shilo)"
-556,Air rune,bought;drop,yes,,13,13,True,4265,200,"Giant ant worker (ranged, level 99, Shilo)"
-557,Earth rune,bought;drop,yes,,16,16,True,9089,893,"Earth warrior (ranged, level 99, Edgeville)"
-558,Mind rune,bought;drop,yes,,9,9,True,1359,696,"Black Knight (ranged, level 99, Draynor)"
-560,Death rune,bought;drop,yes,,271,271,True,9781,506,"Giant ant worker (ranged, level 99, Shilo)"
-561,Nature rune,bought;drop,yes,,229,229,True,22542,1020,"Giant ant worker (ranged, level 99, Shilo)"
-562,Chaos rune,bought;drop,yes,,136,136,True,32573,1374,"Black Knight (ranged, level 99, Draynor)"
+554,Fire rune,bought,yes,,9,9,True,545,507,"Tower guard (ranged, level 99, Yanille)"
+555,Water rune,bought;drop,yes,,16,16,True,3761,373,"Green dragon (melee, level 99, Edgeville)"
+556,Air rune,bought;drop,yes,,13,13,True,6423,382,"Air elemental (ranged, level 99, Seers)"
+557,Earth rune,bought;drop,yes,,16,16,True,6272,523,"Earth warrior (magic, level 99, Edgeville)"
+558,Mind rune,bought,yes,,9,9,True,829,391,"Black Knight (ranged, level 99, Falador)"
+560,Death rune,bought;drop,yes,,271,271,True,2529,779,"Earth warrior (magic, level 99, Edgeville)"
+561,Nature rune,bought;drop,yes,,229,229,True,12970,1118,"Ice warrior (ranged, level 99, Draynor)"
+562,Chaos rune,bought;drop,yes,,136,136,True,19882,466,"Black Knight (ranged, level 99, Falador)"
+820,Iron dart tip,bought,yes,,20,20,True,,,
+821,Steel dart tip,bought,yes,,39,39,True,,,
+823,Adamant dart tip,bought,yes,,198,198,True,,,
+824,Rune dart tip,bought,yes,,191,191,True,,,
 843,Oak shortbow,bought,yes,,60,60,False,,,
 849,Willow shortbow,bought,yes,,120,120,False,,,
 853,Maple shortbow,bought,yes,,240,240,False,,,
-882,Bronze arrow,bought,yes,,6,6,True,258,432,"Tower guard (ranged, level 99, Yanille)"
-884,Iron arrow,bought,yes,,12,12,True,581,38,"Zombie (magic, level 11, Draynor)"
-886,Steel arrow,bought;drop,yes,,28,28,True,1408,148,"Colonel Radick (melee, level 51, Yanille)"
-888,Mithril arrow,bought;drop,yes,,46,46,True,1101,410,"Ice warrior (ranged, level 99, Burthorpe)"
-890,Adamant arrow,bought;drop,yes,,119,119,True,1708,46,"Ice warrior (ranged, level 99, Burthorpe)"
-1069,Steel platelegs,bought,yes,,550,550,False,,,
+882,Bronze arrow,bought,yes,,6,6,True,242,145,"Tower guard (ranged, level 99, Yanille)"
+884,Iron arrow,bought,yes,,12,12,True,546,78,"Zombie (magic, level 11, Draynor)"
+886,Steel arrow,bought;drop,yes,,28,28,True,4470,791,"Eduard (ranged, level 99, Canifis)"
+888,Mithril arrow,bought,yes,,46,46,True,977,164,"Ice warrior (ranged, level 99, Draynor)"
+890,Adamant arrow,bought;drop,yes,,119,119,True,1516,34,"Ice warrior (ranged, level 99, Draynor)"
+946,Knife,bought,yes,,25,25,False,,,
+1069,Steel platelegs,bought,yes,,550,550,False,862,282,"Green dragon (melee, level 99, Edgeville)"
 1071,Mithril platelegs,bought,yes,,1560,1560,False,,,
 1073,Adamant platelegs,bought,yes,,3766,3766,False,,,
 1079,Rune platelegs,bought,yes,,53300,53300,False,,,
-1123,Adamant platebody,bought,yes,,9790,9790,False,,,
+1123,Adamant platebody,bought;drop,yes,,9790,9790,False,1482,1,"Red dragon (magic, level 61, Varrock)"
 1127,Rune platebody,bought,yes,,58650,58650,False,,,
-1153,Iron full helm,bought;drop,yes,,103,103,False,1073,370,"Black Knight (ranged, level 99, Draynor)"
-1157,Steel full helm,bought;drop,yes,,357,357,False,1013,3,"Lesser demon (magic, level 61, Falador)"
-1161,Adamant full helm,bought,yes,,2288,2288,False,,,
+1153,Iron full helm,bought,yes,,103,103,False,655,130,"Black Knight (ranged, level 99, Falador)"
+1157,Steel full helm,bought;drop,yes,,357,357,False,1120,279,"Eduard (ranged, level 99, Canifis)"
+1161,Adamant full helm,bought,yes,,2288,2288,False,896,282,"Green dragon (melee, level 99, Edgeville)"
 1163,Rune full helm,bought,yes,,21100,21100,False,,,
-1191,Iron kiteshield,bought,yes,,119,119,False,251,1,"Cyclops (ranged, level 99, Gnome Stronghold)"
-1193,Steel kiteshield,bought,yes,,468,468,False,693,34,"Moss giant (ranged, level 99, Varrock)"
+1191,Iron kiteshield,bought,yes,,119,119,False,,,
+1193,Steel kiteshield,bought,yes,,468,468,False,637,66,"Moss giant (ranged, level 99, Varrock)"
 1199,Adamant kiteshield,bought,yes,,3214,3214,False,,,
-1201,Rune kiteshield,bought,yes,,52700,52700,False,,,
+1201,Rune kiteshield,bought,yes,,52700,52700,False,821,643,"Tortured soul (ranged, level 99, Port Phasmatys)"
+1215,Dragon dagger,bought,yes,,29700,29700,False,,,
 1271,Adamant pickaxe,bought,yes,,1792,1792,False,,,
 1275,Rune pickaxe,bought,yes,,19100,19100,False,,,
+1305,Dragon longsword,bought,yes,,98200,98200,False,,,
 1323,Iron scimitar,bought,yes,,56,56,False,,,
-1325,Steel scimitar,bought,yes,,200,200,False,425,3,"Lesser demon (magic, level 61, Falador)"
-1329,Mithril scimitar,bought,yes,,522,522,False,,,
+1325,Steel scimitar,bought;drop,yes,,200,200,False,1255,279,"Eduard (ranged, level 99, Canifis)"
+1329,Mithril scimitar,bought;drop,yes,,522,522,False,1638,279,"Eduard (ranged, level 99, Canifis)"
 1331,Adamant scimitar,bought,yes,,2062,2062,False,,,
 1333,Rune scimitar,bought,yes,,29800,29800,False,,,
-1349,Iron axe,bought,yes,,28,28,False,20,3,"Zombie (magic, level 11, Draynor)"
+1349,Iron axe,bought,yes,,28,28,False,19,11,"Zombie (magic, level 11, Draynor)"
 1357,Adamant axe,bought,yes,,653,653,False,,,
 1359,Rune axe,bought,yes,,8135,8135,False,,,
-1381,Staff of air,bought;drop,yes,,1055,1055,False,13138,260,"Thief (ranged, level 99, Canifis)"
+1381,Staff of air,bought;drop,yes,,1055,1055,False,4088,25,"Air elemental (ranged, level 99, Seers)"
 1383,Staff of water,bought,yes,,907,907,False,,,
-1385,Staff of earth,bought;drop,yes,,902,902,False,3050,27,"Earth warrior (ranged, level 99, Edgeville)"
+1385,Staff of earth,bought;drop,yes,,902,902,False,5357,11,"Earth elemental (ranged, level 41, Seers)"
 1387,Staff of fire,bought,yes,,900,900,False,,,
 1517,Maple logs,bought,yes,,38,38,False,,,
-2309,Bread,bought,yes,,25,25,False,130,364,"Black Knight (ranged, level 99, Draynor)"
-2347,Hammer,bought,yes,,13,13,False,61,6,"Goblin (ranged, level 1, Canifis)"
+1540,Anti-dragon shield,bought,yes,,301,301,False,,,
+1777,Bow string,bought,yes,,186,186,False,,,
+2309,Bread,bought,yes,,25,25,False,79,130,"Black Knight (ranged, level 99, Falador)"
+2347,Hammer,bought,yes,,13,13,False,12,1,"Guard (magic, level 1, Falador)"
+2428,Attack potion(4),bought,yes,,336,336,False,,,
+2432,Defence potion(4),bought,yes,,536,536,False,,,
+2436,Super attack(4),bought,yes,,584,584,False,,,
+2440,Super strength(4),bought,yes,,3337,3337,False,,,
+2442,Super defence(4),bought,yes,,836,836,False,,,
+2444,Ranging potion(4),bought,yes,,1872,1872,False,,,
+2446,Antipoison(4),bought,yes,,385,385,False,,,
+2448,Super antipoison(4),bought,yes,,1014,1014,False,,,
+2452,Antifire potion(4),bought,yes,,750,750,False,,,
+3040,Magic potion(4),bought,yes,,881,881,False,,,
+3749,Archer helm,bought,yes,,56700,56700,False,,,
+3751,Berserker helm,bought,yes,,77800,77800,False,,,
+3753,Warrior helm,bought,yes,,53600,53600,False,,,
+3755,Farseer helm,bought,yes,,53600,53600,False,,,
 7946,Monkfish,bought,yes,,327,327,False,,,
-199,Grimy guam,drop,yes,,503,503,False,12527,1127,"Thief (ranged, level 99, Canifis)"
-201,Grimy marrentill,drop,yes,,186,186,False,4632,1126,"Thief (ranged, level 99, Canifis)"
-203,Grimy tarromin,drop,yes,,323,323,False,8044,1126,"Thief (ranged, level 99, Canifis)"
-205,Grimy harralander,drop,yes,,776,776,False,9663,1126,"Thief (ranged, level 99, Canifis)"
-207,Grimy ranarr,drop,yes,,6217,6217,False,77418,1126,"Thief (ranged, level 99, Canifis)"
-209,Grimy irit,drop,yes,,1259,1259,False,8262,1126,"Giant ant worker (ranged, level 99, Shilo)"
-211,Grimy avantoe,drop,yes,,1380,1380,False,9056,1126,"Giant ant worker (ranged, level 99, Shilo)"
-213,Grimy kwuarm,drop,yes,,2911,2911,False,15157,1126,"Black Knight (ranged, level 99, Draynor)"
-215,Grimy cadantine,drop,yes,,1152,1152,False,5998,866,"Black Knight (ranged, level 99, Draynor)"
-217,Grimy dwarf weed,drop,yes,,1905,1905,False,9919,1126,"Black Knight (ranged, level 99, Draynor)"
-225,Limpwurt root,drop,yes,,816,816,False,8103,452,"Hobgoblin (ranged, level 99, Edgeville)"
-235,Unicorn horn dust,drop,yes,,925,925,False,12140,46,"Giant ant worker (ranged, level 99, Shilo)"
-237,Unicorn horn,drop,yes,,890,890,False,273379,564,"Unicorn (ranged, level 99, Ardougne)"
-526,Bones,drop,yes,,75,75,False,23038,1906,"Unicorn (ranged, level 99, Ardougne)"
-532,Big bones,drop,yes,,350,350,False,66320,39,"Moss giant (ranged, level 99, Varrock)"
-563,Law rune,drop,yes,,292,292,True,51692,965,"Black Knight (ranged, level 99, Draynor)"
-564,Cosmic rune,drop,yes,,148,148,True,5394,905,"Black Knight (ranged, level 99, Draynor)"
-565,Blood rune,drop,yes,,275,275,True,5908,281,"Tower guard (ranged, level 99, Yanille)"
-1077,Black platelegs,drop,yes,,1998,1998,False,2081,364,"Black Knight (ranged, level 99, Draynor)"
-1125,Black platebody,drop,yes,,3538,3538,False,3684,364,"Black Knight (ranged, level 99, Draynor)"
-1141,Steel med helm,drop,yes,,195,195,False,2095,141,"Tower guard (ranged, level 99, Yanille)"
-1147,Rune med helm,drop,yes,,11400,11400,False,8084,20,"Lesser demon (magic, level 61, Falador)"
-1165,Black full helm,drop,yes,,1467,1467,False,1528,380,"Black Knight (ranged, level 99, Draynor)"
-1179,Black sq shield,drop,yes,,552,552,False,4086,34,"Moss giant (ranged, level 99, Varrock)"
-1195,Black kiteshield,drop,yes,,1120,1120,False,1786,46,"Ice warrior (ranged, level 99, Burthorpe)"
-1237,Bronze spear,drop,yes,,182,182,False,1807,456,"Hobgoblin (ranged, level 99, Edgeville)"
-1243,Mithril spear,drop,yes,,385,385,False,1140,34,"Moss giant (ranged, level 99, Varrock)"
-1283,Black sword,drop,yes,,406,406,False,1716,381,"Cyclops (ranged, level 99, Gnome Stronghold)"
-1285,Mithril sword,drop,yes,,549,549,False,1625,34,"Moss giant (ranged, level 99, Varrock)"
-1295,Steel longsword,drop,yes,,325,325,False,6983,557,"Tower guard (ranged, level 99, Yanille)"
-1313,Black 2h sword,drop,yes,,1889,1889,False,3991,365,"Cyclops (ranged, level 99, Gnome Stronghold)"
-1363,Iron battleaxe,drop,yes,,91,91,False,8034,47,"Magic axe (magic, level 21, Falador)"
-1448,Mind talisman,drop,yes,,158,158,False,1697,111,"Tower guard (ranged, level 99, Yanille)"
-1739,Cowhide,drop,yes,,116,116,False,8231,48,"Cow calf (magic, level 1, Seers)"
-1987,Grapes,drop,yes,,412,412,False,2350,457,"Guard (magic, level 1, Falador)"
-2485,Grimy lantadyme,drop,yes,,1188,1188,False,6186,1126,"Black Knight (ranged, level 99, Draynor)"
-2859,Wolf bones,drop,yes,,493,493,False,156380,184,"Desert Wolf (ranged, level 99, Pollnivneach)"
-5288,Papaya tree seed,drop,yes,,33100,33100,True,43442,46,"Giant ant worker (ranged, level 99, Shilo)"
-5295,Ranarr seed,drop,yes,,22700,22700,True,47965,475,"Cyclops (ranged, level 99, Gnome Stronghold)"
-5296,Toadflax seed,drop,yes,,499,499,True,1647,475,"Giant ant soldier (ranged, level 99, Shilo)"
-5299,Kwuarm seed,drop,yes,,4872,4872,True,16077,474,"Giant ant soldier (ranged, level 99, Shilo)"
-5300,Snapdragon seed,drop,yes,,37500,37500,True,37237,455,"Hobgoblin (ranged, level 99, Edgeville)"
-5301,Cadantine seed,drop,yes,,880,880,True,1398,475,"Hobgoblin (ranged, level 99, Edgeville)"
-5302,Lantadyme seed,drop,yes,,1818,1818,True,1805,475,"Hobgoblin (ranged, level 99, Edgeville)"
-5303,Dwarf weed seed,drop,yes,,5145,5145,True,5109,475,"Hobgoblin (ranged, level 99, Edgeville)"
-5304,Torstol seed,drop,yes,,7011,7011,True,6962,455,"Hobgoblin (ranged, level 99, Edgeville)"
-5320,Sweetcorn seed,drop,yes,,659,659,True,9816,844,"Hobgoblin (ranged, level 99, Edgeville)"
-5321,Watermelon seed,drop,yes,,3195,3195,True,15863,844,"Hobgoblin (ranged, level 99, Edgeville)"
-5323,Strawberry seed,drop,yes,,653,653,True,15640,844,"Black Knight (ranged, level 99, Draynor)"
-5504,Strawberry,drop,yes,,54,54,False,1417,46,"Giant ant worker (ranged, level 99, Shilo)"
-41,Steel arrowtips,smithed,no,smithed product: sold or alched in bulk by the misc actions,32,32,True,,,
-42,Mithril arrowtips,smithed,no,smithed product: sold or alched in bulk by the misc actions,50,50,True,,,
+9380,Adamant bolts(unf),bought,yes,,177,177,True,,,
+9381,Runite bolts (unf),bought,yes,,1457,1457,True,,,
+199,Grimy guam,drop,yes,,503,503,False,15770,1161,"Chaos druid (ranged, level 99, Yanille)"
+201,Grimy marrentill,drop,yes,,186,186,False,4373,1160,"Chaos druid (ranged, level 99, Yanille)"
+203,Grimy tarromin,drop,yes,,323,323,False,5696,1160,"Chaos druid (ranged, level 99, Yanille)"
+205,Grimy harralander,drop,yes,,776,776,False,10644,1160,"Chaos druid (ranged, level 99, Yanille)"
+207,Grimy ranarr,drop,yes,,6217,6217,False,67000,1160,"Chaos druid (ranged, level 99, Yanille)"
+209,Grimy irit,drop,yes,,1259,1259,False,9868,1130,"Chaos druid (ranged, level 99, Yanille)"
+211,Grimy avantoe,drop,yes,,1380,1380,False,8112,1130,"Chaos druid (ranged, level 99, Yanille)"
+213,Grimy kwuarm,drop,yes,,2911,2911,False,14260,1130,"Chaos druid (ranged, level 99, Yanille)"
+215,Grimy cadantine,drop,yes,,1152,1152,False,4515,1130,"Chaos druid (ranged, level 99, Yanille)"
+217,Grimy dwarf weed,drop,yes,,1905,1905,False,6054,1130,"Black Knight (ranged, level 99, Falador)"
+225,Limpwurt root,drop,yes,,816,816,False,5437,90,"Tortured soul (ranged, level 99, Port Phasmatys)"
+227,Vial of water,drop,yes,,79,79,False,1738,484,"Chaos druid (ranged, level 99, Yanille)"
+237,Unicorn horn,drop,yes,,890,890,False,80530,190,"Unicorn (ranged, level 41, Varrock)"
+449,Adamantite ore,drop,yes,,1020,1020,False,1199,282,"Green dragon (melee, level 99, Edgeville)"
+526,Bones,drop,yes,,75,75,False,21121,697,"Chaos druid (ranged, level 99, Yanille)"
+532,Big bones,drop,yes,,350,350,False,60964,67,"Moss giant (ranged, level 99, Varrock)"
+536,Dragon bones,drop,yes,,1908,1908,False,95876,283,"Green dragon (melee, level 99, Edgeville)"
+563,Law rune,drop,yes,,292,292,True,31698,1102,"Black Knight (ranged, level 99, Falador)"
+564,Cosmic rune,drop,yes,,148,148,True,3292,302,"Black Knight (ranged, level 99, Falador)"
+565,Blood rune,drop,yes,,275,275,True,5554,352,"Tower guard (ranged, level 99, Yanille)"
+892,Rune arrow,drop,yes,,231,231,True,1119,644,"Red dragon (magic, level 61, Varrock)"
+985,Tooth half of a key,drop,yes,,51000,51000,False,2169,1112,"Moss giant (ranged, level 99, Varrock)"
+1077,Black platelegs,drop,yes,,1998,1998,False,1270,130,"Black Knight (ranged, level 99, Falador)"
+1109,Mithril chainbody,drop,yes,,1267,1267,False,3975,279,"Eduard (ranged, level 99, Canifis)"
+1125,Black platebody,drop,yes,,3538,3538,False,2249,130,"Black Knight (ranged, level 99, Falador)"
+1141,Steel med helm,drop,yes,,195,195,False,1969,136,"Tower guard (ranged, level 99, Yanille)"
+1147,Rune med helm,drop,yes,,11400,11400,False,35770,287,"Eduard (ranged, level 99, Canifis)"
+1179,Black sq shield,drop,yes,,552,552,False,3756,66,"Moss giant (ranged, level 99, Varrock)"
+1195,Black kiteshield,drop,yes,,1120,1120,False,1586,34,"Ice warrior (ranged, level 99, Draynor)"
+1213,Rune dagger,drop,yes,,4654,4654,False,1823,282,"Green dragon (melee, level 99, Edgeville)"
+1243,Mithril spear,drop,yes,,385,385,False,1048,348,"Moss giant (ranged, level 99, Varrock)"
+1285,Mithril sword,drop,yes,,549,549,False,1494,66,"Moss giant (ranged, level 99, Varrock)"
+1295,Steel longsword,drop,yes,,325,325,False,6564,130,"Tower guard (ranged, level 99, Yanille)"
+1313,Black 2h sword,drop,yes,,1889,1889,False,1201,130,"Black Knight (ranged, level 99, Falador)"
+1319,Rune 2h sword,drop,yes,,53800,53800,False,1467,643,"Tortured soul (ranged, level 99, Port Phasmatys)"
+1363,Iron battleaxe,drop,yes,,91,91,False,9390,38,"Magic axe (magic, level 31, Falador)"
+1440,Earth talisman,drop,yes,,316,316,False,3754,50,"Earth elemental (ranged, level 41, Seers)"
+1448,Mind talisman,drop,yes,,158,158,False,1595,71,"Tower guard (ranged, level 99, Yanille)"
+1751,Blue dragonhide,drop,yes,,2062,2062,False,85734,135,"Blue dragon (magic, level 99, Burthorpe)"
+1753,Green dragonhide,drop,yes,,1685,1685,False,84670,147,"Green dragon (melee, level 99, Edgeville)"
+1987,Grapes,drop,yes,,412,412,False,2309,61,"Guard (magic, level 1, Falador)"
+2485,Grimy lantadyme,drop,yes,,1188,1188,False,3775,1130,"Black Knight (ranged, level 99, Falador)"
+2859,Wolf bones,drop,yes,,493,493,False,78891,385,"Eduard (ranged, level 99, Canifis)"
+3349,Blamish ochre shell,drop,yes,,495,495,False,60071,71,"Ochre Blamish Snail (magic, level 21, Canifis)"
+3361,Blamish blue shell,drop,yes,,1893,1893,False,149646,576,"Bruise Blamish Snail (ranged, level 99, Canifis)"
+3363,Thin snail,drop,yes,,210,210,False,25485,74,"Ochre Blamish Snail (magic, level 21, Canifis)"
+3367,Fat snail,drop,yes,,681,681,False,53835,576,"Bruise Blamish Snail (ranged, level 99, Canifis)"
+4289,Raw chicken,drop,yes,,111,111,False,17247,40,"Undead chicken (ranged, level 11, Port Phasmatys)"
+5100,Limpwurt seed,drop,yes,,372,372,True,2479,201,"Tortured soul (ranged, level 99, Port Phasmatys)"
+5106,Poison ivy seed,drop,yes,,201,201,True,1339,201,"Tortured soul (ranged, level 99, Port Phasmatys)"
+5295,Ranarr seed,drop,yes,,22700,22700,True,41217,201,"Moss giant (ranged, level 99, Varrock)"
+5296,Toadflax seed,drop,yes,,499,499,True,3325,201,"Tortured soul (ranged, level 99, Port Phasmatys)"
+5299,Kwuarm seed,drop,yes,,4872,4872,True,6492,201,"Tortured soul (ranged, level 99, Port Phasmatys)"
+5300,Snapdragon seed,drop,yes,,37500,37500,True,49971,201,"Tortured soul (ranged, level 99, Port Phasmatys)"
+5303,Dwarf weed seed,drop,yes,,5145,5145,True,2641,171,"Hobgoblin (ranged, level 51, Draynor)"
+5304,Torstol seed,drop,yes,,7011,7011,True,9343,201,"Tortured soul (ranged, level 99, Port Phasmatys)"
+5320,Sweetcorn seed,drop,yes,,659,659,True,5074,191,"Hobgoblin (ranged, level 51, Draynor)"
+5321,Watermelon seed,drop,yes,,3195,3195,True,42575,332,"Tortured soul (ranged, level 99, Port Phasmatys)"
+5323,Strawberry seed,drop,yes,,653,653,True,9546,332,"Black Knight (ranged, level 99, Falador)"
+9142,Mithril bolts,drop,yes,,78,78,True,4462,175,"Chaos druid (ranged, level 99, Yanille)"
 1083,Steel plateskirt,smithed,no,smithed product: sold or alched in bulk by the misc actions,550,550,False,,,
 1087,Bronze plateskirt,smithed,no,smithed product: sold or alched in bulk by the misc actions,154,154,False,,,
-1101,Iron chainbody,smithed,no,smithed product: sold or alched in bulk by the misc actions,145,145,False,613,1,"Cyclops (ranged, level 99, Gnome Stronghold)"
+1101,Iron chainbody,smithed,no,smithed product: sold or alched in bulk by the misc actions,145,145,False,,,
 1103,Bronze chainbody,smithed,no,smithed product: sold or alched in bulk by the misc actions,39,39,False,,,
 1117,Bronze platebody,smithed,no,smithed product: sold or alched in bulk by the misc actions,104,104,False,,,
-1155,Bronze full helm,smithed,no,smithed product: sold or alched in bulk by the misc actions,29,29,False,9,5,"Goblin (ranged, level 1, Canifis)"
-1203,Iron dagger,smithed,no,smithed product: sold or alched in bulk by the misc actions,24,24,False,46,62,"Guard (magic, level 1, Falador)"
-1207,Steel dagger,smithed,no,smithed product: sold or alched in bulk by the misc actions,81,81,False,342,452,"Cyclops (ranged, level 99, Gnome Stronghold)"
-1209,Mithril dagger,smithed,no,smithed product: sold or alched in bulk by the misc actions,211,211,False,446,1,"Cyclops (ranged, level 99, Gnome Stronghold)"
-1291,Bronze longsword,smithed,no,smithed product: sold or alched in bulk by the misc actions,26,26,False,19,3,"Zombie (magic, level 11, Draynor)"
+1155,Bronze full helm,smithed,no,smithed product: sold or alched in bulk by the misc actions,29,29,False,,,
+1203,Iron dagger,smithed,no,smithed product: sold or alched in bulk by the misc actions,24,24,False,45,61,"Guard (magic, level 1, Falador)"
+1207,Steel dagger,smithed,no,smithed product: sold or alched in bulk by the misc actions,81,81,False,67,60,"Hobgoblin (ranged, level 51, Draynor)"
+1209,Mithril dagger,smithed,no,smithed product: sold or alched in bulk by the misc actions,211,211,False,,,
+1291,Bronze longsword,smithed,no,smithed product: sold or alched in bulk by the misc actions,26,26,False,57,186,"Chaos druid (ranged, level 99, Yanille)"
+1299,Mithril longsword,smithed,no,smithed product: sold or alched in bulk by the misc actions,845,845,False,,,
 1307,Bronze 2h sword,smithed,no,smithed product: sold or alched in bulk by the misc actions,40,40,False,,,
-1315,Mithril 2h sword,smithed,no,smithed product: sold or alched in bulk by the misc actions,1560,1560,False,,,
+1311,Steel 2h sword,smithed,no,smithed product: sold or alched in bulk by the misc actions,500,500,False,,,
+1315,Mithril 2h sword,smithed,no,smithed product: sold or alched in bulk by the misc actions,1560,1560,False,945,1,"Red dragon (magic, level 61, Varrock)"
 1321,Bronze scimitar,smithed,no,smithed product: sold or alched in bulk by the misc actions,17,17,False,,,
 1335,Iron warhammer,smithed,no,smithed product: sold or alched in bulk by the misc actions,101,101,False,,,
 1337,Bronze warhammer,smithed,no,smithed product: sold or alched in bulk by the misc actions,36,36,False,,,
-1339,Steel warhammer,smithed,no,smithed product: sold or alched in bulk by the misc actions,499,499,False,460,2,"Thrower Troll (magic, level 21, Burthorpe)"
+1339,Steel warhammer,smithed,no,smithed product: sold or alched in bulk by the misc actions,499,499,False,93,1,"Guard (magic, level 1, Falador)"
 1343,Mithril warhammer,smithed,no,smithed product: sold or alched in bulk by the misc actions,1295,1295,False,,,
-1351,Bronze axe,smithed,no,smithed product: sold or alched in bulk by the misc actions,14,14,False,40,8,"Zombie (magic, level 11, Draynor)"
-1420,Iron mace,smithed,no,smithed product: sold or alched in bulk by the misc actions,31,31,False,67,3,"Zombie (magic, level 11, Draynor)"
-1428,Mithril mace,smithed,no,smithed product: sold or alched in bulk by the misc actions,293,293,False,467,46,"Ice warrior (ranged, level 99, Burthorpe)"
-1794,Bronze wire,smithed,no,smithed product: sold or alched in bulk by the misc actions,172,172,False,,,
+1351,Bronze axe,smithed,no,smithed product: sold or alched in bulk by the misc actions,14,14,False,38,11,"Zombie (magic, level 11, Draynor)"
+1420,Iron mace,smithed,no,smithed product: sold or alched in bulk by the misc actions,31,31,False,63,11,"Zombie (magic, level 11, Draynor)"
+1424,Steel mace,smithed,no,smithed product: sold or alched in bulk by the misc actions,113,113,False,718,130,"Black Knight (ranged, level 99, Falador)"
+1428,Mithril mace,smithed,no,smithed product: sold or alched in bulk by the misc actions,293,293,False,415,34,"Ice warrior (ranged, level 99, Draynor)"
+3095,Bronze claws,smithed,no,smithed product: sold or alched in bulk by the misc actions,57,57,False,,,
 4820,Iron nails,smithed,no,smithed product: sold or alched in bulk by the misc actions,15,15,True,,,
 7225,Iron spit,smithed,no,smithed product: sold or alched in bulk by the misc actions,30,30,False,,,
-9375,Bronze bolts (unf),smithed,no,smithed product: sold or alched in bulk by the misc actions,9,9,True,,,
-9377,Iron bolts (unf),smithed,no,smithed product: sold or alched in bulk by the misc actions,18,18,True,,,
-9378,Steel bolts (unf),smithed,no,smithed product: sold or alched in bulk by the misc actions,43,43,True,,,
-9379,Mithril bolts (unf),smithed,no,smithed product: sold or alched in bulk by the misc actions,73,73,True,,,
-229,Vial,drop,no,drop under 1000 gp/hr,67,67,False,308,8,"Giant spider (ranged, level 11, Canifis)"
-444,Gold ore,drop,no,drop under 1000 gp/hr,501,501,False,711,3,"Lesser demon (magic, level 61, Falador)"
-447,Mithril ore,drop,no,drop under 1000 gp/hr,269,269,False,858,46,"Ice warrior (ranged, level 99, Burthorpe)"
-559,Body rune,drop,no,drop under 1000 gp/hr,10,10,True,731,833,"Dark wizard (ranged, level 21, Varrock)"
-581,Black robe,drop,no,rare drop: in 2 of the sweep's fights,424,424,False,1408,2,"Dark wizard (ranged, level 21, Varrock)"
-592,Ashes,drop,no,drop under 1000 gp/hr,4,4,False,363,19,"Lesser demon (magic, level 61, Falador)"
-814,Steel dart(p),drop,no,rare drop: in 17 of the sweep's fights,64,64,True,9288,17,"Jungle spider (ranged, level 91, Shilo)"
-863,Iron knife,drop,no,drop under 1000 gp/hr,36,36,True,448,260,"Thief (ranged, level 99, Canifis)"
-869,Black knife,drop,no,rare drop: in 1 of the sweep's fights,62,62,True,2882,1,"Cyclops (ranged, level 99, Gnome Stronghold)"
-877,Bronze bolts,drop,no,drop under 1000 gp/hr,2,2,True,429,327,"Woman (melee, level 21, Catherby)"
-954,Rope,drop,no,drop under 1000 gp/hr,39,39,False,493,1,"Mugger (magic, level 1, Edgeville)"
-1105,Steel chainbody,drop,no,rare drop: in 1 of the sweep's fights,487,487,False,2058,1,"Cyclops (ranged, level 99, Gnome Stronghold)"
-1109,Mithril chainbody,drop,no,drop under 1000 gp/hr,1267,1267,False,898,3,"Lesser demon (magic, level 61, Falador)"
-1113,Rune chainbody,drop,no,rare drop: in 16 of the sweep's fights,31500,31500,False,14310,16,"Black demon (magic, level 99, Catherby)"
-1137,Iron med helm,drop,no,drop under 1000 gp/hr,55,55,False,277,35,"Colonel Radick (melee, level 51, Yanille)"
-1145,Adamant med helm,drop,no,drop under 1000 gp/hr,1248,1248,False,383,1,"Thrower Troll (magic, level 21, Burthorpe)"
-1213,Rune dagger,drop,no,rare drop: in 1 of the sweep's fights,4654,4654,False,1967,1,"Cyclops (ranged, level 99, Gnome Stronghold)"
-1217,Black dagger,drop,no,drop under 1000 gp/hr,156,156,False,659,1,"Cyclops (ranged, level 99, Gnome Stronghold)"
-1233,Black dagger(p),drop,no,rare drop: in 17 of the sweep's fights,331,331,False,1001,17,"Jungle spider (ranged, level 91, Shilo)"
-1239,Iron spear,drop,no,drop under 1000 gp/hr,164,164,False,814,456,"Hobgoblin (ranged, level 99, Edgeville)"
-1241,Steel spear,drop,no,drop under 1000 gp/hr,147,147,False,746,478,"Earth warrior (ranged, level 99, Edgeville)"
-1279,Iron sword,drop,no,drop under 1000 gp/hr,59,59,False,614,815,"Black Knight (ranged, level 99, Draynor)"
-1281,Steel sword,drop,no,drop under 1000 gp/hr,211,211,False,892,47,"Cyclops (ranged, level 99, Gnome Stronghold)"
-1293,Iron longsword,drop,no,drop under 1000 gp/hr,91,91,False,452,451,"Hobgoblin (ranged, level 99, Edgeville)"
-1297,Black longsword,drop,no,rare drop: in 1 of the sweep's fights,624,624,False,2637,1,"Cyclops (ranged, level 99, Gnome Stronghold)"
-1309,Iron 2h sword,drop,no,drop under 1000 gp/hr,140,140,False,592,47,"Cyclops (ranged, level 99, Gnome Stronghold)"
-1317,Adamant 2h sword,drop,no,rare drop: in 1 of the sweep's fights,3740,3740,False,1581,1,"Cyclops (ranged, level 99, Gnome Stronghold)"
-1341,Black warhammer,drop,no,drop under 1000 gp/hr,764,764,False,704,1,"Thrower Troll (magic, level 21, Burthorpe)"
-1345,Adamant warhammer,drop,no,drop under 1000 gp/hr,3214,3214,False,988,1,"Thrower Troll (magic, level 21, Burthorpe)"
-1361,Black axe,drop,no,rare drop: in 16 of the sweep's fights,1377,1377,False,1251,16,"Black demon (magic, level 99, Catherby)"
-1365,Steel battleaxe,drop,no,rare drop: in 17 of the sweep's fights,325,325,False,1373,17,"Cyclops (ranged, level 99, Gnome Stronghold)"
-1389,Magic staff,drop,no,drop under 1000 gp/hr,138,138,False,409,34,"Moss giant (ranged, level 99, Varrock)"
-1430,Adamant mace,drop,no,rare drop: in 1 of the sweep's fights,724,724,False,1530,1,"Cyclops (ranged, level 99, Gnome Stronghold)"
-1440,Earth talisman,drop,no,drop under 1000 gp/hr,316,316,False,947,317,"Woman (melee, level 21, Catherby)"
-1442,Fire talisman,drop,no,rare drop: in 7 of the sweep's fights,1888,1888,False,3989,7,"Cyclops (ranged, level 99, Gnome Stronghold)"
-1444,Water talisman,drop,no,rare drop: in 6 of the sweep's fights,3287,3287,False,3639,6,"Dark wizard (ranged, level 21, Varrock)"
-1446,Body talisman,drop,no,drop under 1000 gp/hr,403,403,False,852,2,"Cyclops (ranged, level 99, Gnome Stronghold)"
-1454,Cosmic talisman,drop,no,drop under 1000 gp/hr,308,308,False,299,4,"Wallasalki (ranged, level 99, Rellekka)"
-1458,Law talisman,drop,no,drop under 1000 gp/hr,534,534,False,508,1,"Guard (magic, level 1, Falador)"
-1462,Nature talisman,drop,no,drop under 1000 gp/hr,635,635,False,616,4,"Wallasalki (ranged, level 99, Rellekka)"
-1933,Pot of flour,drop,no,drop under 1000 gp/hr,56,56,False,583,364,"Black Knight (ranged, level 99, Draynor)"
-2307,Bread dough,drop,no,drop under 1000 gp/hr,123,123,False,566,8,"Giant spider (ranged, level 11, Canifis)"
-2361,Adamantite bar,drop,no,rare drop: in 16 of the sweep's fights,2272,2272,False,2064,16,"Black demon (magic, level 99, Catherby)"
-5100,Limpwurt seed,drop,no,drop under 1000 gp/hr,372,372,True,591,452,"Hobgoblin (ranged, level 99, Edgeville)"
-5106,Poison ivy seed,drop,no,drop under 1000 gp/hr,201,201,True,319,451,"Hobgoblin (ranged, level 99, Edgeville)"
-5294,Harralander seed,drop,no,drop under 1000 gp/hr,38,38,True,251,475,"Giant ant soldier (ranged, level 99, Shilo)"
-5297,Irit seed,drop,no,drop under 1000 gp/hr,86,86,True,284,475,"Giant ant soldier (ranged, level 99, Shilo)"
-5298,Avantoe seed,drop,no,drop under 1000 gp/hr,213,213,True,703,24,"Giant ant soldier (ranged, level 99, Shilo)"
-5309,Yanillian seed,drop,no,drop under 1000 gp/hr,105,105,True,444,1,"Cyclops (ranged, level 99, Gnome Stronghold)"
-5322,Tomato seed,drop,no,drop under 1000 gp/hr,18,18,True,268,843,"Hobgoblin (ranged, level 99, Edgeville)"
-5324,Cabbage seed,drop,no,drop under 1000 gp/hr,13,13,True,516,817,"Hobgoblin (ranged, level 99, Edgeville)"
-6147,Skeletal boots,drop,no,rare drop: in 4 of the sweep's fights,21100,21100,False,20480,4,"Wallasalki (ranged, level 99, Rellekka)"
-6153,Skeletal gloves,drop,no,rare drop: in 4 of the sweep's fights,50400,50400,False,48918,4,"Wallasalki (ranged, level 99, Rellekka)"
-6163,Skull piece,drop,no,rare drop: in 4 of the sweep's fights,11000,11000,False,10677,4,"Wallasalki (ranged, level 99, Rellekka)"
-6165,Ribcage piece,drop,no,rare drop: in 4 of the sweep's fights,12000,12000,False,11647,4,"Wallasalki (ranged, level 99, Rellekka)"
-6167,Fibula piece,drop,no,rare drop: in 4 of the sweep's fights,9900,9900,False,9609,4,"Wallasalki (ranged, level 99, Rellekka)"
-6291,Spider carcass,drop,no,rare drop: in 17 of the sweep's fights,724,724,False,140089,17,"Jungle spider (ranged, level 91, Shilo)"
-6306,Trading sticks,drop,no,drop under 1000 gp/hr,5,5,True,445,497,"Giant ant soldier (ranged, level 99, Shilo)"
-7936,Pure essence,drop,no,rare drop: in 4 of the sweep's fights,137,137,False,2393,4,"Wallasalki (ranged, level 99, Rellekka)"
-9140,Iron bolts,drop,no,drop under 1000 gp/hr,26,26,True,470,1,"Guard (magic, level 1, Falador)"
-9288,Steel bolts (p),drop,no,rare drop: in 17 of the sweep's fights,85,85,True,17475,17,"Jungle spider (ranged, level 91, Shilo)"
-12176,Spirit weed seed,drop,no,drop under 1000 gp/hr,88,88,True,290,471,"Giant ant soldier (ranged, level 99, Shilo)"
+231,Snape grass,drop,no,drop under 1000 gp/hr,340,340,False,748,175,"Chaos druid (ranged, level 99, Yanille)"
+239,White berries,drop,no,drop under 1000 gp/hr,622,622,False,390,279,"Eduard (ranged, level 99, Canifis)"
+245,Wine of zamorak,drop,no,drop under 1000 gp/hr,797,797,False,500,279,"Eduard (ranged, level 99, Canifis)"
+365,Bass,drop,no,drop under 1000 gp/hr,261,261,False,307,282,"Green dragon (melee, level 99, Edgeville)"
+442,Silver ore,drop,no,drop under 1000 gp/hr,170,170,False,464,643,"Tortured soul (ranged, level 99, Port Phasmatys)"
+447,Mithril ore,drop,no,drop under 1000 gp/hr,269,269,False,762,34,"Ice warrior (ranged, level 99, Draynor)"
+559,Body rune,drop,no,drop under 1000 gp/hr,10,10,True,933,432,"Tortured soul (ranged, level 99, Port Phasmatys)"
+581,Black robe,drop,no,drop under 1000 gp/hr,424,424,False,903,1,"Dark wizard (ranged, level 11, Draynor)"
+811,Rune dart,drop,no,drop under 1000 gp/hr,182,182,True,661,1,"Red dragon (magic, level 61, Varrock)"
+828,Mithril javelin,drop,no,rare drop: in 1 of the sweep's fights,49,49,True,2968,1,"Red dragon (magic, level 61, Varrock)"
+830,Rune javelin,drop,no,drop under 1000 gp/hr,312,312,True,990,1112,"Eduard (ranged, level 99, Canifis)"
+877,Bronze bolts,drop,no,drop under 1000 gp/hr,2,2,True,261,74,"Man (melee, level 11, Edgeville)"
+958,Grey wolf fur,drop,no,drop under 1000 gp/hr,71,71,False,446,279,"Eduard (ranged, level 99, Canifis)"
+987,Loop half of a key,drop,no,drop under 1000 gp/hr,7392,7392,False,314,1112,"Moss giant (ranged, level 99, Varrock)"
+1113,Rune chainbody,drop,no,rare drop: in 8 of the sweep's fights,31500,31500,False,13023,8,"Black demon (magic, level 99, Falador)"
+1149,Dragon med helm,drop,no,drop under 1000 gp/hr,60700,60700,False,710,643,"Tortured soul (ranged, level 99, Port Phasmatys)"
+1165,Black full helm,drop,no,drop under 1000 gp/hr,1467,1467,False,932,138,"Black Knight (ranged, level 99, Falador)"
+1185,Rune sq shield,drop,no,drop under 1000 gp/hr,22900,22900,False,625,643,"Tortured soul (ranged, level 99, Port Phasmatys)"
+1237,Bronze spear,drop,no,drop under 1000 gp/hr,182,182,False,934,60,"Hobgoblin (ranged, level 51, Draynor)"
+1239,Iron spear,drop,no,drop under 1000 gp/hr,164,164,False,421,60,"Hobgoblin (ranged, level 51, Draynor)"
+1241,Steel spear,drop,no,drop under 1000 gp/hr,147,147,False,515,70,"Earth warrior (magic, level 99, Edgeville)"
+1245,Adamant spear,drop,no,drop under 1000 gp/hr,1081,1081,False,350,135,"Blue dragon (magic, level 99, Burthorpe)"
+1279,Iron sword,drop,no,drop under 1000 gp/hr,59,59,False,375,190,"Black Knight (ranged, level 99, Falador)"
+1281,Steel sword,drop,no,drop under 1000 gp/hr,211,211,False,299,34,"Ice warrior (ranged, level 99, Draynor)"
+1283,Black sword,drop,no,drop under 1000 gp/hr,406,406,False,671,138,"Black demon (magic, level 99, Falador)"
+1303,Rune longsword,drop,no,rare drop: in 1 of the sweep's fights,19000,19000,False,2877,1,"Red dragon (magic, level 61, Varrock)"
+1361,Black axe,drop,no,rare drop: in 8 of the sweep's fights,1377,1377,False,1139,8,"Black demon (magic, level 99, Falador)"
+1365,Steel battleaxe,drop,no,drop under 1000 gp/hr,325,325,False,403,290,"Black demon (magic, level 99, Falador)"
+1369,Mithril battleaxe,drop,no,drop under 1000 gp/hr,1014,1014,False,461,1,"Red dragon (magic, level 61, Varrock)"
+1373,Rune battleaxe,drop,no,drop under 1000 gp/hr,24900,24900,False,679,643,"Tortured soul (ranged, level 99, Port Phasmatys)"
+1389,Magic staff,drop,no,drop under 1000 gp/hr,138,138,False,376,66,"Moss giant (ranged, level 99, Varrock)"
+1442,Fire talisman,drop,no,rare drop: in 1 of the sweep's fights,1888,1888,False,1341,1,"Dark wizard (ranged, level 11, Draynor)"
+1444,Water talisman,drop,no,rare drop: in 1 of the sweep's fights,3287,3287,False,2335,1,"Dark wizard (ranged, level 11, Draynor)"
+1446,Body talisman,drop,no,drop under 1000 gp/hr,403,403,False,753,1,"Guard (magic, level 1, Falador)"
+1454,Cosmic talisman,drop,no,drop under 1000 gp/hr,308,308,False,678,175,"Chaos druid (ranged, level 99, Yanille)"
+1458,Law talisman,drop,no,drop under 1000 gp/hr,534,534,False,499,1,"Guard (magic, level 1, Falador)"
+1615,Dragonstone,drop,no,drop under 1000 gp/hr,46500,46500,False,906,643,"Tortured soul (ranged, level 99, Port Phasmatys)"
+1739,Cowhide,drop,no,rare drop: in 3 of the sweep's fights,116,116,False,6021,3,"Undead cow (ranged, level 1, Port Phasmatys)"
+1749,Red dragonhide,drop,no,rare drop: in 1 of the sweep's fights,3133,3133,False,60839,1,"Red dragon (magic, level 61, Varrock)"
+1897,Chocolate cake,drop,no,drop under 1000 gp/hr,194,194,False,264,1,"Red dragon (magic, level 61, Varrock)"
+1933,Pot of flour,drop,no,drop under 1000 gp/hr,56,56,False,356,130,"Black Knight (ranged, level 99, Falador)"
+1993,Jug of wine,drop,no,drop under 1000 gp/hr,77,77,False,483,279,"Eduard (ranged, level 99, Canifis)"
+2136,Raw bear meat,drop,no,drop under 1000 gp/hr,59,59,False,926,279,"Eduard (ranged, level 99, Canifis)"
+2307,Bread dough,drop,no,drop under 1000 gp/hr,123,123,False,257,25,"Giant spider (ranged, level 1, Edgeville)"
+2361,Adamantite bar,drop,no,rare drop: in 9 of the sweep's fights,2272,2272,False,1879,9,"Black demon (magic, level 99, Falador)"
+2363,Runite bar,drop,no,drop under 1000 gp/hr,18500,18500,False,505,643,"Tortured soul (ranged, level 99, Port Phasmatys)"
+2366,Shield left half,drop,no,drop under 1000 gp/hr,65900,65900,False,257,643,"Tortured soul (ranged, level 99, Port Phasmatys)"
+3359,Blamish ochre shell,drop,no,rare drop: in 3 of the sweep's fights,466,466,False,38517,3,"Ochre Blamish Snail (melee, level 21, Port Phasmatys)"
+4287,Raw beef,drop,no,rare drop: in 3 of the sweep's fights,120,120,False,6229,3,"Undead cow (ranged, level 1, Port Phasmatys)"
+5105,Whiteberry seed,drop,no,drop under 1000 gp/hr,60,60,True,400,201,"Tortured soul (ranged, level 99, Port Phasmatys)"
+5294,Harralander seed,drop,no,drop under 1000 gp/hr,38,38,True,253,201,"Tortured soul (ranged, level 99, Port Phasmatys)"
+5297,Irit seed,drop,no,drop under 1000 gp/hr,86,86,True,573,201,"Tortured soul (ranged, level 99, Port Phasmatys)"
+5298,Avantoe seed,drop,no,drop under 1000 gp/hr,213,213,True,284,141,"Tortured soul (ranged, level 99, Port Phasmatys)"
+5301,Cadantine seed,drop,no,drop under 1000 gp/hr,880,880,True,723,171,"Hobgoblin (ranged, level 51, Draynor)"
+5302,Lantadyme seed,drop,no,drop under 1000 gp/hr,1818,1818,True,933,171,"Hobgoblin (ranged, level 51, Draynor)"
+5324,Cabbage seed,drop,no,drop under 1000 gp/hr,13,13,True,267,191,"Hobgoblin (ranged, level 51, Draynor)"
+6814,Fur,drop,no,drop under 1000 gp/hr,132,132,False,828,279,"Eduard (ranged, level 99, Canifis)"
+9140,Iron bolts,drop,no,drop under 1000 gp/hr,26,26,True,461,1,"Guard (magic, level 1, Falador)"
+12176,Spirit weed seed,drop,no,drop under 1000 gp/hr,88,88,True,586,201,"Tortured soul (ranged, level 99, Port Phasmatys)"
 323,Burnt anchovies,burnt,no,"burnt food: worthless, drop_misc covers it",0,,False,,,
 343,Burnt salmon,burnt,no,"burnt food: worthless, drop_misc covers it",0,,False,,,
 375,Burnt swordfish,burnt,no,"burnt food: worthless, drop_misc covers it",0,,False,,,

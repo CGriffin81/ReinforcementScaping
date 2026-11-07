@@ -10,7 +10,6 @@ import pytest
 from rlscape.envs import DEFAULT_REWARD_WEIGHTS, SimEnv
 from rlscape.envs.encoding import REGIONS, item_roles, region_of
 from rlscape.gamedata import server as gd
-from rlscape.quests import QUEST_SET
 from rlscape.sim.energy import weight
 from rlscape.sim.state import CharacterState
 
@@ -60,8 +59,7 @@ def test_a_fresh_observation_reads_the_starting_character(env):
     assert part(env, obs, "inventory")[-1] == pytest.approx(fresh.free_slots() / 28)
     assert env.encoder.names[env.encoder.parts["region"]][np.argmax(part(env, obs, "region"))] == "lumbridge"
     assert list(part(env, obs, "loot_mode")) == [0.0, 1.0, 0.0, 0.0]  # "valuable", the default
-    quests = part(env, obs, "quests")
-    assert list(quests[:-1].reshape(-1, 3)[:, 0]) == [1.0] * len(QUEST_SET) and quests[-1] == 0.0
+    assert "quests" not in env.encoder.parts  # every quest is complete from the start, so it would be constant
     assert np.array_equal(part(env, obs, "mask"), env.action_masks())
     skills = dict(zip(env.encoder.names[env.encoder.parts["skills"]], part(env, obs, "skills")))
     assert skills["hitpoints_level"] == pytest.approx(10 / 99) and skills["attack_level"] == pytest.approx(1 / 99)

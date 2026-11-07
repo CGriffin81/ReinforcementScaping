@@ -15,8 +15,10 @@ Kits:
 - `thieving`: food, since failed attempts hurt.
 - `processing:<activity>`: its tools and inputs (WITHDRAW_RECIPES); cooking also keeps logs and a tinderbox, for a
   fire where the character stands.
-- `combat:<class>`: food; what that class's fight would put on from the inventory (wield_best on a copy: weapon,
-  armour, the ranged kit's ammunition); and, for magic, runes.
+- `combat:<class>`: food; antipoison and antifire doses; the combat potions for the class's skills (rlscape.sim.potions); what
+  that class's fight would put on from the inventory (wield_best on a
+  copy: weapon, armour, the ranged kit's ammunition); an anti-dragon shield, which fights against dragonfire monsters
+  put on, unless the class's weapon is two-handed; and, for magic, runes.
 - no task yet: nothing.
 """
 
@@ -24,8 +26,11 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+from rlscape.combat.candidates import DRAGONFIRE_PROTECTION
 from rlscape.gamedata import server as gd
-from rlscape.sim.equipment import wield_best
+from rlscape.sim.equipment import WEAPON, wield_best
+from rlscape.sim.health import ANTIPOISON_DOSES
+from rlscape.sim.potions import ANTIFIRE, CLASS_SKILLS, DOSE_OF, POTION_DOSES, POTIONS
 from rlscape.sim.mining import PICKAXE_PRIORITY
 from rlscape.sim.processing import TINDERBOX
 from rlscape.sim.state import CharacterState
@@ -60,7 +65,12 @@ def kit(state: CharacterState, task: str | None) -> set[int]:
         wield_best(armed, detail)
         wielded = {i for i in inventory if armed.inventory.get(i, 0) < state.inventory[i]}
         runes = {i for i in inventory if gd.items().get(i) and gd.items()[i].name.lower().endswith(" rune")}
-        return wielded | (inventory & food) | (runes if detail == "magic" else set())
+        weapon = armed.equipment.get(WEAPON)
+        guards = set() if weapon is not None and gd.items()[weapon].two_handed else inventory & DRAGONFIRE_PROTECTION
+        doses = inventory & set(ANTIPOISON_DOSES)
+        doses |= {i for i in inventory & POTION_DOSES if POTIONS[DOSE_OF[i][0]][0] in CLASS_SKILLS[detail]}
+        doses |= inventory & set(ANTIFIRE)
+        return wielded | guards | doses | (inventory & food) | (runes if detail == "magic" else set())
     raise ValueError(f"unknown task {task!r}")
 
 

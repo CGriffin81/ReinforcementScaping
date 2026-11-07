@@ -17,6 +17,13 @@ Decision (Caleb, 2026-10-27): items the GE refuses to trade (rl.conf's world.ge_
 anti-dragon shield, which only Duke Horacio gives out) get no GE term in the valuation and stay off the
 historical list. The anti-dragon shield is therefore valued at 0.
 
+Decision (Caleb, 2026-11-07): the GE sells Ava's devices, at prices he set (SET_PRICES), so the agent needn't learn
+Draynor Manor. They're untradeable in the game, so the definitions export lacks them: their rows come from the
+server's item configs. They join the frozen database as the server's ::allowge would (a price_index row) and the
+historical list, so the frozen seller sells them and the frozen buyer buys them at those prices, and net worth values
+them there (the alchemy spell refuses untradeable items). prices_v2's ge_price_2009 column is the frozen GE price:
+the 2009 one, or a set price (source ge_set).
+
 Inputs:  data/item_definitions.csv (scripts/export_item_definitions.py),
          results/ge_history/sample/*.json (scripts/fetch_ge_history.py),
          data/grandexchange_warmup10h.db (scripts/ge_warmup.py).
@@ -43,6 +50,10 @@ GE_2009 = Path("data/ge_prices_2009.csv")
 VALUATION = Path("data/prices_v2.csv")
 FROZEN_DB = Path("data/grandexchange_2009_frozen.db")
 RL_CONF = Path("server/Server/worldprops/rl.conf")
+ITEM_CONFIGS = Path("server/Server/data/configs/item_configs.json")
+
+# GE prices Caleb set for items the 2009 GE never traded (2026-11-07)
+SET_PRICES = {10498: 2_500, 10499: 10_000}  # Ava's attractor, Ava's accumulator
 
 COINS = 995
 NATURE_RUNE = 561
@@ -84,11 +95,29 @@ def load_definitions() -> list[dict]:
         for key in ("id", "unnoted_id", "value", "high_alch", "low_alch"):
             row[key] = int(row[key])
         row["alchemizable"] = row["alchemizable"] == "True"
+        row["tradeable"] = True  # the export lists tradeable items only
+    return rows
+
+
+def set_price_definitions() -> list[dict]:
+    """Rows for the set-price items, which the export (tradeable items) lacks, from the server's item configs. The
+    alchemy values follow ItemDefinition.getAlchemyValue: the configured one, else 60% (40%) of the value."""
+    configs = {int(c["id"]): c for c in json.loads(ITEM_CONFIGS.read_text(encoding="utf-8"))
+               if int(c.get("id", -1)) in SET_PRICES}
+    rows = []
+    for item_id in SET_PRICES:
+        config = configs[item_id]
+        value = int(config.get("shop_price", 0))
+        rows.append({"id": item_id, "name": config["name"], "unnoted_id": item_id, "value": value,
+                     "high_alch": int(config.get("high_alchemy", round(value * 0.6))),
+                     "low_alch": int(config.get("low_alchemy", round(value * 0.4))),
+                     "alchemizable": config.get("alchemizable") == "true",
+                     "tradeable": config.get("tradeable") == "true"})
     return rows
 
 
 def main() -> None:
-    definitions = load_definitions()
+    definitions = load_definitions() + set_price_definitions()
     names = {d["id"]: d["name"] for d in definitions}
 
     history: dict[int, tuple[int, int, str]] = {}
@@ -117,14 +146,17 @@ def main() -> None:
         out.writerow(["item_id", "name", "unnoted_id", "high_alch", "high_alch_net",
                       "ge_price_2009", "value", "source"])
         for d in definitions:
-            ge = history.get(d["unnoted_id"], (None,))[0]
+            set_price = SET_PRICES.get(d["unnoted_id"])
+            ge = set_price if set_price is not None else history.get(d["unnoted_id"], (None,))[0]
             is_blocked = d["id"] in blocked or d["unnoted_id"] in blocked
             ge_term = None if is_blocked else ge
-            alch_net = d["high_alch"] - nature  # every row is tradeable, so the spell accepts it
+            # the spell (ModernListeners.alchemize) takes tradeable items, and untradeable ones flagged alchemizable
+            alch_net = d["high_alch"] - nature if d["tradeable"] or d["alchemizable"] else None
             if d["unnoted_id"] == COINS:
                 value, source = 1, "coins"
             else:
-                candidates = {k: v for k, v in (("high_alch", alch_net), ("ge_2009", ge_term)) if v is not None}
+                ge_source = "ge_set" if set_price is not None else "ge_2009"
+                candidates = {k: v for k, v in (("high_alch", alch_net), (ge_source, ge_term)) if v is not None}
                 if candidates:
                     source, value = max(candidates.items(), key=lambda kv: kv[1])
                     if value < 0:
@@ -153,6 +185,12 @@ def main() -> None:
                 db.execute("INSERT INTO historical_price_items(item_id) VALUES (?)", (item_id,))
                 listed += 1
             updated += 1
+        for item_id, price in SET_PRICES.items():  # as ::allowge would (PriceIndex.allowItem), at the set price
+            db.execute("DELETE FROM price_index WHERE item_id = ?", (item_id,))
+            db.execute("INSERT INTO price_index (item_id, value, total_value, unique_trades, last_update) "
+                       "VALUES (?, ?, ?, 0, 0)", (item_id, price, price))
+            db.execute("INSERT OR IGNORE INTO historical_price_items(item_id) VALUES (?)", (item_id,))
+            listed += 1
 
     built = datetime.now().astimezone().isoformat(timespec="seconds")
     GE_2009.with_suffix(".meta.json").write_text(json.dumps({
@@ -174,6 +212,8 @@ def main() -> None:
         "items": len(definitions),
         "value_source_counts": dict(counts),
         "ge_blocked_items": sorted(blocked),
+        "ge_set_prices": {str(k): v for k, v in SET_PRICES.items()},
+        "ge_set_prices_decision": "Caleb, 2026-11-07: Ava's devices on the GE (ge_price_2009 holds the set price)",
         "supersedes": "data/prices_v1.csv (seeded high-alchemy values) for valuing wealth",
     }, indent=2) + "\n")
     FROZEN_DB.with_suffix(".meta.json").write_text(json.dumps({
@@ -186,6 +226,7 @@ def main() -> None:
         "price_rows_kept_seeded": kept,
         "historical_price_items": listed,
         "ge_blocked_items_excluded": sorted(blocked),
+        "ge_set_prices": {str(k): v for k, v in SET_PRICES.items()},
     }, indent=2) + "\n")
 
     print(f"2009 prices: {len(history)} items {dict(sorted(months.items()))}")

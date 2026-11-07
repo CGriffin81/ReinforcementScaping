@@ -11,12 +11,13 @@ from pathlib import Path
 
 import pytest
 
-from rlscape.bridge import BridgeClient, BridgeError
+from rlscape.bridge import BridgeClient
 from rlscape.gamedata import server as gd
 from test_bridge_live import bridge_reachable
 
 COINS = 995
 ANTI_DRAGON_SHIELD = 1540
+ATTRACTOR, ACCUMULATOR = 10498, 10499  # Ava's devices
 GE = (3165, 3489)
 DATA = Path(__file__).resolve().parent.parent / "data"
 
@@ -223,17 +224,78 @@ def test_frozen_seller_ignores_items_without_a_2009_price(client, character):
     assert slots[0]["completed"] == 0
 
 
-def test_anti_dragon_shield_is_not_tradeable_on_the_ge(client, character):
-    """rl.conf blocks the anti-dragon shield (and its note) on the GE: it only comes from Duke Horacio."""
+def test_the_anti_dragon_shield_is_bought_on_the_ge_at_its_2009_price(client, character):
+    """rl.conf blocked the shield on the GE (Duke Horacio's alone) until Caleb opened it on 2026-11-06: the frozen
+    seller fills a buy at its January 2009 price, 301 gp."""
+    assert ANTI_DRAGON_SHIELD in historical_ids(), "precondition: has a 2009 price"
     uid = character["uid"]
+    price = {p["id"]: p["value"] for p in client.ge_snapshot()["prices"]}[ANTI_DRAGON_SHIELD]
+    assert price == 301
     client.debug_teleport(uid, *GE)
     client.debug_give(uid, COINS, 1000)
-    client.debug_give(uid, ANTI_DRAGON_SHIELD, 1)
     client.wait(3)
-    with pytest.raises(BridgeError, match="can't be traded on the GE"):
-        client.ge_offer(uid, item=ANTI_DRAGON_SHIELD, amount=1, price=500)
-    with pytest.raises(BridgeError, match="can't be traded on the GE"):
-        client.ge_offer(uid, item=ANTI_DRAGON_SHIELD, amount=1, price=1, sell=True)
+    client.ge_offer(uid, item=ANTI_DRAGON_SHIELD, amount=1, price=price)
+    assert wait_for_state(client, uid, "COMPLETED")[0]["completed"] == 1
+    client.ge_collect(uid)
+    client.wait(1)
+    after = client.state(uid)
+    assert amount_of(after, ANTI_DRAGON_SHIELD) == 1 and amount_of(after, COINS) == 1000 - price
+
+
+def test_avas_devices_are_bought_on_the_ge_at_calebs_prices_worn_and_sold_back(client, character):
+    """Caleb, 2026-11-07: the GE sells Ava's devices (untradeable in the game) at 2,500 and 10,000 gp, so the agent
+    needn't learn Draynor Manor. A new character can wear one (Animal Magnetism is done), can't drop one (the game
+    offers Destroy), and the frozen buyer takes one back at the same price."""
+    assert gd.ge_prices_2009()[ATTRACTOR] == 2_500 and gd.ge_prices_2009()[ACCUMULATOR] == 10_000  # set, not 2009
+    uid = character["uid"]
+    prices = {p["id"]: p["value"] for p in client.ge_snapshot()["prices"]}
+    assert (prices[ATTRACTOR], prices[ACCUMULATOR]) == (2_500, 10_000)
+    client.debug_teleport(uid, *GE)
+    client.debug_give(uid, COINS, 12_500)
+    client.wait(3)
+    for item in (ATTRACTOR, ACCUMULATOR):
+        client.ge_offer(uid, item=item, amount=1, price=prices[item])
+        assert wait_for_state(client, uid, "COMPLETED")[0]["completed"] == 1
+        client.ge_collect(uid)
+        client.wait(1)
+    after = client.state(uid)
+    assert amount_of(after, ATTRACTOR) == amount_of(after, ACCUMULATOR) == 1 and amount_of(after, COINS) == 0
+    assert client.item_option(uid, ATTRACTOR, "Wear")
+    client.wait(2)
+    assert ATTRACTOR in [i["id"] for i in client.state(uid)["equipment"]]
+    with pytest.raises(Exception, match="no option 'Drop'"):
+        client.item_option(uid, ACCUMULATOR, "Drop")
+    client.ge_offer(uid, item=ACCUMULATOR, amount=1, price=prices[ACCUMULATOR], sell=True)
+    assert wait_for_state(client, uid, "COMPLETED")[0]["completed"] == 1
+    client.ge_collect(uid)
+    client.wait(1)
+    after = client.state(uid)
+    assert amount_of(after, ACCUMULATOR) == 0 and amount_of(after, COINS) == 10_000
+
+
+def test_the_accumulator_needs_ranged_50_and_the_devices_attract_nothing(client, character):
+    """The fork (Caleb, 2026-11-07, OQ-28): Ava's accumulator requires Ranged 50 (its item config), the attractor
+    nothing; spawn switches the devices' attraction off, so a worn one gives no item every 300 game ticks."""
+    uid = character["uid"]
+    client.debug_give(uid, ACCUMULATOR, 1)
+    client.debug_give(uid, ATTRACTOR, 1)
+    client.wait(1)
+    client.item_option(uid, ACCUMULATOR, "Wear")
+    client.wait(2)
+    state = client.state(uid)
+    assert ACCUMULATOR not in [i["id"] for i in state["equipment"]]
+    assert any("Ranged level of 50" in m for m in state["messages"][-3:])
+    client.item_option(uid, ATTRACTOR, "Wear")
+    client.wait(2)
+    before = client.state(uid)
+    assert ATTRACTOR in [i["id"] for i in before["equipment"]]
+    client.wait(305)
+    after = client.state(uid)
+    assert sorted((i["id"], i["amount"]) for i in after["inventory"]) ==         sorted((i["id"], i["amount"]) for i in before["inventory"])
+    client.debug_set_levels(uid, {"ranged": 50})
+    client.item_option(uid, ACCUMULATOR, "Wear")
+    client.wait(2)
+    assert ACCUMULATOR in [i["id"] for i in client.state(uid)["equipment"]]
 
 
 def test_slayer_level_blocks_attacks(client, character):
