@@ -615,6 +615,9 @@ def test_the_barcrawl_and_enter_the_abyss_are_complete_from_the_start(client, ui
     client.interact(uid, "Gate", "Open", ids=[2115, 2116], radius=4)
     client.wait(10)
     assert client.state(uid)["location"]["x"] == 2545  # through the gate, not stopped by the guard's dialogue
+    # the Abyss's monsters are aggressive: at 10 hitpoints a landing beside them can kill a new character before the
+    # check (it failed now and then that way), so it arrives with 99
+    client.debug_set_levels(uid, {"hitpoints": 99})
     client.debug_teleport(uid, 3103, 3554)
     client.wait(2)
     client.interact(uid, "Mage of Zamorak", "Teleport", is_object=False, radius=8)
@@ -622,6 +625,24 @@ def test_the_barcrawl_and_enter_the_abyss_are_complete_from_the_start(client, ui
     state = client.state(uid)
     x, y = state["location"]["x"] - 3039, state["location"]["y"] - 4832  # AbyssLoc.origin
     assert 20 <= (x * x + y * y) ** 0.5 <= 27 and state["prayer_points"] == 0
+
+
+def test_a_death_sends_the_character_to_lumbridges_home_tile(client, uid):
+    """DeathTask sends the dead to their spawn location, a human's being the home location (rl.conf: 3222, 3218),
+    where the sim respawns a character (rlscape.sim.combat.RESPAWN). AIPlayer had set the tile the character was made
+    on (3233, 3230); the fork sets the home location (RLPlayer.init). The death: a new character left in the Abyss,
+    whose monsters are aggressive."""
+    client.debug_teleport(uid, 3103, 3554)
+    client.wait(2)
+    client.interact(uid, "Mage of Zamorak", "Teleport", is_object=False, radius=8)
+    client.wait(6)
+    for _ in range(200):
+        state = client.state(uid)
+        if abs(state["location"]["x"] - 3039) > 100:
+            break
+        client.wait(5)
+    assert any("you are dead" in m for m in state["messages"])
+    assert (state["location"]["x"], state["location"]["y"], state["location"]["z"]) == (3222, 3218, 0)
 
 
 def test_barbarian_fishing_needs_no_miniquest_and_trains_agility_and_strength(client, uid):

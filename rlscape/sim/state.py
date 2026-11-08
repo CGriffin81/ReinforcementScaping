@@ -47,6 +47,8 @@ class CharacterState:
     poison_immune_until: int = 0  # the tick an antipoison's immunity runs out (rlscape.sim.health)
     boosts: dict[str, int] = field(default_factory=dict)  # skill -> a potion's boost, still on (rlscape.sim.potions)
     antifire_until: int = 0  # the tick an antifire potion's immunity runs out (rlscape.sim.potions)
+    # items left on the current reel of thread (LeatherCrafting.decayThread's saved "threadCharges"; rlscape.sim.crafting)
+    thread_charges: int = 5
 
     @classmethod
     def fresh(cls) -> CharacterState:

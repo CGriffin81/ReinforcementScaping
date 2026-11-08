@@ -85,7 +85,9 @@ work.
     credit and drops, gravestones and GE offers go by. `spawn` completes every
     quest the server has (`completeEveryQuest`), and the Barcrawl and Enter the
     Abyss miniquests (`completeMiniquests`, 2026-11-08), flags only, except
-    Enter the Abyss's small pouch, which goes in the bank (OQ-40 (c)).
+    Enter the Abyss's small pouch, which goes in the bank (OQ-40 (c)). A death
+    sends it to the home location, as a human (`RLPlayer.init`; AIPlayer used
+    the tile it was made on).
   - The bridge finds NPCs by the form a player sees (`NPC.getShownNPC`): a
     multi-NPC's own definition is often named "null".
   - Config: `server.tick_ms`, `server.bind_address`, `world.ge_freeze_prices`,

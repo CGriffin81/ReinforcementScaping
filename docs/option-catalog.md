@@ -1,4 +1,8 @@
-# Option Catalog (v1.3, Signed off)
+# Option Catalog (v1.3, Signed off; v1.4 being built)
+
+**v1.4** (2026-11-08, building sim v1 per OQ-2 and `docs/sim-v1-skills-draft.md`; to confirm when the four skills
+are built): Crafting's skilling slots and paths (§2), and XP slots hold only paths that give XP. The other three skills
+come next.
 
 **Status:** v1.3, 2026-11-06: quests are out, and every quest the server has is complete from the start (Caleb;
 §10); the anti-dragon shield, the dragon dagger and longsword and the Fremennik helms are bought on the GE (§4.B,
@@ -51,8 +55,8 @@ each target's spawn area.
 
 **Skilling slots** (Caleb, 2026-10-30/31; `rlscape/sim/skilling.py`). Like the combat slots (§4), each gathering
 skill offers its best **paths** by XP/hr and by gp/hr at the current levels, gear and position, as actions, and
-agents choose a path, not a fixed method. Five skills (Woodcutting, Fishing, Mining, Thieving, Fletching) × 2 slots
-by XP/hr + 2 by gp/hr = 20 actions, `skill_<skill>_xp1/xp2/gp1/gp2`. They replace the 31 fixed gathering and thieving
+agents choose a path, not a fixed method. Six skills (Woodcutting, Fishing, Mining, Thieving, Fletching, Crafting) ×
+2 slots by XP/hr + 2 by gp/hr = 24 actions, `skill_<skill>_xp1/xp2/gp1/gp2`. They replace the 31 fixed gathering and thieving
 actions.
 A path in an XP slot doesn't also fill a gp slot (the next best takes its place, as in combat), and slots are
 recomputed every decision. The observation carries each slot's rates (env contract §3).
@@ -75,7 +79,19 @@ the strung bow is worth more than the unstrung bow and the bowstring (Caleb): ma
 shortbows. On 2009Scape every one of these is a queued script that a walk or any other action clears (checked
 live), so fletching can't be done on the move or between other actions.
 
-That's 83 paths: woodcutting 12, fishing 8, mining 7, thieving 20, fletching 36. Mining's include iron at the Al
+**Crafting** (sim v1, v1.4; Caleb, 2026-11-08, OQ-2; `rlscape/sim/crafting.py`) has paths at a bank as Fletching's
+are, one per recipe: `cut_<gem>` (9, with a chisel, a gem a tick) and `craft_<item>` (the 8 leather and 12
+dragonhide pieces, with a needle and thread, a piece every 5 ticks). The recipes are the server's (`Gems`,
+`LeatherCrafting`, `HardCraftPulse`). Thread goes as the server's `decayThread` takes it: a reel every 5 items,
+its charges saved on the character. Tanning and spinning work between the nearest bank and the nearest usable
+station: `tan_<leather>` (6, at a tanner, for its fee and no XP) and `spin_wool`, `spin_flax` (at a wheel, one every 4
+ticks). Flax is picked in Seers' Village's field (`pick_flax`, kept, no XP) or picked and spun at the Seers' wheel
+(`pick_flax_spin`), both ending at a full inventory. The crafting inputs join *V* next.
+
+A path that gives no XP (tanning, picking flax) fills only a gp slot: the XP slots take the best paths that give XP
+(v1.4).
+
+That's 83 paths: woodcutting 12, fishing 8, mining 7, thieving 20, fletching 36; and crafting's 39 (sim v1). Mining's include iron at the Al
 Kharid mine (Caleb, 2026-10-31), kept or smelted, beside Varrock's: scorpions roam it, so it costs a low-level miner
 hitpoints (below). Fishing's include shrimp at Lumbridge Swamp (Caleb, 2026-11-01), kept or cooked, beside
 Draynor's: Draynor's spots are next to the bank, but its Dark wizards make them dangerous for a character of combat

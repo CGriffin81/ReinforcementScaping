@@ -4896,3 +4896,86 @@ Caleb, 2026-11-08: "OQ 39 - B / OQ 40 - C / OQ 41 - Set the heavy rod at 1,000 g
     (`test_sim`) expect the pouch in the bank.
 - **The spec** (`docs/sim-v1-skills-draft.md`) states the three answers, with the pouches' table and rules and the
   Abyss's fight option. *V* gains the four pouches (held, not bought): about 89 items.
+
+### Built (sim v1, Crafting part 1): the paths at a bank (gems, leather and dragonhide armour) and Crafting's slots
+2026-11-08, building `docs/sim-v1-skills-draft.md` §2 (Caleb's OQ-2 answers). `m002-commit-crafting`.
+- **The recipes** (`gamedata.server.crafting_recipes`), read from the server's source (`content/global/skill/crafting`):
+  - 9 gems (`Gems`, `GemCutPulse`): an uncut gem into the cut one with a chisel. The pulse has no stage counter, so it
+    cuts one every tick, from the first.
+  - 8 leather pieces (`LeatherCrafting.SoftLeather`, `SoftCraftPulse`; `HardCraftPulse` for the hardleather body) and
+    12 dragonhide pieces (`DragonHide`, `DragonCraftPulse`: 1, 2 or 3 leathers), with a needle and thread, one every 5
+    ticks (`++ticks % 5`), the first at the 5th.
+  - Thread (`decayThread`): each sewn item uses a charge of the reel, and when the charges run out a thread is taken
+    and the reel starts again at 5. The charges are saved on the character (`threadCharges`), so the sim keeps them on
+    `CharacterState.thread_charges`. Every item needs a thread held as it starts.
+- **The paths** (`rlscape/sim/crafting.py`), as Fletching's: `cut_<gem>` and `craft_<item>`, 29 in all. At the nearest
+  bank, bank everything but the tool, the thread and the inputs; take out the tool, all the thread and a load (27
+  uncut gems, or 26 leathers beside the needle and thread); craft them, bank, again. The rate model (`_craft_rate`)
+  counts the loads, the bank time and the thread used.
+- **The slots:** Crafting joins the skilling slots (`skill_crafting_xp1/xp2/gp1/gp2`) and the kits (`crafting`: the
+  tools, the thread and the carried inputs), with a `crafting` task in the observation. 1,713 actions (+4) and 2,650
+  features (+25: 20 candidate features, 4 mask entries, the task). Env contract v1.23, to confirm; option catalog
+  v1.4 started (§2), to confirm when the four skills are built.
+- **Found: at the frozen January 2009 prices, Crafting loses gold.** Every recipe's product is worth less than its
+  inputs but red topaz (+11 gp) and onyx (even). An uncut sapphire is 616 gp and a cut one 393; soft leather 167 and
+  leather gloves 6; a green dragonhide body loses 926. So Crafting trains XP for gold, and its gp slots hold the
+  smallest losses.
+- **Not yet:** tanning, spinning and picking flax; the crafting inputs in *V* (so the agent can't buy them yet: the
+  paths open with drops or held inputs); the server's measured times (the bridge's make-X dialogues).
+- **Agent choices (reversible):** the needle or chisel is carried, not worn; a load takes all the banked thread (it
+  stacks); the thread's value is counted in a path's gp.
+- **Speed:** 104 decisions a second in one process (110 before).
+- **Tests:** `tests/test_sim_crafting.py` (9): the recipes against the server's enums, a gem a tick, leather every 5
+  ticks and a thread every 5 items, dragonhide's leathers and level, the bank path's loads, its tool and thread, the
+  slots and kit, the rate. The counts in `test_vocabulary` and `test_sim_skilling`.
+
+### Built (sim v1, Crafting part 2): tanning, spinning and flax; XP slots hold paths that give XP; found and fixed: a dead RL character respawned on its spawn tile
+2026-11-08, building `docs/sim-v1-skills-draft.md` §2. `m002-commit-crafting`.
+- **The recipes** (`gamedata.server`):
+  - `tanning_recipes` (`TanningProduct`, with `tan`'s fees): cowhide to soft leather (1 gp) or hard leather (3 gp),
+    and the four dragonhides to dragon leather (20 gp each). Snakeskin is out (Choice C). No XP: one interface click.
+  - `spinning_recipes` (`SpinningItem`): wool to a ball of wool (level 1, 2.5 XP) and flax to a bowstring (level 10, 15
+    XP), one every 4 ticks (`SpinningPulse`; the 2-tick rate needs a Seers' Village diary). Roots, sinew and yak hair
+    are out.
+  - Picking flax (`FieldPickingPlugin`): a pick every 2 ticks, no XP. A plant goes once its picks pass 1 +
+    `RandomFunction.random(2, 8)`, drawn afresh each pick: 4 to 9 picks, 5.77 on average, then 30 ticks before it's
+    back.
+- **The stations** (`data/stations.csv`):
+  - **Tanners** from their NPCs' spawns: Ellis in Al Kharid; Sbott in Canifis; the Ranging Guild's Leatherworker
+    (Ranged 40, the guild's door); the Crafting Guild's tanner (`never`: the guild needs Crafting 40 and a brown apron
+    worn, which no option gets).
+  - **13 spinning wheels**, found on the server by scanning every map region with `debug_nearby` (setup only): Lumbridge
+    Castle, Seers' Village, Barbarian Village, south of Falador, Witchaven, the Gnome Stronghold (three), Rellekka,
+    Neitiznot, Lletya, Sophanem, the Crafting Guild (`never`).
+  - A fresh character reaches Ellis and eight wheels. Canifis, the Ranging Guild, Lletya and Sophanem aren't in the
+    travel model's reach.
+  - **Found:** the travel model lets a character into the Crafting Guild, which the server's door refuses without
+    Crafting 40 and a brown apron. The stations there are `never`; the guild's other content isn't used.
+  - The scan found 181 flax plants. The paths use Seers' Village's field (Choice B (a)): 48 plants in (2737-2750,
+    3438-3452). Others grow by the Gnome Stronghold, Rellekka, Taverley, Lletya and on Lunar Isle.
+- **The paths** (`rlscape/sim/crafting.py`):
+  - `tan_<leather>` (6) and `spin_wool`, `spin_flax` (`AtStation`): take a load from the nearest bank, walk to the
+    nearest usable station, work it, bank at the bank nearest the station, again.
+  - `pick_flax` and `pick_flax_spin` (`PickFlax`, `SpinFlaxAtWheel`) are gathering paths, like trees
+    (`gather_depleting`): they end at a full inventory, of flax or of bowstrings, as fishing's cooking paths do (catalog
+    §1). The spec's draft said `pick_flax_spin` "banks the bowstrings, again"; Claude's choice, reversible.
+  - Their rates (`skilling._station_rate`, and `_unit` and `_process` for flax). For example, from Lumbridge, at
+    Crafting 10 and 2009 prices: picking flax about 58,000 gp/hr; picking and spinning it about 54,000 gp/hr and 4,300
+    Crafting XP/hr.
+  - Crafting has 39 paths. The `crafting` kit keeps the hides, wool and flax too.
+- **XP slots hold only paths that give XP** (Claude's choice, reversible; catalog v1.4). Picking flax and tanning give
+  none, and the ranker had put them in an XP slot. Now they go to the gp slots. A fresh character's Crafting gp1 is
+  picking flax, and its XP slots stay empty. No other skill has a path without XP, so nothing else changed.
+- **Found and fixed (the fork): a dead RL character respawned on its spawn tile.** `DeathTask` sends the dead to their
+  spawn location. A human's is the home location (`LoginParser`: `ServerConstants.HOME_LOCATION`, rl.conf's 3222,
+  3218), where the sim respawns a character (`combat.RESPAWN`). But `AIPlayer.init` sets the tile the bot was made on,
+  so an RL character came back at (3233, 3230). Reproduced live, a new character left in the Abyss: "Oh dear, you are
+  dead!", then at (3233, 3230). `RLPlayer.init` now sets the home location. They're 12 tiles apart, so the sim's
+  deaths had been a few ticks' walk off.
+  - It also explains `test_the_barcrawl_and_enter_the_abyss_are_complete_from_the_start`'s failures in full runs: the
+    character sometimes died in the Abyss before the check (it was back at 3233, 3230). It now arrives with 99
+    hitpoints. The other two flaky live tests (the hand cast, the ranged safespot) are a task offered separately.
+- **Tests:** `tests/test_sim_crafting.py` (now 16): the recipes, the stations a fresh character uses, the tanning and
+  spinning paths, the flax plant's picks, picking and spinning, and XP-less paths in gp slots. Live:
+  `test_a_death_sends_the_character_to_lumbridges_home_tile`. The counts in `test_sim_skilling` and
+  `test_sim_gathering`. The full suite: 405 passed. Speed: 96 decisions a second in one process (110 before Crafting).

@@ -37,7 +37,8 @@ def test_each_method_is_kept_or_processed_by_its_counterpart():
     assert "mine_copper_smelt" not in ids and not any(i.startswith("pickpocket") and "_" in i[11:] and
                                                       i.endswith(("_burn", "_cook", "_smelt")) for i in ids)
     by_skill = {s: sum(1 for p in path_options() if p.skill == s) for s in SKILLS}
-    assert by_skill == {"woodcutting": 12, "fishing": 8, "mining": 7, "thieving": 20, "fletching": 36}  # Al Kharid iron,
+    assert by_skill == {"woodcutting": 12, "fishing": 8, "mining": 7, "thieving": 20, "fletching": 36,
+                        "crafting": 39}  # Al Kharid iron,
     # Lumbridge Swamp's shrimp: 2 each
 
 
@@ -99,7 +100,7 @@ def test_slots_hold_the_best_two_by_xp_then_the_best_two_others_by_gp():
             continue  # nothing open (no fletching inputs held here)
         rest = [p for p in path_options() if p.skill == skill and p.available(state)
                 and p.id not in {c.path.id for c in xp if c is not None}]
-        assert [c.rate.xp for c in xp] == sorted((c.rate.xp for c in xp), reverse=True)
+        assert [c.rate.xp for c in xp if c] == sorted((c.rate.xp for c in xp if c), reverse=True)
         best_xp = max((path_rate(p, state).xp for p in path_options() if p.skill == skill and p.available(state)))
         assert xp[0].rate.xp == pytest.approx(best_xp)
         if gp[0] is not None:

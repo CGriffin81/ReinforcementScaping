@@ -1,6 +1,8 @@
-# Environment Contract (v1.22, Signed off)
+# Environment Contract (v1.23, Signed off)
 
-**Status:** v1.22, 2026-11-08. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
+**Status:** v1.23, 2026-11-08. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
+- **v1.23** (2026-11-08, building sim v1's Crafting per OQ-2; to confirm) adds Crafting's 4 skilling slots (§3): 4
+  actions, their 20 candidate features and 4 mask entries, and a crafting task. 1,713 actions, 2,650 features.
 - **v1.22** (2026-11-08, Caleb: OQ-40 (c), the pouches as the server gives them; to confirm) gives Enter the
   Abyss's small pouch at spawn, in the bank (§1). The miniquest's other rewards still aren't given.
 - **v1.21** (2026-11-08, Caleb: OQ-2's Choice D and H) adds two miniquests to the start state, complete as flags
@@ -139,9 +141,9 @@ roughly [0, 1].
 | Equipment | E | tier index / max tier per slot: weapon (melee / ranged / staff), ammunition, head, body, legs, shield; tools (axe, pickaxe, fishing gear); cape (Ava's devices: attractor 1, accumulator 2) |
 | Region | R | one-hot over the catalog's regions |
 | Combat candidates | C × 5 | for each candidate slot: XP/hr, gp/hr, expected damage taken per hour vs food held, travel minutes, Slayer / level eligibility (option catalog §4) |
-| Skilling candidates | 20 × 5 | per skilling slot (option catalog §2): the gathering skill's XP/hr, its processing counterpart's XP/hr, gp/hr, travel, open; scaled as the combat candidates |
+| Skilling candidates | 24 × 5 | per skilling slot (option catalog §2; Crafting's 4 since v1.23): the gathering skill's XP/hr, its processing counterpart's XP/hr, gp/hr, travel, open; scaled as the combat candidates |
 | Loot mode | 4 | one-hot: all / valuable / vocabulary / none (option catalog §4.D) |
-| Task | 12 | one-hot: the last activity's task (none, woodcutting, mining, the three fishing methods, thieving, fletching, processing, the three combat classes), which decides what `bank_deposit` keeps (option catalog §5) |
+| Task | 13 | one-hot: the last activity's task (none, woodcutting, mining, the three fishing methods, thieving, fletching, crafting, processing, the three combat classes), which decides what `bank_deposit` keeps (option catalog §5) |
 | Access | A | 0/1 per access rule (`data/access_areas.csv`, A = 55 today; `access.unlocked_rules`): unlocked by quests, items held, levels or coins (option catalog §4.C). Rules decided by quests alone are constant, since the quests are complete from the start |
 | Mask | N | the action mask |
 | Preference | 2 | (w_s, w_b), for the E4 agent only |
@@ -152,9 +154,9 @@ option catalog.
 **As built** (`rlscape/envs/encoding.py`, 2026-10-30): E = 12 roles (weapons for melee, ranged and magic,
 ammunition, head, body, legs, shield, axe, pickaxe, fishing gear), R = 12 (the catalog's 11 regions and
 "elsewhere"), C = 18 slots (6 per combat class). The encoder's docstring lists how each part is scaled. With the
-catalog as built (1,709 actions, *V* = 279) the vector has 2,625 features (v1.12 dropped the quest part's 64; v1.13
+catalog as built (1,713 actions, *V* = 279) the vector has 2,650 features (v1.12 dropped the quest part's 64; v1.13
 added 7 buys and 27 items; v1.14 11 buys, 11 items and the potions part's 22; v1.16 2 buys, 2 items and the cape role;
-v1.17 64 buys and 63 items; v1.19 the home teleport's wait).
+v1.17 64 buys and 63 items; v1.19 the home teleport's wait; v1.23 Crafting's slots and task).
 
 **Left out on purpose:** GE prices. They're frozen, so a price snapshot would be a constant.
 

@@ -45,6 +45,6 @@ def test_every_item_in_v_is_a_real_tradeable_item_with_live_actions():
 def test_the_catalog_and_observation_grow_by_5_actions_and_7_features_per_item():
     v, catalog, empty = vocabulary(), build_catalog(), build_catalog(())
     ids = {o.id for o in catalog}
-    assert len(catalog) == len(empty) + 5 * len(v) == 1_709
+    assert len(catalog) == len(empty) + 5 * len(v) == 1_713
     assert all(f"{prefix}{item}" in ids for item in v for prefix in PER_ITEM)
-    assert SimEnv().encoder.size == SimEnv(vocabulary=()).encoder.size + 7 * len(v) == 2_625
+    assert SimEnv().encoder.size == SimEnv(vocabulary=()).encoder.size + 7 * len(v) == 2_650

@@ -11,6 +11,7 @@ Kits:
 - `woodcutting` / `mining`: the best axe / pickaxe the level allows (SkillingTool's priority); woodcutting also
   keeps a tinderbox and a knife, which its chop-and-burn and chop-and-fletch paths use (rlscape.sim.skilling).
 - `fletching`: the knife and whatever fletching inputs are carried (logs, bows, bowstrings, shafts, feathers, tips).
+- `crafting`: the chisel, needle and thread, and whatever crafting inputs are carried (uncut gems, leathers).
 - `fishing:<method>`: the method's tool and its bait or feathers.
 - `thieving`: food, since failed attempts hurt.
 - `processing:<activity>`: its tools and inputs (WITHDRAW_RECIPES); cooking also keeps logs and a tinderbox, for a
@@ -57,6 +58,9 @@ def kit(state: CharacterState, task: str | None) -> set[int]:
     if kind == "fletching":
         from rlscape.sim.fletching import inputs  # imported here: fletching imports economy, which imports this
         return inventory & ({gd.KNIFE} | inputs())
+    if kind == "crafting":
+        from rlscape.sim.crafting import inputs as craft_inputs  # imported here, as fletching's
+        return inventory & craft_inputs()
     if kind == "processing":
         return _processing_kit(state, detail)
     if kind == "combat":

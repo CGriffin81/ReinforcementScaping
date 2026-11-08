@@ -788,6 +788,116 @@ def fletching_recipes() -> dict[str, FletchRecipe]:
     return out
 
 
+CRAFTING = SERVER_CONTENT / "global" / "skill" / "crafting"
+CHISEL, NEEDLE, THREAD = 1755, 1733, 1734
+SOFT_LEATHER, HARD_LEATHER = 1741, 1743
+
+
+@dataclass(frozen=True)
+class CraftRecipe:
+    """One thing Crafting makes at a bank, as its pulse runs it: per unit, the inputs used, the product and the
+    experience; the first unit `first_ticks` after the pulse starts, then one every `stage_ticks`."""
+
+    name: str  # e.g. "sapphire", "leather_gloves", "green_d_hide_body"
+    kind: str  # gem, leather, dragonhide
+    inputs: tuple[tuple[int, int], ...]  # (item, amount) per unit
+    product: int
+    level: int
+    experience: float
+    first_ticks: int
+    stage_ticks: int
+    tool: int  # held in the inventory: the chisel, or the needle
+    thread: bool  # sewn: uses thread (LeatherCrafting.decayThread)
+
+
+@cache
+def crafting_recipes() -> dict[str, CraftRecipe]:
+    """Crafting's at-bank recipes (Caleb, 2026-11-08, OQ-2: gems, leather and dragonhide armour; studded leather,
+    snakeskin and jewellery left out), from content/global/skill/crafting:
+    - gem (Gems, GemCutPulse): an uncut gem into the cut one with a chisel, one a tick (the pulse has no stage
+      counter, so every pulse cuts one);
+    - leather (LeatherCrafting.SoftLeather, SoftCraftPulse; HardCraftPulse): a soft leather into gloves, boots, a
+      cowl, vambraces, a body, chaps or a coif, or a hard leather into a hardleather body, with a needle and thread,
+      one every 5 ticks (`++ticks % 5`);
+    - dragonhide (LeatherCrafting.DragonHide, DragonCraftPulse): 1, 2 or 3 dragon leathers into vambraces, chaps or a
+      body, as leather is."""
+    names = items()
+
+    def key(product: int) -> str:
+        return re.sub(r"[^a-z0-9]+", "_", names[product].name.lower()).strip("_")
+
+    out: dict[str, CraftRecipe] = {}
+    gems = (CRAFTING / "gem" / "Gems.java").read_text(encoding="utf-8")
+    for uncut, cut, level, xp in re.findall(
+            r"^\s*[A-Z_]+\(new Item\((\d+)\),\s*new Item\((\d+)\),\s*(\d+),\s*new Animation\(\d+\),\s*([\d.]+)\)",
+            gems, re.M):
+        out[key(int(cut))] = CraftRecipe(key(int(cut)), "gem", ((int(uncut), 1),), int(cut), int(level), float(xp),
+                                         1, 1, CHISEL, False)
+    leather = (CRAFTING / "armour" / "LeatherCrafting.java").read_text(encoding="utf-8")
+    for level, xp, product in re.findall(r"^\s*[A-Z_]+\(\d+,\s*(\d+),\s*([\d.]+),\s*new Item\((\d+)\)\)", leather,
+                                         re.M):
+        out[key(int(product))] = CraftRecipe(key(int(product)), "leather", ((SOFT_LEATHER, 1),), int(product),
+                                             int(level), float(xp), 5, 5, NEEDLE, True)
+    hard = (CRAFTING / "armour" / "HardCraftPulse.java").read_text(encoding="utf-8")
+    level = int(re.search(r"getLevel\(Skills\.CRAFTING\) < (\d+)", hard).group(1))
+    product = int(re.search(r"new Item\((\d+)\);", hard).group(1))
+    xp = float(re.search(r"addExperience\(Skills\.CRAFTING, ([\d.]+)", hard).group(1))
+    out[key(product)] = CraftRecipe(key(product), "leather", ((HARD_LEATHER, 1),), product, level, xp, 5, 5, NEEDLE,
+                                    True)
+    for hide, amount, product, level, xp in re.findall(
+            r"^\s*[A-Z_]+_D_HIDE_[A-Z]+\((\d+),\s*(\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)", leather, re.M):
+        out[key(int(product))] = CraftRecipe(key(int(product)), "dragonhide", ((int(hide), int(amount)),),
+                                             int(product), int(level), float(xp), 5, 5, NEEDLE, True)
+    return out
+
+
+@dataclass(frozen=True)
+class TanRecipe:
+    """A tanner's product (TanningProduct): a hide into leather, for a fee a hide. No XP."""
+
+    name: str  # e.g. "leather", "hard_leather", "green_d_leather"
+    hide: int
+    product: int
+    fee: int  # coins a hide
+
+
+@cache
+def tanning_recipes() -> dict[str, TanRecipe]:
+    """TanningProduct's hides and leathers, with TanningProduct.tan's fees (soft leather 1 gp, hard 3, dragonhide
+    20). Snakeskin is left out (Caleb, 2026-11-08, OQ-2's Choice C)."""
+    text = (CRAFTING / "TanningProduct.java").read_text(encoding="utf-8")
+    fees = {"SOFT_LEATHER": 1, "HARD_LEATHER": 3}
+    names = items()
+    out = {}
+    for name, hide, product in re.findall(r"^\s*([A-Z_]+)\(\d+,\s*(\d+),\s*(\d+)\)", text, re.M):
+        if name.startswith("SNAKESKIN"):
+            continue
+        key = re.sub(r"[^a-z0-9]+", "_", names[int(product)].name.lower()).strip("_")
+        out[key] = TanRecipe(key, int(hide), int(product), fees.get(name, 20))
+    return out
+
+
+@dataclass(frozen=True)
+class SpinRecipe:
+    """A spinning wheel's product (SpinningItem): one input into one product, for Crafting XP."""
+
+    name: str  # "wool", "flax": what's spun
+    need: int
+    product: int
+    level: int
+    experience: float
+
+
+@cache
+def spinning_recipes() -> dict[str, SpinRecipe]:
+    """SpinningItem's wool (a ball of wool) and flax (a bowstring), the two OQ-2's spinning has; the roots, sinew and
+    yak hair are left out."""
+    text = (CRAFTING / "spinning" / "SpinningItem.java").read_text(encoding="utf-8")
+    rows = {name: (int(need), int(product), int(level), float(xp)) for name, need, product, level, xp in
+            re.findall(r"([A-Z_0-9]+)\(\d+,\s*(\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)", text)}
+    return {key: SpinRecipe(key, *rows[name]) for key, name in (("wool", "WOOL"), ("flax", "FLAX"))}
+
+
 @cache
 def ground_spawns(item: int) -> tuple[tuple[tuple[int, int, int], int], ...]:
     """(tile, respawn ticks) for each spawn of an item (data/configs/ground_spawns.json, read by GroundSpawnLoader:

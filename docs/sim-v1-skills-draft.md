@@ -33,7 +33,9 @@ All levels and XP from `crafting/armour/LeatherCrafting.java` (soft leather and 
 `StuddedArmourPlugin`, `spinning/SpinningItem.java`, `gem/Gems.java`; tanning from `TanningProduct.java`.
 
 **Tanning** (a tanner: Ellis in Al Kharid, the Crafting Guild's, Sbott in Canifis; no XP; coins a hide): cowhide to
-soft leather 1 gp, to hard leather 3 gp; green, blue, red and black dragonhide to dragon leather 20 gp each.
+soft leather 1 gp, to hard leather 3 gp; green, blue, red and black dragonhide to dragon leather 20 gp each. As built
+(2026-11-08), a fresh character reaches only Ellis: Canifis and the Ranging Guild's Leatherworker (Ranged 40) aren't in
+the travel model's reach, and the Crafting Guild needs a brown apron worn, which no option gets.
 
 **Leather armour** (a needle and thread; a thread lasts 5 items, as the server counts it):
 
@@ -60,22 +62,27 @@ soft leather 1 gp, to hard leather 3 gp; green, blue, red and black dragonhide t
 | Black | 79, 86 | 82, 172 | 84, 258 |
 
 **Spinning** (a spinning wheel: Lumbridge Castle's first floor, Seers' Village): wool to a ball of wool, level 1, 2.5
-XP; flax to a bowstring, level 10, 15 XP. Bowstrings feed Fletching's stringing (§2).
+XP; flax to a bowstring, level 10, 15 XP, one every 4 ticks (`SpinningPulse`). Bowstrings feed Fletching's stringing
+(§2). The server has 13 wheels (found with `debug_nearby`, 2026-11-08; `data/stations.csv`); a fresh character reaches
+eight.
 
 **Gems** (a chisel): uncut to cut. Opal 1 (10 XP), jade 13 (20), red topaz 16 (25), sapphire 20 (50), emerald 27
 (67), ruby 34 (85), diamond 43 (107.5), dragonstone 55 (137.5), onyx 67 (168). On this server every cut succeeds:
 `GemCutPulse` has no crushing, which 2009 had for the semi-precious three.
 
 **The paths:**
-- `tan_<hide>` (4: soft, hard, dragon leather from green/blue, red/black hides; gp paths, since tanning gives no XP);
+- `tan_<leather>` (6: soft and hard leather, and the four dragon leathers; gp paths, since tanning gives no XP);
 - `craft_<item>` for each armour piece (8 leather, 12 dragonhide);
 - `spin_wool`, `spin_flax` at the nearest wheel, and **Choice B:** (a) *recommended*: `pick_flax_spin`, picking flax
   at Seers' Village's field and spinning it at the wheel there (a gathering path with its processing counterpart, as
   §2 pairs them; picking gives no XP), and `pick_flax` kept; (b) spinning only from bought flax. **Caleb: (a)**
   (OQ-38). Picking (`FieldPickingPlugin`): a pick every 2 ticks, no XP; each plant gives 4 to 9 picks, then is gone
   for 30 ticks. The field is south of Seers' Village (about 2737, 3441), and the wheel is on a house's first floor
-  there (by 2711, 3471), as the bundled flax bot's route has them (`bots/SeersFlax.kt`). `pick_flax` fills the inventory and banks at Seers' Village; `pick_flax_spin` picks a load,
-  spins it, banks the bowstrings, again.
+  there (by 2711, 3471), as the bundled flax bot's route has them (`bots/SeersFlax.kt`). As built: 48 plants in
+  (2737-2750, 3438-3452), and the wheel at (2710, 3471, 1). `pick_flax` and `pick_flax_spin` are gathering paths
+  (rlscape.sim.skilling's `Path`), so they end at a full inventory, of flax or of bowstrings, as fishing's cooking
+  paths do, and the agent banks (catalog §1: activity options don't bank). That differs from this draft's "banks the
+  bowstrings, again" (Claude's choice, reversible).
 - `cut_<gem>` (9).
 
 **Choice C, what's in:** (a) *recommended*: everything above; (b) leave out studded armour (it needs Smithing's
