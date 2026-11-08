@@ -9,6 +9,7 @@ from __future__ import annotations
 import pytest
 
 from rlscape.bridge import BridgeClient
+from rlscape.gamedata import server as gd
 from test_bridge_live import bridge_reachable
 
 pytestmark = pytest.mark.skipif(not bridge_reachable(), reason="RL bridge not running on localhost")
@@ -488,3 +489,62 @@ def test_the_bridge_flicks_protection_so_no_swing_lands_and_no_prayer_drains(cli
         assert sum("PROTECT_FROM_MELEE" in s["prayers"] for s in states) >= 120 // 6 - 1  # on for the swings
     finally:
         client.despawn(uid)
+
+
+COWS = (3257, 3270, 0)  # Lumbridge's cow field, east of the castle
+AIR_RUNE, MIND_RUNE = 556, 558
+
+
+def test_a_hand_cast_is_one_spell_and_casting_again_each_tick_keeps_the_autocast_rate(client, uid):
+    """`cast`, a client's spell-on-NPC packet: wind strike on a cow takes an air and a mind rune a cast and gives at
+    least its 5.5 base XP. A hand cast is one spell: the combat pulse stops after it. Cast again each tick (the
+    server refuses one within 3 ticks of the last), the spells land 5 ticks apart, the autocast rate the sim's magic
+    fights assume (rlscape.sim.combat)."""
+    client.set_retaliate(uid, False)  # retaliating would swing in melee between casts
+    client.debug_set_levels(uid, {"hitpoints": 99})
+    client.debug_give(uid, AIR_RUNE, 100)
+    client.debug_give(uid, MIND_RUNE, 100)
+    client.debug_teleport(uid, *COWS)
+    client.wait(2)
+    spell = gd.combat_spells()["wind_strike"].button
+    start = client.state(uid)
+    casts, stopped, minds = [], 0, held(client, uid, MIND_RUNE)  # before the first cast, which can land at once
+    index = client.cast(uid, spell, "Cow", ids=[81])["index"]
+    for _ in range(60):
+        step = client.schedule([[{"cmd": "state", "uid": uid},
+                                 {"cmd": "npcs", "uid": uid, "name": "Cow", "ids": [81], "object": False}]])[0]
+        state, seen = step["results"][0]["state"], step["results"][1]["npcs"]
+        now = sum(s["amount"] for s in state["inventory"] if s["id"] == MIND_RUNE)
+        if now < minds:
+            casts.append(step["tick"])
+        minds = now
+        if index not in {n["index"] for n in seen}:
+            break  # killed
+        if state["target"] is None:  # the pulse stopped after the spell: cast again
+            stopped += 1
+            client.cast(uid, spell, "Cow", index=index)
+    assert len(casts) >= 3, casts
+    assert stopped >= len(casts) - 1  # each spell stopped the pulse
+    assert all(b - a == 5 for a, b in zip(casts, casts[1:])), casts
+    client.wait(6)  # a cast sent at the last reading lands after it
+    end = client.state(uid)
+    runes = lambda s, rune: sum(i["amount"] for i in s["inventory"] if i["id"] == rune)
+    cast = runes(start, MIND_RUNE) - runes(end, MIND_RUNE)
+    assert runes(start, AIR_RUNE) - runes(end, AIR_RUNE) == cast and cast in (len(casts), len(casts) + 1)
+    magic = lambda s: next(k["xp"] for k in s["skills"] if k["name"].lower() == "magic")
+    assert magic(end) - magic(start) >= 5.5 * cast
+
+
+def test_the_walker_takes_the_crandor_passage_both_ways(client, uid):
+    """The planned route from Karamja volcano's rim to Crandor is the passage (OQ-16 (a)): the walker's scripted
+    clicks take a character with Dragon Slayer complete through the pot hole, the secret wall and the rope, and back
+    by Crandor's hole."""
+    from rlscape.bridge.walker import walk_route
+    from rlscape.routes import surface
+    client.debug_set_levels(uid, {"hitpoints": 99, "defence": 99})
+    client.debug_teleport(uid, 2856, 3167, 0)
+    client.wait(2)
+    there = walk_route(client, uid, surface(), (2834, 3258, 0))
+    assert there.arrived and there.doors >= 1, there.tiles[-3:]
+    back = walk_route(client, uid, surface(), (2856, 3167, 0))
+    assert back.arrived, back.tiles[-3:]

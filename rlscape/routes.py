@@ -45,6 +45,11 @@ CROSSINGS = {
     190: ("Gnome Stronghold gate", 2),  # GnomeStrongholdPlugin.openGates: (2461, 3382) <-> (2461, 3385)
     1967: ("Grand Tree door", 2),  # GnomeStrongholdPlugin: two tiles through, north or south
     1968: ("Grand Tree door", 2),
+    # The Crandor passage (Caleb, 2026-11-08, OQ-16 (a); Dragon Slayer complete): Karamja volcano's pot hole down,
+    # the dungeon, its secret wall (DragonSlayerPlugin, 2606: open with the quest done), the rope up onto Crandor; back
+    # by Crandor's hole. Underground, so one crossing from the rim to Crandor: its 89 steps across plus the climbs and
+    # the wall (timed on the server: 77 and 83 ticks, clicked, in two of three runs each way)
+    492: ("Crandor passage", 6),
 }
 # The Al Kharid toll gate, crossed paying (TollGateOptionPlugin, "pay-toll(10gp)"): only on the map for a walker that
 # pays (toll_surface); the sim's walks route through it themselves (rlscape.sim.movement)
@@ -189,6 +194,8 @@ def crossing_tiles(thing: dict[str, int | str]) -> list[tuple[tuple[int, int], t
             return [((x + i, y - 1), (x + i, y + 1)) for i in range(sx)]
         case 35549 | 35551:  # the toll gate's halves: their wall is on the tile's west side
             return [((x - 1, y), (x, y))]
+        case 492:  # the Crandor passage: the volcano's rim (KaramjaListeners.VOLCANO_RIM) and Crandor's landing
+            return [((2856, 3167), (2834, 3258))]
     return []
 
 

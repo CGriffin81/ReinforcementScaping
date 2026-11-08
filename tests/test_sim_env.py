@@ -110,6 +110,21 @@ def test_episodes_end_only_by_truncation_at_the_horizon():
     assert truncated and info["game_ticks"] == 3_000 and list(part(env, obs, "time")) == [1.0, 0.0]
 
 
+def test_the_observation_shows_how_long_until_the_home_teleport_is_ready(env):
+    """Caleb, 2026-11-08, OQ-15: the ticks left on its 30-minute cooldown, over the cooldown; 0 when ready."""
+    from rlscape.gamedata.transports import HOME_COOLDOWN_TICKS
+    env.reset(seed=0)
+    state = env.sim.state
+    reading = lambda: float(part(env, env.encoder.encode(state, env.sim.action_mask()), "home_teleport")[0])  # noqa: E731
+    assert reading() == 0.0  # a fresh character's is ready
+    state.home_teleport_ready = state.tick + HOME_COOLDOWN_TICKS // 2
+    assert reading() == pytest.approx(0.5)
+    state.home_teleport_ready = state.tick + HOME_COOLDOWN_TICKS
+    assert reading() == pytest.approx(1.0)
+    state.home_teleport_ready = state.tick - 10
+    assert reading() == 0.0
+
+
 def test_the_preference_part_is_only_there_for_the_e4_agent(env):
     conditioned = SimEnv(preference_in_obs=True)
     obs, _ = conditioned.reset(seed=0, options={"reward_weights": (0.3, 0.7)})

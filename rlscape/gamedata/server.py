@@ -930,6 +930,7 @@ class CombatSpell:
     level: int
     experience: float  # given on every cast, hit or splash (MagicSpell.addExperience)
     runes: dict[int, int]  # rune id -> amount per cast
+    button: int  # its button on the standard spellbook (interface 192): the id SpellBook.MODERN.register gives it
 
 
 ELEMENT_NAMES = {"Air": "wind", "Water": "water", "Earth": "earth", "Fire": "fire"}
@@ -938,15 +939,15 @@ ELEMENT_NAMES = {"Air": "wind", "Water": "water", "Earth": "earth", "Fire": "fir
 @cache
 def combat_spells() -> dict[str, CombatSpell]:
     """The modern elemental combat spells, from the SpellBook.MODERN.register calls in AirSpell, WaterSpell,
-    EarthSpell and FireSpell."""
+    EarthSpell and FireSpell (each call's first argument is the spell's button)."""
     runes, out = rune_ids(), {}
     for element, prefix in ELEMENT_NAMES.items():
         text = (MODERN_SPELLS / f"{element}Spell.java").read_text(encoding="utf-8")
-        for kind, level, xp, args in re.findall(
-                rf"new {element}Spell\(SpellType\.(\w+),\s*(\d+),\s*([\d.]+),(.*?)\)\);", text):
+        for button, kind, level, xp, args in re.findall(
+                rf"register\((\d+),\s*new {element}Spell\(SpellType\.(\w+),\s*(\d+),\s*([\d.]+),(.*?)\)\);", text):
             cost = {runes[name]: int(n) for name, n in re.findall(r"Runes\.([A-Z_]+)\.getItem\((\d+)\)", args)}
             name = f"{prefix}_{kind.lower()}"
-            out[name] = CombatSpell(name, int(level), float(xp), cost)
+            out[name] = CombatSpell(name, int(level), float(xp), cost, int(button))
     return out
 
 

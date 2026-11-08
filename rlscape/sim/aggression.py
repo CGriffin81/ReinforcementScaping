@@ -33,11 +33,11 @@ hitpoints to come back heals as it goes; the option then reports `regenerated`.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from functools import cache
 
 import numpy as np
 
 from rlscape.combat import formulas as f
+from rlscape.combat.neighbours import SITE_REACH, Aggressor, site_aggressors  # noqa: F401 (shared here)
 from rlscape.combat.rates import Plan, npc_offence, player_offence
 from rlscape.gamedata import server as gd
 from rlscape.sim.combat import die, kill_sequence
@@ -47,31 +47,9 @@ from rlscape.sim.skills import MAX_XP, SKILL_INDEX
 from rlscape.sim.state import TOLERANCE_TICKS, CharacterState
 
 
-SITE_REACH = 10  # tiles from a site's tile to an aggressor's spawn (Draynor's wizards spawn 8 from the willows)
 ATTACKS_PER_TICK = 1 / 29  # per aggressor, while gathering (measured at the willows; elsewhere to calibrate)
 FLEE_TICKS = 129  # running out of reach and back, beyond eating (measured at the willows, 4 flees; to calibrate)
 GATHERING_STANCE = Plan("melee", f.ACCURATE)  # how a gathering character defends, and fights a trivial monster
-
-
-@dataclass(frozen=True)
-class Aggressor:
-    npc: gd.Npc
-    level: int  # the combat level the server compares with the character's (the NPC definition's)
-
-
-@cache
-def site_aggressors(tile: tuple[int, int, int]) -> tuple[Aggressor, ...]:
-    """The aggressive monsters spawned within SITE_REACH tiles of a site's tile, one per spawn. Only attackable ones
-    with a combat level: the config marks some others aggressive (a Draynor banker), which never pick anyone."""
-    npcs, definitions, out = gd.npcs(), gd.npc_definitions(), []
-    for npc_id, spawns in gd.spawns().items():
-        npc, definition = npcs.get(npc_id), definitions.get(npc_id)
-        if npc is None or not npc.aggressive or definition is None or not definition.attackable                 or definition.combat_level <= 0:
-            continue
-        for x, y, z in spawns:
-            if z == tile[2] and max(abs(x - tile[0]), abs(y - tile[1])) <= SITE_REACH:
-                out.append(Aggressor(npc, definitions[npc_id].combat_level))
-    return tuple(out)
 
 
 @dataclass(frozen=True)

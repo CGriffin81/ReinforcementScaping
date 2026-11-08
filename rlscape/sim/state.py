@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 
 from rlscape.combat.access import Progress, relevant, start_progress
+from rlscape.combat.neighbours import TOLERANCE_TICKS  # noqa: F401 (Region.TOLERANCE_TICKS, in game ticks)
 from rlscape.gamedata import server as gd
 from rlscape.sim.skills import SKILL_INDEX, SKILLS, XP_FOR_LEVEL, capped_total_xp, level_for_xp, skill_measure
 
@@ -16,7 +17,6 @@ INVENTORY_SLOTS = 28
 COINS = 995
 SPAWN = (3233, 3230, 0)  # where the bridge's `spawn` places a character leaving Tutorial Island
 FRESH_HITPOINTS_LEVEL = 10
-TOLERANCE_TICKS = 1000  # Region.TOLERANCE_TICKS (the fork counts game ticks): then its aggressive monsters leave it alone
 
 
 @dataclass

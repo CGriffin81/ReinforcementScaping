@@ -1,8 +1,10 @@
-"""Export each combat site's best ranged safespot for the sim (rlscape.combat.safespots; Caleb, 2026-11-07, OQ-27 (d)).
+"""Export each combat site's best ranged and magic safespot for the sim (rlscape.combat.safespots; Caleb, 2026-11-07,
+OQ-27 (d) and OQ-34).
 
 For every site of the sim's enemy pool (rlscape.combat.candidates.enemy_pool), the bridge's ranged_safespots finds the
 tiles to shoot its monster from that it can't attack back from, by the server's own chase: this keeps the best one
-for each attack range (7, and 9 long-ranged) and writes data/ranged_safespots.csv, a row a site and range:
+for each attack range (7, 9 long-ranged, and magic's 10) and writes data/ranged_safespots.csv, a row a site and
+range:
 - found: 1 if it has one; then the tile;
 - held: the site's monsters (spawned within the sim's SITE_RADIUS) it holds against; share: of their wandering it
   holds from, on average; steps: how far they chase before they stick, on average;
@@ -29,11 +31,12 @@ from pathlib import Path
 
 from rlscape.bridge.client import BridgeClient, BridgeError
 from rlscape.combat.candidates import SITE_RADIUS, enemy_pool
-from rlscape.combat.safespots import LONGRANGE_TILES, RANGE_TILES
+from rlscape.combat.safespots import SAFESPOT_RANGES
 
 REPO = Path(__file__).resolve().parent.parent
 OUT = REPO / "data" / "ranged_safespots.csv"
 TELEPORT_TRIES = 4
+FRESH_HITPOINTS = 10  # a fresh character's Hitpoints level
 FIELDS = ("npc_id", "name", "site_x", "site_y", "site_z", "range", "found", "tile_x", "tile_y", "tile_z", "held",
           "spawns", "share", "steps", "walk", "threats", "pickup_threats", "note")
 
@@ -96,10 +99,12 @@ def main() -> None:
         try:
             client.set_retaliate(uid, False)
             for k, (npc, site) in enumerate(sites):
-                wanted = [r for r in (RANGE_TILES, LONGRANGE_TILES)
-                          if (npc.id, *site.spawn, r) not in done]
+                wanted = [r for r in SAFESPOT_RANGES if (npc.id, *site.spawn, r) not in done]
                 if not wanted:
                     continue
+                # hitpoints refilled (its own level, so its combat level, which decides the threats, stays), so it
+                # outlasts the searches at a dangerous site
+                client.debug_set_levels(uid, {"hitpoints": FRESH_HITPOINTS})
                 for _ in range(TELEPORT_TRIES):  # a death at the last site leaves it respawning for a while
                     client.debug_teleport(uid, *site.spawn)
                     client.wait(1)

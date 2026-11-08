@@ -1,7 +1,14 @@
-# Environment Contract (v1.17, Signed off)
+# Environment Contract (v1.19, Signed off)
 
-**Status:** v1.17, 2026-11-07. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
-- **v1.17** (2026-11-07; to confirm) fights ranged from safespots (OQ-27 (d), Caleb): a ranged target whose damage
+**Status:** v1.19, 2026-11-08. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
+- **v1.19** (2026-11-08, Caleb) shows the home teleport's cooldown in the observation (§3, OQ-15): one feature,
+  the time until it's ready over its 30 minutes. 2,625 features.
+- **v1.18** (2026-11-07; to confirm) has magic safespot as ranged does (OQ-34, Caleb: range 10, no piles), and fights
+  count the site's aggressive monsters of other kinds (OQ-35 (a), Caleb): away from a safespot, while aggression
+  lasts, they engage between kills and are fought in the fight's plan, in place of target kills (§8). A usable
+  safespot holds from 80% of the wandering, not half (OQ-36 (a), Caleb). No change to the observation or the
+  actions.
+- **v1.17** (2026-11-07, confirmed by Caleb the same day) fights ranged from safespots (OQ-27 (d), Caleb): a ranged target whose damage
   isn't trivial (the fight would need food, OQ-30 (b)) needs the site's safespot, from which it does none; arrows
   lie in piles picked up between kills, with one pickup time for every class (§8). Slayer levels lock no monster
   (OQ-32, Caleb; §5). Every tradeable crossbow and bolt on the 2009 GE joins *V* and the GE buys (Caleb; 11 and 53,
@@ -109,6 +116,7 @@ roughly [0, 1].
 | Total level | 1 | total level (all 24 skills) / 2376 |
 | Hitpoints, prayer | 2 | current / max |
 | Run energy, weight | 2 | energy / 100; weight in kg / 100, clipped to [0, 1] (option catalog §8) |
+| Home teleport | 1 | the ticks until the home teleport is ready again / its 30-minute cooldown; 0 when ready (v1.19, OQ-15) |
 | Wealth | 2 | log1p(coins) / log1p(10M); log1p(net worth) / log1p(10M) |
 | Inventory | V + 1 | log1p(count) / log1p(28) per vocabulary item; free slots / 28 |
 | Bank | V | log1p(count) / log1p(10k) per vocabulary item |
@@ -129,9 +137,9 @@ option catalog.
 **As built** (`rlscape/envs/encoding.py`, 2026-10-30): E = 12 roles (weapons for melee, ranged and magic,
 ammunition, head, body, legs, shield, axe, pickaxe, fishing gear), R = 12 (the catalog's 11 regions and
 "elsewhere"), C = 18 slots (6 per combat class). The encoder's docstring lists how each part is scaled. With the
-catalog as built (1,709 actions, *V* = 279) the vector has 2,624 features (v1.12 dropped the quest part's 64; v1.13
+catalog as built (1,709 actions, *V* = 279) the vector has 2,625 features (v1.12 dropped the quest part's 64; v1.13
 added 7 buys and 27 items; v1.14 11 buys, 11 items and the potions part's 22; v1.16 2 buys, 2 items and the cape role;
-v1.17 64 buys and 63 items).
+v1.17 64 buys and 63 items; v1.19 the home teleport's wait).
 
 **Left out on purpose:** GE prices. They're frozen, so a price snapshot would be a constant.
 
@@ -209,9 +217,12 @@ for every step.
     masked. Both backends: `ServerEnv` takes the same transports by the player's clicks (`rlscape/bridge/travel.py`).
   - **staged:** sim v0 has every family except the four v1 skills, which sim v1 adds before E2. Quests are out
     (v1.12).
-  - **aggressive monsters near a combat site** (Caleb, 2026-11-06, OQ-19): a fight ignores every monster but its
-    target. They're measured on the server first, and modelled only if they move the rates beyond ±20%.
-  - target ≥ 20k decisions per second across `SubprocVecEnv` workers
+  - **aggressive monsters near a combat site** (Caleb, 2026-11-06, OQ-19; 2026-11-07, OQ-35 (a)): measured on the
+    server, they moved the rates beyond ±20%, so the site's aggressive monsters of other kinds engage between kills
+    until aggression runs out, each fought in the fight's plan (§8).
+  - speed: no fixed target (Caleb, 2026-11-08, OQ-7 (a), in place of ≥ 20k decisions a second): the combat-rate
+    model is vectorised over the enemy pool, and E2's budget is sized to the measured speed (2026-11-08: 110 a
+    second in one process, 817 across 16 workers)
 - **`ServerEnv`:**
   - `reset` reinstalls the frozen GE database. This is required, not optional: GE offers outlive the
     character that placed them, and in testing one test's offer filled the next test's.
@@ -259,13 +270,14 @@ from `drop_tables.json`, and spawns from `npc_spawns.json`.
 
 | Quantity | How it's computed |
 |---|---|
-| Kills/hr | from hit chance and max hit against the NPC's defence and HP (the expected swings until their damage reaches its HP, the last hit's overkill included, as the simulator's fights deal it), plus a measured overhead per kill for finding and reaching the next target (3 ticks; magic taken as ranged), and a measured pickup time for each ground item the loot mode keeps, a drop or a pile of arrows (5 ticks, one time for every class; ranged's to refit on safespot runs). A site short of the monster holds kills to one every (respawn + fighting) / spawns ticks: spawns of it within 15 tiles (`npc_spawns.json`), its `respawn_delay` (`npc_configs.json`). In the simulator each of a site's monsters has its own respawn, and nothing attacks while the character waits. |
+| Kills/hr | from hit chance and max hit against the NPC's defence and HP (the expected swings until their damage reaches its HP, the last hit's overkill included, as the simulator's fights deal it), plus a measured overhead per kill for finding and reaching the next target (3 ticks, every class; magic's calibration bears it out), and a measured pickup time for each ground item the loot mode keeps, a drop or a pile of arrows (5 ticks, one time for every class; ranged's to refit on safespot runs). A site short of the monster holds kills to one every (respawn + fighting) / spawns ticks: spawns of it within 15 tiles (`npc_spawns.json`), its `respawn_delay` (`npc_configs.json`). In the simulator each of a site's monsters has its own respawn, and nothing attacks while the character waits. |
 | XP/hr | combat XP and Hitpoints XP for the chosen style, plus the spell's base XP on every magic cast |
 | gp/hr | expected value (`prices_v2`) of the drops the loot mode keeps × kills/hr. **Not yet subtracted:** consumables used (food, arrows, runes) and entry fees (Brimhaven, Waterbirth). |
 | Risk | expected damage per kill, poison included (the server's Poison timer; prayer doesn't stop it) and a dragon's breath behind the shield (one swing in three, 0 to 5), less the shares the antipoison and antifire carried cover, and the monster's max hit, against HP above the retreat point and the food held (the retreat-aware filter). The fighter's levels are as its carried potions boost them at the fight's start |
 | Inventory and travel | kills continue until the looted drops fill the free slots, then a bank trip; the walk to the monster is taken out of the duration (*D* = 15 game-minutes = 1,500 ticks) |
 | Prayer | fights flick prayers (option catalog §4): a style the Prayer level can protect against deals nothing, defence prayers count otherwise, and the character's swings get its accuracy and damage prayers except those next to a monster swing. Prayer points never drain. |
-| Ranged safespots | a ranged target needs a safespot unless its damage is trivial: the fight needs no food, its expected damage over the option less the hitpoints regenerated meanwhile fitting in those above the retreat point (OQ-30 (b)), and unless the gear guards against its special damage (a bow takes no shield). The safespots are the server's, by its own chase (the bridge's `ranged_safespots`, exported to `data/ranged_safespots.csv`): a tile the monster, chasing, gets stuck short of attacking from, with it in shot (range 7, long-ranged 9), holding from at least half of its wandering, with no aggressive monster reaching it. From one the monster deals nothing, and the site's supply is the monsters it holds against. Arrows land where the monster stands: a pile per 100 ticks of shooting, picked up between kills with the drops, a pickup each, plus the walk from the safespot and back; when aggressive monsters guard them and aggression hasn't run out, the simulator's fight leaves them until the oldest would go (200 ticks). `rlscape.combat.safespots` |
+| Ranged and magic safespots | a ranged or magic target needs a safespot unless its damage is trivial: the fight needs no food, its expected damage over the option less the hitpoints regenerated meanwhile fitting in those above the retreat point (OQ-30 (b)), and unless the gear guards against its special damage (a bow takes no shield). The safespots are the server's, by its own chase (the bridge's `ranged_safespots`, exported to `data/ranged_safespots.csv`): a tile the monster, chasing, gets stuck short of attacking from, with it in shot (range 7, long-ranged 9, magic 10: OQ-34), holding from at least 80% of its wandering (OQ-36 (a)), with no aggressive monster reaching it. From one the monster deals nothing, and the site's supply is the monsters it holds against. Casting leaves no piles. Arrows land where the monster stands: a pile per 100 ticks of shooting, picked up between kills with the drops, a pickup each, plus the walk from the safespot and back; when aggressive monsters guard them and aggression hasn't run out, the simulator's fight leaves them until the oldest would go (200 ticks). `rlscape.combat.safespots` |
+| Monsters near a fight | away from a safespot, a site's aggressive monsters of other kinds (spawned within 10 tiles) whose level would pick the character engage it between kills (the overhead to the next monster, the pickups, a wait for a respawn: when nothing attacks it, as `AggressiveBehavior` needs outside multi-combat areas), each spawn at 0.045 a tick (measured at the animated spades' possessed pickaxe), until the region's tolerance runs out (1,000 ticks after arriving). Each engagement is a kill of that monster in the fight's plan, its time, damage, XP and drops, before the next target (single combat). The rankers count the expected fights per target kill; a site where one can't be hurt by the plan or fails the danger filter is no site while aggression lasts (OQ-35 (a)). `rlscape.combat.neighbours` |
 | Ammunition | fighting stops when the arrows or runes run out. Arrows that land and are picked back up stretch the arrows held, and so do Ava's devices: worn, a device sends 80% of shots back to the quiver, and the accumulator also gathers the shots it misses that would land (`equipment.shot_outcomes`, from `RangeSwingHandler`). The server's metal chest pieces stop the catch (`data/ava_interference.csv`), and a ranger wearing a device leaves them off. Melee and crystal bows are unlimited. |
 
 These are *theoretical* rates (expected values). The real server measures the actual ones during calibration
@@ -380,3 +392,9 @@ Caleb signed off both documents on 2026-10-28 (v1.0).
 30. ***V* is redrafted by its rule with every quest complete** (OQ-23): 16 items added, none taken out (option
     catalog §9). The buy list takes the dragon dagger and longsword and the Fremennik helms (OQ-24), which join *V*,
     and so do the 5 items the rule proposes once the drop tables' sub-tables are modelled.
+
+### Decided (Caleb, 2026-11-07, safespots and monsters near a fight): v1.17 and v1.18
+31. **Ranged and magic fights safespot** (§8; OQ-27 (d), OQ-30 (b), OQ-34): a target whose damage isn't trivial is
+    fought from the site's safespot, from which it deals nothing.
+32. **Monsters of other kinds near a fight are fought** (§8; OQ-35 (a)): away from a safespot, while aggression lasts,
+    a site's aggressive monsters of other kinds engage between kills, and each is killed before the next target.

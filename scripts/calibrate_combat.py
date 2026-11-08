@@ -19,7 +19,9 @@ character has no target and isn't walking, click "Attack" on the nearest monster
 style: a ranged case in the ranker's, clicked on the weapon tab, as Caleb chose on 2026-11-07, or with --style
 accurate the server's default, as before; melee in accurate); eat when
 hitpoints are at or under half (the sim's rule, rlscape.sim.health); click again only after IDLE_TICKS idle, as a
-person waits for the walk to start; stop when there's no food left to eat then
+person waits for the walk to start. Attacked with no target (an eat click stops the fight on this server; a monster of
+another kind engaged it, OQ-35), it attacks the attacker back at once, its own kind first (2026-11-08: waiting for
+auto-retaliate took 8 ticks an eat at the poison spiders, 1.28 to 1.17); stop when there's no food left to eat then
 (the sim retreats), at death, or when the budget runs out. Busy STUCK_TICKS without XP, it walks back to the spawn.
 Ranged fights safespot as the sim's do (rlscape.combat.safespots; Caleb, 2026-11-07, OQ-27 (d)): where the sim's
 fight shoots from the site's safespot, the runner stands on it (setup only) with auto-retaliate off, as rangers
@@ -28,6 +30,13 @@ still where it holds (the bridge's `npcs`), so the chase sticks; between kills i
 walks back; walked off it in a fight (the target stepped before its first hit landed), it clicks back onto it. Ranged loots only between kills (no target), so its arrows wait for the kill; while aggressive monsters
 guard them and aggression hasn't run out (TOLERANCE_TICKS at the site), it leaves them until the oldest would go, and against dragons wears the
 anti-dragon shield it carries for that trip, the bow back after (Caleb, OQ-33).
+Magic casts by hand, as the sim assumes (option catalog §4.B): the band's spell (MAGIC) on the monster (the bridge's
+`cast`, a client's spell-on-NPC packet), auto-retaliate off. A hand cast is one spell and stops the combat pulse, so
+it casts again on the same monster each tick until one is taken (the server refuses a cast within 3 ticks of the
+last), which then lands when the next attack is due: the autocast rate the sim assumes. The kill is when that monster
+is no longer listed alive (`npcs`), or, another kind, no longer attacking; its loot waits for it, as ranged's does.
+Between kills it casts on whatever attacks it, the case's kind first, as retaliating would: in single combat another
+kind attacking it holds it "under attack", so it's fought back before the next (OQ-19's monsters near a fight).
 Looting, as a person loots their own kills: after a kill it waits for the drop (up to DROP_WAIT_TICKS, the default
 death animation, DeathTask) before the next attack; between kills, attacked or not (Caleb, 2026-11-07: the sim picks
 up after every kill), it takes the nearest of its own drops the loot mode keeps and has room for (`take`, after
@@ -77,10 +86,12 @@ STUCK_TICKS = 30  # a target and no XP this long: something holds the character
 TAKE_IDLE_TICKS = 2  # still this long before taking the next drop: the walk to it starts a tick after the click
 DROP_WAIT_TICKS = 6  # after a kill, waiting for the drop: DeathTask's default death animation
 LOOT_RADIUS = 15  # tiles: the drops a person looting sees and goes for
+MARK_RADIUS = 32  # tiles: a caster watches the monster it fights this far (the bridge's attackers' reach)
 INVENTORY_SLOTS = 28
 IDLE_TICKS = 3  # idle this long before clicking again: a click on a monster a few tiles off takes a tick or two to
 # start the walk, and clicking again meanwhile restarts it (a person clicks once and waits)
 COMBAT = ("attack", "strength", "defence", "hitpoints", "ranged")
+XP_SKILLS = (*COMBAT, "magic")  # the XP counted (magic: a magic case's)
 TROUT, LOBSTER = 333, 379
 FOOD_MARGIN, MAX_FOOD = 2, 15  # food beyond the expected damage's, and at most
 # The band's standard gear (no quest items: no dragon weapons, no rune platebody or green d'hide body)
@@ -96,6 +107,14 @@ RANGED = {1: ((841, 1), (882, 500)),  # the starter kit's shortbow, and its bron
 # A ranger also carries an anti-dragon shield, worn for a late pickup trip where dragons guard its arrows (Caleb,
 # 2026-11-07, OQ-33); a bow takes no shield, so it stays in the inventory otherwise
 RANGED = {band: (*kit, (ANTI_DRAGON_SHIELD, 1)) for band, kit in RANGED.items()}
+# The band's magic gear (agent choice, reversible): band 1 none, as a fresh character has; wizard robes and a staff of
+# air (31), mystic robes and a staff of fire (61, 91), with an amulet of magic; and the runes for MAGIC_CASTS casts of
+# the band's spell, less the rune the staff stands in for. The spell is the best the band's Magic level casts with them.
+MAGIC = {1: ((), "wind_strike"),
+         31: ((579, 577, 1011, 1727, 1381), "earth_bolt"),  # wizard hat, robe, blue skirt, amulet, staff of air
+         61: ((4089, 4091, 4093, 4097, 1727, 1387), "fire_blast"),  # mystic hat, top, bottom, boots, staff of fire
+         91: ((4089, 4091, 4093, 4097, 1727, 1387), "fire_wave")}
+MAGIC_CASTS = 400  # a 1,500-tick run casts at most 300 (one every 5 ticks)
 FOOD = {1: TROUT}  # above band 1: lobsters
 WEAPON_TABS = {"CROSSBOW": 79}  # the weapon tab with the weapon wielded (WeaponInterfaces.CROSSBOW; bows, BOW's 77)
 BOW_TAB = 77
@@ -122,7 +141,19 @@ class Case:
 def gear(case_class: str, band: int) -> tuple[tuple[int, int], ...]:
     if case_class == "melee":
         return tuple((item, 1) for item in MELEE.get(band, ()))
+    if case_class == "magic":
+        items, spell = MAGIC[band]
+        staves = gd.staff_runes()
+        runes = {rune: n * MAGIC_CASTS for rune, n in gd.combat_spells()[spell].runes.items()
+                 if not set(items) & staves.get(rune, frozenset())}
+        return (*((item, 1) for item in items), *runes.items())
     return RANGED[band]
+
+
+def trained(case_class: str) -> tuple[str, ...]:
+    """The skills set to the band: the combat skills and Prayer, and Magic for a magic case (melee and ranged cases
+    keep Magic at 1, as the fit and check sets were measured)."""
+    return (*COMBAT, "prayer", *(("magic",) if case_class == "magic" else ()))
 
 
 def food_item(band: int) -> int:
@@ -135,7 +166,7 @@ def character(combat_class: str, band: int, food: int = MAX_FOOD) -> CharacterSt
     state = CharacterState.fresh()
     state.inventory.clear()
     if band > 1:
-        for skill in (*COMBAT, "prayer"):
+        for skill in trained(combat_class):
             state.xp[SKILL_INDEX[skill]] = float(XP_FOR_LEVEL[band])
         state.hp = state.max_hp()
     for item, amount in gear(combat_class, band):
@@ -185,7 +216,9 @@ def cases(bands: list[int], classes: list[str], slot: int = 0, loot: str = "none
             if candidate is None:
                 continue
             npc = candidate.entry.npc
-            style = candidate.plan.style if ranked_style and combat_class == "ranged" else "accurate"
+            # magic: the spell is its plan's style
+            ranked = combat_class == "magic" or (ranked_style and combat_class == "ranged")
+            style = candidate.plan.style if ranked else "accurate"
             out.append(Case(combat_class, band, npc.id, npc.name, candidate.site.spawn, npc.hitpoints, slot, loot,
                             style))
     return out
@@ -252,7 +285,7 @@ def setup(client: BridgeClient, case: Case, budget: int) -> tuple[int, dict | No
 
 def _prepare(client: BridgeClient, uid: int, case: Case, budget: int) -> dict | None:
     if case.band > 1:
-        client.debug_set_levels(uid, {skill: case.band for skill in (*COMBAT, "prayer")})
+        client.debug_set_levels(uid, {skill: case.band for skill in trained(case.combat_class)})
     for item in {i["id"] for i in client.state(uid)["inventory"]}:
         client.item_option(uid, item, "Drop")  # no starter kit: a combat inventory
     client.wait(2)  # the last drops land a tick later
@@ -273,12 +306,14 @@ def _prepare(client: BridgeClient, uid: int, case: Case, budget: int) -> dict | 
         client.wait(1)
     worn = {i["id"] for i in client.state(uid)["equipment"]}
     assert set(worn_by_the_sim(case)) <= worn, f"wearing {worn}, the sim wears {worn_by_the_sim(case)}"
-    if case.style != "accurate":  # the weapon tab's style button (WeaponInterface.setAttackStyle)
+    if case.combat_class == "ranged" and case.style != "accurate":  # the weapon tab's button (setAttackStyle)
         weapon = next(i["id"] for i in client.state(uid)["equipment"] if i["id"] in gd.ranged_weapons())
         tab = WEAPON_TABS.get(gd.ranged_weapons()[weapon].weapon_type, BOW_TAB)
         assert client.interface_button(uid, tab, BOW_STYLE_BUTTONS[case.style]), f"no {case.style} button"
     spot = case_safespot(case, budget)
-    client.set_retaliate(uid, spot is None)  # rangers safespotting turn it off: retaliating walks them off the tile
+    # off for rangers safespotting (retaliating walks them off the tile) and for casters: a hand cast stops the
+    # combat pulse, and retaliating then would swing the staff in melee
+    client.set_retaliate(uid, spot is None and case.combat_class != "magic")
     client.flick(uid)  # protection prayers, as the sim's fights flick them (none below their levels)
     if spot is None:
         client.debug_teleport(uid, *case.site)
@@ -306,6 +341,12 @@ def server_run(client: BridgeClient, case: Case, budget: int) -> dict[str, Any]:
     try:
         attack = {"cmd": "interact", "uid": uid, "name": case.name, "option": "Attack", "object": False,
                   "ids": [case.npc], "packet": True}
+        magic = case.combat_class == "magic"
+        if magic:  # the case's spell cast on the monster, as a hand cast: one spell a click
+            attack = {"cmd": "cast", "uid": uid, "name": case.name, "object": False, "ids": [case.npc],
+                      "spell": gd.combat_spells()[case.style].button}
+        mark, again = None, None  # magic: the monster it fights (an index), and the cast sent again after each spell
+        clicked_back_at = -2  # when it last attacked an attacker back
         home = spot["tile"] if spot else case.site
         back = {"cmd": "walk_to", "uid": uid, "x": home[0], "y": home[1], "z": home[2], "packet": True}
         looting, keep, stackable = case.loot != "none", loot_rule(case.loot, VOCABULARY), gd.stackable_items()
@@ -315,7 +356,10 @@ def server_run(client: BridgeClient, case: Case, budget: int) -> dict[str, Any]:
         mine: dict[tuple[int, int, int], int] = {}  # its ground items (id, x, y) -> when first seen
         fighting, ended_at, dropped_at, started_at, last_kill = False, -DROP_WAIT_TICKS, -1, 0, 0
         counts = {"clicks": 0, "no_target": 0, "eaten": 0, "eat_clicks": 0, "hits_taken": 0, "damage_taken": 0,
-                  "walked_back": 0, "taken": 0, "trips": 0, "off_tile": 0}
+                  "walked_back": 0, "taken": 0, "trips": 0, "off_tile": 0, "recasts": 0, "kills": 0,
+                  "other_kills": 0,  # (kills counted for magic: of the case's monster, and of others it fought back)
+                  "other_engagements": 0}  # monsters of other kinds that started attacking it (OQ-35)
+        others: set[int] = set()  # the indices of other kinds attacking it at the last reading
         if spot:
             counts["same_tile"] = spot["same_tile"]
         food = None  # food carried at the last reading
@@ -328,15 +372,18 @@ def server_run(client: BridgeClient, case: Case, budget: int) -> dict[str, Any]:
         bow = next((i["id"] for i in bow if i["id"] in gd.ranged_weapons()), None)
         while True:
             reads = [{"cmd": "state", "uid": uid}, {"cmd": "ground_items", "uid": uid, "radius": LOOT_RADIUS}]
-            if spot:
+            if spot or magic:  # magic: whether the monster it fights is still alive (the bridge lists no dying one)
                 reads.append({"cmd": "npcs", "uid": uid, "name": case.name, "ids": [case.npc], "object": False,
-                              "radius": LOOT_RADIUS, "range": style_range(case.plan)})
+                              "radius": LOOT_RADIUS if spot else MARK_RADIUS, "range": style_range(case.plan)})
             step = client.schedule([[*pending, *reads]])[0]
             results = step["results"]
             state, ground = results[len(pending)]["state"], results[len(pending) + 1]["items"]
-            seen = results[-1]["npcs"] if spot else []
-            if pending and pending[0].get("cmd") == "interact":
+            seen = results[-1]["npcs"] if spot or magic else []
+            if pending and pending[0].get("cmd") in ("interact", "cast") and "index" not in pending[0]:
                 counts["clicks" if results[0].get("ok") else "no_target"] += 1
+            if magic and pending and pending[0].get("cmd") == "cast" and results[0].get("ok"):
+                mark = results[0]["index"]
+                again = {**pending[0], "index": mark}
             first = first or (step["tick"], state)
             offset = step["tick"] - first[0]
             for item in ground:
@@ -344,13 +391,23 @@ def server_run(client: BridgeClient, case: Case, budget: int) -> dict[str, Any]:
                 if item["own"] and key not in mine:
                     mine[key] = offset
                     dropped_at = offset
-            if state["target"] is not None:
+            if magic and mark is not None and mark not in {n["index"] for n in seen} | {
+                    a["index"] for a in state["attackers"] if a["hitpoints"] > 0}:
+                # dead, or dying: the case's monster no longer listed, another kind no longer attacking
+                counts["kills" if again["ids"] == [case.npc] else "other_kills"] += 1
+                mark = None
+            # in a fight: a target; casting, a monster it casts on (each hand cast's combat pulse stops after it)
+            engaged = mark is not None if magic else state["target"] is not None
+            if engaged:
                 if not fighting:
                     started_at = last_gain = offset  # STUCK_TICKS counts from the fight's start (a safespotter waits)
                 fighting = True
             elif fighting:  # the target is gone: killed, most likely
                 fighting, ended_at, last_kill = False, offset, offset - started_at
-            hp, gained = state["hitpoints"], sum(xp(state, s) for s in COMBAT)
+            attacking = {a["index"] for a in state["attackers"] if a["id"] != case.npc}
+            counts["other_engagements"] += len(attacking - others)
+            others = attacking
+            hp, gained = state["hitpoints"], sum(xp(state, s) for s in XP_SKILLS)
             now = food_count(state)
             counts["eaten"] += max((food if food is not None else now) - now, 0)  # food looted only adds
             food = now
@@ -375,8 +432,8 @@ def server_run(client: BridgeClient, case: Case, budget: int) -> dict[str, Any]:
             held = holding(state)
             loot = [i for i in ground if (i["id"], i["location"]["x"], i["location"]["y"]) in mine and keep(i["id"])
                     and (free > 0 or (i["id"] in stackable and i["id"] in held))] if looting else []
-            if case.combat_class == "ranged" and state["target"] is not None:
-                loot = []  # its arrows wait for the kill
+            if (case.combat_class == "ranged" and state["target"] is not None) or (magic and engaged):
+                loot = []  # its arrows wait for the kill; a caster's loot too, as the sim's picks up between kills
             if spot and loot and not fetching:
                 # out for them between kills, unless the walk would take hits: guarded, aggression not yet run out;
                 # then just before the oldest would go, the next kill and the walk counted (the sim's rule)
@@ -419,6 +476,24 @@ def server_run(client: BridgeClient, case: Case, budget: int) -> dict[str, Any]:
                 pending, idle, still = [{"cmd": "take", "uid": uid, "item": item["id"], "x": item["location"]["x"],
                                          "y": item["location"]["y"], "packet": True}], 0, 0
                 counts["taken"] += 1
+            elif magic and engaged and offset - last_gain > STUCK_TICKS:  # its casts refused or not landing
+                pending, last_gain, mark = [back], offset, None
+                counts["walked_back"] += 1
+            elif magic and engaged and state["target"] is None:
+                # the spell cast, the pulse stopped: the next on the same monster at once. The server refuses it
+                # within the last cast's 3-tick delay, so it's sent each tick until one starts the pulse, which casts
+                # when the next attack is due (5 ticks after the last): the autocast rate the sim assumes
+                pending = [again]
+                counts["recasts"] += 1
+            elif magic and state["target"] is None and not state["moving"] and not loot and not waiting and (
+                    attackers := sorted((a for a in state["attackers"] if a["hitpoints"] > 0
+                                         and (not spot or a["index"] in spot["held"])),  # on a safespot, held ones
+                                        key=lambda a: a["id"] != case.npc)):
+                # one attacking it, the case's kind first, as retaliating would: another kind holds it "under
+                # attack" in single combat, so it's fought back before the next (a monster near the site, OQ-19)
+                a = attackers[0]
+                pending = [{**attack, "name": a["name"], "ids": [a["id"]], "index": a["index"]}]
+                counts["clicks"] += 1
             elif spot and not loot and state["target"] is None and not state["moving"] and not waiting:
                 # on the safespot (walking back to it first): a held monster standing still where it holds
                 here = (state["location"]["x"], state["location"]["y"], state["location"]["z"])
@@ -435,6 +510,17 @@ def server_run(client: BridgeClient, case: Case, budget: int) -> dict[str, Any]:
                          and (n["attacking_me"] or not (n["fighting"] or n["moving"]))]
                 if ready and idle >= IDLE_TICKS:
                     pending, idle = [{**attack, "index": ready[0]["index"]}], 0
+            elif not magic and not spot and state["target"] is None and not state["moving"] and not loot \
+                    and offset - clicked_back_at > 1 and (
+                    attackers := sorted((a for a in state["attackers"] if a["hitpoints"] > 0),
+                                        key=lambda a: a["id"] != case.npc)):
+                # attacked with no target (an eat click stops the fight on this server; another kind engaged it):
+                # it attacks back at once, as a person clicks, rather than waiting for a hit to retaliate on (the
+                # click lands a tick later, so not again in the next)
+                a = attackers[0]
+                pending, idle = [{**attack, "name": a["name"], "ids": [a["id"]], "index": a["index"]}], 0
+                clicked_back_at = offset
+                counts["clicks"] += 1
             elif state["target"] is None and not state["moving"] and not state["attackers"]:
                 idle += 1
                 if not loot and not waiting and idle >= IDLE_TICKS:
@@ -445,7 +531,7 @@ def server_run(client: BridgeClient, case: Case, budget: int) -> dict[str, Any]:
     finally:
         client.despawn(uid)
     out = {"ticks": offset, "ended": ended, **counts, "loot_gp": loot_gp(holding(first[1]), holding(state), ammo)}
-    for skill in COMBAT:
+    for skill in XP_SKILLS:
         out[f"xp_{skill}"] = xp(state, skill) - xp(first[1], skill)
     return out
 
@@ -458,7 +544,7 @@ def sim_runs(case: Case, runs: int, budget: int) -> list[dict[str, Any]]:
     for seed in range(runs):
         state = character(case.combat_class, case.band, food)
         state.location = case.site
-        before = {skill: state.xp[SKILL_INDEX[skill]] for skill in COMBAT}
+        before = {skill: state.xp[SKILL_INDEX[skill]] for skill in XP_SKILLS}
         food_before = sum(n for i, n in state.inventory.items() if i in gd.food_healing())
         hp_before = state.hp
         held, looted_food = dict(state.inventory), []
@@ -475,7 +561,7 @@ def sim_runs(case: Case, runs: int, budget: int) -> list[dict[str, Any]]:
         eaten = food_before + sum(looted_food) - food_after
         ammo = {item for item in state.equipment.values() if item in gd.stackable_items()}
         out.append({"ticks": result.ticks, "ended": result.termination, "eaten": eaten, "kills": result.detail["kills"],
-                    **{f"xp_{s}": state.xp[SKILL_INDEX[s]] - before[s] for s in COMBAT},
+                    **{f"xp_{s}": state.xp[SKILL_INDEX[s]] - before[s] for s in XP_SKILLS},
                     "hp_change": state.hp - hp_before, "loot_gp": loot_gp(held, state.inventory, ammo)})
     return out
 
@@ -483,14 +569,14 @@ def sim_runs(case: Case, runs: int, budget: int) -> list[dict[str, Any]]:
 def rates(runs: list[dict[str, Any]], case: Case) -> dict[str, float]:
     ticks = sum(r["ticks"] for r in runs)
     hp_xp = sum(r["xp_hitpoints"] for r in runs)
-    combat_xp = sum(sum(r[f"xp_{s}"] for s in COMBAT) for r in runs)
+    combat_xp = sum(sum(r.get(f"xp_{s}", 0.0) for s in XP_SKILLS) for r in runs)  # (older files: no magic)
     return {"xp_per_hour": combat_xp * TICKS_PER_HOUR / ticks,
             "kills_per_hour": hp_xp / (HP_XP_PER_DAMAGE * case.hitpoints) * TICKS_PER_HOUR / ticks,
             "food_per_hour": sum(r["eaten"] for r in runs) * TICKS_PER_HOUR / ticks,
             "gp_per_hour": sum(r.get("loot_gp", 0.0) for r in runs) * TICKS_PER_HOUR / ticks,
             "ticks": float(np.mean([r["ticks"] for r in runs])), "runs": len(runs),
             "ended": {e: sum(r["ended"] == e for r in runs) / len(runs) for e in {r["ended"] for r in runs}},
-            "xp_by_skill": {s: sum(r[f"xp_{s}"] for r in runs) * TICKS_PER_HOUR / ticks for s in COMBAT}}
+            "xp_by_skill": {s: sum(r.get(f"xp_{s}", 0.0) for r in runs) * TICKS_PER_HOUR / ticks for s in XP_SKILLS}}
 
 
 def compare(server: dict[str, Any], sim: dict[str, Any]) -> dict[str, Any]:

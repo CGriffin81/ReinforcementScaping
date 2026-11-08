@@ -1,13 +1,14 @@
-"""Ranged fights from safespots, and their arrow piles (Caleb, 2026-11-07, OQ-27 (d)).
+"""Ranged and magic fights from safespots, and the arrow piles (Caleb, 2026-11-07, OQ-27 (d); magic, OQ-34).
 
-Rangers safespot: they stand where they can shoot a monster that, chasing them, gets stuck where none of its attacks
-reach (a fence or wall holds a melee monster; a long-ranged bow outranges a skeletal wyvern). A monster without one
-is a bad ranged target unless the damage it does is trivial. So:
-- a ranged plan needs a safespot at the site unless the monster's damage is trivial: the fight needs no food, its
-  expected damage over the option less the hitpoints regenerated meanwhile fitting in those above the retreat point
-  (`needs_safespot`; Caleb, 2026-11-07, OQ-30 (b));
+Rangers and casters safespot: they stand where they can shoot a monster that, chasing them, gets stuck where none of
+its attacks reach (a fence or wall holds a melee monster; a long-ranged bow outranges a skeletal wyvern). A monster
+without one is a bad ranged or magic target unless the damage it does is trivial. So:
+- a ranged or magic plan (`distance_class`) needs a safespot at the site unless the monster's damage is trivial: the
+  fight needs no food, its expected damage over the option less the hitpoints regenerated meanwhile fitting in those
+  above the retreat point (`needs_safespot`; Caleb, 2026-11-07, OQ-30 (b));
 - the safespot is the site's best from the server (gd.ranged_safespots, the bridge's ranged_safespots exported by
-  scripts/export_ranged_safespots.py), for the style's range (RangeSwingHandler.canSwing: 7, long-ranged 9). It
+  scripts/export_ranged_safespots.py), for the style's range (RangeSwingHandler.canSwing: 7, long-ranged 9;
+  MagicSwingHandler.canSwing, the same test: 10). Casting leaves no piles, only the drops to fetch. It
   counts when it holds from at least MIN_SHARE of the monsters' wandering (attacked at their spawn, where they
   respawn, it always holds) and no aggressive monster reaches it from its own wandering (an agent choice: before
   aggression runs out such a monster hits a ranger there, and live it killed one at the Black Knights by Draynor
@@ -33,13 +34,30 @@ from rlscape.gamedata import server as gd
 
 RANGE_TILES = 7  # RangeSwingHandler.canSwing: the accurate and rapid styles
 LONGRANGE_TILES = 9  # long-ranged: 2 more
-MIN_SHARE = 0.5  # of the monsters' wandering a safespot must hold from (an agent choice)
+MAGIC_TILES = 10  # MagicSwingHandler.canSwing: the same test as ranged's, with distance 10 (Caleb, 2026-11-07, OQ-34)
+SAFESPOT_RANGES = (RANGE_TILES, LONGRANGE_TILES, MAGIC_TILES)
+# of the monsters' wandering a safespot must hold from (Caleb, 2026-11-08, OQ-36 (a); 0.5 before, an agent choice):
+# where it doesn't, a monster that starts a random step as it's attacked can chase from there and reach the
+# character (at 0.61 the band-1 unicorns' magic safespot let one through in every run)
+MIN_SHARE = 0.8
 PILE_PRIVATE_TICKS = 100  # GroundItem: private to its dropper for its first 100 ticks, when increase() still joins it
 GROUND_TICKS = 200  # then public until it goes, 200 ticks after it was dropped
 WALK_TILES_PER_TICK = 1  # the walk to the arrows and back, a tile a tick (short walks barely run; an agent choice)
+# A guard's swings a tick on a late pickup trip, measured on the server (2026-11-08, the Black Knights by the
+# Wilderness edge, magic bands 1 and 31: 3 hits in 37 trips with 6 guards, about 6 swings in 8,250 guard-ticks; the
+# Wilderness green dragons' guarded trips took none). It was the gathering rate (1/29), which killed 86 of 100
+# band-1 casters there in the sim; none died on the server.
+GUARD_SWINGS_PER_TICK = 1 / 1350
+
+
+def distance_class(plan: Plan) -> bool:
+    """Whether the plan attacks from a distance, so it can safespot: ranged, and magic (Caleb, OQ-34)."""
+    return plan.combat_class in ("ranged", "magic")
 
 
 def style_range(plan: Plan) -> int:
+    if plan.combat_class == "magic":
+        return MAGIC_TILES
     return LONGRANGE_TILES if plan.style == f.LONGRANGE else RANGE_TILES
 
 
@@ -49,8 +67,8 @@ def fighting_ticks(rates: Rates, overhead: float) -> float:
 
 
 def needs_safespot(rates: Rates, hp_margin: float, duration: float) -> bool:
-    """Whether a ranged fight needs a safespot: it would need food (OQ-30 (b)). The monster's expected damage over the
-    option's `duration` (poison and breath included), less the hitpoints regenerated meanwhile, is more than
+    """Whether a ranged or magic fight needs a safespot: it would need food (OQ-30 (b)). The monster's expected damage
+    over the option's `duration` (poison and breath included), less the hitpoints regenerated meanwhile, is more than
     `hp_margin`, the hitpoints above the retreat point."""
     return rates.damage_taken_per_hour * duration / TICKS_PER_HOUR - duration / REGEN_TICKS > hp_margin
 

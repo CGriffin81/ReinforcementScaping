@@ -23,6 +23,19 @@ CROSSING_WAIT = 6  # ticks to let a crossing's own movement finish before clicki
 # A crossing's (scenery name, option), by id; doors are "Open"
 CROSSING_CLICKS = {23271: ("Wilderness Ditch", "Cross"), 190: ("Gate", "Open"), 1967: ("Tree Door", "Open"),
                    1968: ("Tree Door", "Open"), 35549: ("Gate", "Pay-toll(10gp)"), 35551: ("Gate", "Pay-toll(10gp)")}
+# The Crandor passage (rlscape.routes.CROSSINGS, the volcano's pot hole 492): underground, off the planner's map, so a
+# scripted sequence, by the tile it leaves from. Each step is a walk click to a tile, or an object's option clicked
+# until the character is where the test says (DragonSlayerPlugin, KaramjaListeners; timed on the server 2026-11-08).
+PASSAGE_STEPS = {
+    (2856, 3167): [("walk", (2856, 3169, 0)), ("use", "Rocks", 492, "Climb-down", lambda t: t[1] > 9000),
+                   ("walk", (2836, 9599, 0)), ("use", "Wall", 2606, "Open", lambda t: t[1] >= 9600),
+                   ("walk", (2833, 9656, 0)), ("use", "Climbing rope", 25213, "Climb", lambda t: t[1] < 9000)],
+    (2834, 3258): [("use", "Hole", 25154, "Enter", lambda t: t[1] > 9000),
+                   ("walk", (2836, 9600, 0)), ("use", "Wall", 2606, "Open", lambda t: t[1] <= 9599),
+                   ("walk", (2856, 9570, 0)), ("use", "Climbing rope", 1764, "Climb", lambda t: t[1] < 9000)],
+}
+PASSAGE_IDS = {492}
+STEP_TICKS = 300  # at most, for one of the passage's steps
 
 
 def chebyshev(a: tuple[int, ...], b: tuple[int, ...]) -> int:
@@ -51,12 +64,42 @@ def _next_waypoint(route: list[tuple[int, int, int]], at: int, world: Map,
     """From route index `at`: the index of the next click, and the door or crossing to use there first if the route
     goes through one within HOP tiles (then the click is the tile before it)."""
     j = at
-    while j + 1 < len(route) and chebyshev(route[j + 1], route[at]) <= HOP:
+    while j + 1 < len(route):
+        # a door or crossing first: a crossing's far side can be beyond HOP (the Crandor passage)
         door = world.door_between(route[j], route[j + 1]) or world.crossing_between(route[j], route[j + 1])
         if door is not None and (door["x"], door["y"]) not in opened:
             return j, door
+        if chebyshev(route[j + 1], route[at]) > HOP:
+            break
         j += 1
     return j, None
+
+
+def cross_passage(client: BridgeClient, uid: int, start: tuple[int, int]) -> int | None:
+    """The scripted passage from `start` (PASSAGE_STEPS), as clicks; the ticks it took, or None if a step failed."""
+    ticks = 0
+    for kind, *args in PASSAGE_STEPS[start]:
+        if kind == "walk":
+            target = args[0]
+            click = {"cmd": "walk_to", "uid": uid, "x": target[0], "y": target[1], "z": target[2], "packet": True}
+            for t in range(STEP_TICKS):
+                step = client.schedule([[*([click] if t % 8 == 0 else []), {"cmd": "state", "uid": uid}]])[0]
+                ticks += 1
+                if chebyshev(_here(step["results"][-1]["state"]), target) <= 1:
+                    break
+            else:
+                return None
+        else:
+            name, scenery, option, arrived = args
+            client.interact(uid, name, option, ids=[scenery], radius=8)  # (Crandor's hole is 5 by 5, its corner 4 off)
+            for _ in range(STEP_TICKS):
+                client.wait(1)
+                ticks += 1
+                if arrived(_here(client.state(uid))):
+                    break
+            else:
+                return None
+    return ticks
 
 
 def walk_route(client: BridgeClient, uid: int, world: Map, goal: tuple[int, int, int],
@@ -95,6 +138,14 @@ def walk_route(client: BridgeClient, uid: int, world: Map, goal: tuple[int, int,
             opened.clear()  # a click the server dropped (the character still busy, say) is tried again
             out.replans += 1
         if door is not None:  # heading for a door or crossing: use it once there
+            if int(door["id"]) in PASSAGE_IDS and chebyshev(here, route[waypoint]) <= 1 and not state["moving"]:
+                took = cross_passage(client, uid, route[waypoint][:2])  # underground: its own sequence
+                if took is None:
+                    break
+                out.ticks += took
+                out.doors += 1
+                door, waypoint, still = None, None, 0
+                continue
             if chebyshev(here, route[waypoint]) <= 1 and not state["moving"]:
                 name, option = CROSSING_CLICKS.get(int(door["id"]), (str(door["name"]), "Open"))
                 try:

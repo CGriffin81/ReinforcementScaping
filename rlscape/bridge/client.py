@@ -222,6 +222,19 @@ class BridgeClient:
             fields["radius"] = radius
         return self.request("use_item_on", **fields)
 
+    def cast(self, uid: int, spell: int, name: str, ids: list[int] | None = None, index: int | None = None,
+             radius: int | None = None) -> dict[str, Any]:
+        """Cast the standard spellbook's spell at button ``spell`` (gamedata.server.combat_spells()[...].button) on
+        the NPC called ``name``: the one with ``index``, or else (of ``ids``) the one the character can walk to
+        soonest. Sent as a client's spell-on-NPC packet; the server refuses it silently within the last cast's
+        3-tick delay, walks into range and casts once (no autocast), so a fight casts again after each spell. The
+        reply's ``index`` is the NPC's."""
+        fields: dict[str, Any] = {"uid": uid, "spell": spell, "name": name, "object": False}
+        for key, value in (("ids", ids), ("index", index), ("radius", radius)):
+            if value is not None:
+                fields[key] = value
+        return self.request("cast", **fields)
+
     def dialogue_button(self, uid: int, interface: int, button: int) -> None:
         """Click a button of the open chatbox dialogue, e.g. a skill dialogue's "Make 1"."""
         self.request("dialogue_button", uid=uid, interface=interface, button=button)

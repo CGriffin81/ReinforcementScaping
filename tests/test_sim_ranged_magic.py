@@ -48,6 +48,10 @@ def test_spells_staves_and_ranged_weapons_come_from_the_server():
            {name: (level, xp) for name, (level, xp, _, _) in f.SPELLS.items()}
     assert spells["wind_strike"].runes == {MIND: 1, AIR: 1}
     assert spells["fire_strike"].runes == {MIND: 1, FIRE: 3, AIR: 2}
+    # their spellbook buttons (SpellBook.MODERN.register's first argument), which a cast on an NPC sends
+    assert {name: s.button for name, s in spells.items() if name.startswith("wind_") or name == "fire_wave"} == \
+           {"wind_strike": 1, "wind_bolt": 10, "wind_blast": 24, "wind_wave": 45, "fire_wave": 55}
+    assert len({s.button for s in spells.values()}) == len(spells)
     assert STAFF_OF_FIRE in gd.staff_runes()[FIRE] and 1381 in gd.staff_runes()[AIR]  # staff of air
     weapons = gd.ranged_weapons()
     assert BRONZE_ARROW in weapons[SHORTBOW].ammunition and weapons[SHORTBOW].ammo_slot == AMMO

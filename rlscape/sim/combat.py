@@ -24,7 +24,11 @@ until the time budget, a full inventory, running out of food, or death:
   its runes per cast (a worn elemental staff
   stands in for its rune; MagicStaff). Either ends the option out_of_ammo when the stack or the runes run out,
   charging the attacks made. Casting each spell by hand is assumed, at the autocast rate (5 ticks), so magic
-  doesn't need a staff (an agent choice; the server's autocast does).
+  doesn't need a staff (an agent choice; the server's autocast does; checked live, 2026-11-07). Magic safespots as
+  ranged does, at range 10, without piles (Caleb, OQ-34);
+- away from a safespot, the site's aggressive monsters of other kinds engage the character between kills, until the
+  region's tolerance runs out (FightNeighbours, rlscape.combat.neighbours; Caleb, OQ-35 (a)): each is killed, in
+  the fight's plan, before the next target (`kill`, the same as a target's, its drops by the loot mode).
 
 Death (DeathTask, GraveController, GraveType): the character respawns at rl.conf's home_location with full run energy
 (Player.finalizeDeath); the 3 most valuable items by high-alchemy value are kept (no skull in training; Protect Item
@@ -43,6 +47,7 @@ from math import ceil, inf
 
 import numpy as np
 
+from rlscape.combat import neighbours as nb
 from rlscape.combat import safespots as ss
 from rlscape.combat.candidates import PoolEntry, Site, has_special_damage_protection, special_damage_shields
 from rlscape.combat.prayers import boosted_swings
@@ -265,10 +270,9 @@ def guarded_trip(state: CharacterState, rng: np.random.Generator, npc: gd.Npc, f
     carries for the trip (a bow takes none; SWAP_TICKS) and drinks an antifire dose if it has one: shield and potion,
     no breath at all; the potion alone cuts only a tenth (ContentAPI.calculateDragonfireMaxHit). A guard is any
     aggressive monster whose leash covers the arrows (the export's count), and most don't come: each swings at
-    aggression.ATTACKS_PER_TICK, the rate measured while gathering (a swing every attack_speed ticks from all of them
-    took 30 to 86 a trip at the Wilderness green dragons, where the server's runs took none). The hitpoints go;
-    returns the ticks the swap and the drink add."""
-    from rlscape.sim.aggression import ATTACKS_PER_TICK  # (aggression imports this module)
+    safespots.GUARD_SWINGS_PER_TICK, measured on the server's late trips (the gathering rate, used before, killed
+    most band-1 casters at the Black Knights in the sim, none on the server). The hitpoints go; returns the ticks
+    the swap and the drink add."""
     extra = 0
     dragon = npc.id in DRAGONFIRE_NPCS
     worn = state.equipment.get(SHIELD) in special_damage_shields(npc)  # with a crossbow, it's on already
@@ -279,7 +283,7 @@ def guarded_trip(state: CharacterState, rng: np.random.Generator, npc: gd.Npc, f
         extra += drink_antifire(state, now)
     antifire = now + extra < state.antifire_until
     npc_chance, npc_max, _, _ = npc_offence(fighter, plan, npc)
-    swings = int(rng.poisson(guards * (trip + extra) * ATTACKS_PER_TICK))
+    swings = int(rng.poisson(guards * (trip + extra) * ss.GUARD_SWINGS_PER_TICK))
     hits = (rng.random(swings) < npc_chance) * rng.integers(0, npc_max + 1, swings)
     if dragon:
         fire = breath_max(antifire) if shielded else int(DRAGONFIRE_MAX - (0.1 * DRAGONFIRE_MAX if antifire else 0.0))
@@ -290,10 +294,10 @@ def guarded_trip(state: CharacterState, rng: np.random.Generator, npc: gd.Npc, f
 
 def safespot_for(state: CharacterState, plan: Plan, npc: gd.Npc, site: Site,
                  duration: float) -> gd.RangedSafespot | None:
-    """The safespot a ranged fight shoots from, the character armed: the site's, if the monster's damage isn't
-    trivial over `duration` (the fight would need food) or its special damage isn't guarded against
+    """The safespot a ranged or magic fight attacks from, the character armed: the site's, if the monster's damage
+    isn't trivial over `duration` (the fight would need food) or its special damage isn't guarded against
     (rlscape.combat.safespots); None otherwise, or if the site has none."""
-    if plan.combat_class != "ranged":
+    if not ss.distance_class(plan):
         return None
     unaided = combat_rates(fighter_for(state), plan, npc, 0.0)
     guarded = has_special_damage_protection(npc, state.equipment.get(SHIELD))
@@ -303,13 +307,45 @@ def safespot_for(state: CharacterState, plan: Plan, npc: gd.Npc, site: Site,
     return ss.safespot(npc.id, site.spawn, plan)
 
 
+@dataclass
+class FightNeighbours:
+    """A fight's neighbours that would engage the character (rlscape.combat.neighbours): each spawn engages at
+    nb.ENGAGE_PER_TICK while the character is exposed (between kills), until `tolerated_at` ticks into the option.
+    With none, nothing here draws from the rng."""
+
+    active: tuple[nb.Neighbour, ...]
+    tolerated_at: float  # ticks into the option when the region's tolerance runs out
+
+    @classmethod
+    def at(cls, state: CharacterState, npc: gd.Npc, site: Site, spot) -> FightNeighbours:
+        """At the site, the character there (its region's tolerance counting from its arrival); none from a
+        safespot."""
+        if spot is not None:
+            return cls((), 0.0)
+        active = nb.engaging(nb.site_neighbours(npc.id, site.spawn), state.combat_level())
+        return cls(active, state.region_since + nb.TOLERANCE_TICKS - state.tick)
+
+    def engagement(self, rng: np.random.Generator, start: float, length: float) -> tuple[float, nb.Neighbour] | None:
+        """The first engagement in an exposed stretch of `length` ticks from `start` ticks into the option: (its
+        offset into the stretch, the neighbour); memoryless, so each stretch draws on its own."""
+        end = min(start + length, self.tolerated_at)
+        if not self.active or end <= start or nb.ENGAGE_PER_TICK <= 0:
+            return None
+        spawns = np.array([n.spawns for n in self.active], dtype=float)
+        t = rng.exponential(1 / (nb.ENGAGE_PER_TICK * spawns.sum()))
+        if start + t >= end:
+            return None
+        return t, self.active[int(rng.choice(len(self.active), p=spawns / spawns.sum()))]
+
+
 def fight(state: CharacterState, rng: np.random.Generator, budget: int, entry: PoolEntry, plan: Plan, site: Site,
           loot: Callable[[int], bool]) -> OptionResult:
-    npc, stackable, kills = entry.npc, gd.stackable_items(), 0
+    npc, stackable, kills, neighbour_kills = entry.npc, gd.stackable_items(), 0, 0
     cast_xp = gd.combat_spells()[plan.style].experience if plan.combat_class == "magic" else 0.0
 
     def done(ticks: int, termination: str, regenerated: bool = True) -> OptionResult:
-        detail = {"target": npc.id, "target_name": npc.name, "style": plan.style, "site": site.spawn, "kills": kills}
+        detail = {"target": npc.id, "target_name": npc.name, "style": plan.style, "site": site.spawn, "kills": kills,
+                  "neighbour_kills": neighbour_kills}
         return OptionResult(ticks, termination, regenerated, detail)
 
     def poisoned_to_death(ticks: int) -> OptionResult | None:
@@ -334,58 +370,48 @@ def fight(state: CharacterState, rng: np.random.Generator, budget: int, entry: P
     ready = [0] * max(supply, 1)  # when each of the site's monsters is next there to fight (ticks into the option)
     piles: list[int] = []  # when each arrow pile not yet picked up was started (ticks into the option)
     waiting, waiting_since = 0, inf  # drops left with them, and since when
-    while True:
-        if state.hp <= retreat_hp(state):
-            if not eat_one(state):
-                return done(max(elapsed, 1), OUT_OF_FOOD)
-            continue
-        if (drank := drink_boosts(state, plan.combat_class)) and elapsed + drank >= budget:
-            return done(budget, COMPLETED)
-        elapsed += drank  # potions, if it carries them (rlscape.sim.potions)
+    neighbours = FightNeighbours.at(state, npc, site, spot)  # other kinds that engage it (OQ-35)
+    tables = gd.drop_tables()
+
+    def kill(target: gd.Npc, drops: gd.DropTable | None, here: int | None) -> tuple[OptionResult | None, float]:
+        """One kill of `target` (the fight's monster `here`, or a neighbour with None), its drops and the pickups
+        after it: the option's end if it ends in it, and the ticks after it with nothing attacking the character
+        (the overhead to the next monster and the pickups), when a neighbour can engage."""
+        nonlocal elapsed, kills, neighbour_kills, piles, waiting, waiting_since
         fighter = fighter_for(state)
-        chance, max_hit, speed, _, xp_per_damage = player_offence(fighter, plan, npc)
-        boosted_chance, boosted_max, _, _, _ = player_offence(fighter, plan, npc, boosted=True)
-        npc_chance, npc_max, _, _ = npc_offence(fighter, plan, npc)
+        chance, max_hit, speed, _, xp_per_damage = player_offence(fighter, plan, target)
+        boosted_chance, boosted_max, _, _, _ = player_offence(fighter, plan, target, boosted=True)
+        npc_chance, npc_max, _, _ = npc_offence(fighter, plan, target)
         boosted = None
         if (boosted_chance, boosted_max) != (chance, max_hit):
-            boosted = (boosted_chance, boosted_max, boosted_swings(int(speed), npc.attack_speed))
-        here = min(range(len(ready)), key=ready.__getitem__)  # the one back first
-        if ready[here] > elapsed:  # every one of them is dead: wait for a respawn
-            if ready[here] >= budget:
-                regenerate(state, budget - elapsed)
-                return poisoned_to_death(budget) or done(budget, COMPLETED)
-            regenerate(state, ready[here] - elapsed)
-            elapsed = ready[here]
-            if (dead := poisoned_to_death(elapsed)) is not None:
-                return dead
-            continue  # eat, if the poison brought HP to the retreat point
-        dealt = kill_sequence(npc.hitpoints, chance, max_hit, rng, boosted)
+            boosted = (boosted_chance, boosted_max, boosted_swings(int(speed), target.attack_speed))
+        dealt = kill_sequence(target.hitpoints, chance, max_hit, rng, boosted)
         possible, pay, landed = _ammunition(state, plan, len(dealt), rng, loot, recover)
         if possible == 0:
-            return done(max(elapsed, 1), OUT_OF_AMMO)
+            return done(max(elapsed, 1), OUT_OF_AMMO), 0.0
 
         def charge(attacks: int) -> None:
             """Pay for the attacks made and credit their XP: the damage dealt, capped at the monster's HP, and for
             magic the spell's base XP on every cast."""
             pay(attacks)
-            _gain(state, xp_per_damage, min(int(dealt[attacks - 1]), npc.hitpoints) if attacks else 0)
+            _gain(state, xp_per_damage, min(int(dealt[attacks - 1]), target.hitpoints) if attacks else 0)
             _gain(state, {"magic": cast_xp}, attacks if cast_xp else 0)
 
         ticks = possible * speed
-        swings = int(ticks // npc.attack_speed) if spot is None else 0  # stuck chasing, it can't attack
+        swings = int(ticks // target.attack_speed) if spot is None else 0  # stuck chasing, it can't attack
         hits = (rng.random(swings) < npc_chance) * rng.integers(0, npc_max + 1, swings)
-        if npc.id in DRAGONFIRE_NPCS and spot is None:  # a third of its swings are breath, behind the shield
+        if target.id in DRAGONFIRE_NPCS and spot is None:  # a third of its swings are breath, behind the shield
             elapsed += drink_antifire(state, state.tick + elapsed)
             fire = breath_max(state.tick + elapsed < state.antifire_until)
             hits = np.where(rng.random(swings) < BREATH_CHANCE, rng.integers(0, fire + 1, swings), hits)
         ended, eating, poisoned_to = None, 0, 0  # poisoned_to: ticks into the kill the poison has been advanced to
         for j, hit in enumerate(hits):
-            swing_at = (j + 1) * npc.attack_speed + eating
+            swing_at = (j + 1) * target.attack_speed + eating
             advance_poison(state, swing_at - poisoned_to, state.tick + elapsed + poisoned_to)
             poisoned_to = swing_at
             state.hp -= int(hit)
-            if npc.poisonous and rng.random() < POISON_CHANCE:
-                eating += apply_poison(state, npc.poison_amount, state.tick + elapsed + swing_at)  # a dose drunk
+            if target.poisonous and rng.random() < POISON_CHANCE:
+                eating += apply_poison(state, target.poison_amount, state.tick + elapsed + swing_at)  # a dose drunk
             if state.hp > 0 and state.hp <= retreat_hp(state):
                 if eat_one(state):
                     eating += EAT_DELAY_TICKS
@@ -397,7 +423,7 @@ def fight(state: CharacterState, rng: np.random.Generator, budget: int, entry: P
                 ended = DIED
             if ended:
                 # the fight stops at this monster swing: charge the time and the damage dealt so far
-                fought = min((j + 1) * npc.attack_speed + eating, ticks, budget - elapsed)
+                fought = min((j + 1) * target.attack_speed + eating, ticks, budget - elapsed)
                 charge(min(int(fought // speed), possible))
                 elapsed += fought
                 regenerate(state, fought, poison=False)
@@ -406,7 +432,7 @@ def fight(state: CharacterState, rng: np.random.Generator, budget: int, entry: P
                     ended = DIED  # the poison went on
                 if ended == DIED:
                     die(state, state.tick + elapsed)
-                return done(max(elapsed, 1), ended)
+                return done(max(elapsed, 1), ended), 0.0
         if possible < len(dealt):
             # the ammunition or runes run out before the kill: charge the attacks made
             fought = min(ticks + eating, budget - elapsed)
@@ -414,21 +440,26 @@ def fight(state: CharacterState, rng: np.random.Generator, budget: int, entry: P
             elapsed += fought
             regenerate(state, fought, poison=False)
             advance_poison(state, max(fought - poisoned_to, 0))
-            return poisoned_to_death(elapsed) or done(max(elapsed, 1), OUT_OF_AMMO)
-        step = ticks + eating + OVERHEAD_TICKS_PER_KILL[plan.combat_class]
+            return poisoned_to_death(elapsed) or done(max(elapsed, 1), OUT_OF_AMMO), 0.0
+        overhead = OVERHEAD_TICKS_PER_KILL[plan.combat_class]
+        step = ticks + eating + overhead
         if elapsed + step > budget:
             regenerate(state, budget - elapsed, poison=False)
             advance_poison(state, max(budget - elapsed - poisoned_to, 0))
-            return poisoned_to_death(budget) or done(budget, COMPLETED)
-        ready[here] = elapsed + ticks + eating + npc.respawn  # it died at the end of the fight
+            return poisoned_to_death(budget) or done(budget, COMPLETED), 0.0
+        if here is not None:
+            ready[here] = elapsed + ticks + eating + target.respawn  # it died at the end of the fight
         elapsed += step
         regenerate(state, step, poison=False)
         advance_poison(state, max(step - poisoned_to, 0))
         charge(possible)
-        kills += 1
+        if here is not None:
+            kills += 1
+        else:
+            neighbour_kills += 1
         if (dead := poisoned_to_death(elapsed)) is not None:
-            return dead  # after the kill, before the loot
-        picked = sum(1 for item, amount in roll_drops(entry.drops, rng) if loot(item) and state.add(item, amount))
+            return dead, 0.0  # after the kill, before the loot
+        picked = sum(1 for item, amount in roll_drops(drops, rng) if loot(item) and state.add(item, amount))
         if landed(possible):  # this kill's arrows, a pile per PILE_PRIVATE_TICKS of shooting
             piles += [elapsed - step] * ss.piles_per_kill(ticks)
         if picked:
@@ -437,6 +468,7 @@ def fight(state: CharacterState, rng: np.random.Generator, budget: int, entry: P
         # run out; then just before the oldest would go, the next kill and the walk counted
         safe = spot is None or spot.pickup_threats == 0 or state.region_since + TOLERANCE_TICKS <= state.tick + elapsed
         due = elapsed - min(piles[0] if piles else inf, waiting_since) + step + trip >= ss.GROUND_TICKS
+        between = float(overhead)
         if (waiting or piles) and (safe or due):  # a pickup each, after the kill, with the walk to them
             pickup = PICKUP_TICKS * (waiting + len(piles)) + (trip if spot is not None else 0.0)
             if not safe:  # the late trip, guarded: the guards' hits, the shield worn against dragonfire (OQ-33)
@@ -444,19 +476,68 @@ def fight(state: CharacterState, rng: np.random.Generator, budget: int, entry: P
                                        state.tick + elapsed)
                 if state.hp <= 0:
                     die(state, state.tick + elapsed)
-                    return done(max(elapsed, 1), DIED)
+                    return done(max(elapsed, 1), DIED), 0.0
             pickup = int(ceil(min(pickup, budget - elapsed)))
             piles, waiting, waiting_since = [], 0, inf
             elapsed += pickup
+            between += pickup
             regenerate(state, pickup, poison=False)
             advance_poison(state, pickup)
             if (dead := poisoned_to_death(elapsed)) is not None:
-                return dead
+                return dead, 0.0
             if elapsed >= budget:
-                return done(budget, COMPLETED)
+                return done(budget, COMPLETED), 0.0
         if state.free_slots() == 0 and any(loot(i) and i not in stackable for i, _ in (entry.drops.expected_items()
                                                                                        .items() if entry.drops else ())):
-            return done(elapsed, INVENTORY_FULL)
+            return done(elapsed, INVENTORY_FULL), 0.0
+        return None, between
+
+    def fight_back(engaged: tuple[float, nb.Neighbour] | None) -> OptionResult | None:
+        """Neighbours that engaged it, one at a time (single combat): each killed before the next target, and another
+        can engage in the stretch after it."""
+        while engaged is not None:
+            if state.hp <= retreat_hp(state) and not eat_one(state):
+                return done(max(elapsed, 1), OUT_OF_FOOD)
+            neighbour = engaged[1]
+            ended, between = kill(neighbour.npc, tables.get(neighbour.npc.id), None)
+            if ended is not None:
+                return ended
+            engaged = neighbours.engagement(rng, elapsed - between, between)
+        return None
+
+    while True:
+        if state.hp <= retreat_hp(state):
+            if not eat_one(state):
+                return done(max(elapsed, 1), OUT_OF_FOOD)
+            continue
+        if (drank := drink_boosts(state, plan.combat_class)) and elapsed + drank >= budget:
+            return done(budget, COMPLETED)
+        elapsed += drank  # potions, if it carries them (rlscape.sim.potions)
+        here = min(range(len(ready)), key=ready.__getitem__)  # the one back first
+        if ready[here] > elapsed:  # every one of them is dead: wait for a respawn
+            wait_end = min(ready[here], budget)
+            engaged = neighbours.engagement(rng, elapsed, wait_end - elapsed)
+            if engaged is not None:  # a neighbour engages it while it waits
+                regenerate(state, int(engaged[0]))
+                elapsed += int(engaged[0])
+                if (dead := poisoned_to_death(elapsed)) is not None:
+                    return dead
+                if (ended := fight_back(engaged)) is not None:
+                    return ended
+                continue
+            if ready[here] >= budget:
+                regenerate(state, budget - elapsed)
+                return poisoned_to_death(budget) or done(budget, COMPLETED)
+            regenerate(state, ready[here] - elapsed)
+            elapsed = ready[here]
+            if (dead := poisoned_to_death(elapsed)) is not None:
+                return dead
+            continue  # eat, if the poison brought HP to the retreat point
+        ended, between = kill(npc, entry.drops, here)
+        if ended is not None:
+            return ended
+        if (ended := fight_back(neighbours.engagement(rng, elapsed - between, between))) is not None:
+            return ended
 
 
 class ReclaimGravestone(Option):

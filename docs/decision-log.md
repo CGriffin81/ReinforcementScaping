@@ -4401,3 +4401,244 @@ attacker to get inside their radius." `m002-case-deltas`.
   - abyssal demons, band 91 (rapid, no safespot needed): 1.19, 0.11 (a run got the whip; the sim counts its expected
     value: OQ-20's rare-drop sampling).
   All four are inside the gate on XP/hr.
+
+### Decided: env contract v1.17 confirmed. Built and measured: magic calibration by hand casts; OQ-19's first measurement (OQ-34, OQ-35)
+Caleb, 2026-11-07: "The env contract v1.17 looks good. Continue with implementation." `m002-magic-calibration`.
+- **Env contract v1.17 confirmed** (Caleb): ranged from safespots, Slayer levels lock no monster, the crossbows and
+  bolts in *V* (1,709 actions, 2,624 features). v1.11 and v1.14 to v1.16 still carry "to confirm".
+- **Casting on a monster through the bridge** (fork): `cast` sends a client's spell-on-NPC packet
+  (`ComponentNpcAction`: the standard spellbook's button on the NPC, which `PacketProcessor.processComponentUseWith`
+  hands to `MagicSpell.castSpell`). `npcs` also reports each monster's hitpoints. The spells' buttons come from the
+  server's `SpellBook.MODERN.register` calls (`gd.combat_spells()[...].button`).
+- **The sim's hand-casting assumption, checked live:** a hand cast is one spell (the combat pulse stops after it,
+  `MagicSwingHandler.swing`). Cast again each tick, the server refuses it until 3 ticks after the last
+  (`magic-delay`), and the next spell lands when the attack is due: 5 ticks apart, the autocast rate the sim assumes
+  (option catalog §4.B). Test: `test_a_hand_cast_is_one_spell_and_casting_again_each_tick_keeps_the_autocast_rate`.
+- **The runner** (`scripts/calibrate_combat.py --classes magic`; agent choices, reversible):
+  - kits: band 1 runes only (a fresh character has no staff); 31, wizard robes, an amulet of magic and a staff of air
+    (earth bolt); 61 and 91, mystic robes and boots, the amulet and a staff of fire (fire blast, fire wave); runes
+    for 400 casts, less the staff's rune;
+  - Magic is set to the band in magic cases only: melee and ranged cases keep it at 1, as the fit and check sets were
+    measured;
+  - auto-retaliate off (retaliating between hand casts would swing the staff in melee); it casts again each tick
+    after a spell, on the same monster, until it dies; between kills it casts on whatever attacks it, the case's kind
+    first, as retaliating would.
+- **Results**, sim over server XP/hr (3 runs a case, 200 sim runs):
+  - fit set (the top by XP): rats, band 1, 1.00; poison spiders, band 91, 1.07 (a pair of hobgoblins nearby);
+  - check set (the top by gp, looting valuable drops): unicorns, band 1, 1.03; Black Knights, band 31, 1.07; abyssal
+    demons, bands 61 and 91, 0.95 and 0.95. Their gp/hr is 2.1 (Black Knights) and 6.6 to 11 (abyssal demons) sim over
+    server: three short runs can't sample the rare drops (the whip, the rare drop table), which OQ-20's drop probe
+    checks table by table instead;
+  - the per-kill overhead (3 ticks, fitted on melee and ranged) needs no refit for magic.
+- **OQ-19's first measurement: the animated spades** at (3420, 9657), the ranker's top magic case at bands 31 and 61.
+  An aggressive possessed pickaxe there engages the character first, holding it "already under attack" in single
+  combat. With auto-retaliate off and casting only on spades, the first runs got almost nothing (band 61: 46 XP/hr,
+  48 walk-backs). Fighting back:
+  - band 61, 7 runs: 1.14 (1.07 without one run whose ~250 casts did ~1.5 damage each against the others' ~6.5,
+    unexplained and not seen again in 4 traced runs). The server killed 64 spades an hour to the sim's 101, and 15
+    pickaxes; the pickaxes give about the spades' XP, so XP/hr holds while kills and drops don't;
+  - band 31, 3 runs (each out of food in about 500 ticks): 1.33.
+  - An aggressive monster of another kind that would engage the character spawns within 10 tiles of 1,014 of the
+    2,185 combat sites at band 1, 916 at 31, 748 at 61 and 562 at 91. New question: OQ-35, how the sim should treat
+    them.
+- **New question OQ-34:** should magic safespot as ranged does (magic reaches 10 tiles by the same test).
+- **Tests:** the full suite with the server up, 359 of 360 passed; the new cast test failed on its own counting (a
+  spell landing before its first reading), and passed 3 of 3 after the fix.
+
+### Decided: OQ-34, magic safespots as ranged does; OQ-35 (a), monsters of another kind near a fight are modelled
+Caleb, 2026-11-07: "35 - a / 34 - yes". `m002-magic-safespots-neighbours`.
+- **OQ-34** (raised in `m002-magic-calibration`: ranged fights safespot since OQ-27 (d), magic fights didn't, so a
+  caster stood where the monster reached it):
+  - The options: (a) yes, by ranged's rules (OQ-30 (b)'s trivial-damage test; a usable safespot holding from half
+    the wandering with no threats), from the table exported at range 10 (`MagicSwingHandler.canSwing` is ranged's
+    test with distance 10), ranked per site as ranged is (recommended); (b) no.
+  - Caleb: yes.
+- **OQ-35** (raised in `m002-magic-calibration`, as OQ-19's measurement: at the animated spades an aggressive
+  possessed pickaxe engages the character first, and in single combat it must be killed before the next spade; such
+  monsters are within 10 tiles of a quarter to a half of the combat sites):
+  - The options: (a) model them as the gathering sites' aggressors are: a site's aggressors of other kinds engage at
+    a measured rate until the region's tolerance runs out, each engagement a fight with that monster in the fight's
+    plan (its kill time, damage, XP and drops), in place of target kills, counted by both rankers, calibrated at two or
+    three sites (recommended); (b) cut a site for a character when such a monster would engage it, unless it's
+    trivial; (c) leave them out and report it.
+  - Caleb: (a).
+
+### Built: magic safespots (OQ-34) and monsters near a fight (OQ-35 (a)); the safespot table re-exported; the runner attacks back
+Caleb's answers above. `m002-magic-safespots-neighbours`. Env contract v1.18 (to confirm), option catalog §4.A.
+- **The safespot table, re-exported** from the current fork (`f5d1aba` plus this work's `cast`, which the search
+  doesn't use), at three ranges: 7, 9 and magic's 10 (`scripts/export_ranged_safespots.py`, three servers). The
+  first pass left 90 sites unanswered: its level-3 character died at dangerous sites while the slower range-10
+  searches ran. The export now refills its hitpoints before each site (its own level, so its combat level, which
+  decides the threats, stays), and a second pass answered all but 4 (the same kind as before: a boss not spawned,
+  teleports that didn't land). Usable safespots (share 0.5 or more, no threats): 207 at range 7, 375 at 9, 460 at 10
+  (205 and 365 before). The leash check (`f5d1aba`, not in the old table) moved 20 range-7 and 44 range-9 tiles and
+  changed few usable ones (range 7: 1 lost, 3 gained; range 9: 1 lost, 11 gained).
+  - Found on the way: the safespot search runs on the game thread, so while three exports ran, each world ticked at
+    about one tick a second, not 20. Measurements count ticks, so the runs made meanwhile stand; they just took
+    longer.
+- **Magic safespots** (`rlscape.combat.safespots.distance_class`, `MAGIC_TILES`): both rankers and the fight treat a
+  magic plan as ranged's, at range 10, without arrow piles; the runner stands a caster on the tile as it does a
+  ranger, and casts only on monsters the tile holds against.
+- **Monsters near a fight** (`rlscape.combat.neighbours`; `site_aggressors` moved there from the gathering model,
+  which shares it):
+  - **The server's rule** (`AggressiveBehavior.canSelectTarget`): an aggressive monster picks a character only if it
+    isn't "in combat" (swung at within 17 ticks), outside multi-combat areas. So neighbours engage between kills.
+  - **The engagement rate**, measured at the animated spades' possessed pickaxe (4 traced band-61 magic runs): 29
+    engagements in 622 ticks before tolerance with nothing attacking the character, 0.047 a tick; the sim's fight
+    matches the server's 3.7 pickaxe kills a run at 0.045 (`ENGAGE_PER_TICK`). All 29 came before tolerance ran out
+    (the last at tick 976).
+  - **The sim's fight** (`FightNeighbours`): each neighbour spawn whose level would pick the character engages at
+    that rate while it's exposed (the overhead to the next monster, its pickups, a wait for a respawn) until the
+    region's tolerance runs out; each engagement is a kill in the fight's plan (the same `kill` as a target's, its
+    drops by the loot mode), before the next target. Sites without neighbours fight exactly as before (the earlier
+    fit set re-simulated to the same numbers).
+  - **Both rankers** (identical, as the test has them): the expected fights per target kill, timed in as pickups
+    are (`with_neighbours`); a site where an engaging neighbour can't be hurt by the plan, needs gear the fighter
+    lacks, or fails the danger filter is none while aggression lasts. `Character` carries the combat level and the
+    tolerance left in its region. The sites' choice is now compared rounded, as the monsters' is: under an
+    ammunition cap every site's kill rate is equal, and float noise in the neighbours' arithmetic broke the tie
+    differently in each ranker.
+  - **Not modelled:** multi-combat areas (neighbours attack alongside the target); the short attacks a neighbour
+    makes while the character fights (13 of the 29 at the spades); the ammunition neighbour fights use, in the
+    rankers' cap (the fight pays it).
+- **The runner attacks back** (agent choice, reversible): with no target and attacked (an eat click stops the fight
+  on this server; a neighbour engaged it), a melee or ranged character attacks the attacker at once, its own kind
+  first, as the magic runner does, rather than waiting for a hit to retaliate on. Traced at the poison spiders: each
+  of 14 to 15 eats a run cost 8 ticks before fighting again (the sim charges 3).
+- **Results**, sim over server XP/hr (3 or 4 server runs a case):
+  - magic fit set (the ranker's picks now): rats 1.01, market guards 1.05, animated spades (band 61, the pickaxe
+    modelled) 1.12, experiments 0.97;
+  - magic check set (top by gp, looting): unicorns band 31 1.03, abyssal demons 0.95 and 0.97 (gp/hr again the rare
+    drops', OQ-20); unicorns band 1, 1.31: its magic safespot holds from 61% of the wandering, and the step race let
+    a unicorn reach the caster in every run (new question OQ-36);
+  - beside neighbours: poison spiders with a hobgoblin, melee band 61, 1.28 with the old runner and 1.17 attacking
+    back; magic band 31 there, 1.28 (four runs each out of food in about 330 ticks); the Dwarven Mine scorpions,
+    ranged band 1, fight from a safespot (the King Scorpions don't reach it): 0.99.
+- **Tests:** `tests/test_neighbours.py` (7). 367 passed with the server up.
+
+### Decided: OQ-36 (a), a usable safespot holds from 80% of the wandering
+Caleb, 2026-11-08: "OQ36 - Option a". `m002-oq36`.
+- **The question** (raised in `m002-magic-safespots-neighbours`): the band-1 unicorns' magic safespot holds from 61%
+  of their wandering, over the 0.5 a safespot needed (an agent choice of 2026-11-07). In all 5 server runs a unicorn
+  read as standing still where the tile holds started a random step as it was cast on, chased from where the tile
+  doesn't hold and attacked from beside the caster; XP/hr 1.31 sim over server.
+- **The options:** (a) a usable safespot needs a share of 0.8 (recommended); (b) keep 0.5 and model the race (the
+  share not held as the chance an attack's chase reaches the character); (c) keep 0.5 and report the gap.
+- **Caleb:** (a). `rlscape.combat.safespots.MIN_SHARE` is 0.8; env contract v1.18 and option catalog §4.A say so.
+- **Usable safespots now** (range 7 / 9 / 10): 53 / 107 / 155, from 207 / 375 / 460.
+- **The calibration cases it changes** (the ranger's and caster's fit and check sets): the ranged check set's
+  unicorns (longrange, share 0.57) and green dragons (0.58), both measured inside the gate on 2026-11-07, are no
+  longer offered, nor the band-1 and band-31 magic unicorns (0.61). Their places: cows at band 1 from a tile with a
+  share of 0.81; men (band 31) and Black Knights (band 61) without a safespot; Black Knights by the Wilderness edge
+  for magic at bands 1 and 31 (share 0.88); experiments for magic's band-31 fit case. Measured below.
+
+### Decided: OQ-15 (a), the observation shows the home teleport's cooldown; OQ-7 (a), the rate model vectorised and E2 sized to the speed; OQ-2, the sim v1 skills' options
+Caleb, 2026-11-08: "OQ15 - Yes, show the cooldown for home teleport. OQ-7 option a. OQ 2 - crafting should include
+leather armor, dragonhide armor, spinning, and gems. Agility should add course laps. Herblore should add herbs and
+potions. Runecrafting should add runes and essence." `m002-oq2-oq7-oq15`.
+- **OQ-15** (raised 2026-11-01, building the home teleport's 30-minute cooldown: the agent didn't see it; the
+  candidates' travel counts the teleport only when it's ready):
+  - The options: (a) one more observation feature, the minutes until the home teleport is ready over 30, 0 when
+    ready (recommended); (b) leave it out, since the travel features change when it's ready.
+  - Caleb: (a). Env contract v1.19.
+- **OQ-7** (raised 2026-10-31 by the week-2 benchmark: the sim ran at about 800 decisions a second with 16 workers,
+  then about 500 after planned routes and transports, against the contract's 20k; most of the time in the combat
+  ranker recomputing the enemy pool's rates after each combat level-up):
+  - The options: (a) vectorise the rate model over the enemy pool (numpy, tested identical to the scalar model), about
+    twice the speed, then size E2's budget to the measured speed (recommended); (b) go further toward 20k:
+    incremental masks and features, candidates recomputed only when their inputs change, perhaps numba; days, with
+    an uncertain result; (c) keep the speed and size E2 to it.
+  - Caleb: (a).
+- **OQ-2** (raised 2026-10-28: what options Crafting, Agility, Herblore and Runecrafting get in sim v1, and which
+  items join *V*; the starting point was option catalog §3.5's likely options):
+  - Caleb: Crafting gets leather armour, dragonhide armour, spinning and gems; Agility, course laps; Herblore, herbs
+    and potions; Runecrafting, runes and essence.
+  - Next: Claude drafts them as an option-catalog version (the options, their items for *V*, the server code they're
+    ported from), for Caleb to check before they're built.
+
+### Decided: OQ-16 (a), the travel model's missing ways checked on the server, then added where they're needed
+Caleb, 2026-11-08: "OQ16 - A". `m002-oq2-oq7-oq15` (the same session's answers).
+- **The question** (raised 2026-11-01, making places with no way unreachable, OQ-12): 231 of the sim's 2,792 places
+  are unreachable, mostly behind quests outside the set, pens and cells; some have a way the model doesn't know:
+  behind a quest now complete (Crandor, by Karamja's volcano wall), an Agility shortcut or an item (the moss giant
+  island by Brimhaven, the Mage Arena's lever), and unclear ones (Wilderness spots, the ice giants by White Wolf
+  Mountain, Tree Gnome Village, a dwarf by Ice Mountain, north of Varrock, the Kharazi jungle).
+- **The options:** (a) check the unclear places on the server first (a walk there with the bridge, a few minutes
+  each), then add each way with what needs it: Crandor and the lever as transports now, Agility shortcuts with
+  Agility (sim v1); for the areas the complete quests open, a way only where the ranker would send a character in
+  20 hours (recommended); (b) only the quests' ways in sim v1, the rest left unreachable.
+- **Caleb:** (a).
+
+### Measured: the cases OQ-36 changed; the guards' rate on late pickup trips refitted
+`m002-oq36`. Sim over server XP/hr, 3 server runs a case:
+- ranged check set: cows (band 1, the share-0.81 tile) 0.84, men (band 31) 1.14, Black Knights (band 61) 1.15;
+- magic: experiments (band 31, fit set) 0.97; the Black Knights by the Wilderness edge (bands 1 and 31, check set, a
+  share-0.88 safespot) 1.12 and 0.97 at first, but the sim died in 84% of its band-1 runs and ate at band 31 while the
+  server took no damage.
+- **The guards' rate, refitted** (agent choice, reversible; it was an agent choice to take the gathering rate): the
+  deaths were the late pickup trips' guards (6 there), each swinging once every 29 ticks, as aggressive monsters do
+  at the willows while a character gathers (86 of 100 band-1 runs died with them, none without). On the server those
+  37 trips took 3 hits in all (band 31) and none at band 1: about 6 swings in 8,250 guard-ticks, one per 1,350
+  (`safespots.GUARD_SWINGS_PER_TICK`; three hits, so a rough figure: a Poisson 95% range of about 1 in 460 to 1 in
+  6,700). The Wilderness green dragons' guarded trips took none either (2026-11-07). Re-simulated: 1.04 and 0.97, no
+  deaths and no food on either side.
+
+### Built: the home teleport's cooldown in the observation (OQ-15); the rate model vectorised (OQ-7 (a)); measured speed
+`m002-oq2-oq7-oq15`.
+- **OQ-15:** the observation's `home_teleport` part, one feature: the ticks until the home teleport is ready again
+  over its 30-minute cooldown, 0 when ready. 2,625 features (env contract v1.19, Caleb).
+- **OQ-7 (a):** `rlscape/combat/vector_rates.py` computes `combat_rates` over a list of monsters with numpy, the
+  scalar model's expressions in its order, so every column is the scalar model's to the last bit (one difference
+  found and matched: Python 3.12's `sum()` of floats is compensated, Neumaier's, which the vector sum now does too).
+  `tests/test_vector_rates.py` checks every pool monster for 5 fighters and 10 plans exactly. The fast ranker reads
+  its columns from it for the pool and the neighbours, and computes a scalar `Rates` only for the candidates it
+  picks. Two smaller fixes the profile showed: the walk times to every site are cached per location (each class's
+  ranking asked for the same), and the candidates' neighbours come from the ranker's cached neighbour rates and loot.
+- **Measured** (`scripts/benchmark_sim.py`, masked random actions, 60 s; `results/benchmark/sim-speed-20261108-0156.json`):
+  110 decisions a second in one process, 410 with 4 workers, 817 with 16 (51 a worker: 8 cores). The same sim with
+  the old scalar paths patched back in: 42.5 in one process, so 2.6 times as fast; the last benchmark (2026-11-01,
+  before neighbours and safespots) was 71 and 489. What's left in a profile: the skilling slots' ranking, the nearest
+  bank and the travel routes, and the observation's encoding, none above a sixth.
+- **E2's budget at this speed** (OQ-7 (a): sized to it): a run of 2M decisions takes about 41 minutes on 16 workers,
+  before PPO's own updates; E2's 25 runs (five weightings by five seeds) about 17 hours, 15 runs (three seeds, OQ-17's
+  option (a)) about 10. How many decisions PPO needs here isn't known until the sanity ladder runs.
+
+### Built (part): OQ-16 (a), the unclear places checked on the server; the Crandor passage; OQ-2's draft
+`m002-oq2-oq7-oq15`.
+- **The unclear places, checked on the server** (OQ-16 (a)'s first step): for each of the 15 unclear areas, a
+  character click-walked from the nearest place with a way toward the area, and from the area out, 300 ticks each.
+  None got there:
+  - the Wilderness spots: the hill giants and King Scorpion by the Lava Maze (within 7 tiles), the lesser demons
+    (33), the battle mages (11: they're the Mage Arena's, inside its walls), the hill giants further north (7), the
+    greater demons (40; their tile can't be stood on), the red dragon (8), the skeletons (2);
+  - the ice giants by White Wolf Mountain (5, and 5 beside them), Tree Gnome Village (15; the tile can't be stood
+    on), the dwarf by Ice Mountain (2), the grizzly bear and Monk of Zamorak north of Varrock (9), the Kharazi jungle
+    (14, 6 and 3).
+  A walk click searches only so far (about 25 tiles), so this alone wouldn't prove a long maze shut, but the planner,
+  which searches the whole map, finds no way either: no plain walking way is missing. What leads in, if anything,
+  is a special way (a gate's or shortcut's handler, a quest entrance), found per area if one is worth it.
+- **The Mage Arena's lever** (`WildernessLeverPlugin`): the arena lever lets a character in only once it has killed
+  Kolodion (the Mage Arena minigame), so the battle mages stay out. The other levers (Ardougne to the Wilderness's
+  deserted keep, and the mage bank's) lead nowhere the sim fights.
+- **The Crandor passage, built** (Dragon Slayer complete, so the secret wall opens): Karamja volcano's pot hole
+  (492) down to the Musa Point dungeon, its secret wall (2606, `DragonSlayerPlugin`), the rope up (25213) onto Crandor
+  at (2834, 3258); back by Crandor's hole (25154, "Enter") and the dungeon's rope (1764).
+  - Timed on the server, as clicks: 77 ticks to Crandor and 83 back in two of three runs (117 and 134 in the third).
+  - The walking planner takes it as one crossing from the volcano's rim (2856, 3167) to Crandor (`routes.CROSSINGS`
+    492: its 89 steps across plus 6; `data/travel/crossings.csv` gets the pot hole's row, as the export would write
+    it). Crandor's 12 places get a way: 219 of the 2,792 places have none now (231 before). Its access rule (Dragon
+    Slayer) already gates it, as for every quest area.
+  - The server walker (`rlscape.bridge.walker`) crosses it with a scripted sequence in the route's direction, and
+    looks for a door or crossing before its 20-tile hop limit (a crossing's far side can be further: the walker had
+    clicked on the spot 3,000 times). Live test: `test_the_walker_takes_the_crandor_passage_both_ways`.
+- **Left for OQ-16 (a):** the areas quests now open whose way in the model lacks (West Ardougne's, about 28 places by Claude's reading of the groups,
+  and the others the access table opens: the Fremennik Isles, Waterbirth, Trollheim, Keep Le Faye, …), each added
+  where the ranker would send a character in 20 hours; and the Agility shortcuts, with Agility in sim v1.
+- **OQ-2's draft:** `docs/sim-v1-skills-draft.md`, the four skills' options from the server's code, with the
+  choices for Caleb (A to I). Found while drafting:
+  - gem cutting never fails on this server (`GemCutPulse` has no crushing);
+  - the Barbarian Outpost course needs Alfred Grimhand's Barcrawl, a miniquest `spawn` doesn't flag;
+  - the astral, death and blood altars need quests the server lacks;
+  - the travel model has no way to the Barbarian Outpost course and Agility Pyramid tiles checked;
+  - every candidate input has a 2009 GE price but the bird's nest.
+- **Tests:** 324 passed offline; the live walker tests pass.

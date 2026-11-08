@@ -48,7 +48,7 @@ from rlscape.sim.health import food_healing_held, foods_held, poison_cover, retr
 from rlscape.sim.movement import reach, reachable
 from rlscape.sim.options import COMPLETED, Option, OptionResult
 from rlscape.sim.potions import antifire_cover, drink_boosts
-from rlscape.sim.state import CharacterState
+from rlscape.sim.state import TOLERANCE_TICKS, CharacterState
 from rlscape.sim.transport import home_ready
 
 K = 3  # monsters per list: 3 by XP/hr, then 3 by gp/hr
@@ -122,7 +122,8 @@ class CombatSlots:
                                   _attacks_held(armed, plans[0], self.loot(state)), home_ready(state), where,
                                   poison_cover=cover, antifire_cover=fire_cover,
                                   arrow_piles=_arrow_piles(armed, plans[0], self.loot(state)),
-                                  shields_carried=_shields_carried(armed))
+                                  shields_carried=_shields_carried(armed), combat_level=state.combat_level(),
+                                  tolerance_left=state.region_since + TOLERANCE_TICKS - state.tick)
             self._slots[combat_class] = ranker.select({combat_class: (fighter, plans)}, character, self.duration_ticks,
                                                       K, self.vocabulary, shielded)[combat_class]
         for candidate in self._slots["melee"]:

@@ -35,7 +35,9 @@ HP_XP_PER_DAMAGE = 1.33
 # (scripts/calibrate_combat.py; 2026-11-07, with the combat inventory, the 16 cases of combat-20261107-0001.json and
 # -0049.json: rats, scorpions, market guards and experiments; melee 0.91 to 1.19, ranged 0.95 to 1.14). Packed rats
 # want 1, the experiments' cave about 7. It was 10 and 8 on 2026-11-05, when a bridge character's kills took about
-# three clicks each (every character had account uid 0); now about one. Magic is taken as ranged (uncalibrated).
+# three clicks each (every character had account uid 0); now about one. Magic is taken as ranged, which its own
+# calibration bears out (2026-11-07, hand casts: combat-20261107-2208.json and -2224-slot3-valuable.json, XP/hr 0.95
+# to 1.07 where no other kind of monster engages the character; OQ-35 has the others).
 OVERHEAD_TICKS_PER_KILL = {"melee": 3, "ranged": 3, "magic": 3}
 # Picking up a ground item the loot mode keeps (a drop, or a pile of arrows), whatever its amount: the click and the
 # walk to it, one time for every class (Caleb, 2026-11-07, OQ-27 (d)). Melee's fit on the loot runs, the runner

@@ -198,12 +198,15 @@ the current stats, gear, food and ammunition.
     pays its runes, and a worn elemental staff stands in for its own.
   - Fights end `out_of_ammo`, and a candidate's rates are capped by how long the ammunition lasts.
   - **Agent choice (reversible):** spells are cast by hand at the autocast rate, so magic doesn't need a staff. The
-    server's autocast does, and the starter kit has none.
+    server's autocast does, and the starter kit has none. *Checked live (2026-11-07):* a hand cast is one spell, and
+    casting again as soon as the server takes it (3 ticks after the last) lands the spells 5 ticks apart, the
+    autocast rate.
 - **Ranged fights safespot (2026-11-07, OQ-27 (d), Caleb):** a monster without a safespot is a bad ranged target
   unless its damage is trivial (below). Otherwise a ranged
   slot offers it only at sites with a safespot from the server (`data/ranged_safespots.csv`, the bridge's
   `ranged_safespots`): a tile it can be shot from where, chasing, it gets stuck short of attacking, holding from at
-  least half its wandering, and which no aggressive monster reaches. Melee monsters
+  least 80% of its wandering (Caleb, 2026-11-08, OQ-36 (a); half before), and which no aggressive monster
+  reaches. Melee monsters
   are held by walls and fences; skeletal wyverns, which shoot, are outranged (Caleb). From there it does no damage,
   and only the site's monsters the safespot holds against count. Arrows lie where the monster stands, a pile per
   100 ticks of shooting, picked up with the drops between kills, plus the walk from the safespot and back. While
@@ -211,6 +214,18 @@ the current stats, gear, food and ammunition.
   go. The pickup time is one for every class. Trivial damage (Caleb, OQ-30 (b)): the fight needs no food, its
   expected damage over the option less what regenerates fitting in the hitpoints above the retreat point. A bow
   takes no shield, so a monster with special damage, such as a dragon, is ranged only from a safespot.
+- **Magic fights safespot too (2026-11-07, OQ-34, Caleb),** by the same rules, at magic's range of 10 tiles
+  (`MagicSwingHandler.canSwing` is ranged's test with distance 10). Casting leaves no piles: only the drops are
+  fetched from the safespot.
+- **Monsters of other kinds near a fight (2026-11-07, OQ-35 (a), Caleb).** Away from a safespot, a site's aggressive
+  monsters of other kinds (spawned within 10 tiles) whose level would pick the character engage it between kills,
+  while nothing attacks it (the overhead to the next monster, the pickups, a wait for a respawn), each spawn at a
+  rate measured on the server (0.045 a tick, at the animated spades' possessed pickaxe), until the region's
+  aggression runs out. In single combat it must kill one before the next target, so each engagement is a kill of
+  that monster in the fight's plan, its time, damage, XP and drops counted. The slots count the expected fights; a
+  site where one can't be hurt by the plan, or fails the danger filter below, is left out while aggression lasts.
+  From a usable safespot none reaches the character. Not modelled: multi-combat areas, where they attack at once,
+  and the ammunition the neighbour fights use (the slots' cap counts the target's only; the fight pays it).
 
 ### B. Retreat-aware danger filter with a special-damage gear check (decided)
 
@@ -343,8 +358,9 @@ A candidate's XP/hr and gp/hr cover the option's whole duration, not just the fi
   arrows, banknotes, summoning charms) cost no new slot.
 - **Bank trips:** each full inventory costs the round trip to the site's nearest bank, plus 8 ticks of banking.
 - **Getting there:** the walk from the character's location is taken out of the option's duration.
-- **Between kills** (measured on the server, 2026-11-05): 10 ticks to find and reach the next monster for melee, 8
-  for ranged (magic as ranged, uncalibrated). Where a site has few of the monster, kills wait for respawns: at most
+- **Between kills** (measured on the server): 3 ticks to find and reach the next monster, for every class (refitted
+  on 2026-11-07 from 10 for melee and 8 for ranged on 2026-11-05; magic's calibration the same day bears it out).
+  Where a site has few of the monster, kills wait for respawns: at most
   one every (respawn + fighting) / spawns ticks, with the spawns within 15 tiles and the monster's respawn delay. So
   of two sites, the one with more of the monster can be worth the longer walk.
 
