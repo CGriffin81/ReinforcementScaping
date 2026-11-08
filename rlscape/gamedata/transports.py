@@ -164,6 +164,16 @@ SHIPS = (
     ("port_sarim-entrana", (3047, 3234, 0), "Monk of Entrana", (2834, 3331, 1), 15, 0, True, (2830, 3335, 0)),
     ("entrana-port_sarim", (2833, 3335, 0), "Monk of Entrana", (3048, 3234, 0), 15, 0, True, (3048, 3234, 0)),
 )
+# The Rellekka ferries (Caleb, 2026-11-08, OQ-16 (a); RellekkaListeners: the ferrymen's own option, with The
+# Fremennik Trials; free): (name, the tile beside the ferryman, who, where it lands, ticks from the click to standing
+# there, measured on the server 2026-11-08: 17 each way, 3 runs each, one at 14)
+RELLEKKA_FERRIES = (
+    ("rellekka-neitiznot", (2645, 3710, 0), "Maria Gunnars", (2310, 3782, 0), 17),
+    ("neitiznot-rellekka", (2311, 3782, 0), "Maria Gunnars", (2644, 3710, 0), 17),
+    ("rellekka-jatizso", (2644, 3708, 0), "Mord Gunnars", (2421, 3781, 0), 17),
+    ("jatizso-rellekka", (2422, 3782, 0), "Mord Gunnars", (2644, 3710, 0), 17),
+)
+FERRY_QUESTS = ("THE_FREMENNIK_TRIALS",)
 # ShipCharter.Destination.getCost's table order, and the destinations' own checkTravel quests
 CHARTER_ORDER = ("BRIMHAVEN", "CATHERBY", "KARAMJA", "MOS_LE_HARMLESS", "PORT_KHAZARD", "PORT_PHASMATYS", "PORT_SARIM",
                  "SHIPYARD", "PORT_TYRAS", "OO_GLOG")
@@ -190,6 +200,8 @@ def _boats() -> list[Transport]:
                      start=start, coins=fare,
                      no_arms=no_arms, npc=npc, land=land)
            for name, start, npc, end, delay, fare, no_arms, land in SHIPS]
+    out += [Transport(f"ship:{name}", "ship", end, ticks, start=start, npc=npc, land=end, quests=FERRY_QUESTS)
+            for name, start, npc, end, ticks in RELLEKKA_FERRIES]
     ports = charter_ports()
     for origin, (_, _, fares, base) in ports.items():
         if base is None:

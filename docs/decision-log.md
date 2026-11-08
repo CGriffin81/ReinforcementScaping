@@ -4642,3 +4642,37 @@ Caleb, 2026-11-08: "OQ16 - A". `m002-oq2-oq7-oq15` (the same session's answers).
   - the travel model has no way to the Barbarian Outpost course and Agility Pyramid tiles checked;
   - every candidate input has a 2009 GE price but the bird's nest.
 - **Tests:** 324 passed offline; the live walker tests pass.
+
+### Built (part): OQ-16 (a)'s quest-opened areas: the Rellekka ferries; West Ardougne (OQ-37) and Trollheim found
+`m002-commit-oq16-ways`.
+- **Which areas count** (OQ-16 (a): a way only where the ranker would send a character in 20 hours): of the 219
+  places with no way, 66 lie in an access rule a fresh character now meets: West Ardougne 28, Trollheim 25, the
+  Fremennik Isles 12, Waterbirth 1; the other 153 in none (quests the server lacks, cells and pens, the unclear
+  areas above). For their combat sites, each site's own rates (at the site, travel and banking aside) against the
+  ranker's top three by XP and by gp for the calibration characters of bands 1, 31, 61 and 91 in each class: West
+  Ardougne's men, women, zombies, ghosts and rats, Trollheim's mountain trolls, troll spectators, ice trolls and
+  ice wolves, and the Fremennik Isles' yaks and ice trolls would be offered somewhere; Waterbirth's one place
+  wouldn't.
+- **The Fremennik Isles, built:** the Rellekka ferries (`RellekkaListeners`: Maria Gunnars to Neitiznot, Mord Gunnars
+  to Jatizso, each with The Fremennik Trials, free, and back), 17 ticks from the click to the far side, measured on
+  the server (3 runs each way, one at 14), in `transports.RELLEKKA_FERRIES`. 9 places get a way (210 without one now);
+  three of the ice trolls' spots still have none (the islands' bridges, to look at).
+- **West Ardougne:** the only way in on this server (Biohazard isn't here) is Plague City's: Edmond's dug hole (shown
+  only with the quest's tunnel varbit), the sewer, and the pipe, which lets a character through only wearing a gas
+  mask, a quest item `spawn`'s flags don't give. New question OQ-37.
+- **Trollheim:** Death Plateau's large door (3743) is on the map and opens with the quest done, but past it the walk
+  stops 15 tiles short of the plateau ((2885, 3589) to (2900, 3604)), and Trollheim's mountain is 18 and 73 tiles
+  beyond what's walkable: climbing obstacles (Troll Stronghold is on the server), to find on the server one by one.
+- **Tests:** `test_the_rellekka_ferries_reach_the_fremennik_isles`. 325 passed offline.
+
+### Decided: OQ-37 (b), West Ardougne stays unreachable; the gap is documented for post-project work
+Caleb, 2026-11-08: "OQ37 - leave it unreachable. Document the gap for post-project work." `m002-oq37`.
+- **The question** (raised in `m002-commit-oq16-ways`, building OQ-16 (a)'s ways into areas complete quests open):
+  West Ardougne's 28 places have no way in the model, and its monsters would be offered. The server's only way in
+  (Biohazard isn't on it) is Plague City's: Edmond's dug hole (shown only with the quest's tunnel varbit), the sewer,
+  and the pipe, which lets a character through only wearing a gas mask, a quest item `spawn`'s flags-only completion
+  doesn't give.
+- **The options:** (a) `spawn` sets the tunnel's varbit and gives a gas mask, as an unlock the quest leaves, and the
+  sim's walk takes the hole, the sewer and the pipe as one crossing (recommended); (b) leave West Ardougne unreachable,
+  a known gap.
+- **Caleb:** (b), and the gap documented for post-project work: `docs/post-project-gaps.md`, started with it.

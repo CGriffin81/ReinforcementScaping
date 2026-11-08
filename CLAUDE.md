@@ -18,6 +18,8 @@ validated on a local 2009Scape server.
 - Undecided questions go in `docs/open-questions-log.md` as they come up, including future ones that can't be
   decided yet. When one is answered, move it (with its options and the answer) to the decision log and delete it
   from the open-questions log. Answered questions live only in the decision log; other docs state the design.
+- Gaps Caleb chose to leave for after the project are in `docs/post-project-gaps.md` (what, why, the cost, how
+  to close each).
 - External references (papers, code, data sources, related work) are listed in `docs/resources.md`,
   numbered to continue the proposal's bibliography. Add a resource there when the project starts using it.
 
