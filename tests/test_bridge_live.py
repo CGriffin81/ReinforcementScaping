@@ -11,6 +11,7 @@ import socket
 import pytest
 
 from rlscape.bridge import DEFAULT_PORT, BridgeClient, BridgeError
+from rlscape.gamedata import server as gd
 
 WOODCUTTING = 8
 LOGS = 1511
@@ -48,7 +49,9 @@ def test_spawn_matches_a_character_leaving_tutorial_island(character):
     assert sum(s["level"] for s in character["skills"]) == 33
     assert character["location"] == TUTORIAL_EXIT
     assert character["equipment"] == []
-    assert [(i["id"], i["amount"]) for i in character["bank"]] == [(995, 25)]
+    # 25 coins, and the small pouch from Enter the Abyss (OQ-40 (c)): the bank the sim's fresh character has
+    assert [(i["id"], i["amount"]) for i in character["bank"]] == [(995, 25), (5509, 1)]
+    assert [(i["id"], i["amount"]) for i in character["bank"]] == list(gd.starter_kit()[1])
     assert len(character["inventory"]) == 18
 
 

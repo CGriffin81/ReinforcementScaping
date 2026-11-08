@@ -4676,3 +4676,223 @@ Caleb, 2026-11-08: "OQ37 - leave it unreachable. Document the gap for post-proje
   sim's walk takes the hole, the sewer and the pipe as one crossing (recommended); (b) leave West Ardougne unreachable,
   a known gap.
 - **Caleb:** (b), and the gap documented for post-project work: `docs/post-project-gaps.md`, started with it.
+
+### Decided and built: Trollheim by its teleport, its climbing-boots climbs left out (Caleb)
+Caleb, 2026-11-08: "Yes, ignore the Trollheim crossing that require climbing boots. The important things to access in
+Trollheim are accessible from the teleport location without those boots." `m002-commit-trollheim`.
+- **Found:** every climb in `TrollheimPlugin` (option "climb": the rocks up to Death Plateau's path, the rock
+  scaling, the rocks beyond, and the summit's) needs climbing boots worn ("You need Climbing boots to negotiate these
+  rocks", checked live), and several also need Agility 15 to 47. Crossings for the ones with no Agility check were
+  built, then taken out when the boots turned up; the direct way up from Burthorpe needs Agility 15 besides.
+- **Left out** (Caleb): the climbs that need climbing boots. Death Plateau's troll arena and the summit's ice trolls
+  and ice wolves stay without a way.
+- **Built, the Trollheim teleport:** Eadgar's Ruse isn't on the server, so the spell's check
+  (`ModernListeners`: `hasRequirement(EADGARS_RUSE)`) asks the quest's own requirement (`Requirement.kt`: Druidic
+  Ritual and Troll Stronghold, both complete from the start, and Herblore 31, boosts counting). The sim had it shut
+  behind the quest; it now asks the same: Magic 61, Herblore 31, 2 fire and 2 law runes (`transports.SPELL_SKILLS`,
+  a teleport's `skills`). It lands at (2891, 3678), in a pocket of 2,055 walkable tiles with five mountain trolls'
+  and five thrower trolls' sites. Herblore is trainable from sim v1, so in sim v0 the teleport stays out of reach.
+- **Checked live:** refused at Herblore 30; cast at 31, landing at (2891, 3678); the walker reaches a mountain
+  troll's site from there. Tests: `test_the_trollheim_teleport_asks_eadgars_ruses_own_requirement`,
+  `test_the_trollheim_teleport_needs_eadgars_ruses_own_requirement_and_lands_by_the_trolls`.
+- **The same rule elsewhere:** the Watchtower and Ape Atoll teleports' checks are also `hasRequirement` of quests
+  the server lacks (Watchtower, Monkey Madness), which the sim keeps shut behind the quests; not changed.
+- **Tests:** 326 passed offline.
+
+### Decided and built: the Watchtower and Ape Atoll teleports open as the server opens them (Caleb)
+Caleb, 2026-11-08: "For watchtower and Ape Atoll, those teleports should be open, because we have made the decision to
+flag the quests as complete." `m002-teleports`. Env contract v1.20.
+- **What the server does:** Watchtower and Monkey Madness aren't on the server, so `spawn` can't flag them complete.
+  Their teleports' checks (`ModernListeners`) are `ContentAPI.hasRequirement`, which for a quest the server lacks
+  evaluates the quest's own requirement (`QuestReq.evaluate`; `Requirement.kt`), and for one it has asks only that
+  it be complete (its stage 100), so a complete quest's own requirements aren't asked again:
+  - Monkey Madness: The Grand Tree and Tree Gnome Village, both on the server and complete from the start, so the Ape
+    Atoll teleport is open to every character with Magic 64, 2 fire, 2 water and 2 law runes and a banana;
+  - Watchtower: Magic 14, Thieving 15, Agility 25, Herblore 14 and Mining 40 (boosts count), besides the spell's Magic
+    58. Agility and Herblore are trainable from sim v1, so it opens there;
+  - Eadgar's Ruse (the Trollheim teleport, above): Druidic Ritual and Troll Stronghold, complete, and Herblore 31.
+  The quest points they ask are met (every quest the server has is complete: 126).
+- **Built:** `gd.quest_requirements` reads `Requirement.kt`'s 137 entries; `gd.quest_gate(quest)` turns one into what
+  `hasRequirement` asks (the quests the server has that must be complete, the levels, unfolding the quests it lacks);
+  the teleport spells take their quests through it (`transports._spell_gate`), in place of the Trollheim case
+  written by hand before. Only the spells: the charters and tablets check quests their own way.
+- **Checked live:** the Ape Atoll teleport cast by a Magic-64 character with the runes and a banana, landing at
+  (2795, 2798, 1); the Watchtower teleport refused a level short of each of its five skills and cast with them;
+  Trollheim's as before. Tests: `test_the_teleports_of_quests_the_server_lacks_open_with_their_own_requirements`
+  (both), the offline transport test.
+- **Tests:** 326 passed offline.
+
+### Decided: OQ-2's sim v1 choices (Caleb); built: the Barcrawl and Enter the Abyss complete from the start
+Caleb, 2026-11-08, on `docs/sim-v1-skills-draft.md`'s choices: "OQ2 / Choice A - option A / Choice C - Leave out
+studded leather, snakeskin, and jewelry. / Choice D - Leave out the agility pyramid and brimhaven. Mark the barcrawl as
+complete so that agents may access barbarian agility. Also include Barbarian Fishing as a viable agility training
+method. If there are miniquest requirements to be able to do barbarian fishing, mark those as complete as well. Make the
+heavy fishing rod purchaseable from the GE. / Choice E - Option A / Choice F - Option A / Choice H - Include The Abyss
+and tiaras as options / Choice I - Option A". `m002-oq2-choices`.
+- **Choice A, the inputs: (a).** The options: (a) recommended: a path uses inputs the character holds or has banked,
+  and the agent buys them with the GE buy actions, which these inputs join; (b) a path also buys its own inputs as it
+  goes. Caleb: (a).
+- **Choice C, what Crafting has: tanning, leather and dragonhide armour, spinning, gems.** The options: (a)
+  recommended: everything drafted; (b) without studded armour (it needs Smithing's steel studs); (c) without snakeskin
+  as well. Jewellery was out unless added. Caleb: studded leather, snakeskin and jewellery are all left out. The leather
+  pieces are the eight soft and hard ones (gloves to coif), with the 12 dragonhide pieces.
+- **Choice D, the courses: the Gnome Stronghold, the Barbarian Outpost and the Wilderness (the draft's (b)).** The
+  options: (a) recommended: those three and the Agility Pyramid, its top handed to Simon Templeton for coins; (b) the
+  same without the Pyramid; the Brimhaven arena out in both. Caleb: the Pyramid and Brimhaven are left out. Also:
+  - **D2, the Barcrawl: (a).** The options: (a) recommended: flag the Barcrawl finished at spawn, as the quests are
+    (flags only); (b) leave the Barbarian course out. Caleb: flag it.
+  - **Barbarian Fishing trains Agility too** (Caleb's addition). Any miniquest it needs is flagged complete too, and the
+    heavy fishing rod can be bought on the GE.
+- **Choice E, the potions: (a).** The options: (a) recommended: the 21 standard potions, leaving out the quest and
+  minigame mixes; (b) the combat ones alone; (c) all the server has. Caleb: (a).
+- **Choice F, grinding: (a).** The options: (a) recommended: a path grinds its secondary when the character holds the
+  whole ingredient and a pestle and mortar, and the dust can also be bought; (b) dusts only bought. Caleb: (a).
+- **Choice H, the Abyss and tiaras are in.** The options: (a) recommended: talismans only, without the Abyss, its
+  pouches and tiaras; (b) tiaras as well. Caleb: the Abyss and tiaras both.
+- **Choice I, the vocabulary: (a).** The options: (a) recommended: the inputs the agent buys or holds join *V*, and the
+  products only where something else uses them; the other products stay misc; (b) every input and product. Caleb: (a).
+- **Not answered:** Choice B (picking flax) and Choice G (mining essence paired with crafting it). They're OQ-38.
+- **Found on the server:**
+  - **Barbarian Fishing** (`gather/fishing/barbfishing/`) needs no miniquest. `BarbFishingPulse` asks for Fishing 48,
+    Agility 15 and Strength 15, a barbarian rod (11323) in the inventory, a free slot, and bait (fish offcuts, feathers,
+    fishing bait, roe or caviar).
+    - Every 5 ticks it tries leaping trout (Fishing 48), salmon (58, with Strength and Agility 30) and sturgeon (70,
+      with 45), in that order, each at its own catch chance (`Fish.getSuccessChance`, linear in the level: trout 43% at
+      level 1 down to 35% at 99, salmon 25% up to 28%, sturgeon 19% up to 25%). The first that succeeds is caught, for
+      one bait.
+    - XP a catch: Fishing 50, 70 or 80; Agility and Strength 5, 6 or 7 each.
+    - Five spots move among seven tiles at Otto's Grotto (2500–2506, 3494–3516), each after 400 to 2,000 ticks
+      (`SpotManager`).
+    - Barbarian Training's rod stage only gates the rod under Otto's bed. It stays unflagged, so the GE is where the
+      rod comes from.
+    - The rod is untradeable, with no 2009 price, so it goes on the frozen GE at a set price, as Ava's devices did
+      (`SET_PRICES`). The price is OQ-41.
+  - **The Barcrawl:** the Barbarian Outpost course's gate (2115, 2116; `BarbarianOutpostCourse`) lets a character
+    through only once every bar is done and the card handed in. Until then the guard's dialogue opens.
+  - **The Abyss** (`runecrafting/abyss/`):
+    - **Getting in:** the Mage of Zamorak in the Wilderness is at (3105, 3554), level 5, north of Edgeville. It shows a
+      Teleport option once Enter the Abyss is done: the mage is a multi-NPC, 2257, shown as 2259 at the miniquest's
+      stage 4 (varp 492). The teleport lands the character at a random point of the outer ring, drains its prayer to 0
+      and skulls it for 2,000 ticks.
+    - **The outer ring:** 12 obstacles stand around it, rotated so the character lands by a blocked one. A passage
+      always lets it through. The others each take a tool and a skill:
+      - rocks: a pickaxe, Mining;
+      - tendrils: an axe, Woodcutting;
+      - a boil: a tinderbox, Firemaking;
+      - eyes: Thieving;
+      - a gap: Agility.
+
+      Each try passes with chance (level + 1)/100 and takes about 8 ticks. The abyssal leeches, guardians and walkers
+      (2263–2265) are aggressive.
+    - **The inner ring's rifts:** each sends the character to its altar, with the ruins' own checks
+      (`MysteriousRuinListener.checkReq`):
+      - every rift: Rune Mysteries;
+      - cosmic: Lost City (complete);
+      - law: Entrana's rule of no weapons or armour;
+      - the chaos rift lands beside the chaos altar;
+      - death and blood: `hasRequirement` of quests the server lacks, Mourning's End Part II and Legacy of Seergaze.
+        Mourning's End unfolds to Ranged 60 and Thieving 50, plus Roving Elves, Big Chompy Bird Hunting and Sheep
+        Herder (all complete). Whether the death rift opens is OQ-39. Legacy of Seergaze unfolds to nine levels,
+        including Construction 20, which the sim can't train, so the blood rift never opens.
+    - **Pouches:**
+      - the small pouch (3 essence) is Enter the Abyss's reward;
+      - the medium, large and giant (Runecrafting 25, 50 and 75; 6, 9 and 12 essence) drop from the abyssal monsters.
+        Each kill has a 12-in-750 chance of the next one the killer lacks, in that order;
+      - those three decay with use, and the Dark Mage in the Abyss's centre repairs them;
+      - all four are untradeable.
+
+      Whether there are pouches is OQ-40.
+  - **The astral altar:** Lokar Searunner's boat from Rellekka to Lunar Isle (`LokarSearunnerDialogue`) and the altar
+    ask Lunar Diplomacy, which the server lacks. It unfolds to eight levels the sim trains (Magic 65, Crafting 61,
+    Mining 60, Woodcutting 55, Firemaking 49, Defence 40, Agility 32, Herblore 5) and four quests that are complete.
+    Whether it opens is OQ-39, with the death rift.
+  - **Tiaras** (`TalismanEnchantingListener`):
+    - A plain tiara (5525) and the talisman, used on the altar, make the rune's tiara. That gives 25 to 47.5
+      Runecrafting XP, air to law.
+    - Worn, it opens the ruins in place of the talisman (`handleTiaraOrStaff`), freeing the talisman's slot.
+    - Plain and elemental tiaras are tradeable, 45 gp each in January 2009.
+    - A plain tiara is cast from a silver bar in a tiara mould at a furnace, the silver crafting left out with jewellery
+      (Choice C), so it's bought.
+- **Built:**
+  - **The fork** (`RLCommands.completeMiniquests`): `spawn` flags the Barcrawl finished (every bar done, the card
+    handed in) and Enter the Abyss done (varp 492 = 4). Flags only: Enter the Abyss's 1,000 Runecrafting XP, small
+    pouch and research notes aren't given.
+  - **The bridge** finds NPCs by the name a player sees. For an NPC with forms, that's the form shown to the character
+    (`NPC.getShownNPC`), whose options a client's click reads (`processNpcAction`); the mage's own definition is named
+    "null". `interact`, `npcs`, `use_item_on`, `cast` and the safespot commands match the shown name, and the shown or
+    base id.
+  - **Checked live:**
+    - A fresh character passes the course gate both ways.
+    - The mage teleports it to the outer ring, 24 tiles from the centre, with its prayer at 0.
+    - With Fishing 48, Agility 15, Strength 15, a rod and feathers, it caught 8 leaping trout in 200 ticks, each for 50
+      Fishing, 5 Agility and 5 Strength XP.
+    - Tests: `test_the_barcrawl_and_enter_the_abyss_are_complete_from_the_start` and
+      `test_barbarian_fishing_needs_no_miniquest_and_trains_agility_and_strength`.
+  - **Tests:** every live file passed with the changed lookup (`test_bridge_inputs_live.py` and `test_bridge_live.py`
+    42, the human-player, quests and run-energy files 19), and 326 offline.
+- **The draft is now the spec** (`docs/sim-v1-skills-draft.md`), with each choice's answer. It adds `barb_fish`,
+  `make_tiara_<rune>` and `abyss_rc_<rune>`. *V* grows by about 85 items, to about 2,065 actions and 3,300 observation
+  features. The option catalog gets the options (v1.4) once their actions are fixed.
+- **Open:** OQ-38 (Choices B and G), OQ-39 (the death and astral altars), OQ-40 (pouches), OQ-41 (the rod's price).
+
+### Decided: OQ-38, picking flax paired with spinning; essence mined and crafted by separate paths (Caleb)
+Caleb, 2026-11-08, on sim v1's two choices left open by his OQ-2 answers: "OQ 38 B option a / G Option b".
+`m002-oq38-oq41`.
+- **Choice B, flax: (a).** The options: (a) recommended: `pick_flax_spin` picks flax in Seers' Village's field and
+  spins it at the wheel there (a gathering path paired with its processing, as the catalog's §2 pairs them), and
+  `pick_flax` is a gathering path of its own; (b) spinning bought flax only. Caleb: (a).
+  - **On the server** (`FieldPickingPlugin`): a pick every 2 ticks, no XP. Each flax plant gives 4 to 9 picks (its
+    charge, re-rolled each pick), then is gone for 30 ticks. The field is south of Seers' Village and the wheel on a
+    house's first floor there, as the bundled flax bot's route has them (`bots/SeersFlax.kt`).
+- **Choice G, essence: (b).** The options: (a) recommended: `mine_essence_rc_<rune>` as well, for the six runes whose
+  ruins are near the essence mine's wizards (air, mind, water, earth, fire, body): mine a load, craft it, again;
+  (b) only the separate paths, `mine_essence` and `rc_<rune>`. Caleb: (b). An agent that wants both mines with one
+  option and crafts with the next.
+- **The spec** (`docs/sim-v1-skills-draft.md`) states both answers. *V* doesn't change (flax is in it already), and
+  the bridge needs the flax's Pick, a scenery click it already sends.
+- **Open:** OQ-39 (the death and astral altars), OQ-40 (pouches), OQ-41 (the rod's price).
+
+### Decided: OQ-39 (b), the death altar; OQ-40 (c), the pouches as the server gives them; OQ-41, the rod at 1,000 gp (Caleb); built: the small pouch at spawn, the rod on the GE
+Caleb, 2026-11-08: "OQ 39 - B / OQ 40 - C / OQ 41 - Set the heavy rod at 1,000 gp." `m002-oq38-oq41`.
+- **OQ-39, the death and astral altars: (b), death only.** The question was whether they open as the server opens
+  them, by the lacking quests' own requirements. The options: (a) recommended: both (`abyss_rc_death`, and Lokar
+  Searunner's boat in the travel model with `rc_astral`); (b) death only, since the Abyss is in and the boat is more
+  work; (c) neither (the server would still let a character in, but no option goes there). Caleb: (b).
+  - The death rift opens at Ranged 60 and Thieving 50 (Mourning's End Part II's own requirement, as the server asks
+    it) with Runecrafting 65, for pure essence only, 10 XP an essence. The death rune is in *V* already.
+  - **Found:** the death altar's portal leads to its ruins at (1862, 4639), in the Temple of Light, which the travel
+    model doesn't reach. So a death trip ends with a teleport from the altar: the home teleport when it's ready, or a
+    teleport spell the character can cast.
+  - The astral altar gets no option. The server would still let a character with Lunar Diplomacy's levels take
+    Lokar's boat, but the travel model has no way there.
+- **OQ-40, essence pouches: (c), as the server gives them.** The options: (a) recommended: no pouches; (b) the small
+  pouch at spawn and the others on the GE at set prices, with their decay and the Dark Mage's repair; (c) as the
+  server gives them: the small pouch at spawn, the others from killing abyssal monsters (a fight option in the Abyss).
+  Caleb: (c). Read from the server (`PouchManager`, `AbyssalNPC`, `DarkMageDialogue`):
+  - **The drop:** each kill of an abyssal leech, guardian or walker (2263–2265) has a 12-in-750 chance of the next
+    pouch the character lacks (small, medium, large, giant), counting the inventory, bank and equipment, and a decayed
+    pouch as the pouch. It's dropped on the ground. It needs no level; filling needs Runecrafting 25, 50 or 75.
+  - **Decay:** the medium, large and giant count the essence put in: 264, 186 and 140 before the first decay. Each
+    decay cuts the capacity by 1, 2 or 3, and the next comes after 9 × the new capacity; at 0 the pouch disappears.
+    The server keeps one state for each kind of pouch. The small pouch never decays.
+  - **Repair:** the Dark Mage in the Abyss's centre repairs every pouch, free.
+  - **Value:** untradeable and not alchable, so net worth counts them at 0.
+  - **The fight option in the Abyss:** the combat pool already lists the three monsters (39, 32 and 29 spawns; drops
+    about 760 to 780 gp a kill, mostly noted pure essence). The travel model needs the mage's teleport, the outer ring
+    as a site and a way out. The teleport skulls the character, so a death there keeps no items (`DeathTask`).
+- **OQ-41, the rod's price: 1,000 gp** (Caleb). The options: (a) recommended: a nominal 77 gp, the fly fishing rod's
+  January 2009 price; (b) another price Caleb sets. Caleb: 1,000 gp.
+- **Built:**
+  - **The small pouch at spawn** (the fork, `RLCommands.completeMiniquests`), in the bank, so no other option's
+    inventory changes. That's Claude's choice, reversible: the miniquest itself gives the pouch to the inventory.
+    Enter the Abyss's 1,000 Runecrafting XP and notes still aren't given. The sim's fresh character has it too
+    (`gamedata.server.MINIQUEST_ITEMS`, in `starter_kit`'s bank). Env contract v1.22 (§1), to confirm.
+  - **The rod on the GE** (`scripts/build_price_tables.py`, `SET_PRICES`): 11323 at 1,000 gp, as Ava's devices are.
+    Rebuilt and checked against the previous tables: only the rod's rows were added (a `price_index` row and the
+    historical list in the frozen database, a `ge_set` row in `prices_v2`). Installed into the three instances. Its
+    buy action joins *V* with the Agility build (`barb_fish`).
+  - **Tests:** `test_the_barbarian_rod_is_bought_on_the_ge_at_calebs_price_and_sold_back` (live: bought for 1,000,
+    sold back for 1,000); the spawn tests (`test_bridge_live`, `test_quests_live`) and the sim's fresh character
+    (`test_sim`) expect the pouch in the bank.
+- **The spec** (`docs/sim-v1-skills-draft.md`) states the three answers, with the pouches' table and rules and the
+  Abyss's fight option. *V* gains the four pouches (held, not bought): about 89 items.

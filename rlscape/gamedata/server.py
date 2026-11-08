@@ -401,12 +401,50 @@ def quest_names() -> frozenset[str]:
     return frozenset(re.findall(r"^\s+([A-Z_0-9]+)\(\"", QUESTS.read_text(encoding="utf-8"), re.M))
 
 
+REQUIREMENTS = REPO / "server" / "Server" / "src" / "main" / "core" / "game" / "requirement" / "Requirement.kt"
+
+
+@cache
+def quest_requirements() -> dict[str, tuple[tuple[str, ...], tuple[tuple[str, int], ...]]]:
+    """Requirement.kt's QuestRequirements, by Quests enum name: (the QuestRequirements entries it needs, as their
+    quests' names; (skill, level) pairs). Quest points aside (every quest the server has is complete, 126 points)."""
+    text = REQUIREMENTS.read_text(encoding="utf-8")
+    body = text[text.index("enum class QuestRequirements"):]
+    entries: dict[str, tuple[str, list[str], list[tuple[str, int]]]] = {}
+    for name, quest, args in re.findall(r"\n\s*([A-Z_0-9]+)\s*\(\s*Quests\.([A-Z_0-9]+)\s*(,[^\n]*)?\)\s*[,;]", body):
+        reqs = re.findall(r"QuestReq\s*\(\s*([A-Z_0-9]+)", args or "")
+        skills = [(s.lower(), int(level)) for s, level in
+                  re.findall(r"SkillReq\s*\(\s*Skills\.([A-Z_]+)\s*,\s*(\d+)", args or "")]
+        entries[name] = (quest, reqs, skills)
+    return {quest: (tuple(entries[r][0] for r in reqs if r in entries), tuple(skills))
+            for quest, reqs, skills in entries.values()}
+
+
+def quest_gate(quest: str) -> tuple[frozenset[str], tuple[tuple[str, int], ...]]:
+    """What ContentAPI.hasRequirement(player, quest) asks of a character (QuestReq.evaluate): a quest the server has
+    must be complete; one it doesn't is met by its own requirements, each quest it needs taken the same way. Returns
+    (quests that must be complete, (skill, level) pairs, the highest of each)."""
+    quests, levels = set(), {}
+    pending = [quest]
+    while pending:
+        q = pending.pop()
+        if q in implemented_quests():
+            quests.add(q)
+            continue
+        needed, skills = quest_requirements().get(q, ((), ()))
+        pending += needed
+        for skill, level in skills:
+            levels[skill] = max(levels.get(skill, 0), level)
+    return frozenset(quests), tuple(sorted(levels.items()))
+
+
 @cache
 def implemented_quests() -> frozenset[str]:
     """The quests the server has (a Quest subclass it registers, @Initializable), by Quests enum name: 68 of the
     enum's 150. The bridge's `spawn` completes exactly these. The server can't mark the others complete: content
     behind one stays shut, or (where it checks ContentAPI.hasRequirement) opens once the character meets that quest's
-    own requirements, which the sim doesn't model. A live test checks the list against the running server's."""
+    own requirements (quest_gate), which the sim asks for the teleport spells (Caleb, 2026-11-08) and nowhere else
+    yet. A live test checks the list against the running server's."""
     out = set()
     for path in SERVER_CONTENT.rglob("*"):
         if path.suffix not in (".kt", ".java"):
@@ -425,15 +463,22 @@ UNREGISTERED_QUESTS = frozenset({"A_SOULS_BANE"})
 
 @cache
 def starter_kit() -> tuple[tuple[tuple[int, int], ...], tuple[tuple[int, int], ...]]:
-    """(inventory, bank) as (item id, amount): what a character leaves Tutorial Island with. CharacterDesign's
-    STARTER_PACK and STARTER_BANK, which the bridge's `spawn` also gives."""
+    """(inventory, bank) as (item id, amount): what a character leaves Tutorial Island with, CharacterDesign's
+    STARTER_PACK and STARTER_BANK, and the small pouch from Enter the Abyss in the bank (MINIQUEST_ITEMS), as the
+    bridge's `spawn` gives them."""
     text = CHARACTER_DESIGN.read_text(encoding="utf-8")
 
     def items(name: str) -> tuple[tuple[int, int], ...]:
         body = re.search(rf"{name}\s*=\s*new Item\[\]\s*\{{(.*?)\}};", text, re.S).group(1)
         return tuple((int(i), int(n)) for i, n in re.findall(r"new Item\(\s*(\d+)\s*,\s*(\d+)\s*\)", body))
 
-    return items("STARTER_PACK"), items("STARTER_BANK")
+    return items("STARTER_PACK"), items("STARTER_BANK") + MINIQUEST_ITEMS
+
+
+# Enter the Abyss is complete from the start, and of its rewards the small pouch is given, in the bank (Caleb,
+# 2026-11-08, OQ-40 (c): the pouches as the server gives them; RLCommands.completeMiniquests)
+SMALL_POUCH = 5509
+MINIQUEST_ITEMS = ((SMALL_POUCH, 1),)
 
 
 # WoodcuttingListener.rollDepletion: these tree identifiers fall after every log; every other tree falls 1 time in 8.

@@ -1,13 +1,15 @@
-# Sim v1 skills: Crafting, Agility, Herblore, Runecrafting (draft for Caleb)
+# Sim v1 skills: Crafting, Agility, Herblore, Runecrafting (the spec, from Claude's draft)
 
 Caleb, 2026-11-08 (OQ-2): "crafting should include leather armor, dragonhide armor, spinning, and gems. Agility
 should add course laps. Herblore should add herbs and potions. Runecrafting should add runes and essence."
 
-This is Claude's draft of those options, for Caleb to check before they're built (`m002-oq2-oq7-oq15`). It follows
-the option catalog's rules for skilling (§2) and processing (§3): preconditions, inputs, a fixed duration *D*, the
-server's formulas, and measured overheads. The numbers below are read from the server's source (paths under
-`server/Server/src/main/content/global/skill/`). Where something needs Caleb's call, the choice is marked
-**Choice**, with Claude's recommendation first.
+This began as Claude's draft of those options for Caleb to check (`m002-oq2-oq7-oq15`). Caleb answered its choices the
+same day (`m002-oq2-choices`; the decision log's "Decided: OQ-2's sim v1 choices"), so it's now the spec the four
+skills are built to. Each choice below keeps its options and states Caleb's answer (Choices B and G later that day,
+OQ-38). Three questions the Abyss raised are open: OQ-39 to OQ-41. It follows the option catalog's rules for skilling (§2) and
+processing (§3): preconditions, inputs, a fixed duration *D*, the server's formulas, and measured overheads. The
+numbers below are read from the server's source (paths under `server/Server/src/main/content/global/skill/`). The
+option catalog gets these options (v1.4) once their actions are fixed.
 
 ## 1. How the four skills fit the catalog
 
@@ -23,7 +25,7 @@ gate).
 
 **Choice A, the inputs:** (a) *recommended*: a path uses inputs the character holds or has banked, and the agent buys
 them with the GE buy actions (§8), which these inputs join; (b) a path also buys its own inputs as it goes.
-(a) keeps buying the agent's decision, as for fletching and smithing.
+(a) keeps buying the agent's decision, as for fletching and smithing. **Caleb: (a).**
 
 ## 2. Crafting
 
@@ -45,8 +47,8 @@ soft leather 1 gp, to hard leather 3 gp; green, blue, red and black dragonhide t
 | Leather chaps | 18 | 27 | 1 soft |
 | Hardleather body | 28 | 35 | 1 hard |
 | Coif | 38 | 37 | 1 soft |
-| Studded body | 41 | 40 | a leather body and steel studs |
-| Studded chaps | 44 | 42 | leather chaps and steel studs |
+| Studded body | 41 | 40 | a leather body and steel studs (out: Choice C) |
+| Studded chaps | 44 | 42 | leather chaps and steel studs (out: Choice C) |
 
 **Dragonhide armour** (needle and thread; vambraces 1 leather, chaps 2, body 3):
 
@@ -66,15 +68,20 @@ XP; flax to a bowstring, level 10, 15 XP. Bowstrings feed Fletching's stringing 
 
 **The paths:**
 - `tan_<hide>` (4: soft, hard, dragon leather from green/blue, red/black hides; gp paths, since tanning gives no XP);
-- `craft_<item>` for each armour piece (10 leather, 12 dragonhide);
+- `craft_<item>` for each armour piece (8 leather, 12 dragonhide);
 - `spin_wool`, `spin_flax` at the nearest wheel, and **Choice B:** (a) *recommended*: `pick_flax_spin`, picking flax
   at Seers' Village's field and spinning it at the wheel there (a gathering path with its processing counterpart, as
-  §2 pairs them; picking gives no XP), and `pick_flax` kept; (b) spinning only from bought flax;
+  §2 pairs them; picking gives no XP), and `pick_flax` kept; (b) spinning only from bought flax. **Caleb: (a)**
+  (OQ-38). Picking (`FieldPickingPlugin`): a pick every 2 ticks, no XP; each plant gives 4 to 9 picks, then is gone
+  for 30 ticks. The field is south of Seers' Village (about 2737, 3441), and the wheel is on a house's first floor
+  there (by 2711, 3471), as the bundled flax bot's route has them (`bots/SeersFlax.kt`). `pick_flax` fills the inventory and banks at Seers' Village; `pick_flax_spin` picks a load,
+  spins it, banks the bowstrings, again.
 - `cut_<gem>` (9).
 
 **Choice C, what's in:** (a) *recommended*: everything above; (b) leave out studded armour (it needs Smithing's
 steel studs), or (c) leave out snakeskin as well. Snakeskin (Morytania's swamp snakes, 15 gp to tan) and jewellery
-(gold bars, moulds, a furnace) are out unless Caleb adds them: neither is in OQ-2's list.
+(gold bars, moulds, a furnace) are out unless Caleb adds them: neither is in OQ-2's list. **Caleb: studded leather,
+snakeskin and jewellery are left out.** Crafting is tanning, the 8 leather and 12 dragonhide pieces, spinning and gems.
 
 ## 3. Agility
 
@@ -95,14 +102,37 @@ fights do).
 
 **Choice D, the courses:** (a) *recommended*: Gnome Stronghold, Barbarian Outpost and Wilderness, and the Pyramid
 with its top handed to Simon Templeton for coins as the server pays; (b) the same without the Pyramid. The Brimhaven
-arena is out in both.
+arena is out in both. **Caleb: the Pyramid and Brimhaven are left out**, so the courses are the Gnome Stronghold, the
+Barbarian Outpost and the Wilderness. Barbarian Fishing trains Agility too (below).
 
-**Choice D2, the Barcrawl:** the Barbarian Outpost course's pipe needs Alfred Grimhand's Barcrawl finished
-(`BarbarianOutpostCourse.kt`), a miniquest that `spawn`'s quest flags don't cover (2026-11-06's rule: every quest the
-server has). (a) *recommended*: flag the Barcrawl finished at spawn too, as the quests are (flags only); (b) leave
-the Barbarian course out. **Found:** the travel model has no way to the Barbarian Outpost course and the Agility Pyramid
-tiles checked (2552, 3556 and 3354, 2830); the start tiles need checking on the server when they're built (OQ-16's
-kind).
+**Choice D2, the Barcrawl:** the Barbarian Outpost course's gate (2115, 2116) needs Alfred Grimhand's Barcrawl
+finished (`BarbarianOutpostCourse.kt`), a miniquest that `spawn`'s quest flags don't cover (2026-11-06's rule: every
+quest the server has). (a) *recommended*: flag the Barcrawl finished at spawn too, as the quests are (flags only); (b)
+leave the Barbarian course out. **Caleb: (a). Built** (`RLCommands.completeMiniquests`), and a fresh character passes
+the gate on the server. **Found:** the travel model has no way to the Barbarian Outpost course tile checked (2552,
+3556); the start tiles need checking on the server when they're built (OQ-16's kind).
+
+**Barbarian Fishing** (Caleb, 2026-11-08: an Agility training method; `gather/fishing/barbfishing/`). No miniquest is
+needed: `BarbFishingPulse` asks for Fishing 48, Agility 15 and Strength 15, a barbarian rod (11323) in the inventory, a
+free slot, and bait (feathers, fishing bait, fish offcuts, roe or caviar).
+
+| Fish | Fishing | Strength and Agility | XP: Fishing, Agility, Strength | Catch chance, level 1 to 99 |
+|---|---|---|---|---|
+| Leaping trout | 48 | 15 | 50, 5, 5 | 43% down to 35% |
+| Leaping salmon | 58 | 30 | 70, 6, 6 | 25% up to 28% |
+| Leaping sturgeon | 70 | 45 | 80, 7, 7 | 19% up to 25% |
+
+Every 5 ticks the pulse tries the three in that order, each at its own chance at the character's Fishing level
+(`Fish.getSuccessChance`), and the first that succeeds is caught, for one bait. Five spots move among seven tiles at
+Otto's Grotto (2500–2506, 3494–3516), each after 400 to 2,000 ticks. Checked live: 8 trout in 200 ticks at Fishing 48,
+each 50 Fishing, 5 Agility and 5 Strength XP.
+- **The path:** `barb_fish`, a gathering path that trains Fishing, Agility and Strength: walk to the grotto, fish to a
+  full inventory, then bank or drop the fish, as fishing's paths do. It joins the Fishing and Agility slots' rankings
+  (§1) by its XP in each. The leaping fish go in *V* only if something uses them (Choice I); cutting them for roe and
+  caviar (Cooking) is out.
+- **The rod** is untradeable, so it goes on the frozen GE at a set price, as Ava's devices did. The price is OQ-41.
+  Otto's bed gives the rod only once his Barbarian Training starts, which stays unflagged, so the GE is the way to get
+  one.
 
 **Agility in travel:** with Agility trainable, the shortcuts the server has (`agility/shortcuts/`: log balances,
 stepping stones, rope swings, the Al Kharid pit, grapples, …) can join the travel model's crossings at their levels,
@@ -161,12 +191,12 @@ vial of water and the secondary, the unfinished potion made and finished in the 
 
 **Choice E, the potions:** (a) *recommended*: the 21 above, leaving out the quest and minigame mixes (Relicym's balm,
 Serum 207, Blamish oil, Sanfew, Guthix balance, weapon poisons, Summoning and Hunter potions); (b) the combat ones
-alone; (c) all the server has.
+alone; (c) all the server has. **Caleb: (a).**
 
 **Choice F, grinding:** (a) *recommended*: a path grinds its secondary when the character holds the whole ingredient
 (a unicorn horn, say) and a pestle and mortar, and the dust can also be bought; (b) dusts only bought. Crushed nests
 need a bird's nest, which the 2009 GE doesn't price: the Saradomin brew path then needs nests from drops or the
-woodcutting nests the sim already rolls.
+woodcutting nests the sim already rolls. **Caleb: (a).**
 
 ## 5. Runecrafting
 
@@ -188,9 +218,20 @@ start).
 | Nature | 44 | 9 | 91 | north of Shilo Village (2869, 3021) |
 | Law | 54 | 9.5 | — | Entrana (no weapons or armour) |
 
-Air to body take rune or pure essence; the rest pure essence (`RuneCraftPulse`). The death and blood altars need
-quests the server doesn't have, and astral's needs Lunar Diplomacy (not in the server's 68): out. Entering the ruins
-takes the altar's talisman (used on the ruins) or its tiara (worn).
+Air to body take rune or pure essence; the rest pure essence (`RuneCraftPulse`). Entering the ruins takes the
+altar's talisman (used on the ruins) or its tiara (worn). Three more altars need quests the server lacks, so it asks
+those quests' own requirements (`hasRequirement`, as for the Watchtower teleport):
+- **astral** (Runecrafting 40, 8.7 XP, 155 gp a rune in January 2009) is on Lunar Isle. Lokar Searunner's boat from
+  Rellekka and the altar both ask Lunar Diplomacy, which unfolds to eight levels the sim trains (Magic 65, Crafting
+  61, Mining 60, Woodcutting 55, Firemaking 49, Defence 40, Agility 32, Herblore 5) and four quests that are complete.
+  **Out** (Caleb, OQ-39 (b)): no option goes there, and the travel model has no way there. The server would still let
+  a character in;
+- **death** (Runecrafting 65, 10 XP an essence, pure essence only, 271 gp a rune in January 2009) is reached by the
+  Abyss's rift (below), and **opens as the server opens it** (Caleb, OQ-39 (b)): Ranged 60 and Thieving 50, Mourning's
+  End Part II's own requirement. Its own ruins are in the Temple of Light, which the travel model doesn't reach;
+- **blood** never opens (Legacy of Seergaze asks Construction 20).
+
+**Caleb (OQ-39): (b),** the death altar and not the astral one.
 
 **Essence** (`gather/mining`, `travel/EssenceTeleport.kt`): mined in the rune essence mine, which Aubury in Varrock's
 rune shop (and the other wizards) teleports a character to; the mining always succeeds; 5 Mining XP each; from
@@ -200,42 +241,132 @@ Mining 30 the server gives pure essence instead (`MiningListener.calculateReward
 bank; kept or sold); `rc_<rune>` (10): take essence and the talisman from the bank, walk to the ruins, enter, craft,
 walk back and bank, and again; and **Choice G:** (a) *recommended*: `mine_essence_rc_<rune>` too, for the runes whose
 ruins are near the mine (air, mind, water, earth, fire, body): mine a load, craft it, again (the gathering path with
-its processing counterpart, §2); (b) only the separate paths.
+its processing counterpart, §2); (b) only the separate paths. **Caleb: (b)** (OQ-38): `mine_essence` and `rc_<rune>`
+only. An agent that wants both mines with one option and crafts with the next.
 
 **Choice H, tiaras and pouches:** (a) *recommended*: talismans only (the GE sells them; a tiara needs a silver bar
 crafted with the talisman, which isn't in OQ-2's list); essence pouches (the Abyss) and the Abyss's shortcut out;
-(b) tiaras as well.
+(b) tiaras as well. **Caleb: the Abyss and tiaras are both in,** and the pouches as the server gives them (OQ-40
+(c), below).
+
+**Tiaras** (`TalismanEnchantingListener`): a plain tiara (5525) and the talisman, used on the altar inside the ruins,
+make the rune's tiara in about 3 ticks, for Runecrafting XP:
+
+| Tiara | Air | Mind | Water | Earth | Fire | Body | Cosmic | Chaos | Nature | Law |
+|---|---|---|---|---|---|---|---|---|---|---|
+| XP | 25 | 27.5 | 30 | 32.5 | 35 | 37.5 | 40 | 43.5 | 45 | 47.5 |
+
+Worn, a tiara opens its ruins in place of the talisman (`MysteriousRuinListener.handleTiaraOrStaff`), so a trip
+carries 28 essence instead of 27. Plain and elemental tiaras are tradeable (45 gp each in January 2009). A plain tiara
+is cast from a silver bar in a tiara mould at a furnace, the silver crafting left out with jewellery (Choice C), so
+it's bought.
+- **The paths:** `make_tiara_<rune>` (10): take plain tiaras and the talisman to the ruins, enter, use them on the
+  altar, again; the tiaras are kept, worn or sold. `rc_<rune>` wears the rune's tiara when the character has one, and
+  otherwise carries the talisman.
+
+**The Abyss** (`runecrafting/abyss/`):
+- **Getting in:** the Mage of Zamorak in the Wilderness (3105, 3554; level 5, north of Edgeville) teleports the
+  character once Enter the Abyss is done. The miniquest is flagged complete at spawn, flags only (Caleb, 2026-11-08:
+  the Abyss is in; `RLCommands.completeMiniquests`). The teleport lands the character on the outer ring at a random
+  point, drains its prayer to 0 and skulls it for 2,000 ticks.
+- **The outer ring:** 12 obstacles, rotated so the character lands by a blocked one. A passage always lets it through.
+  The others each take a tool and a skill:
+  - rocks: a pickaxe, Mining;
+  - tendrils: an axe, Woodcutting;
+  - a boil: a tinderbox, Firemaking;
+  - eyes: Thieving;
+  - a gap: Agility.
+
+  Each try passes with chance (level + 1)/100 and takes about 8 ticks. The abyssal leeches, guardians and walkers
+  (2263–2265) are aggressive, and the character arrives with no prayer.
+- **The inner ring's rifts** go straight to each altar, with the ruins' checks (`MysteriousRuinListener.checkReq`):
+  - cosmic: Lost City (complete);
+  - law: no weapons or armour (Entrana's rule);
+  - chaos: lands by the chaos altar;
+  - death: Ranged 60 and Thieving 50, which is Mourning's End Part II's own requirement (the server lacks the quest).
+    Open (OQ-39 (b)). The death altar's portal leads to its ruins in the Temple of Light, which the travel model
+    doesn't reach, so a death trip ends with a teleport from the altar: the home teleport when it's ready, or a
+    teleport spell the character can cast;
+  - blood: never (Legacy of Seergaze asks Construction 20).
+
+  No talisman is needed.
+- **The paths:** `abyss_rc_<rune>`, one for each altar the Abyss reaches (death among them): take essence (and a tool
+  for an obstacle, where one helps) from the Edgeville bank, walk to the mage, teleport, pass an obstacle, enter the
+  rift, craft, then bank (a teleport or the walk back), and again. It's a separate path from `rc_<rune>`, so the
+  rankings pick whichever is faster from where the character stands, at its levels and with its tools. The obstacles'
+  chances, the monsters' damage, and eating are modelled as the fights' are. The teleport skulls the character for
+  2,000 ticks, so a death in the Abyss keeps no items (`DeathTask`: none when skulled, one with Protect Item).
+
+**Pouches** (Caleb, 2026-11-08, OQ-40 (c): as the server gives them; `PouchManager`, `AbyssalNPC`, `DarkMageDialogue`):
+
+| Pouch | Holds | Fill at Runecrafting | Essence before its first decay | Comes from |
+|---|---|---|---|---|
+| Small | 3 | 1 | never decays | Enter the Abyss: given at spawn, in the bank |
+| Medium | 6 | 25 | 264 | a kill of an abyssal monster |
+| Large | 9 | 50 | 186 | a kill of an abyssal monster |
+| Giant | 12 | 75 | 140 | a kill of an abyssal monster |
+
+- **The drop:** each kill of an abyssal leech, guardian or walker (2263–2265) has a 12-in-750 chance (1.6%, about 63
+  kills on average) of dropping the next pouch the character lacks (small, medium, large, giant; it counts the
+  inventory, bank and equipment, and a decayed pouch as the pouch). The drop is on the ground, to pick up. Holding
+  all four, nothing more drops. The drop needs no Runecrafting level; filling the pouch does.
+- **Decay:** filling the medium, large or giant counts the essence put in. Once the count runs out, the pouch decays:
+  its capacity falls by 1, 2 or 3, and the next decay comes after 9 × the new capacity. A pouch whose capacity reaches
+  0 disappears. So the medium holds 6 for 264 essence, then 5 for 45, 4 for 36, and so on; the large 9 for 186, then
+  7, 5, 3 and 1; the giant 12 for 140, then 9, 6 and 3. The server keeps one state for each kind of pouch, not each
+  item.
+- **Repair:** the Dark Mage in the Abyss's centre repairs every pouch free, through his dialogue.
+- **Use:** a pouch is filled with essence from the inventory and emptied back into it. A trip fills the pouches at the
+  bank, crafts the inventory's essence, empties the pouches, and crafts again. With all four, a trip carries 30 more
+  essence.
+- **Value:** untradeable, not on the GE, and the alchemy spell refuses them, so net worth counts them at 0 (env
+  contract §4's rule).
+- **The fight option in the Abyss:** the combat pool already lists the three abyssal monsters (39, 32 and 29 spawns),
+  with drops worth about 760 to 780 gp a kill in net worth, most of it noted pure essence. The travel model doesn't
+  reach the Abyss yet. It needs the mage's teleport as a link, the outer ring as a fight site, and a way out (a rift
+  and its altar's portal, or a teleport). A fight there is skulled, as above, and the character arrives with no
+  prayer.
 
 ## 6. The vocabulary (§9) and buying (§8)
 
 **Choice I, which items join *V*:** (a) *recommended*: the inputs the agent buys or holds (they need buy, withdraw
 and hold actions), and the products only where something else uses them; the other products stay **misc**, sold and
 alched by the misc actions and counted in net worth, as smithed misc items are. (b) every input and product.
+**Caleb: (a).**
 
-With (a), *V* gains about 75 items (all have a 2009 GE price but the bird's nest):
-- Crafting (about 24): red and black dragonhide (green and blue are in *V*), needle, thread, steel studs, wool, flax,
-  chisel, the 9 uncut gems not yet in *V* (5), soft and hard leather and the 4 dragon leathers (the tanned
-  intermediates are crafted from), leather body and chaps (studded's inputs).
+With (a) and the decided scope, *V* gains about 89 items (all have a 2009 GE price but the bird's nest, the
+barbarian rod, which Caleb set at 1,000 gp (OQ-41), and the four pouches, which are untradeable):
+- Crafting (about 21): red and black dragonhide (green and blue are in *V*), needle, thread, wool, flax, chisel, the 9
+  uncut gems not yet in *V* (5), soft and hard leather and the 4 dragon leathers (the tanned intermediates are
+  crafted from).
 - Herblore (about 40): the 4 grimy herbs not yet in *V*, the 15 clean herbs, about 15 secondaries and their whole
   ingredients, a pestle and mortar, vials (empty), and the 15 unfinished potions (they're bought and sold on the GE).
-- Runecrafting (11): rune and pure essence, the 8 talismans not yet in *V* (earth is), and the body rune.
-- Agility: none (the pyramid top is untradeable; it's handed in for coins).
+- Runecrafting (about 26): rune and pure essence, the 8 talismans not yet in *V* (earth is), the body rune, the plain
+  tiara and the 10 elemental tiaras (worn to enter the ruins), and the four pouches (held: withdraw and hold, their
+  buy, sell and alchemy actions masked). The death rune is in *V* already; the astral rune stays out with its altar
+  (OQ-39). The Abyss's rifts need no talisman.
+- Agility: the barbarian rod (feathers are in *V*); the leaping fish stay misc.
 
 With (b), about 160: the 32 crafted products and the 21 three-dose potions as well. OQ-25 kept only four-dose
 potions in *V*; (a) keeps that rule, and the made potions stay misc (fights still drink any dose).
 
-Each item in *V* adds about 4 actions (buy, withdraw, sell or drop) and 7 observation features: with (a), about
-300 actions (1,709 → about 2,030 with the 16 slots) and 525 features (2,625 → about 3,230).
+Each item in *V* adds about 4 actions (buy, withdraw, sell or drop) and 7 observation features: with (a) and the
+decided scope, about 356 actions (1,709 → about 2,081 with the 16 slots) and 623 features, with one more for each
+pouch's current capacity (2,625 → about 3,332).
 
 ## 7. Building and calibrating them
 
-The bridge needs: a tanner's interface, the spinning wheel's, make-X dialogues (needle on leather, chisel on gem,
-vial on herb), herb cleaning (an item option, as burying bones), the ruins and altar clicks, Aubury's teleport and
-the mine's portal, and each course's obstacles in order. Most are interface buttons and item uses the bridge already
-sends; the courses are new.
+The bridge needs: a tanner's interface, the spinning wheel's, the flax's Pick, make-X dialogues (needle on leather,
+chisel on gem, vial on herb), herb cleaning (an item option, as burying bones), the ruins and altar clicks (a tiara's
+too), Aubury's teleport and the mine's portal, each course's obstacles in order, the barbarian fishing spot, and the
+Abyss: the mage's teleport, the obstacles, the rifts, the pouches' Fill and Empty, and the Dark Mage's repair. It also
+needs each pouch's current capacity in `state`, for the observation. Most are interface buttons, item uses and clicks
+the bridge already sends; the courses and the Abyss are new. The bridge now finds NPCs by the form a player sees (the mage is a multi-NPC), built
+2026-11-08.
 
 Each path's time per unit is measured on the server and fitted where it differs, as the processing paths were
 (2026-11-07), and gated at ±20%.
 
-**Rough cost** (Claude's estimate): Crafting a day, Herblore half a day, Runecrafting a day, Agility a day, and their
-calibration a day or two. Four to five days in all, which bears on OQ-17's scope review.
+**Rough cost** (Claude's estimate): Crafting a day, Herblore half a day, Runecrafting a day, the Abyss another and
+its fights and pouches half a day more, Agility with Barbarian Fishing a day, and their calibration a day or two. Six
+days or so in all, which bears on OQ-17's scope review.

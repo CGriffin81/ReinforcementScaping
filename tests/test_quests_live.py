@@ -37,7 +37,9 @@ def test_spawn_completes_the_quests_the_sim_counts_with_their_points_and_no_rewa
     assert quests["points"] == quests["available"] > 0
     assert character["combat_level"] == 3 and sum(s["level"] for s in character["skills"]) == 33  # no quest XP
     assert sum(s["xp"] for s in character["skills"]) == pytest.approx(1154)  # 10 Hitpoints' XP only
-    assert len(character["inventory"]) == 18 and [(i["id"], i["amount"]) for i in character["bank"]] == [(995, 25)]
+    # no quest items: the bank is 25 coins and Enter the Abyss's small pouch, the one reward given (OQ-40 (c))
+    assert len(character["inventory"]) == 18 and [(i["id"], i["amount"]) for i in character["bank"]] == [(995, 25),
+                                                                                                         (5509, 1)]
 
 
 def test_a_quest_locked_item_can_be_worn(client, character):

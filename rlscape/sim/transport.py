@@ -71,6 +71,8 @@ def can_use(state: CharacterState, transport: Transport, origin: tuple[int, int,
         return False
     if transport.magic and state.level("magic") < transport.magic:
         return False
+    if any(state.boosted(skill) < level for skill, level in transport.skills):
+        return False
     if transport.runes and any(state.inventory.get(rune, 0) < n
                                for rune, n in _runes_needed(state, transport.runes).items()):
         return False
@@ -85,6 +87,12 @@ def can_use(state: CharacterState, transport: Transport, origin: tuple[int, int,
 
 
 @cache
+def _teleport_skills() -> tuple[str, ...]:
+    """The skills, Magic aside, a teleport needs a level in (its quest's own requirement)."""
+    return tuple(sorted({skill for t in teleports() for skill, _ in t.skills}))
+
+
+@cache
 def _teleport_items() -> frozenset[int]:
     return frozenset(i for t in teleports() for i in (*t.items, *(rune for rune, _ in t.runes)))
 
@@ -95,10 +103,11 @@ _usable: dict[tuple, tuple[Transport, ...]] = {}
 def usable_teleports(state: CharacterState) -> tuple[Transport, ...]:
     """The teleports the character can use from anywhere outside the Wilderness (callers check its depth and
     whether the home teleport is ready), remembered by what decides it: the teleport items and runes held, what's
-    worn, quests and Magic."""
+    worn, quests, Magic and the other levels a teleport needs."""
     relevant = _teleport_items()
     key = (tuple(sorted((i, n) for i, n in state.inventory.items() if i in relevant)),
-           tuple(sorted(state.equipment.items())), state.progress.quests_complete, state.level("magic"))
+           tuple(sorted(state.equipment.items())), state.progress.quests_complete, state.level("magic"),
+           tuple(state.boosted(skill) for skill in _teleport_skills()))
     if key not in _usable:
         if len(_usable) > 100_000:
             _usable.clear()

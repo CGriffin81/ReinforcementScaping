@@ -2,19 +2,20 @@
   "description": "Net-worth valuation: max(high alchemy - nature rune, historical 2009 GE price); coins = 1; floored at 0. Alchemy applies to every tradeable item (server spell rule).",
   "decision": "Caleb, 2026-10-05 (docs/decision-log.md)",
   "nature_rune_price_2009": 229,
-  "built": "2026-11-07T09:03:11-06:00",
-  "items": 7326,
+  "built": "2026-11-08T13:49:58-06:00",
+  "items": 7327,
   "value_source_counts": {
     "ge_2009": 6048,
     "floor_0": 1133,
     "high_alch": 142,
     "coins": 1,
-    "ge_set": 2
+    "ge_set": 3
   },
   "ge_blocked_items": [],
   "ge_set_prices": {
     "10498": 2500,
-    "10499": 10000
+    "10499": 10000,
+    "11323": 1000
   },
   "ge_set_prices_decision": "Caleb, 2026-11-07: Ava's devices on the GE (ge_price_2009 holds the set price)",
   "supersedes": "data/prices_v1.csv (seeded high-alchemy values) for valuing wealth"

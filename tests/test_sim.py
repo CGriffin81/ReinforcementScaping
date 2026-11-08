@@ -49,7 +49,8 @@ def test_fresh_character_leaves_tutorial_island():
     state = CharacterState.fresh()
     assert state.total_level() == 33 and state.skill_measure() == pytest.approx(33.0)
     assert state.free_slots() == 10  # 18 starter items, every stack in one slot
-    assert state.bank == {995: 25} and state.coins() == 25 and state.location == SPAWN
+    # 25 coins, and the small pouch from Enter the Abyss (OQ-40 (c))
+    assert state.bank == {995: 25, 5509: 1} and state.coins() == 25 and state.location == SPAWN
 
 
 @needs_server

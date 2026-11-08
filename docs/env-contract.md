@@ -1,6 +1,14 @@
-# Environment Contract (v1.19, Signed off)
+# Environment Contract (v1.22, Signed off)
 
-**Status:** v1.19, 2026-11-08. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
+**Status:** v1.22, 2026-11-08. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
+- **v1.22** (2026-11-08, Caleb: OQ-40 (c), the pouches as the server gives them; to confirm) gives Enter the
+  Abyss's small pouch at spawn, in the bank (§1). The miniquest's other rewards still aren't given.
+- **v1.21** (2026-11-08, Caleb: OQ-2's Choice D and H) adds two miniquests to the start state, complete as flags
+  only (§1): Alfred Grimhand's Barcrawl (the Barbarian Outpost course) and Enter the Abyss (the Mage of Zamorak's
+  teleport), without Enter the Abyss's rewards.
+- **v1.20** (2026-11-08, Caleb) opens the Watchtower, Trollheim and Ape Atoll teleports as the server does for
+  quests it lacks: by the quests' own requirements (§1), so Ape Atoll's now (its two quests are complete), Trollheim's
+  at Herblore 31 and Watchtower's at its five levels. Trollheim's climbs, which need climbing boots, stay out.
 - **v1.19** (2026-11-08, Caleb) shows the home teleport's cooldown in the observation (§3, OQ-15): one feature,
   the time until it's ready over its 30 minutes. 2,625 features.
 - **v1.18** (2026-11-07; to confirm) has magic safespot as ranged does (OQ-34, Caleb: range 10, no piles), and fights
@@ -58,10 +66,17 @@ through the bridge). Any policy, baseline or logger written against it runs on e
 
 - **Game time:** 1 tick = 0.6 s. Durations are reported in ticks.
 - **Episode:** `reset(seed)` produces a fresh level-3 character exactly as it leaves Tutorial Island, at
-  Lumbridge (3233, 3230), with the starter kit and 25 coins in the bank.
+  Lumbridge (3233, 3230), with the starter kit, and 25 coins and the small pouch (v1.22, below) in the bank.
 - **Quests:** every quest the server has (68, worth 126 quest points) is complete from the start (Caleb, 2026-11-06),
   as flags only: the quest points and the unlocks come with them, no quest XP or items. There are no quest options.
-  The quests the server lacks stay incomplete, and so does the content behind them in the sim.
+  The quests the server lacks stay incomplete, and so does the content behind them in the sim, except where the
+  server checks one with `ContentAPI.hasRequirement`, which the quest's own requirement meets: the Watchtower,
+  Trollheim and Ape Atoll teleports, which the sim gates the same way (v1.20, Caleb). Two miniquests are complete
+  too, as flags only (v1.21, Caleb, 2026-11-08): Alfred Grimhand's Barcrawl, which opens the Barbarian Outpost
+  course, and Enter the Abyss, which gives the Mage of Zamorak's teleport to the Abyss. Of its rewards, only the
+  small pouch is given, in the bank (v1.22, Caleb, 2026-11-08: the pouches as the server gives them; the others
+  drop from the Abyss's monsters); its 1,000 Runecrafting XP and notes aren't. The rest stay incomplete: Barbarian Training's stages, for one, which nothing
+  in sim v1 needs.
 - **Horizon:** 20 game-hours = 120,000 ticks. Checkpoints every 2 game-hours (12,000 ticks).
 - **Decision structure:** a semi-MDP. Each `step(option)` runs one option until it ends and returns its
   duration τ in ticks.

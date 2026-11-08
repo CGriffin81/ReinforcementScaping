@@ -27,6 +27,7 @@ import re
 from dataclasses import dataclass
 from functools import cache
 
+from rlscape.gamedata import server as gd
 from rlscape.gamedata.server import SERVER_CONTENT
 
 LAW, AIR, FIRE, WATER, EARTH, BANANA = 563, 556, 554, 555, 557, 1963
@@ -46,6 +47,7 @@ class Transport:
     consumed: bool = False  # the item is used up (tablets, the seed pod); jewellery uses a charge instead
     coins: int = 0  # the fare
     quests: tuple[str, ...] = ()  # Quests names that must be complete
+    skills: tuple[tuple[str, int], ...] = ()  # (skill, level) needed besides Magic, boosts counting
     xp: tuple[tuple[str, float], ...] = ()  # (skill, XP) it gives
     wilderness_limit: int = 20  # the deepest Wilderness level it can be used from (teleports)
     no_arms: bool = False  # Entrana: no weapons or armour carried or worn
@@ -126,11 +128,26 @@ def _tablet_quests(name: str) -> tuple[str, ...]:
     return ()
 
 
+def _spell_gate(quests: tuple[str, ...]) -> tuple[tuple[str, ...], tuple[tuple[str, int], ...]]:
+    """What a teleport spell's quest check asks: ModernListeners checks ContentAPI.hasRequirement, so a quest the
+    server has must be complete, and one it doesn't (Eadgar's Ruse, Watchtower, Monkey Madness) is met by its own
+    requirement (gd.quest_gate; Caleb, 2026-11-08: these teleports are open, as the quests are flagged complete)."""
+    needed: set[str] = set()
+    levels: dict[str, int] = {}
+    for quest in quests:
+        gate_quests, gate_skills = gd.quest_gate(quest)
+        needed |= gate_quests
+        for skill, level in gate_skills:
+            levels[skill] = max(levels.get(skill, 0), level)
+    return tuple(sorted(needed)), tuple(sorted(levels.items()))
+
+
 def _teleports() -> list[Transport]:
     out = [Transport("home", "home", HOME, HOME_TICKS, button=0)]
-    out += [Transport(f"spell:{name}", "spell", end, SPELL_TICKS, magic=magic, runes=runes, quests=quests,
-                      xp=(("magic", xp),), button=button)
-            for name, button, magic, runes, end, xp, quests in SPELLS]
+    for name, button, magic, runes, end, xp, quests in SPELLS:
+        gate_quests, gate_skills = _spell_gate(quests)
+        out.append(Transport(f"spell:{name}", "spell", end, SPELL_TICKS, magic=magic, runes=runes, quests=gate_quests,
+                             skills=gate_skills, xp=(("magic", xp),), button=button))
     for name, (options, tiles, crumbles, ids) in jewellery().items():
         if name == "RING_OF_LIFE":
             continue

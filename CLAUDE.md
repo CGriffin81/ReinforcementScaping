@@ -83,7 +83,11 @@ work.
     `Player.hasClientSession()` instead. Each has its own account uid
     (1,000,000,000 + its bridge uid, in `Repository.uid_map`), which kill
     credit and drops, gravestones and GE offers go by. `spawn` completes every
-    quest the server has (`completeEveryQuest`).
+    quest the server has (`completeEveryQuest`), and the Barcrawl and Enter the
+    Abyss miniquests (`completeMiniquests`, 2026-11-08), flags only, except
+    Enter the Abyss's small pouch, which goes in the bank (OQ-40 (c)).
+  - The bridge finds NPCs by the form a player sees (`NPC.getShownNPC`): a
+    multi-NPC's own definition is often named "null".
   - Config: `server.tick_ms`, `server.bind_address`, `world.ge_freeze_prices`,
     `world.ge_frozen_buyer`, `world.ge_frozen_seller`, `world.ge_blocked_items`,
     and the `[rl]` section (`bridge_enabled`, `bridge_port`, `random_events`).
@@ -118,7 +122,8 @@ work.
   to `data/travel/`, which `rlscape/routes.py` plans walking routes on.
 - **Net worth** uses `data/prices_v2.csv`: max(high alchemy − nature rune,
   January 2009 GE price). `prices_v1` is superseded. Ava's devices, untradeable
-  in the game, are on the frozen GE at Caleb's set prices (2,500 and 10,000 gp).
+  in the game, are on the frozen GE at Caleb's set prices (2,500 and 10,000 gp),
+  and so is the barbarian rod (1,000 gp, 2026-11-08).
 - Build from `server/Server`: `mvnw.cmd -B package -DskipTests` (about 3 min
   cold, about 1 min incremental).
 - Run from `server/Server` (the working directory matters for `data/`):

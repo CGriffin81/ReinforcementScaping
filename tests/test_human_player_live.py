@@ -18,6 +18,7 @@ from test_bridge_live import bridge_reachable
 COINS = 995
 ANTI_DRAGON_SHIELD = 1540
 ATTRACTOR, ACCUMULATOR = 10498, 10499  # Ava's devices
+BARBARIAN_ROD = 11323
 GE = (3165, 3489)
 DATA = Path(__file__).resolve().parent.parent / "data"
 
@@ -271,6 +272,30 @@ def test_avas_devices_are_bought_on_the_ge_at_calebs_prices_worn_and_sold_back(c
     client.wait(1)
     after = client.state(uid)
     assert amount_of(after, ACCUMULATOR) == 0 and amount_of(after, COINS) == 10_000
+
+
+def test_the_barbarian_rod_is_bought_on_the_ge_at_calebs_price_and_sold_back(client, character):
+    """Caleb, 2026-11-08 (OQ-41): the GE sells the barbarian rod (untradeable in the game, free from Otto's bed once
+    his training starts) at 1,000 gp, and the frozen buyer takes it back at the same price."""
+    assert gd.ge_prices_2009()[BARBARIAN_ROD] == 1_000
+    uid = character["uid"]
+    price = {p["id"]: p["value"] for p in client.ge_snapshot()["prices"]}[BARBARIAN_ROD]
+    assert price == 1_000
+    client.debug_teleport(uid, *GE)
+    client.debug_give(uid, COINS, price)
+    client.wait(3)
+    client.ge_offer(uid, item=BARBARIAN_ROD, amount=1, price=price)
+    assert wait_for_state(client, uid, "COMPLETED")[0]["completed"] == 1
+    client.ge_collect(uid)
+    client.wait(1)
+    after = client.state(uid)
+    assert amount_of(after, BARBARIAN_ROD) == 1 and amount_of(after, COINS) == 0
+    client.ge_offer(uid, item=BARBARIAN_ROD, amount=1, price=price, sell=True)
+    assert wait_for_state(client, uid, "COMPLETED")[0]["completed"] == 1
+    client.ge_collect(uid)
+    client.wait(1)
+    after = client.state(uid)
+    assert amount_of(after, BARBARIAN_ROD) == 0 and amount_of(after, COINS) == 1_000
 
 
 def test_the_accumulator_needs_ranged_50_and_the_devices_attract_nothing(client, character):

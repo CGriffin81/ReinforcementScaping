@@ -548,3 +548,95 @@ def test_the_walker_takes_the_crandor_passage_both_ways(client, uid):
     assert there.arrived and there.doors >= 1, there.tiles[-3:]
     back = walk_route(client, uid, surface(), (2856, 3167, 0))
     assert back.arrived, back.tiles[-3:]
+
+
+def test_the_trollheim_teleport_needs_eadgars_ruses_own_requirement_and_lands_by_the_trolls(client, uid):
+    """With Eadgar's Ruse not on the server, the Trollheim teleport (the standard spellbook's button 44) asks the
+    quest's own requirement: Druidic Ritual and Troll Stronghold (complete from the start) and Herblore 31. It lands
+    at (2891, 3678), from where the walker reaches a mountain troll's site (Caleb, 2026-11-08)."""
+    from rlscape.bridge.walker import walk_route
+    from rlscape.routes import surface
+    client.debug_set_levels(uid, {"magic": 61, "herblore": 30, "hitpoints": 99, "defence": 99})
+    client.debug_give(uid, 554, 10)  # fire runes
+    client.debug_give(uid, 563, 10)  # law runes
+    client.set_retaliate(uid, False)
+    client.interface_button(uid, 192, 44)
+    client.wait(8)
+    here = client.state(uid)["location"]
+    assert (here["x"], here["y"]) != (2891, 3678)  # Herblore 30: refused
+    client.debug_set_levels(uid, {"herblore": 31})
+    client.interface_button(uid, 192, 44)
+    for _ in range(12):
+        client.wait(1)
+        here = client.state(uid)["location"]
+        if (here["x"], here["y"]) == (2891, 3678):
+            break
+    assert (here["x"], here["y"], here["z"]) == (2891, 3678, 0)
+    walk = walk_route(client, uid, surface(), (2843, 3682, 0))
+    assert walk.arrived, walk.tiles[-3:]
+
+
+@pytest.mark.parametrize("spell,button,levels,runes,arrival", [
+    ("ape_atoll", 47, {"magic": 64}, {554: 2, 555: 2, 563: 2, 1963: 1}, (2795, 2798, 1)),
+    ("watchtower", 37, {"magic": 58, "agility": 25, "herblore": 14, "mining": 40, "thieving": 15}, {557: 2, 563: 2},
+     (2549, 3112, 0)),
+])
+def test_the_teleports_of_quests_the_server_lacks_open_with_their_own_requirements(client, uid, spell, button, levels,
+                                                                                   runes, arrival):
+    """Monkey Madness and Watchtower aren't on the server, so their teleports ask the quests' own requirements
+    (Caleb, 2026-11-08: open, as the quests are flagged complete): Ape Atoll's two quests, complete from the start;
+    Watchtower's levels, refused a level short."""
+    for item, amount in runes.items():
+        client.debug_give(uid, item, amount * 2)
+    short = {skill: (level - 1 if skill != "magic" else level) for skill, level in levels.items()}
+    if spell == "watchtower":
+        client.debug_set_levels(uid, short)
+        client.interface_button(uid, 192, button)
+        client.wait(8)
+        here = client.state(uid)["location"]
+        assert (here["x"], here["y"]) != arrival[:2]  # a level short: refused
+    client.debug_set_levels(uid, levels)
+    client.interface_button(uid, 192, button)
+    for _ in range(12):
+        client.wait(1)
+        here = client.state(uid)["location"]
+        if (here["x"], here["y"], here["z"]) == arrival:
+            break
+    assert (here["x"], here["y"], here["z"]) == arrival
+
+
+def test_the_barcrawl_and_enter_the_abyss_are_complete_from_the_start(client, uid):
+    """Two miniquests are flagged complete at spawn (Caleb, 2026-11-08, OQ-2): the Barcrawl, so the Barbarian Outpost
+    course's gate lets the character through (BarbarianOutpostCourse), and Enter the Abyss, so the Mage of Zamorak in
+    the Wilderness shows the form with Teleport (2257's 2259) and sends the character to the Abyss's outer ring,
+    draining its prayer. The bridge finds the mage by the name a player sees (its own definition is "null")."""
+    client.debug_teleport(uid, 2546, 3569)
+    client.wait(2)
+    client.interact(uid, "Gate", "Open", ids=[2115, 2116], radius=4)
+    client.wait(10)
+    assert client.state(uid)["location"]["x"] == 2545  # through the gate, not stopped by the guard's dialogue
+    client.debug_teleport(uid, 3103, 3554)
+    client.wait(2)
+    client.interact(uid, "Mage of Zamorak", "Teleport", is_object=False, radius=8)
+    client.wait(12)
+    state = client.state(uid)
+    x, y = state["location"]["x"] - 3039, state["location"]["y"] - 4832  # AbyssLoc.origin
+    assert 20 <= (x * x + y * y) ** 0.5 <= 27 and state["prayer_points"] == 0
+
+
+def test_barbarian_fishing_needs_no_miniquest_and_trains_agility_and_strength(client, uid):
+    """Barbarian fishing (BarbFishingPulse) needs Fishing 48, Agility 15, Strength 15, a barbarian rod and bait, and
+    no miniquest. A leaping trout gives 50 Fishing XP and 5 Agility and Strength."""
+    client.debug_set_levels(uid, {"fishing": 48, "agility": 15, "strength": 15})
+    client.debug_give(uid, 11323, 1)
+    client.debug_give(uid, 314, 50)  # feathers
+    client.debug_teleport(uid, 2502, 3500)
+    client.wait(2)
+    before = {s["name"]: s["xp"] for s in client.state(uid)["skills"]}
+    client.interact(uid, "Fishing spot", "Use-rod", is_object=False, ids=[2722], radius=20)
+    client.wait(200)
+    after = {s["name"]: s["xp"] for s in client.state(uid)["skills"]}
+    trout = held(client, uid, 11328)
+    assert trout > 0
+    assert after["Fishing"] - before["Fishing"] == 50 * trout
+    assert after["Agility"] - before["Agility"] == after["Strength"] - before["Strength"] == 5 * trout
