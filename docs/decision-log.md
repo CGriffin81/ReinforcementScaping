@@ -4135,3 +4135,227 @@ from different files then ran on several workers at once, each setting the
 one tick speed, and a full parallel run hung (a bridge request waiting
 past 20 minutes). Ours now runs first (`tryfirst`): all 53 live tests on one
 worker, and the whole suite, 348 tests, passed in 4 minutes.
+
+### Decided: OQ-29 (a), the server's rule for which armour stops Ava's devices
+Caleb, 2026-11-07: "OQ29 - Option a" `m002-oq29`.
+- **The question** (raised 2026-11-07 from Caleb's note that the devices
+  don't work while any metal item is worn): which armour stops a device.
+  The server's rule is narrower. Only the chest piece counts, and only if
+  its worn model is one of the three in `AvasDevice.metalBodies`, which is
+  38 pieces. The iron chainbody, the Saradomin platebody and the dragon
+  chainbody aren't among them, nor is any helm, legs, shield, glove or
+  boot. Interference stops only the 80% catch.
+- **The options:** (a) keep the server's rule, on both backends
+  (recommended); (b) fix the server's gaps in the fork, so that every metal
+  chest piece interferes and interference stops the whole device; (c)
+  Caleb's rule in the fork, any metal item worn, with a definition of
+  metal.
+- **Answer:** (a). Nothing changes: the rule as built in `m002-device-rules`
+  stands (`data/ava_interference.csv`, `equipment.shot_outcomes`), and a
+  ranger wearing a device leaves those chest pieces off. The option catalog
+  and the env contract's Ammunition row now state it.
+
+### Built: ranged fights from safespots and their arrow piles (OQ-27 (d)); Caleb's note on safespots and wyverns
+Caleb, 2026-11-07: "Continue with implementation." Then, while it ran: "Safespots work when a monster's southwest
+tile is in line of sight of our character, is in range of our weapons, and they cannot attack us. This is most
+common for melee only monsters, but a "safespot" for Skeletal Wyverns exists because you can outrange their long
+range attacks, once aggression has run out in their area. Skeletal Wyverns should be an incredible money maker."
+`m002-safespots`.
+- **Found on the server** (for the chase):
+  - Monsters chase with the DUMB pathfinder (MovementPulse; no NPCBehavior overrides it), a step a tick toward the
+    tile beside their target that `DestinationFlag.ENTITY` picks, until their swing handler's `canSwing` lets them
+    attack. A wall or fence holds a melee monster.
+  - A monster that shoots stops at its reach: `RangeSwingHandler` 7 tiles between centres, plus half the sizes. The
+    skeletal wyvern's handlers (`SkeletalWyvernBehavior`, switching at 5 tiles from a player) both check that reach,
+    so its chase can stick beyond its reach and a ranger outranges it, as Caleb said. A long-ranged bow reaches 9.
+  - Chromatic dragons attack only in melee reach, breath included (`ChromaticDragonNPC`: its MultiSwingHandler takes
+    each attack's own reach, and the dragonfire's is melee), so they can be safespotted too.
+  - A ranged attack's line of sight is a clear projectile path between any tile of the character and any of the
+    monster (`isProjectileClipped`), not only the south-west one: OQ-31.
+  - An NPC chasing past its leash (1.5 times its walk radius from its spawn) turns home; one walking when attacked
+    keeps walking until the first hit lands, and then chases from there.
+- **Built in the fork** (uncommitted):
+  - `ranged_safespots` runs that chase with the server's own functions on detached copies of the monster (never
+    initialised, never in the world): the tiles a character can walk to and shoot from where the chase from the
+    monster's spawn sticks with every tile of it in shot. For each: the monsters it holds against, where they stick,
+    the walk to their arrows, the share of their wandering it holds from, and the aggressive monsters that reach it,
+    which aggression running out (Caleb) lets it keep. Ranked: no threats first, then the most held, the largest
+    share, the shortest walk.
+  - `npcs`: the monsters a character sees, whether each is walking or fighting, and whether it would stay stuck in
+    shot from the character's tile.
+- **Built in the sim** (`rlscape/combat/safespots.py`):
+  - A ranged target needs a safespot unless its damage over a kill is no more than the hitpoints regenerated
+    meanwhile, or, from a safespot only, when the gear doesn't guard against its special damage (a bow takes no
+    shield, so green dragons are ranged only from one).
+  - The safespot comes from the export, for the style's range, and needs to hold from at least half the monsters'
+    wandering. From it the monster does nothing, and the site's supply is the monsters it holds against.
+  - Arrows lie where the monster stands: a pile per 100 ticks of shooting, which is how long a pile stays private
+    and takes more. They're picked up with the drops between kills, a pickup each, plus the walk from the safespot
+    and back.
+  - When aggressive monsters guard the piles and aggression hasn't run out, the fight leaves them until the oldest
+    would go, 200 ticks after it was dropped. The rankers take a trip after every kill.
+  - One pickup time for every class: 5 ticks, melee's fit. Ranged's 18, which covered its arrows, is gone. To refit
+    on the ranged runs.
+- **The runner** (`scripts/calibrate_combat.py`): a case the sim safespots stands on the server's tile with
+  auto-retaliate off, as rangers safespotting do, since retaliating walks them off it. It attacks only a monster the
+  tile holds against, once it stands still where it holds. Ranged loots only between kills, and a safespotter walks
+  back afterwards.
+- **Agent choices (reversible):** the half-share threshold; the walk at a tile a tick; the rankers' trip after every
+  kill; threats counted for a fresh character; the runner's standing-still rule.
+- **Live, a ranger on the top tile** (Ranged 70, 99 hitpoints), attacking only held monsters:
+  - no hits at Varrock sewers' moss giants, two sets of hill giants, the Taverley Black Knights (aggressive, ten of
+    them), the Asgarnian Ice Dungeon's skeletal wyverns and the Wilderness green dragons;
+  - west of Ardougne, a hill giant held, but most attacks didn't start;
+  - a Black Knight by the Wilderness edge hit, on the tile the share ranking picked (the walk ranking's first tile
+    held).
+  Before the character was kept from attacking a monster that wasn't held, or a walking one, it walked off the tile.
+- **The export** (`data/ranged_safespots.csv`, `scripts/export_ranged_safespots.py`; three servers): every pool
+  site at both ranges.
+  - **A first export was wrong.** 145 of 150 sampled tiles were inside objects (fences, trees, rocks: a clipping
+    flag's 0x100). Only a teleport stands there, and no monster reaches it, so "safespots" were everywhere (93% of
+    sites) and the live checks above held for that reason. `reachesTile` had accepted a walk ending beside the
+    tile. Now the tile must pass the server's `RegionManager.isTeleportPermitted` and the walk must end on it
+    (`walksOnto`).
+  - **Re-exported:** 51% of the 2,236 sites have a range-7 safespot and 57% a range-9 one. Holding from at least
+    half the wandering, 15% and 25%. At 619 of the usable ones aggressive monsters guard the piles.
+  - Live again on the fixed tiles: the moss giants west of Ardougne held (no hits). The Edgeville
+    dungeon's hill giants and Lumbridge's cows didn't: the character's own combat walked it off its tile, and it
+    was hit. The server's chase still differs from the emulation somewhere not yet found.
+  - Four sites have no answer (two quest bosses not spawned, two God Wars Dungeon monsters the teleport didn't
+    reach); the export retries a teleport until it lands.
+- **Raised for Caleb:** OQ-30 (what's trivial), OQ-31 (which tiles a ranger must see), OQ-32 (Slayer for the
+  wyverns: they need 72, which the sim can't train).
+
+### Decided: OQ-30 (b), OQ-31 (a), OQ-32 (c): what's trivial, what a ranger sees, no Slayer levels
+Caleb, 2026-11-07: "OQ31 - Keep the server's rule. OQ 32 - Drop slayer requirements for all monsters. OQ 30 -
+Option B" `m002-safespot-answers`.
+- **OQ-30, what counts as trivial damage** for a ranged target without a safespot (raised in `m002-safespots`):
+  - The options:
+    - (a) keep the rule as built: no more damage over a kill than the hitpoints regenerated meanwhile (recommended,
+      since most sites have a safespot);
+    - (b) the fight needs no food: over the option (*D*), the expected damage less what regenerates fits in the
+      hitpoints above the retreat point;
+    - (c) the monster's max hit, after the prayers flicked, is at most 1.
+  - Caleb: (b).
+  - Built: `safespots.needs_safespot` takes the hitpoints above the retreat point and the option's duration, in
+    both rankers, the fight and the runner. A fresh ranger has 5 to spare and regenerates about 15 over 1,500
+    ticks, so a rat is still the only trivial target. A stronger one has more to spare.
+- **OQ-31, which tiles of a monster a ranger must see** (Caleb's note: its south-west tile):
+  - The options: (a) the server's rule, a clear projectile path between any tile of each and the centres in range
+    (recommended); (b) a fork change to the south-west tile.
+  - Caleb: (a). Nothing changes: the safespot search already calls the server's own functions.
+- **OQ-32, skeletal wyverns** (they need Slayer 72, which the sim can't train):
+  - The options:
+    - (a) leave them out (recommended, with peer review three weeks off);
+    - (b) Slayer tasks as options;
+    - (c) drop the Slayer level requirement, in the fork and the sim.
+  - Caleb: (c), for every monster.
+  - Built in the fork: neither `NPC.isAttackable` nor `IdleAbstractNPC.isAttackable` refuses an attack any more.
+    The fork had refused since 2026-10-28. `NPC.checkImpact` no longer cancels a player's hits on a monster above
+    its Slayer level, as upstream did. The ice cooler no longer asks for Slayer 22.
+  - Built in the sim: no Slayer gate in either ranker or in access.
+  - Agent choice (reversible): the Slayer monsters that need gear the sim doesn't model stay out of the pool
+    (`candidates.SLAYER_GEAR_NPCS`, 15 of the 35 that had a level). Before, their Slayer levels kept them out.
+    Their gear: a nose peg, earmuffs, a face mask, a leaf-bladed weapon, a rock hammer, a bag of salt, an ice
+    cooler, a lit bug lantern, a witchwood icon, a mirror shield, insulated boots. The other 20 are open, among
+    them abyssal demons, bloodvelds, nechryaels and skeletal wyverns. Slayer item uses that need levels, such as
+    Magic Dart's 55, are untouched.
+  - Live test: `test_slayer_levels_lock_no_monster` (a fresh character fights cave crawlers, Slayer 10, and gains
+    XP), in place of `test_slayer_level_blocks_attacks`.
+
+### Decided: OQ-33, guarded arrows fetched with a shield; the calibration's rangers use a rune crossbow
+Caleb, 2026-11-07: "OQ33 bring a shield to pick up the arrows. Or use anti dragonfire potions. Or both." Then: "Use a
+rune crossbow instead of a bow." `m002-safespot-answers`.
+- **OQ-33** (raised in `m002-safespots`: at the Wilderness green dragons the late trip for guarded arrows took
+  dragonfire, unshielded, and every run ran out of food):
+  - The options:
+    - (a) at a guarded site, leave the loot until aggression runs out (recommended);
+    - (b) keep the late trip and model its hits;
+    - (c) rule out guarded sites unless the guards' damage on the trip is trivial.
+  - Caleb: the late trip stays, with an anti-dragon shield worn for it, an antifire potion, or both.
+  - **Found:** on this server the potion alone cuts dragonfire by only a tenth, 52 to 46
+    (`ContentAPI.calculateDragonfireMaxHit`). The shield cuts 90%, to 5, and both together cut it to nothing.
+    Protect from Magic alone cuts 60%. So the shield is what makes the trip survivable, and the potion completes
+    it.
+  - Built in the sim:
+    - the late trip takes the guards' hits (`combat.guarded_trip`: each guard, taken as the target's kind, swings
+      over the trip);
+    - against dragonfire the ranger wears the shield it carries (a swap with the bow, `SWAP_TICKS`) or already
+      wears (a crossbow's), and drinks an antifire dose if it has one;
+    - the rankers offer a guarded safespot against special damage only to a ranger with a shield for it, worn or
+      carried (`Character.shields_carried`).
+  - Built in the runner: it wears the carried shield before a late trip and wields the bow again after.
+- **Rune crossbow (Caleb).** A crossbow is one-handed, so the anti-dragon shield is worn throughout. Bands 61 and 91
+  of the calibration fight with a rune crossbow and rune bolts (61 Ranged each) in place of the magic shortbow and
+  rune arrows. Bands 1 and 31 keep their bows; the rune crossbow needs 61.
+  - Every ranged calibration character carries an anti-dragon shield (agent choice, reversible): with a bow it
+    stays in the inventory for the trips.
+  - Neither crossbows nor bolts are in *V*, so an agent can't buy one yet.
+  - The runner sets the style on the crossbow's own weapon tab (79).
+
+### Decided and built: every crossbow and bolt joins *V* and the GE buys (Caleb)
+Caleb, 2026-11-07: "What crossbows are available in 09scape?" Then: "Add all crossbows and bolts to the vocabulary."
+`m002-safespot-answers`.
+- **On the server:** 11 crossbows are tradeable and on the 2009 GE:
+  - plain and bronze (Ranged 1), iron (26), Dorgeshuun (28, bone bolts), steel (31), black (33), mithril (36),
+    adamant (46), Hunters' (50, kebbit bolts), rune (61), Karil's (70, two-handed, bolt racks);
+  - left out: blurite (untradeable), Phoenix (a quest item, no 2009 price) and Karil's degraded states.
+  All but Karil's are one-handed, so a shield goes with them.
+- **The bolts:** 53, every tradeable bolt the crossbows fire that has a 2009 price: bronze to rune, black, silver,
+  bone, kebbit, broad, the bolt rack, and the poisoned, gem-tipped and enchanted kinds. Left out: blurite bolts,
+  jade bolts, and two adamant poisons (untradeable or no price).
+- **Built:**
+  - 63 new *V* items (mithril bolts were in already, as a drop): *V* 279. They're GE buys, one crossbow at a time
+    while nothing as good is held, and bolts in lots of 100 (the arrows' rule).
+  - A crossbow's equipment tier in the observation is the bows' its Ranged level allows (`encoding._bow_tier`).
+  - 1,709 actions, 2,624 features.
+  - Checked live: the frozen GE sells a rune crossbow at 9,927 gp and rune bolts at 610 each.
+- **Not modelled:** the bolts' poison and enchantment effects; they rank by ranged strength alone. Broad bolts are
+  Destroy-only, so their drop action stays masked, as Ava's devices' does.
+
+### Decided: ranged calibration fights in the ranker's style; the ranged runs from safespots; the guards' rate
+Caleb, 2026-11-07: "Yes, fight in the style the ranker picks. Rapid should be picked over accurate in most
+circumstances. Longrange has the feature of splitting xp between range and def and also increases the range of the
+attack." `m002-safespot-answers`.
+- **The question** (raised in `m002-safespots`): ranged calibration had fought in the server's default style,
+  accurate, while the ranker picks targets on its best style. A safespot can depend on long-ranged reach: the
+  Wilderness green dragons' needs range 9.
+  - The options: (a) fight in the ranker's style, set on the weapon tab (recommended); (b) keep accurate.
+  - Caleb: (a). `scripts/calibrate_combat.py`'s `--style` now defaults to `ranked`, and melee stays accurate. The
+    ranker does pick rapid in most cases, and the sim has long-ranged's split XP and reach.
+- **The ranged runs** (sim over server, XP/hr; rune crossbow kit at 61 and 91, the shield worn; the runner as
+  rebuilt; the corrected table):
+  - Check set, the top by gp, looting:
+    - cows, band 1 (rapid, safespot): 1.01 (gp 1.03), no hits;
+    - unicorns, band 31 (longrange, safespot): 1.06 (gp 1.00), 1 to 7 damage a run;
+    - green dragons, band 61 (rapid, safespot, guarded): 1.11 on the first sim; 0.99 (kills 1.00, gp 1.02) once the
+      guards' rate was fixed (below). No food eaten on the server.
+  - Fit set, the top by XP, no looting, no safespot needed: rats 1.20 (rapid; accurate gave 1.01), scorpions 1.03,
+    experiments 1.02 and 1.06.
+- **Fixed in the sim: a late trip's guards.** The sim had every guard swing at its attack speed for the whole trip:
+  30 to 86 damage a trip at the green dragons, where the server's runs took none. The export counts as a guard any
+  aggressive monster whose leash covers the arrows, and most never come. Each guard now swings at
+  `aggression.ATTACKS_PER_TICK`, the rate measured while gathering (agent choice, reversible).
+- **The pickup time, refit:** 5 ticks for every class, on the four melee loot cases and the two ranged safespot
+  ones (mean |log ratio| 0.053, all six inside the gate; 4 and 6 do worse). It stays 5.
+- **Runner fixes on the way** (`scripts/calibrate_combat.py`):
+  - The stuck rule's clock starts with a fight, and there's no stuck rule on a safespot (a safespotter waits, and
+    a weak one hits rarely).
+  - A safespotter fetches its loot only when nothing is attacking it, waits for its loot instead of walking back
+    between pickups, and clicks back onto its tile when walked off it.
+  - The live safespot query uses the case's range.
+  - A failed setup despawns its character.
+  - Monsters stuck attacking it don't hold a safespotter back.
+- **Live checks of the corrected tiles** (a ranger on the top tile, auto-retaliate off, attacking only a held monster
+  standing still; no clicking back onto the tile, no wait for aggression to run out): 2 of 7 clean.
+  - Held: the moss giant west of Ardougne (`test_a_ranger_on_a_ranged_safespot_takes_no_hits` now uses it) and a
+    woman north of Varrock.
+  - Mostly held: the hill giant west of Ardougne (2 hits, 7 hitpoints; most attacks didn't start).
+  - Walked off its tile and hit: hill giants (Edgeville dungeon), cows (Lumbridge's fence), and a Black Knight by
+    Draynor, which died.
+  - Attacked by other aggressive dragons before its first shot, aggression not yet run out: the Wilderness green
+    dragons at (3118, 3820).
+  - Other aggressive giants reach every tile at Varrock sewers' moss giants.
+  So the server's chase still differs from the emulation at many sites, and the sim, which takes a safespot as
+  always holding, is optimistic there. The calibration cases (cows, unicorns, green dragons at another site) held
+  with the runner's rules.

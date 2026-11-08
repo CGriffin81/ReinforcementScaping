@@ -199,6 +199,17 @@ the current stats, gear, food and ammunition.
   - Fights end `out_of_ammo`, and a candidate's rates are capped by how long the ammunition lasts.
   - **Agent choice (reversible):** spells are cast by hand at the autocast rate, so magic doesn't need a staff. The
     server's autocast does, and the starter kit has none.
+- **Ranged fights safespot (2026-11-07, OQ-27 (d), Caleb):** a monster without a safespot is a bad ranged target
+  unless its damage is trivial (below). Otherwise a ranged
+  slot offers it only at sites with a safespot from the server (`data/ranged_safespots.csv`, the bridge's
+  `ranged_safespots`): a tile it can be shot from where, chasing, it gets stuck short of attacking. Melee monsters
+  are held by walls and fences; skeletal wyverns, which shoot, are outranged (Caleb). From there it does no damage,
+  and only the site's monsters the safespot holds against count. Arrows lie where the monster stands, a pile per
+  100 ticks of shooting, picked up with the drops between kills, plus the walk from the safespot and back. While
+  aggressive monsters guard the piles and aggression hasn't run out, the fight leaves them until the oldest would
+  go. The pickup time is one for every class. Trivial damage (Caleb, OQ-30 (b)): the fight needs no food, its
+  expected damage over the option less what regenerates fitting in the hitpoints above the retreat point. A bow
+  takes no shield, so a monster with special damage, such as a dragon, is ranged only from a safespot.
 
 ### B. Retreat-aware danger filter with a special-damage gear check (decided)
 
@@ -225,7 +236,7 @@ dragon NPC handlers):
 | Dragonfire (all dragons) | an anti-dragon shield worn or carried: a fight against a dragonfire monster puts a carried one on (`wield_best`'s `protect`), and the ranking rates the monster for the character wearing it. Bought on the GE since 2026-11-06 (Caleb; §8). Behind the shield a third of a dragon's swings are breath, 0 to 5 each (`rlscape.combat.rates`); an antifire potion carried stops it (shield and potion: complete immunity, as in 2009), and the ranking takes off the share its doses cover |
 | Monsters that block a combat style (`protect_style`) | ruled out for the blocked class only |
 | Poison | no gear check; its damage is in the expected damage (2026-11-06): a poisonous monster's swings poison 4 times in 10, hit or miss, so a protection prayer doesn't stop it, and the poison hits every 30 ticks (`rlscape.combat.rates`). Antipoison carried (§8) takes off the share its doses cover: a dose cures it and keeps it off for 150 ticks, or 600 for the super, and fights drink one when poisoned |
-| Slayer-gear monsters (wall beasts, banshees and so on) | already Slayer-locked; also need their item |
+| Slayer-gear monsters (banshees, dust devils, turoths and so on) | never offered: their gear isn't modelled (`SLAYER_GEAR_NPCS`), and since 2026-11-07 no Slayer level keeps them out |
 
 The dragonfire list comes from the server's NPC classes: `ChromaticDragonNPC`, `MetalDragonNPC`,
 `KingBlackDragonNPC` and `ElvargNPC`. Protection follows `ContentAPI.hasDragonfireShieldProtection`: the anti-dragon
@@ -274,8 +285,10 @@ underway, items held (inventory, bank or equipped), levels and coins. There are 
   bosses, Lucien, and Berry and Twig. Elvarg is fought inside the Dragon Slayer option, so she's never in the pool.
 - **Minigames** such as the Barrows tunnels are `never`.
 
-**Slayer levels** come from the server's `Tasks.java` (93 tasks, 1,127 NPC ids). Slayer has no training options, so it
-stays at 1, and every Slayer-locked monster stays out.
+**Slayer levels lock nothing** (Caleb, 2026-11-07, OQ-32: dropped for every monster, in the fork too). Slayer has no
+training options, so it stays at 1. The Slayer monsters whose gear the sim doesn't model stay out: 15 of the 35 in
+the pool that had a level. The other 20 are open, among them abyssal demons, bloodvelds, nechryaels and skeletal
+wyverns.
 
 The requirement grammar is `quest:` / `started:` / `underway:` / `item:` / `level:` / `coins:` / `never`, combined with
 `&` and ` or ` (see the module docstring).
@@ -285,11 +298,10 @@ leaves many 2009 gates unenforced: no check was found for Ape Atoll, the Lightho
 table applies the 2009 rule anyway. The candidate list is built in Python for both backends, so the server is never
 asked to fight a locked monster.
 
-**Slayer levels are now enforced in the fork too** (Caleb, 2026-10-28). Upstream, `NPC.isAttackable` and
-`IdleAbstractNPC.isAttackable` printed "You need a higher slayer level to know how to wound this monster" but had no
-`return false`, so the attack went ahead. The fork adds the `return false`. The live test
-`test_slayer_level_blocks_attacks` shows a fresh character can no longer fight cave crawlers (Slayer 10). The change
-applies to every player, including the ambient bots.
+**Slayer levels are dropped in the fork too** (Caleb, 2026-11-07, OQ-32). From 2026-10-28 the fork refused attacks
+above the attacker's Slayer level (`NPC.isAttackable`, `IdleAbstractNPC.isAttackable`). Now neither refuses, and
+`NPC.checkImpact` no longer cancels the hits (upstream had). The ice cooler no longer asks for Slayer 22. The live
+test `test_slayer_levels_lock_no_monster` has a fresh character fight cave crawlers (Slayer 10) and gain XP.
 
 **How the rows were chosen.** Not from memory of the whole map. A sweep ran the selection with every area open, over:
 - levels 1–99 with matching gear
@@ -317,8 +329,8 @@ any other. Dying there loses everything but 3 items, because there's no gravesto
   and travel links.
 - Colonel Radick (stats 1/1/1, 71 HP) passes the believability rule and is offered at every level. The rule misses this
   placeholder.
-- Light sources (the server has no dark zones) and Slayer gear (earmuffs, face masks) aren't modelled. Slayer gear
-  doesn't matter while Slayer stays at 1.
+- Light sources (the server has no dark zones) and Slayer gear (earmuffs, face masks) aren't modelled, so the
+  monsters that need the gear aren't offered.
 
 Quests aren't options (§10): every quest the server has is complete from the start, so the areas those quests open are
 available, and the monsters fought only while a quest is underway never are.
@@ -630,9 +642,14 @@ counts each potion's doses (env contract §3). Then Ava's attractor and accumula
 prices (2026-11-07). They're untradeable in the game, so their alchemy, store-sale and drop actions stay masked (the
 game offers Destroy, not Drop); the GE buys them back at the same prices. A ranged fight wears the best device
 carried (no other fight does), with its attraction off: it saves ammunition, and the accumulator, which needs
-Ranged 50, also gathers the shots its catch misses that would land (Caleb, OQ-28). 216 in all.
+Ranged 50, also gathers the shots its catch misses that would land (Caleb, OQ-28). The 38 metal chest pieces the
+server lists stop the catch (`data/ava_interference.csv`), so a ranger wearing a device leaves them off (Caleb,
+OQ-29). Then every tradeable crossbow and bolt on the 2009 GE (Caleb, 2026-11-07): 11 crossbows, one-handed but
+Karil's, so a shield goes with them, and 53 bolts with their poisoned, gem-tipped and enchanted kinds, whose effects
+aren't modelled (they rank by ranged strength); mithril bolts were in already. Broad bolts are Destroy-only, so their
+drop stays masked. 279 in all.
 
-**Size (*V* = 216: the 156 accepted, 20 fletching inputs added by the same rule on 2026-10-31, 38 on 2026-11-06 and 2
+**Size (*V* = 279: the 156 accepted, 20 fletching inputs added by the same rule on 2026-10-31, 38 on 2026-11-06 and 65
 on 2026-11-07;
 selling as "all in the inventory"):**
 
@@ -642,11 +659,11 @@ selling as "all in the inventory"):**
 | Processing | 10 |
 | Combat | 30 |
 | Loot mode | 4 |
-| Inventory | 2 deposits + 10 processing withdrawals + 5 gathering-kit withdrawals + 1 take knife + 217 drops (216 + misc) + 1 reclaim gravestone + 3 gear + 4 food tiers + 1 any food + 1 for sale = 245 |
-| Alchemy | 434 (high and low, 217 each) |
-| Selling | 434 (GE and store, 217 each) |
-| Buying | 153 (116 at the GE, with the knife, 19 fletching inputs, the anti-dragon shield, 6 quest items, 2 antipoisons, 8 combat potions and antifire, and Ava's 2 devices; 37 at shops) |
-| **Total in sim v0** | **1,330** |
+| Inventory | 2 deposits + 10 processing withdrawals + 5 gathering-kit withdrawals + 1 take knife + 280 drops (279 + misc) + 1 reclaim gravestone + 3 gear + 4 food tiers + 1 any food + 1 for sale = 308 |
+| Alchemy | 560 (high and low, 280 each) |
+| Selling | 560 (GE and store, 280 each) |
+| Buying | 217 (180 at the GE, with the knife, 19 fletching inputs, the anti-dragon shield, 6 quest items, 2 antipoisons, 8 combat potions and antifire, Ava's 2 devices, 11 crossbows and 53 bolts; 37 at shops) |
+| **Total in sim v0** | **1,709** |
 
 Each *V* item adds 7 observation features: its inventory and bank counts, and its 5 actions' mask entries (env
 contract §3).

@@ -3,8 +3,8 @@
 Pipeline for each decision:
   1. the enemy pool: every spawned NPC whose cache definition offers "Attack" and whose config stats are believable
      against its cache combat level (`enemy_pool`);
-  2. per pool entry and combat class: the Slayer level and the access table (rlscape.combat.access: only the sites the
-     character can reach count), the gear check for special damage, the loot the current loot mode keeps, the
+  2. per pool entry and combat class: the access table (rlscape.combat.access: only the sites the character can reach
+     count; no Slayer levels, Caleb, 2026-11-07, OQ-32), the gear check for special damage, the loot the current loot mode keeps, the
      theoretical rates (rlscape.combat.rates), the retreat-aware danger filter, and the inventory cycle (fighting
      until the drops fill the free slots, then the round trip to the nearest bank);
   3. per combat class: the 3 best monsters by XP/hr and the 3 best by gp/hr (`select_candidates`).
@@ -20,9 +20,10 @@ from functools import cache
 from math import floor, inf
 from typing import Callable
 
-from rlscape.combat.access import Progress, can_reach, meets_slayer_level, start_progress
-from rlscape.combat.rates import (DRAGONFIRE_NPCS, OVERHEAD_TICKS_PER_KILL, PICKUP_TICKS, Fighter, Plan, Rates,
-                                  combat_rates, site_slowdown, with_pickups)
+from rlscape.combat.access import Progress, can_reach, start_progress
+from rlscape.combat import safespots as ss
+from rlscape.combat.rates import (DRAGONFIRE_NPCS, OVERHEAD_TICKS_PER_KILL, Fighter, Plan, Rates, combat_rates,
+                                  site_slowdown, unharmed, with_pickups)
 from rlscape.gamedata import server as gd
 from rlscape.travel import BANKING_TICKS, EVERYWHERE, Reach, travel_ticks, travel_ticks_from_many
 
@@ -33,6 +34,16 @@ WYVERN_PROTECTION = DRAGONFIRE_SHIELDS | {ELEMENTAL_SHIELD, MIND_SHIELD}
 
 # Training dummies can't be killed: CombatSwingHandler.adjustBattleState fully restores 4474 and 7891 and gives 0.1x XP.
 UNKILLABLE_NPCS = frozenset({4474, 7891})
+
+# Slayer monsters that need Slayer gear the sim doesn't model (none of it is in *V*), never offered. With Slayer levels
+# dropped (Caleb, 2026-11-07, OQ-32) nothing else keeps them out. The server's rules: hits do nothing without a nose
+# peg (aberrant spectres), earmuffs (banshees), a face mask (dust devils) or a leaf-bladed weapon (turoths, kurasks);
+# a rock hammer, a bag of salt or an ice cooler finishes gargoyles, rockslugs and desert lizards; a lit bug lantern
+# for harpie bug swarms; a witchwood icon, a mirror shield and insulated boots guard against cave horrors, basilisks
+# and cockatrices, and killerwatts (the slayer package's NPC classes and behaviours).
+SLAYER_GEAR_NPCS = frozenset({"Aberrant spectre", "Banshee", "Dust devil", "Turoth", "Kurask", "Gargoyle", "Rockslug",
+                              "Desert Lizard", "Lizard", "Small Lizard", "Harpie Bug Swarm", "Cave horror", "Basilisk",
+                              "Cockatrice", "Killerwatt"})
 
 # Hazards: monsters never offered as targets where they spawn in the area (x1, y1, x2, y2, plane), though they stay in
 # the world: the aggressive ones still attack a character near them (rlscape.sim.aggression reads every spawn).
@@ -114,7 +125,7 @@ def enemy_pool(members: bool = True) -> tuple[PoolEntry, ...]:
         definition = definitions.get(npc.id)
         if npc.id not in spawns or definition is None or not definition.attackable:
             continue
-        if npc.id in UNKILLABLE_NPCS or "dummy" in npc.name.lower():
+        if npc.id in UNKILLABLE_NPCS or "dummy" in npc.name.lower() or npc.name in SLAYER_GEAR_NPCS:
             continue
         if not stats_believable(npc, definition):
             continue
@@ -208,6 +219,8 @@ class Character:
     reach: Reach = EVERYWHERE  # where it can get to now (rlscape.sim.movement.reach); default: anywhere some way goes
     poison_cover: float = 0.0  # the share of the option the antipoison carried keeps poison off (rlscape.sim.health)
     antifire_cover: float = 0.0  # the share the antifire carried keeps a dragon's breath off (rlscape.sim.potions)
+    arrow_piles: bool = True  # a ranged plan's shots land and the loot mode picks them up (rlscape.combat.safespots)
+    shields_carried: frozenset[int] = frozenset()  # shields in the inventory: worn for a guarded pickup trip (OQ-33)
 
 
 @dataclass(frozen=True)
@@ -226,42 +239,79 @@ class Candidate:
         return sum(self.xp_per_hour.values())
 
 
+def site_rates(entry: PoolEntry, plan: Plan, fought: Rates, site: Site, pickups: float, arrow_piles: bool,
+               protected: bool, hp_margin: float, duration: float,
+               shields_carried: frozenset[int] = frozenset()) -> tuple[Rates, int] | None:
+    """A monster's rates at one site, with each kill's pickups timed in, and the site's supply of it; None if the plan
+    can't be fought there. A ranged plan whose monster's damage isn't trivial over the option's `duration` with
+    `hp_margin` above the retreat point (safespots.needs_safespot), or whose special damage the gear
+    doesn't guard against (`protected` false: a bow takes no shield), needs the site's safespot, from which it takes
+    none and fights only the monsters it holds against; its arrows land in piles, picked up with the drops after each
+    kill, with the walk from the safespot and back (rlscape.combat.safespots)."""
+    overhead = OVERHEAD_TICKS_PER_KILL[plan.combat_class]
+    spot = None
+    if plan.combat_class == "ranged" and (not protected or ss.needs_safespot(fought, hp_margin, duration)):
+        spot = ss.safespot(entry.npc.id, site.spawn, plan)
+        if spot is None or (spot.pickup_threats and not protected
+                            and not special_damage_shields(entry.npc) & shields_carried):
+            return None  # guarded arrows are fetched late, a shield worn (or put on) for the trip (Caleb, OQ-33)
+    piles = 0
+    if plan.combat_class == "ranged" and arrow_piles and (spot is None or spot.walk is not None):
+        piles = ss.piles_per_kill(ss.fighting_ticks(fought, overhead))
+    items = pickups + piles
+    rates = with_pickups(unharmed(fought) if spot is not None else fought, items,
+                         ss.trip_ticks(spot) if items > 0 else 0.0)
+    return rates, (min(site.spawns, spot.held) if spot is not None else site.spawns)
+
+
 def evaluate(entry: PoolEntry, fighter: Fighter, plan: Plan, character: Character, duration_ticks: float,
              loot: Callable[[int], bool], shield_id: int | None = None) -> Candidate | None:
-    """One monster, one plan: None if access, the gear check or the danger filter rules it out. `shield_id`, if
-    given, is the shield the fighter wears in place of the character's."""
-    if not meets_slayer_level(entry.npc.id, character.progress):
-        return None
+    """One monster, one plan: None if access, the gear check or the danger filter rules it out everywhere. `shield_id`,
+    if given, is the shield the fighter wears in place of the character's. No Slayer levels (Caleb, OQ-32)."""
     sites = [s for s in entry.sites if can_reach(entry.npc.name, s.spawn, character.progress)
              and character.reach.allows(s.spawn)]
     shield = character.shield_id if shield_id is None else shield_id
-    if not sites or not has_special_damage_protection(entry.npc, shield):
+    protected = has_special_damage_protection(entry.npc, shield)  # a ranger can do without, from a safespot
+    if not sites or not (protected or plan.combat_class == "ranged"):
         return None
     gp_per_kill, slots_per_kill = loot_per_kill(entry.drops, loot)
-    rates = combat_rates(fighter, plan, entry.npc, gp_per_kill)
-    pickups = pickups_per_kill(entry.drops, loot)
-    rates = rates and with_pickups(rates, pickups, plan.combat_class)
-    if rates is None or not rates.passes_retreat_filter(character.max_hp, character.current_hp, character.food_healing,
-                                                        poison_cover=character.poison_cover,
-                                                        antifire_cover=character.antifire_cover):
+    fought = combat_rates(fighter, plan, entry.npc, gp_per_kill)
+    if fought is None:
         return None
-    fight_ticks = character.free_slots / slots_per_kill * rates.ticks_per_kill if slots_per_kill > 0 else None
-    ammo_share = character.attacks_held / rates.attacks_per_kill * rates.ticks_per_kill / duration_ticks
+    pickups = pickups_per_kill(entry.drops, loot)
+    overhead = OVERHEAD_TICKS_PER_KILL[plan.combat_class]
+    options = []
+    for site in sites:
+        got = site_rates(entry, plan, fought, site, pickups, character.arrow_piles, protected,
+                         ss.hp_margin(character.current_hp, character.max_hp), duration_ticks,
+                         character.shields_carried)
+        if got is not None and got[0].passes_retreat_filter(character.max_hp, character.current_hp,
+                                                            character.food_healing,
+                                                            poison_cover=character.poison_cover,
+                                                            antifire_cover=character.antifire_cover):
+            options.append((site, *got))
+    if not options:
+        return None
 
-    def share_at(site: Site) -> float:
+    def share_at(site: Site, rates: Rates, spawns: int) -> float:
         # kills come slower where the site runs out of monsters (site_slowdown): the inventory and the ammunition
         # last that much longer, and the rate is that much lower
-        slow = float(site_slowdown(rates.ticks_per_kill, entry.npc.respawn, site.spawns,
-                                   OVERHEAD_TICKS_PER_KILL[plan.combat_class]
-                                   + PICKUP_TICKS[plan.combat_class] * pickups))
+        slow = float(site_slowdown(rates.ticks_per_kill, entry.npc.respawn, spawns,
+                                   overhead + rates.ticks_per_kill - fought.ticks_per_kill))
+        fight_ticks = character.free_slots / slots_per_kill * rates.ticks_per_kill if slots_per_kill > 0 else None
         fill = None if fight_ticks is None else fight_ticks * slow
         fighting = 1.0 if fill is None else (fill / (fill + site.bank_trip_ticks) if fill > 0 else 0.0)
         walking = max(duration_ticks - travel_ticks(character.location, site.spawn, character.home_teleport),
                       0.0) / duration_ticks
+        ammo_share = character.attacks_held / rates.attacks_per_kill * rates.ticks_per_kill / duration_ticks
         return min(fighting * walking, ammo_share * slow) / slow  # the option ends when the ammunition does
 
-    site = max(sites, key=share_at)
-    share = share_at(site)
+    # the site where it's killed fastest over the option: its share of the option times the kill rate there (the same
+    # at every site unless a ranged fight's pickup walks differ)
+    shares = [share_at(*option) for option in options]
+    best = max(range(len(options)), key=lambda i: options[i][1].kills_per_hour * shares[i])  # the first best
+    site, rates, _ = options[best]
+    share = shares[best]
     return Candidate(entry, plan, site, rates, rates.kills_per_hour * share,
                      {skill: xp * share for skill, xp in rates.xp_per_hour.items()}, rates.gp_per_hour * share,
                      travel_ticks(character.location, site.spawn, character.home_teleport))

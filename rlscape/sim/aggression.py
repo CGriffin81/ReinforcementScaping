@@ -44,9 +44,9 @@ from rlscape.sim.combat import die, kill_sequence
 from rlscape.sim.equipment import fighter_for
 from rlscape.sim.health import EAT_TICKS, REGEN_TICKS, eat_one, regenerate
 from rlscape.sim.skills import MAX_XP, SKILL_INDEX
-from rlscape.sim.state import CharacterState
+from rlscape.sim.state import TOLERANCE_TICKS, CharacterState
 
-TOLERANCE_TICKS = 1000  # Region.TOLERANCE_TICKS
+
 SITE_REACH = 10  # tiles from a site's tile to an aggressor's spawn (Draynor's wizards spawn 8 from the willows)
 ATTACKS_PER_TICK = 1 / 29  # per aggressor, while gathering (measured at the willows; elsewhere to calibrate)
 FLEE_TICKS = 129  # running out of reach and back, beyond eating (measured at the willows, 4 flees; to calibrate)

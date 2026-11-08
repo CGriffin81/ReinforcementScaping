@@ -298,14 +298,20 @@ def test_the_accumulator_needs_ranged_50_and_the_devices_attract_nothing(client,
     assert ACCUMULATOR in [i["id"] for i in client.state(uid)["equipment"]]
 
 
-def test_slayer_level_blocks_attacks(client, character):
-    """Cave crawlers need Slayer 10 (Tasks.java). A fresh character (Slayer 1) gets the server's warning and no fight."""
+def test_slayer_levels_lock_no_monster(client, character):
+    """No Slayer levels (Caleb, 2026-11-07, OQ-32): cave crawlers need Slayer 10 on the original server (Tasks.java),
+    and a fresh character (Slayer 1) fights them and its hits land (combat XP)."""
     uid = character["uid"]
+    client.debug_set_levels(uid, {"attack": 60, "strength": 60, "hitpoints": 60})
     client.debug_teleport(uid, 2786, 9998)  # Fremennik Slayer Dungeon, among the cave crawlers
     client.wait(2)
+
+    def combat_xp() -> float:
+        return sum(s["xp"] for s in client.state(uid)["skills"] if s["name"].lower() in ("attack", "strength", "defence"))
+    before = combat_xp()
     client.interact(uid, "Cave crawler", "Attack", is_object=False)
-    client.wait(8)
-    assert client.state(uid)["target"] is None
+    client.wait(30)
+    assert combat_xp() > before
 
 
 def test_random_events_are_off_for_training(character):

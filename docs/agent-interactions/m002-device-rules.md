@@ -112,6 +112,6 @@
 
 ## Follow-Up
 
-- OQ-29 (Caleb).
+- OQ-29 (Caleb): answered (a) in `m002-oq29`.
 - Build OQ-27 (d).
 - Commit when Caleb asks.

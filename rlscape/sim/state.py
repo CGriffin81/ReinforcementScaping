@@ -16,6 +16,7 @@ INVENTORY_SLOTS = 28
 COINS = 995
 SPAWN = (3233, 3230, 0)  # where the bridge's `spawn` places a character leaving Tutorial Island
 FRESH_HITPOINTS_LEVEL = 10
+TOLERANCE_TICKS = 1000  # Region.TOLERANCE_TICKS (the fork counts game ticks): then its aggressive monsters leave it alone
 
 
 @dataclass

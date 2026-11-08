@@ -201,7 +201,7 @@ item_id,name,groups
 985,Tooth half of a key,drop
 1319,Rune 2h sword,drop
 1440,Earth talisman,drop
-9142,Mithril bolts,drop
+9142,Mithril bolts,bought;drop
 2446,Antipoison(4),bought
 2448,Super antipoison(4),bought
 113,Strength potion(4),bought
@@ -215,3 +215,66 @@ item_id,name,groups
 3040,Magic potion(4),bought
 10498,Ava's attractor,bought
 10499,Ava's accumulator,bought
+837,Crossbow,bought
+4734,Karil's crossbow,bought
+8880,Dorgeshuun c'bow,bought
+9174,Bronze crossbow,bought
+9177,Iron crossbow,bought
+9179,Steel crossbow,bought
+9181,Mith crossbow,bought
+9183,Adamant crossbow,bought
+9185,Rune crossbow,bought
+10156,Hunters' crossbow,bought
+13081,Black crossbow,bought
+877,Bronze bolts,bought
+878,Bronze bolts(p),bought
+879,Opal bolts,bought
+880,Pearl bolts,bought
+4740,Bolt rack,bought
+6061,Bronze bolts(p+),bought
+6062,Bronze bolts(p++),bought
+8882,Bone bolts,bought
+9140,Iron bolts,bought
+9141,Steel bolts,bought
+9143,Adamant bolts,bought
+9144,Rune bolts,bought
+9145,Silver bolts,bought
+9236,Opal bolts (e),bought
+9238,Pearl bolts (e),bought
+9239,Topaz bolts (e),bought
+9240,Sapphire bolts (e),bought
+9241,Emerald bolts (e),bought
+9242,Ruby bolts (e),bought
+9243,Diamond bolts (e),bought
+9244,Dragon bolts (e),bought
+9245,Onyx bolts (e),bought
+9287,Iron bolts (p),bought
+9288,Steel bolts (p),bought
+9289,Mithril bolts (p),bought
+9290,Adamant bolts (p),bought
+9291,Runite bolts (p),bought
+9292,Silver bolts (p),bought
+9294,Iron bolts(p+),bought
+9295,Steel bolts(p+),bought
+9296,Mithril bolts(p+),bought
+9298,Runite bolts(p+),bought
+9299,Silver bolts(p+),bought
+9301,Iron bolts(p++),bought
+9302,Steel bolts(p++),bought
+9303,Mithril bolts(p++),bought
+9305,Runite bolts(p++),bought
+9306,Silver bolts(p++),bought
+9336,Topaz bolts,bought
+9337,Sapphire bolts,bought
+9338,Emerald bolts,bought
+9339,Ruby bolts,bought
+9340,Diamond bolts,bought
+9341,Dragon bolts,bought
+9342,Onyx bolts,bought
+10158,Kebbit bolts,bought
+10159,Long kebbit bolts,bought
+13083,Black bolts,bought
+13084,Black bolts(p),bought
+13085,Black bolts(p+),bought
+13086,Black bolts(p++),bought
+13280,Broad-tipped bolts,bought

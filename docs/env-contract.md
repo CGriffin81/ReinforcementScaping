@@ -1,6 +1,12 @@
-# Environment Contract (v1.16, Signed off)
+# Environment Contract (v1.17, Signed off)
 
-**Status:** v1.16, 2026-11-07. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
+**Status:** v1.17, 2026-11-07. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
+- **v1.17** (2026-11-07; to confirm) fights ranged from safespots (OQ-27 (d), Caleb): a ranged target whose damage
+  isn't trivial (the fight would need food, OQ-30 (b)) needs the site's safespot, from which it does none; arrows
+  lie in piles picked up between kills, with one pickup time for every class (§8). Slayer levels lock no monster
+  (OQ-32, Caleb; §5). Every tradeable crossbow and bolt on the 2009 GE joins *V* and the GE buys (Caleb; 11 and 53,
+  mithril bolts already in): *V* 279, 1,709 actions, 2,624 features. A crossbow's equipment tier is the bows' its
+  Ranged level allows.
 - **v1.16** (2026-11-07; to confirm) adds Ava's attractor and accumulator to *V* and the GE buys (Caleb: the GE
   sells them at 2,500 and 10,000 gp), and a cape role to the equipment part for them (OQ-28): 1,330 actions,
   2,119 features.
@@ -123,8 +129,9 @@ option catalog.
 **As built** (`rlscape/envs/encoding.py`, 2026-10-30): E = 12 roles (weapons for melee, ranged and magic,
 ammunition, head, body, legs, shield, axe, pickaxe, fishing gear), R = 12 (the catalog's 11 regions and
 "elsewhere"), C = 18 slots (6 per combat class). The encoder's docstring lists how each part is scaled. With the
-catalog as built (1,330 actions, *V* = 216) the vector has 2,119 features (v1.12 dropped the quest part's 64; v1.13
-added 7 buys and 27 items; v1.14 11 buys, 11 items and the potions part's 22; v1.16 2 buys, 2 items and the cape role).
+catalog as built (1,709 actions, *V* = 279) the vector has 2,624 features (v1.12 dropped the quest part's 64; v1.13
+added 7 buys and 27 items; v1.14 11 buys, 11 items and the potions part's 22; v1.16 2 buys, 2 items and the cape role;
+v1.17 64 buys and 63 items).
 
 **Left out on purpose:** GE prices. They're frozen, so a price snapshot would be a constant.
 
@@ -151,7 +158,9 @@ added 7 buys and 27 items; v1.14 11 buys, 11 items and the potions part's 22; v1
   Herblore needs Druidic Ritual and Runecrafting needs Rune Mysteries, both complete from the start (§1). Agility
   levels also open the Agility shortcuts in the access table.
 
-**Requirement checks only:** Slayer. There are no tasks, so it stays at 1 and Slayer-locked monsters stay out.
+**Slayer:** there are no tasks, so it stays at 1, and Slayer levels lock no monster (Caleb, 2026-11-07, OQ-32; the
+fork drops them too). Monsters that need Slayer gear the sim doesn't model stay out
+(`candidates.SLAYER_GEAR_NPCS`).
 
 **Out of scope:** Farming, Construction, Summoning, Hunter. Each is a whole system (growth timers, the player-owned
 house, familiars, traps). They stay at 1 and still count toward total level. The report lists this as a limitation.
@@ -250,13 +259,14 @@ from `drop_tables.json`, and spawns from `npc_spawns.json`.
 
 | Quantity | How it's computed |
 |---|---|
-| Kills/hr | from hit chance and max hit against the NPC's defence and HP (the expected swings until their damage reaches its HP, the last hit's overkill included, as the simulator's fights deal it), plus a measured overhead per kill for finding and reaching the next target (3 ticks; magic taken as ranged), and a measured pickup time for each drop the loot mode keeps (5 ticks melee, 18 ranged, which covers its arrows; magic taken as melee). A site short of the monster holds kills to one every (respawn + fighting) / spawns ticks: spawns of it within 15 tiles (`npc_spawns.json`), its `respawn_delay` (`npc_configs.json`). In the simulator each of a site's monsters has its own respawn, and nothing attacks while the character waits. |
+| Kills/hr | from hit chance and max hit against the NPC's defence and HP (the expected swings until their damage reaches its HP, the last hit's overkill included, as the simulator's fights deal it), plus a measured overhead per kill for finding and reaching the next target (3 ticks; magic taken as ranged), and a measured pickup time for each ground item the loot mode keeps, a drop or a pile of arrows (5 ticks, one time for every class; ranged's to refit on safespot runs). A site short of the monster holds kills to one every (respawn + fighting) / spawns ticks: spawns of it within 15 tiles (`npc_spawns.json`), its `respawn_delay` (`npc_configs.json`). In the simulator each of a site's monsters has its own respawn, and nothing attacks while the character waits. |
 | XP/hr | combat XP and Hitpoints XP for the chosen style, plus the spell's base XP on every magic cast |
 | gp/hr | expected value (`prices_v2`) of the drops the loot mode keeps × kills/hr. **Not yet subtracted:** consumables used (food, arrows, runes) and entry fees (Brimhaven, Waterbirth). |
 | Risk | expected damage per kill, poison included (the server's Poison timer; prayer doesn't stop it) and a dragon's breath behind the shield (one swing in three, 0 to 5), less the shares the antipoison and antifire carried cover, and the monster's max hit, against HP above the retreat point and the food held (the retreat-aware filter). The fighter's levels are as its carried potions boost them at the fight's start |
 | Inventory and travel | kills continue until the looted drops fill the free slots, then a bank trip; the walk to the monster is taken out of the duration (*D* = 15 game-minutes = 1,500 ticks) |
 | Prayer | fights flick prayers (option catalog §4): a style the Prayer level can protect against deals nothing, defence prayers count otherwise, and the character's swings get its accuracy and damage prayers except those next to a monster swing. Prayer points never drain. |
-| Ammunition | fighting stops when the arrows or runes run out. Arrows that land and are picked back up stretch the arrows held, and so do Ava's devices: worn, a device sends 80% of shots back to the quiver, and the accumulator also gathers the shots it misses that would land (`equipment.shot_outcomes`, from `RangeSwingHandler`). Melee and crystal bows are unlimited. |
+| Ranged safespots | a ranged target needs a safespot unless its damage is trivial: the fight needs no food, its expected damage over the option less the hitpoints regenerated meanwhile fitting in those above the retreat point (OQ-30 (b)), and unless the gear guards against its special damage (a bow takes no shield). The safespots are the server's, by its own chase (the bridge's `ranged_safespots`, exported to `data/ranged_safespots.csv`): a tile the monster, chasing, gets stuck short of attacking from, with it in shot (range 7, long-ranged 9), holding from at least half of its wandering. From one the monster deals nothing, and the site's supply is the monsters it holds against. Arrows land where the monster stands: a pile per 100 ticks of shooting, picked up between kills with the drops, a pickup each, plus the walk from the safespot and back; when aggressive monsters guard them and aggression hasn't run out, the simulator's fight leaves them until the oldest would go (200 ticks). `rlscape.combat.safespots` |
+| Ammunition | fighting stops when the arrows or runes run out. Arrows that land and are picked back up stretch the arrows held, and so do Ava's devices: worn, a device sends 80% of shots back to the quiver, and the accumulator also gathers the shots it misses that would land (`equipment.shot_outcomes`, from `RangeSwingHandler`). The server's metal chest pieces stop the catch (`data/ava_interference.csv`), and a ranger wearing a device leaves them off. Melee and crystal bows are unlimited. |
 
 These are *theoretical* rates (expected values). The real server measures the actual ones during calibration
 (E6).

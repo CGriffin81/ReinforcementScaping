@@ -280,6 +280,46 @@ def test_safespots_beside_rocks_from_every_melee_aggressor(client, uid):
     assert client.safespots(uid, "Rocks", sorted(gd.rock_objects()[6]), 10) == []
 
 
+def test_a_ranger_on_a_ranged_safespot_takes_no_hits(client, uid):
+    """The moss giant west of Ardougne (level 42, melee): ranged_safespots finds a tile its chase can't get next to
+    and no aggressive monster reaches (Caleb, 2026-11-07, OQ-27 (d)). A ranger on it, auto-retaliate off, attacking
+    only when the giant stands still where `npcs` says it holds, gains Ranged XP, takes no hits and never leaves the
+    tile. (Varrock sewers' giants have no such tile: other aggressive giants reach every one until aggression runs
+    out.)"""
+    shortbow, leather, bronze_arrow = 841, 1129, 882
+    client.debug_set_levels(uid, {"ranged": 60, "hitpoints": 60})
+    client.set_retaliate(uid, False)
+    for item, amount in ((shortbow, 1), (leather, 1), (bronze_arrow, 500)):
+        client.debug_give(uid, item, amount)
+    client.wait(1)
+    for item, option in ((shortbow, "Wield"), (leather, "Wear"), (bronze_arrow, "Wield")):
+        client.item_option(uid, item, option)
+        client.wait(1)
+    client.debug_teleport(uid, 2825, 3249, 0)
+    client.wait(1)
+    spots = client.ranged_safespots(uid, "Moss giant", ids=[112], limit=1)["tiles"]
+    assert spots and not spots[0]["threats"], "no unthreatened safespot at the moss giant"
+    tile = (spots[0]["tile"]["x"], spots[0]["tile"]["y"])
+    held_by = {a["index"] for a in spots[0]["against"]}
+    client.debug_teleport(uid, *tile, 0)
+    client.wait(2)
+    start = client.state(uid)
+    xp = lambda s: next(k["xp"] for k in s["skills"] if k["name"].lower() == "ranged")  # noqa: E731
+    lowest, off = start["hitpoints"], 0
+    for t in range(400):
+        s = client.state(uid)
+        lowest = min(lowest, s["hitpoints"])
+        off += (s["location"]["x"], s["location"]["y"]) != tile
+        if s["target"] is None and not s["moving"] and t % 2 == 0:
+            ready = [n for n in client.npcs(uid, "Moss giant", ids=[112], radius=20) if n["index"] in held_by
+                     and n["holds"] and (n["attacking_me"] or not (n["fighting"] or n["moving"]))]
+            if ready:
+                client.interact(uid, "Moss giant", "Attack", is_object=False, index=ready[0]["index"])
+        client.wait(1)
+    assert xp(client.state(uid)) > xp(start)
+    assert lowest == start["hitpoints"] and off == 0
+
+
 def _tick(client: BridgeClient, uid: int, *cmds: dict) -> dict:
     return client.schedule([[*cmds, {"cmd": "state", "uid": uid}]])[0]["results"][-1]["state"]
 

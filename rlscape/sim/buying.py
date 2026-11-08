@@ -82,6 +82,14 @@ ARMOUR = (1153, 1115, 1067, 1191,  # iron full helm, platebody, platelegs, kites
           1163, 1127, 1079, 1201)  # rune (the platebody needs Dragon Slayer)
 SHORTBOWS = (843, 849, 853)  # oak, willow, maple
 ARROWS = (882, 884, 886, 888, 890)  # bronze, iron, steel, mithril, adamant
+# Every crossbow and bolt the server has that's tradeable and on the 2009 GE (Caleb, 2026-11-07): crossbows are
+# one-handed, so a shield goes with them (Karil's is two-handed). The bolts' poison and enchantment effects aren't
+# modelled: they rank by their ranged strength.
+CROSSBOWS = (837, 4734, 8880, 9174, 9177, 9179, 9181, 9183, 9185, 10156, 13081)
+BOLTS = (877, 878, 879, 880, 4740, 6061, 6062, 8882, 9140, 9141, 9142, 9143, 9144, 9145, 9236, 9238, 9239, 9240,
+           9241, 9242, 9243, 9244, 9245, 9287, 9288, 9289, 9290, 9291, 9292, 9294, 9295, 9296, 9298, 9299,
+           9301, 9302, 9303, 9305, 9306, 9336, 9337, 9338, 9339, 9340, 9341, 9342, 10158, 10159, 13083,
+           13084, 13085, 13086, 13280)
 RUNES = (556, 555, 557, 554, 558, 562, 560, 561)  # air, water, earth, fire, mind, chaos, death, nature
 STAVES = (1381, 1383, 1385, 1387)  # staff of air, water, earth, fire
 FOOD_TIERS = (355, 361, 7946, 385)  # mackerel (heals 6), tuna (10), monkfish (16), shark (20)
@@ -111,17 +119,17 @@ BOBS, NURMOFS, GERRANTS, LUMBRIDGE_STORE, ZEKES, LOWES, AUBURYS, ZAFFS, WYDINS =
 # put it on (equipment.wield_best's `protect`).
 GE_ITEMS = (AXES + PICKAXES + FISHING_TOOLS + BAIT_AND_FEATHERS + (HAMMER,) + SCIMITARS + ARMOUR + SHORTBOWS + ARROWS
             + RUNES + STAVES + FOOD_TIERS + PROCESSING_INPUTS + (KNIFE,) + FLETCHING_INPUTS + (ANTI_DRAGON_SHIELD,)
-            + DRAGON_WEAPONS + FREMENNIK_HELMS + ANTIPOISONS + COMBAT_POTIONS + AVAS_DEVICES)
+            + DRAGON_WEAPONS + FREMENNIK_HELMS + ANTIPOISONS + COMBAT_POTIONS + AVAS_DEVICES + CROSSBOWS + BOLTS)
 SHOP_ITEMS = {**dict.fromkeys(AXES[:2], BOBS), **dict.fromkeys(PICKAXES, NURMOFS),
               **dict.fromkeys(FISHING_TOOLS + BAIT_AND_FEATHERS, GERRANTS), HAMMER: LUMBRIDGE_STORE,
               **dict.fromkeys(SCIMITARS[:3], ZEKES), **dict.fromkeys(SHORTBOWS + ARROWS, LOWES),
               **dict.fromkeys(RUNES[:7], AUBURYS), **dict.fromkeys(STAVES, ZAFFS), BREAD: WYDINS}
-LOTS = {**dict.fromkeys(ARROWS + RUNES, 100), **dict.fromkeys(BAIT_AND_FEATHERS, 200),
+LOTS = {**dict.fromkeys(ARROWS + BOLTS + RUNES, 100), **dict.fromkeys(BAIT_AND_FEATHERS, 200),
         **dict.fromkeys(FOOD_TIERS + (BREAD,), 100),
         **dict.fromkeys(PROCESSING_INPUTS + FLETCHING_INPUTS, 1_000)}  # 1 for the rest
 # role -> how the upgrade check compares; items without a role (consumables) have no upgrade check
 ROLES = {**dict.fromkeys(AXES, "axe"), **dict.fromkeys(PICKAXES, "pickaxe"),
-         **dict.fromkeys(SCIMITARS + DRAGON_WEAPONS, "melee"), **dict.fromkeys(SHORTBOWS, "ranged"),
+         **dict.fromkeys(SCIMITARS + DRAGON_WEAPONS, "melee"), **dict.fromkeys(SHORTBOWS + CROSSBOWS, "ranged"),
          **dict.fromkeys(ARMOUR + FREMENNIK_HELMS, "armour"),
          **dict.fromkeys(FISHING_TOOLS + (HAMMER, KNIFE, ANTI_DRAGON_SHIELD) + STAVES, "unique"),
          **dict.fromkeys(AVAS_DEVICES, "ava")}
@@ -141,7 +149,7 @@ def usable(state: CharacterState, item: int) -> bool:
     role = ROLES.get(item)
     if role in TOOL_CHAINS:
         return _tool_rank(item, role, state) is not None
-    if role in ("melee", "ranged", "armour", "ava") or item in STAVES or item in ARROWS:
+    if role in ("melee", "ranged", "armour", "ava") or item in STAVES or item in ARROWS or item in BOLTS:
         return can_wear(state, item)
     return True
 

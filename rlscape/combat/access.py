@@ -1,10 +1,10 @@
 """The access table (option catalog §4.C): which pool sites the character can reach right now.
 
-Two kinds of lock, both checked every decision against the character's progress:
-  1. access rules (data/access_areas.csv, curated): gated areas (a rectangle) and quest-only NPCs (a list of names,
-     optionally inside a rectangle). Each row names the server check that enforces it, or says the server doesn't;
-     the rule applies on both backends either way, because the candidate list is built here for both.
-  2. Slayer levels, ported from the server's Tasks.java (rlscape.gamedata.slayer_levels).
+Access rules (data/access_areas.csv, curated), checked every decision against the character's progress: gated areas
+(a rectangle) and quest-only NPCs (a list of names, optionally inside a rectangle). Each row names the server check
+that enforces it, or says the server doesn't; the rule applies on both backends either way, because the candidate
+list is built here for both. Slayer levels lock nothing (Caleb, 2026-11-07, OQ-32: dropped for every monster, in
+the fork too).
 
 Areas the table doesn't list count as open until calibration on the server finds them closed.
 
@@ -135,10 +135,6 @@ def rules_at(npc_name: str, spawn: tuple[int, int, int]) -> frozenset[str]:
     return frozenset(rule.name for rule in access_rules() if rule.covers(npc_name, spawn))
 
 
-def meets_slayer_level(npc_id: int, progress: Progress) -> bool:
-    return progress.level("slayer") >= gd.slayer_levels().get(npc_id, 1)
-
-
 def can_reach(npc_name: str, spawn: tuple[int, int, int], progress: Progress) -> bool:
     """True if every access rule covering this NPC at this spawn is unlocked."""
     return rules_at(npc_name, spawn) <= unlocked_rules(progress)
@@ -146,8 +142,8 @@ def can_reach(npc_name: str, spawn: tuple[int, int, int], progress: Progress) ->
 
 @cache
 def _looked_at() -> tuple[frozenset[int], frozenset[str], tuple[int, ...]]:
-    """The items, skills and coin thresholds the access table's requirements mention (Slayer always counts)."""
-    items, skills, coins = set(), {"slayer"}, {0}
+    """The items, skills and coin thresholds the access table's requirements mention."""
+    items, skills, coins = set(), set(), {0}
     for rule in access_rules():
         for terms in rule.requires.alternatives:
             for term in terms:

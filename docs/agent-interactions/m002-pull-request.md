@@ -81,4 +81,4 @@ The desktop app's "Create PR" button, which sent this command (verbatim):
 ## Follow-Up
 
 - Caleb's review of the pull request.
-- OQ-29 (Caleb). Then build OQ-27 (d).
+- OQ-29 (Caleb): answered (a) in `m002-oq29`. Then build OQ-27 (d).

@@ -3,7 +3,8 @@
 forward; 16 on 2026-11-06, which the rule proposes once every quest the server has is complete and the anti-dragon
 shield is bought on the GE (Caleb); the 6 quest-gear buys of the same day (OQ-24); 5 the rule proposes once the
 drop tables' shared sub-tables are modelled (Caleb); the 11 four-dose potions bought on 2026-11-06 and 07 (OQ-25);
-and Ava's attractor and accumulator, bought on the GE (Caleb, 2026-11-07): 216. Nothing has been taken out.
+Ava's attractor and accumulator, bought on the GE (Caleb, 2026-11-07); and every tradeable crossbow and bolt on
+the 2009 GE, 63 more (Caleb, 2026-11-07; mithril bolts were in already): 279. Nothing has been taken out.
 
 Each item in V gets its own drop, alchemy and sell actions and its own inventory and bank features; everything else
 is misc. V is fixed before training, so `data/vocabulary.csv` is frozen. `scripts/draft_vocabulary.py` regenerates

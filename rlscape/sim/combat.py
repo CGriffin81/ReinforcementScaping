@@ -8,15 +8,20 @@ until the time budget, a full inventory, running out of food, or death:
   no food, retreating: the monster gets ESCAPE_ATTACKS more swings and the option ends out_of_food;
 - XP follows CombatSwingHandler: 4 per damage to the style's skill and 1.33 to Hitpoints, for the monster's HP;
   magic also gives the spell's base XP on every cast, hit or splash (MagicSpell.addExperience);
-- each kill rolls its drop table (WeightBasedTable.roll) and keeps what the loot mode picks up, PICKUP_TICKS a drop
-  (measured, as the overhead);
+- each kill rolls its drop table (WeightBasedTable.roll) and keeps what the loot mode picks up, PICKUP_TICKS a ground
+  item (measured, as the overhead);
 - the site has `site.spawns` of the monster, each back `respawn` ticks after it dies: the next kill starts when one
   is there, after the class's OVERHEAD_TICKS_PER_KILL to reach it (both measured, scripts/calibrate_combat.py). Waiting, nothing
   attacks;
 - ranged fires one arrow, bolt or thrown weapon per attack from the worn stack (RangeSwingHandler.useAmmo). A shot
-  lands under the target with arrow_land_chance (the rest break) and is picked straight back up when the loot mode
-  takes that item, so with looting only broken shots run the stack down. Walking to them is in ranged's
-  PICKUP_TICKS. Magic casts the spell chosen for the fight, paying its runes per cast (a worn elemental staff
+  lands under the target with arrow_land_chance (the rest break) and comes back when the loot mode takes that item,
+  so with looting only broken shots run the stack down. Ranged fights safespot (rlscape.combat.safespots): a
+  monster whose damage isn't trivial is fought from the site's safespot, where it can't attack, and only the
+  site's monsters the safespot holds against are fought. The landed shots lie in piles, a PICKUP_TICKS each, picked
+  up with the drops between kills, with the walk from the safespot and back; while aggressive monsters guard them
+  and aggression hasn't run out (TOLERANCE_TICKS in the region), the fight leaves them until the oldest would go
+  (Caleb, OQ-27 (d)). The shots' return is counted at the kill. Magic casts the spell chosen for the fight, paying
+  its runes per cast (a worn elemental staff
   stands in for its rune; MagicStaff). Either ends the option out_of_ammo when the stack or the runes run out,
   charging the attacks made. Casting each spell by hand is assumed, at the autocast rate (5 ticks), so magic
   doesn't need a staff (an agent choice; the server's autocast does).
@@ -38,19 +43,21 @@ from math import ceil, inf
 
 import numpy as np
 
-from rlscape.combat.candidates import PoolEntry, Site, special_damage_shields
+from rlscape.combat import safespots as ss
+from rlscape.combat.candidates import PoolEntry, Site, has_special_damage_protection, special_damage_shields
 from rlscape.combat.prayers import boosted_swings
-from rlscape.combat.rates import (BREATH_CHANCE, DRAGONFIRE_NPCS, ESCAPE_ATTACKS, OVERHEAD_TICKS_PER_KILL,
-                                  PICKUP_TICKS, POISON_CHANCE, Plan, breath_max, npc_offence, player_offence)
+from rlscape.combat.rates import (BREATH_CHANCE, DRAGONFIRE_MAX, DRAGONFIRE_NPCS, ESCAPE_ATTACKS, OVERHEAD_TICKS_PER_KILL,
+                                  PICKUP_TICKS, POISON_CHANCE, Plan, breath_max, combat_rates, npc_offence,
+                                  player_offence)
 from rlscape.gamedata import server as gd
 from rlscape.sim.energy import MAX_ENERGY
-from rlscape.sim.equipment import WEAPON, fighter_for, land_chance, ranged_ready, shot_outcomes, wield_best
+from rlscape.sim.equipment import SHIELD, WEAPON, fighter_for, land_chance, ranged_ready, shot_outcomes, wield_best
 from rlscape.sim.health import advance_poison, apply_poison, eat_one, regenerate, retreat_hp
 from rlscape.sim.movement import route_ticks, walk
 from rlscape.sim.potions import drink_antifire, drink_boosts
 from rlscape.sim.options import COMPLETED, DIED, INVENTORY_FULL, OUT_OF_AMMO, OUT_OF_FOOD, Option, OptionResult
 from rlscape.sim.skills import MAX_XP, SKILL_INDEX
-from rlscape.sim.state import CharacterState
+from rlscape.sim.state import TOLERANCE_TICKS, CharacterState
 
 RESPAWN = (3222, 3218, 0)  # rl.conf: home_location = "3222,3218,0"
 GRAVESTONE_TICKS = 200  # GraveType.MEM_PLAQUE, the free gravestone: 2 minutes
@@ -175,35 +182,39 @@ def best_spell(state: CharacterState) -> str | None:
 
 
 def _ammunition(state: CharacterState, plan: Plan, attacks: int, rng: np.random.Generator,
-                loot: Callable[[int], bool]) -> tuple[int, Callable[[int], None]]:
-    """How many of a kill's `attacks` the ammunition or runes allow, and a function paying for the first k."""
+                loot: Callable[[int], bool],
+                recover: bool = True) -> tuple[int, Callable[[int], None], Callable[[int], int]]:
+    """How many of a kill's `attacks` the ammunition or runes allow, a function paying for the first k, and one
+    counting the shots among them that landed and are picked back up (`recover`: false where the piles can't be
+    walked to)."""
     if plan.combat_class == "magic":
         cost = spell_runes(state, plan.style)
 
         def pay_runes(k: int) -> None:
             for rune, n in cost.items():
                 state.take(rune, n * k)
-        return int(min(attacks, casts_held(state, plan.style))), pay_runes
+        return int(min(attacks, casts_held(state, plan.style))), pay_runes, lambda k: 0
     if plan.combat_class == "ranged":
         if not ranged_ready(state):
-            return 0, lambda k: None
+            return 0, lambda k: None, lambda k: 0
         ranged = gd.ranged_weapons()[state.equipment[WEAPON]]
         if ranged.weapon_type == "DEGRADING":
-            return attacks, lambda k: None
+            return attacks, lambda k: None, lambda k: 0
         slot = ranged.ammo_slot
         back, landed = shot_outcomes(state)  # Ava's device sends some back to the quiver
-        kept = back + (landed if loot(state.equipment[slot]) else 0.0)  # landed shots come straight back
-        if kept > 0:
-            lost = np.cumsum(rng.random(attacks) >= kept)
-        else:
-            lost = np.arange(1, attacks + 1)
+        if not (recover and loot(state.equipment[slot])):
+            landed = 0.0  # left on the ground
+        draws = rng.random(attacks)
+        lost = np.cumsum(draws >= back + landed)  # the rest come back: to the quiver, or picked up from the piles
+        picked = np.cumsum((draws >= back) & (draws < back + landed))
 
         def pay_ammo(k: int) -> None:
             if k:
                 state.use_worn(slot, int(lost[k - 1]))
         # attack i needs a shot left: fewer than the worn stack lost before it
-        return min(attacks, int(np.searchsorted(lost, state.worn(slot))) + 1), pay_ammo
-    return attacks, lambda k: None
+        return (min(attacks, int(np.searchsorted(lost, state.worn(slot))) + 1), pay_ammo,
+                lambda k: int(picked[k - 1]) if k else 0)
+    return attacks, lambda k: None, lambda k: 0
 
 
 def _gain(state: CharacterState, xp_per_damage: dict[str, float], damage: float) -> None:
@@ -244,6 +255,54 @@ def die(state: CharacterState, now: int) -> None:
     state.region_since = now  # respawned into Lumbridge's region
 
 
+SWAP_TICKS = 2  # the shield on for a guarded pickup trip, the bow back after (a click each)
+
+
+def guarded_trip(state: CharacterState, rng: np.random.Generator, npc: gd.Npc, fighter, plan: Plan, guards: int,
+                 trip: float, now: int) -> int:
+    """A late pickup trip where aggressive monsters guard the arrows (Caleb, 2026-11-07, OQ-33): each guard, taken as
+    the target's kind, swings every attack_speed ticks of it. Against a dragon's breath the ranger wears the shield it
+    carries for the trip (a bow takes none; SWAP_TICKS) and drinks an antifire dose if it has one: shield and potion,
+    no breath at all; the potion alone cuts only a tenth (ContentAPI.calculateDragonfireMaxHit). A guard is any
+    aggressive monster whose leash covers the arrows (the export's count), and most don't come: each swings at
+    aggression.ATTACKS_PER_TICK, the rate measured while gathering (a swing every attack_speed ticks from all of them
+    took 30 to 86 a trip at the Wilderness green dragons, where the server's runs took none). The hitpoints go;
+    returns the ticks the swap and the drink add."""
+    from rlscape.sim.aggression import ATTACKS_PER_TICK  # (aggression imports this module)
+    extra = 0
+    dragon = npc.id in DRAGONFIRE_NPCS
+    worn = state.equipment.get(SHIELD) in special_damage_shields(npc)  # with a crossbow, it's on already
+    shielded = dragon and (worn or bool(special_damage_shields(npc) & set(state.inventory)))
+    if shielded and not worn:
+        extra += SWAP_TICKS
+    if dragon:
+        extra += drink_antifire(state, now)
+    antifire = now + extra < state.antifire_until
+    npc_chance, npc_max, _, _ = npc_offence(fighter, plan, npc)
+    swings = int(rng.poisson(guards * (trip + extra) * ATTACKS_PER_TICK))
+    hits = (rng.random(swings) < npc_chance) * rng.integers(0, npc_max + 1, swings)
+    if dragon:
+        fire = breath_max(antifire) if shielded else int(DRAGONFIRE_MAX - (0.1 * DRAGONFIRE_MAX if antifire else 0.0))
+        hits = np.where(rng.random(swings) < BREATH_CHANCE, rng.integers(0, fire + 1, swings), hits)
+    state.hp -= int(hits.sum())
+    return extra
+
+
+def safespot_for(state: CharacterState, plan: Plan, npc: gd.Npc, site: Site,
+                 duration: float) -> gd.RangedSafespot | None:
+    """The safespot a ranged fight shoots from, the character armed: the site's, if the monster's damage isn't
+    trivial over `duration` (the fight would need food) or its special damage isn't guarded against
+    (rlscape.combat.safespots); None otherwise, or if the site has none."""
+    if plan.combat_class != "ranged":
+        return None
+    unaided = combat_rates(fighter_for(state), plan, npc, 0.0)
+    guarded = has_special_damage_protection(npc, state.equipment.get(SHIELD))
+    if unaided is None or (guarded and not ss.needs_safespot(unaided, ss.hp_margin(state.hp, state.max_hp()),
+                                                             duration)):
+        return None
+    return ss.safespot(npc.id, site.spawn, plan)
+
+
 def fight(state: CharacterState, rng: np.random.Generator, budget: int, entry: PoolEntry, plan: Plan, site: Site,
           loot: Callable[[int], bool]) -> OptionResult:
     npc, stackable, kills = entry.npc, gd.stackable_items(), 0
@@ -268,7 +327,13 @@ def fight(state: CharacterState, rng: np.random.Generator, budget: int, entry: P
         return dead
     wielding = wield_best(state, plan.combat_class, special_damage_shields(entry.npc))  # its anti-dragon shield
     elapsed = min(elapsed + wielding, budget)
-    ready = [0] * max(site.spawns, 1)  # when each of the site's monsters is next there to fight (ticks into the option)
+    spot = safespot_for(state, plan, npc, site, budget)
+    recover = spot is None or spot.walk is not None  # its arrows can be walked to
+    trip = ss.trip_ticks(spot)
+    supply = min(site.spawns, spot.held) if spot is not None else site.spawns
+    ready = [0] * max(supply, 1)  # when each of the site's monsters is next there to fight (ticks into the option)
+    piles: list[int] = []  # when each arrow pile not yet picked up was started (ticks into the option)
+    waiting, waiting_since = 0, inf  # drops left with them, and since when
     while True:
         if state.hp <= retreat_hp(state):
             if not eat_one(state):
@@ -295,7 +360,7 @@ def fight(state: CharacterState, rng: np.random.Generator, budget: int, entry: P
                 return dead
             continue  # eat, if the poison brought HP to the retreat point
         dealt = kill_sequence(npc.hitpoints, chance, max_hit, rng, boosted)
-        possible, pay = _ammunition(state, plan, len(dealt), rng, loot)
+        possible, pay, landed = _ammunition(state, plan, len(dealt), rng, loot, recover)
         if possible == 0:
             return done(max(elapsed, 1), OUT_OF_AMMO)
 
@@ -307,9 +372,9 @@ def fight(state: CharacterState, rng: np.random.Generator, budget: int, entry: P
             _gain(state, {"magic": cast_xp}, attacks if cast_xp else 0)
 
         ticks = possible * speed
-        swings = int(ticks // npc.attack_speed)
+        swings = int(ticks // npc.attack_speed) if spot is None else 0  # stuck chasing, it can't attack
         hits = (rng.random(swings) < npc_chance) * rng.integers(0, npc_max + 1, swings)
-        if npc.id in DRAGONFIRE_NPCS:  # a third of its swings are breath, behind the shield the gear check requires
+        if npc.id in DRAGONFIRE_NPCS and spot is None:  # a third of its swings are breath, behind the shield
             elapsed += drink_antifire(state, state.tick + elapsed)
             fire = breath_max(state.tick + elapsed < state.antifire_until)
             hits = np.where(rng.random(swings) < BREATH_CHANCE, rng.integers(0, fire + 1, swings), hits)
@@ -364,8 +429,24 @@ def fight(state: CharacterState, rng: np.random.Generator, budget: int, entry: P
         if (dead := poisoned_to_death(elapsed)) is not None:
             return dead  # after the kill, before the loot
         picked = sum(1 for item, amount in roll_drops(entry.drops, rng) if loot(item) and state.add(item, amount))
-        if picked:  # a pickup each, after the kill
-            pickup = min(PICKUP_TICKS[plan.combat_class] * picked, budget - elapsed)
+        if landed(possible):  # this kill's arrows, a pile per PILE_PRIVATE_TICKS of shooting
+            piles += [elapsed - step] * ss.piles_per_kill(ticks)
+        if picked:
+            waiting, waiting_since = waiting + picked, min(waiting_since, elapsed - step)
+        # between kills, unless the walk to them would take hits: aggressive monsters guard them and aggression hasn't
+        # run out; then just before the oldest would go, the next kill and the walk counted
+        safe = spot is None or spot.pickup_threats == 0 or state.region_since + TOLERANCE_TICKS <= state.tick + elapsed
+        due = elapsed - min(piles[0] if piles else inf, waiting_since) + step + trip >= ss.GROUND_TICKS
+        if (waiting or piles) and (safe or due):  # a pickup each, after the kill, with the walk to them
+            pickup = PICKUP_TICKS * (waiting + len(piles)) + (trip if spot is not None else 0.0)
+            if not safe:  # the late trip, guarded: the guards' hits, the shield worn against dragonfire (OQ-33)
+                pickup += guarded_trip(state, rng, npc, fighter_for(state), plan, spot.pickup_threats, pickup,
+                                       state.tick + elapsed)
+                if state.hp <= 0:
+                    die(state, state.tick + elapsed)
+                    return done(max(elapsed, 1), DIED)
+            pickup = int(ceil(min(pickup, budget - elapsed)))
+            piles, waiting, waiting_since = [], 0, inf
             elapsed += pickup
             regenerate(state, pickup, poison=False)
             advance_poison(state, pickup)

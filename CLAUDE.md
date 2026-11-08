@@ -91,8 +91,9 @@ work.
     2026-11-06), random events off for RL characters, ambient bots off (`enable_bots = false`, since
     2026-10-31), dev mode off (`dev = false`, since 2026-11-07: it changes drop and catch rates), and
     the game port bound to 127.0.0.1.
-  - Other fork rule changes: Slayer levels are enforced on attack
-    (`NPC.isAttackable`); aggression tolerance counts 1,000 game ticks, not
+  - Other fork rule changes: no Slayer level requirements for any monster
+    (2026-11-07, OQ-32: `NPC.isAttackable` and `checkImpact`, `IdleAbstractNPC`,
+    the ice cooler; Slayer gear still applies); aggression tolerance counts 1,000 game ticks, not
     10 wall-clock minutes (`Region.isTolerated`), so a sped-up server behaves the
     same; the home teleport waits 3,000 game ticks (30 minutes) between casts
     (`homeTeleport`); being hit keeps an entity "in combat" for 17 game ticks,
@@ -101,6 +102,11 @@ work.
   - Ava's devices (2026-11-07): the accumulator needs 50 Ranged and gathers back
     the shots its 80% catch misses that would land; `spawn` switches the
     devices' attraction off.
+  - Ranged safespots (2026-11-07, OQ-27 (d)): the bridge's `ranged_safespots`
+    runs the server's own chase (DUMB pathing, each monster's `canSwing`) on
+    detached copies to find where a monster gets stuck short of attacking, and
+    `npcs` tells a safespotter which monsters would stay stuck in shot. The
+    export is `scripts/export_ranged_safespots.py` → `data/ranged_safespots.csv`.
 - **GE state:** before running the server for experiments, install the frozen
   2009 GE: `uv run python scripts/install_ge_db.py`. The server must be
   stopped; the old database is backed up. The pipeline is

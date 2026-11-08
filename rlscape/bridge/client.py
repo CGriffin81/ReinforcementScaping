@@ -134,6 +134,30 @@ class BridgeClient:
             fields["radius"] = radius
         return self.request("safespots", **fields)["tiles"]
 
+    def ranged_safespots(self, uid: int, name: str, ids: list[int] | None = None, radius: float | None = None,
+                         range: int | None = None, limit: int | None = None) -> dict[str, Any]:
+        """Where to shoot a melee monster called ``name`` (of ``ids``, spawned within ``radius``) from that it can't
+        hit back from, as rangers safespot: ``tiles``, best first, each with the monsters it holds against
+        (``against``: index, spawn, where it gets stuck chasing, the chase's steps, the walk to its arrows, and the
+        aggressive monsters whose leash covers them). ``range`` is the attack style's (7, or 9 long-ranged); ``melee``
+        is false, with no tiles, for a monster that casts or shoots."""
+        fields: dict[str, Any] = {"uid": uid, "name": name}
+        for key, value in (("ids", ids), ("radius", radius), ("range", range), ("limit", limit)):
+            if value is not None:
+                fields[key] = value
+        return self.request("ranged_safespots", **fields)
+
+    def npcs(self, uid: int, name: str, ids: list[int] | None = None, radius: int | None = None,
+             range: int | None = None) -> list[dict[str, Any]]:
+        """The NPCs called ``name`` (of ``ids``, within ``radius``) the character sees, nearest first: index, id,
+        location, whether each is fighting (``attacking_me``: the character), and ``holds``: whether, shot from where
+        the character stands with ``range``, it would stay stuck in shot chasing it (as ranged_safespots has it)."""
+        fields: dict[str, Any] = {"uid": uid, "name": name, "object": False}
+        for key, value in (("ids", ids), ("radius", radius), ("range", range)):
+            if value is not None:
+                fields[key] = value
+        return self.request("npcs", **fields)["npcs"]
+
     def set_retaliate(self, uid: int, on: bool = True) -> bool:
         """Turn auto-retaliate on or off, as the options tab's button does; off, the character doesn't fight back when
         attacked."""

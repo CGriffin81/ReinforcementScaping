@@ -110,26 +110,3 @@ Started 2026-10-31 (Caleb), from a review of the documentation.
   Sunday." Caleb hopes calibration was an unusually heavy lift and is nearly done. Reopens Sunday, 2026-11-08.
 - **Since:** Caleb cut quests on 2026-11-06 (every quest the server has is complete from the start), so sim v1 is
   the four skills only. The level-3 start stays.
-
-### OQ-29. Which armour stops Ava's devices?
-- **Raised:** 2026-11-07. Caleb noted that the devices don't work while any metal item is worn. The server's rule is
-  narrower (decision log).
-- **The server's rule** (`AvasDevice.isInterfered`, `RangeSwingHandler.getDropRate`):
-  - Only the chest piece counts, and only if its worn model is one of three (`AvasDevice.metalBodies`). That's 38
-    pieces (`data/ava_interference.csv`): the metal platebodies and chainbodies, trimmed, gilded, Zamorak and Guthix,
-    white, and the Temple Knight hauberks.
-  - It leaves out the iron chainbody, the Saradomin platebody and the dragon chainbody, whose models aren't listed,
-    and every helm, legs, shield, glove and boot.
-  - Interference stops only the device's 80% catch. The other 20% of shots still take the device's narrower roll, and
-    the accumulator still gathers those.
-  - Ava's own dialogue on the server says the device won't work with "certain metallic chest armours".
-- **Now:** the server's rule on both backends. A ranger wearing a device leaves interfering chest armour off, so
-  in the sim the device always works.
-- **Options:**
-  - **(a) Recommended:** keep the server's rule. Both backends agree, and the loadout keeps the device working.
-  - (b) Fix the server's gaps (a fork change): interference stops the whole device, and every metal chest piece
-    interferes, adding the three left out. Still chest only, as Ava says.
-  - (c) Caleb's rule (a fork change): any metal item worn stops the device. It needs a definition of metal, such as
-    the metals in item names (bronze to dragon). A ranger wearing a device would then leave all metal off.
-- **Decides:** Caleb (a game rule on both backends).
-- **Needed by:** before the combat gate closes.

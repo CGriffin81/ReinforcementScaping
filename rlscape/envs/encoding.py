@@ -118,8 +118,16 @@ def _metal_tier(name: str) -> int | None:
     return next((i + 1 for i, metal in enumerate(METALS) if lower.startswith(metal + " ")), None)
 
 
-def _bow_tier(name: str) -> int:
+BOW_LEVELS = (1, 5, 20, 30, 40, 50)  # the Ranged level each wood's bows need, BOW_WOODS' order
+RANGED_SKILL = 4  # Skills.RANGE, the item configs' requirement key
+
+
+def _bow_tier(name: str, item: int | None = None) -> int:
+    """A bow's wood; a crossbow (Caleb, 2026-11-07) takes the tier of the bows its Ranged level allows."""
     lower = name.lower()
+    if "crossbow" in lower or "c'bow" in lower:
+        level = gd.items()[item].requirements.get(RANGED_SKILL, 1) if item in gd.items() else 1
+        return max(i + 1 for i, need in enumerate(BOW_LEVELS) if need <= level)
     return next((i + 1 for i, wood in enumerate(BOW_WOODS) if wood and lower.startswith(wood + " ")), 1)
 
 
@@ -170,7 +178,7 @@ def item_roles(item: int) -> tuple[tuple[str, int], ...]:
     metal = _metal_tier(name) or 1
     if slot == WEAPON:
         if item in gd.ranged_weapons():
-            out.append(("ranged_weapon", _bow_tier(name)))
+            out.append(("ranged_weapon", _bow_tier(name, item)))
         elif item in _staves():
             out.append(("staff", _staff_tier(name)))
         else:

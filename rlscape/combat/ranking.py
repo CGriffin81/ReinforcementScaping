@@ -6,7 +6,7 @@ its expected loot (per loot mode) and its fighting rates (per fighter and plan).
 change from step to step is vectorised over every site of every monster with numpy:
 - walking time from the character to each site, and the share of the option left for fighting after bank trips,
   capped by how long the ammunition or runes last;
-- the access table and Slayer levels (cached per progress), the special-damage gear check (cached per shield), and
+- the access table (cached per progress), the special-damage gear check (cached per shield), and
   the retreat-aware filter (per HP and food);
 - the best site per monster, the best plan per monster, one entry per monster name, then the k best by XP/hr and
   the k best by gp/hr.
@@ -19,7 +19,7 @@ from functools import lru_cache
 
 import numpy as np
 
-from rlscape.combat.access import Progress, can_reach, meets_slayer_level
+from rlscape.combat.access import Progress, can_reach
 from rlscape.combat.candidates import (
     DRAGONFIRE_NPCS,
     TIE_DECIMALS,
@@ -27,12 +27,15 @@ from rlscape.combat.candidates import (
     Character,
     PoolEntry,
     has_special_damage_protection,
+    special_damage_shields,
     loot_per_kill,
     loot_rule,
     pickups_per_kill,
 )
-from rlscape.combat.rates import (EAT_BELOW_FRACTION, ESCAPE_ATTACKS, OVERHEAD_TICKS_PER_KILL, PICKUP_TICKS, Fighter,
-                                  Plan, Rates, combat_rates, site_slowdown, with_pickups)
+from rlscape.combat import safespots as ss
+from rlscape.combat.candidates import site_rates
+from rlscape.combat.rates import (EAT_BELOW_FRACTION, ESCAPE_ATTACKS, OVERHEAD_TICKS_PER_KILL, PICKUP_TICKS, REGEN_TICKS,
+                                  TICKS_PER_HOUR, Fighter, Plan, Rates, combat_rates, site_slowdown)
 from rlscape.travel import UNDERGROUND_Y_OFFSET, Destinations
 
 
@@ -44,6 +47,7 @@ class _PlanRates:
     xp_per_hour: np.ndarray  # total XP/hr
     ticks_per_kill: np.ndarray
     damage_per_kill: np.ndarray
+    damage_per_hour: np.ndarray
     poison_per_kill: np.ndarray
     breath_per_kill: np.ndarray
     damage_sd_per_kill: np.ndarray
@@ -75,6 +79,18 @@ class CandidateRanker:
         self.destinations = Destinations([tuple(int(v) for v in t) for t in tiles])
         self.segment_starts = np.flatnonzero(np.r_[True, np.diff(self.site_entry) != 0])
         self.dragonfire = np.array([e.npc.id in DRAGONFIRE_NPCS for e in pool])
+        # each site's safespot for each range (rlscape.combat.safespots): usable, the walk to the arrows and back,
+        # whether there's a way there, and the monsters it holds against
+        self.spots = {}
+        for tiles_range, style in ((ss.RANGE_TILES, "accurate"), (ss.LONGRANGE_TILES, "longrange")):
+            found = [ss.safespot(e.npc.id, s.spawn, Plan("ranged", style)) for e in pool for s in e.sites]
+            self.spots[tiles_range] = (np.array([s is not None for s in found], dtype=bool),
+                                       np.array([ss.trip_ticks(s) for s in found], dtype=float),
+                                       np.array([s is not None and s.walk is not None for s in found], dtype=bool),
+                                       np.array([s.held if s is not None else 0 for s in found], dtype=float),
+                                       np.array([s is not None and s.pickup_threats > 0 for s in found], dtype=bool))
+        # per monster: the shields that guard against its special damage (candidates.special_damage_shields)
+        self.special_shields = [special_damage_shields(e.npc) for e in pool]
 
     # --- cached, slowly changing inputs ------------------------------------------------------------------------------
 
@@ -96,6 +112,7 @@ class CandidateRanker:
         col = lambda f: np.array([f(r) if r is not None else nan for r in rates])  # noqa: E731
         return _PlanRates(col(lambda r: r.kills_per_hour), col(lambda r: sum(r.xp_per_hour.values())),
                           col(lambda r: r.ticks_per_kill), col(lambda r: r.damage_taken_per_kill),
+                          col(lambda r: r.damage_taken_per_hour),
                           col(lambda r: r.poison_per_kill), col(lambda r: r.breath_per_kill),
                           col(lambda r: np.sqrt(r.damage_taken_variance_per_kill)), col(lambda r: r.npc_max_hit),
                           col(lambda r: r.attacks_per_kill), rates)
@@ -109,14 +126,18 @@ class CandidateRanker:
                 np.array([pickups_per_kill(e.drops, rule) for e in self.pool]))
 
     @lru_cache(maxsize=1024)
-    def _access(self, progress: Progress) -> tuple[np.ndarray, np.ndarray]:
-        """(monster passes its Slayer level, site reachable)."""
-        slayer = np.array([meets_slayer_level(e.npc.id, progress) for e in self.pool])
+    def _access(self, progress: Progress) -> np.ndarray:
+        """Each site reachable (no Slayer levels: Caleb, OQ-32)."""
         reach = np.array([can_reach(self.pool[i].npc.name, (int(x), int(y), int(z)), progress)
                           for i, x, y, z in zip(self.site_entry, self.site_x,
                                                 np.where(self.site_under, self.site_y + UNDERGROUND_Y_OFFSET,
                                                          self.site_y), self.site_plane)])
-        return slayer, reach
+        return reach
+
+    @lru_cache(maxsize=64)
+    def _shields_ok(self, shields: frozenset[int]) -> np.ndarray:
+        """Per monster: no special damage, or a shield against it among `shields`."""
+        return np.array([not s or bool(s & shields) for s in self.special_shields])
 
     @lru_cache(maxsize=64)
     def _protected(self, shield_id: int | None) -> np.ndarray:
@@ -147,13 +168,14 @@ class CandidateRanker:
                dragonfire: dict[str, Fighter] | None = None) -> dict[str, list[Candidate]]:
         """candidates.select_candidates, with the same results, fast (`dragonfire` as there)."""
         gp_per_kill, slots_per_kill, pickups = self._loot(character.loot_mode, vocabulary)
-        slayer, reach = self._access(character.progress)
+        reach = self._access(character.progress)
         protected = self._protected(character.shield_id)
         travel = self._travel(character.location, character.home_teleport)
         can_go = self.destinations.reachable(character.reach)  # the character's ways there now
         walk_share = np.maximum(duration_ticks - travel, 0.0) / duration_ticks
         retreat = EAT_BELOW_FRACTION * character.max_hp
         budget = max(character.current_hp - retreat, 0.0) + character.food_healing
+        margin = ss.hp_margin(character.current_hp, character.max_hp)
         out: dict[str, list[Candidate]] = {}
         n = len(self.pool)
         for combat_class, (fighter, class_plans) in plans.items():
@@ -168,37 +190,66 @@ class CandidateRanker:
             else:
                 plan_rates = [self._shielded_rates(fighter, shielded, plan) for plan in class_plans]
                 guarded = protected | self.dragonfire
-            extra = PICKUP_TICKS[combat_class] * pickups  # each kill's pickups (rates.with_pickups)
+            overhead = OVERHEAD_TICKS_PER_KILL[combat_class]
+            se = self.site_entry
+            ranged = combat_class == "ranged"
             for p, r in enumerate(plan_rates):
-                valid = (slayer & guarded & ~np.isnan(r.kills_per_hour)
-                         & (r.npc_max_hit * ESCAPE_ATTACKS < retreat)
-                         & (r.damage_per_kill - character.poison_cover * r.poison_per_kill
-                            - character.antifire_cover * r.breath_per_kill  # less what antipoison and antifire keep off
-                            + 2.0 * r.damage_sd_per_kill <= budget))
+                # a ranger does without the special-damage gear from a safespot (site_rates)
+                valid = (guarded | ranged) & ~np.isnan(r.kills_per_hour)
+                harmless = ((r.npc_max_hit * ESCAPE_ATTACKS < retreat)
+                            & (r.damage_per_kill - character.poison_cover * r.poison_per_kill
+                               - character.antifire_cover * r.breath_per_kill  # less what antipoison and antifire keep off
+                               + 2.0 * r.damage_sd_per_kill <= budget))
                 with np.errstate(divide="ignore", invalid="ignore"):
-                    ticks = r.ticks_per_kill + extra  # a kill with its pickups, as rates.with_pickups has it
-                    scale = r.ticks_per_kill / ticks
-                    fight_ticks = np.where(slots_per_kill > 0, character.free_slots / slots_per_kill * ticks, np.inf)
+                    fighting_ticks = np.maximum(r.ticks_per_kill - overhead, 0.0)
+                    items = pickups[se]  # each kill's pickups, and a ranger's arrow piles and walk (site_rates)
+                    trip = np.zeros(len(se))
+                    supply = self.site_spawns
+                    harmless_at = harmless[se]
+                    if ranged:
+                        ok, walk_ticks, walkable, held, guarded_piles = self.spots[ss.style_range(class_plans[p])]
+                        # guarded arrows are fetched late with the shield worn: one carried (Caleb, OQ-33)
+                        shielded_trip = self._shields_ok(character.shields_carried)[se]
+                        ok = ok & (~guarded_piles | shielded_trip | guarded[se])  # (worn: a crossbow's)
+                        # it would need food (safespots.needs_safespot), or the gear can't guard it; NaN: False
+                        needs = ((r.damage_per_hour * duration_ticks / TICKS_PER_HOUR - duration_ticks / REGEN_TICKS
+                                  > margin) | ~guarded)[se]
+                        spotted = needs & ok
+                        if character.arrow_piles:
+                            piles = np.maximum(1.0, np.ceil(fighting_ticks / ss.PILE_PRIVATE_TICKS))[se]
+                            items = items + np.where(spotted & ~walkable, 0.0, piles)
+                        trip = np.where(spotted & (items > 0), walk_ticks, 0.0)
+                        supply = np.where(spotted, np.minimum(self.site_spawns, held), self.site_spawns)
+                        harmless_at = np.where(needs, spotted, harmless_at)  # from a safespot it does no harm
+                    extra = PICKUP_TICKS * items + trip
+                    ticks = r.ticks_per_kill[se] + extra  # a kill with its pickups, as rates.with_pickups has it
+                    scale = r.ticks_per_kill[se] / ticks
+                    fight_ticks = np.where(slots_per_kill[se] > 0, character.free_slots / slots_per_kill[se] * ticks,
+                                           np.inf)
                     # where a site runs out of monsters, kills come slower (site_slowdown), as in the reference
-                    slow = site_slowdown(ticks[self.site_entry], self.respawn[self.site_entry], self.site_spawns,
-                                         OVERHEAD_TICKS_PER_KILL[combat_class] + extra[self.site_entry])
-                    site_fight = fight_ticks[self.site_entry] * slow
+                    slow = site_slowdown(ticks, self.respawn[se], supply, overhead + extra)
+                    site_fight = fight_ticks * slow
                     fighting = np.where(np.isinf(site_fight), 1.0,
                                         np.where(site_fight > 0, site_fight / (site_fight + self.site_trip), 0.0))
-                    ammo_share = character.attacks_held / r.attacks_per_kill * ticks / duration_ticks
-                    share = np.where(reach & can_go & valid[self.site_entry],
-                                     np.minimum(fighting * walk_share, ammo_share[self.site_entry] * slow) / slow,
-                                     -np.inf)
-                    site_share, site_index = self._best_site(share)
+                    ammo_share = character.attacks_held / r.attacks_per_kill[se] * ticks / duration_ticks
+                    share = np.where(reach & can_go & valid[se] & harmless_at,
+                                     np.minimum(fighting * walk_share, ammo_share * slow) / slow, -np.inf)
+                    kills = r.kills_per_hour[se] * scale  # as with_pickups scales them
+                    # the site where it's killed fastest over the option, as the reference picks
+                    _, site_index = self._best_site(np.where(share > -np.inf, kills * share, -np.inf))
+                    at = np.maximum(site_index, 0)
+                    site_share = np.where(site_index >= 0, share[at], -np.inf)
+                    site_scale = scale[at]
                     ok = valid & (site_share > -np.inf)
-                    values = {"xp": np.where(ok, np.round(r.xp_per_hour * scale * site_share, TIE_DECIMALS), -np.inf),
-                              "gp": np.where(ok, np.round(r.kills_per_hour * gp_per_kill * scale * site_share,
+                    values = {"xp": np.where(ok, np.round(r.xp_per_hour * site_scale * site_share, TIE_DECIMALS),
+                                             -np.inf),
+                              "gp": np.where(ok, np.round(r.kills_per_hour * gp_per_kill * site_scale * site_share,
                                                           TIE_DECIMALS), -np.inf)}
                 first_valid = np.where(ok & (first_valid == n), np.arange(n), first_valid)
                 for key, v in values.items():
                     better = ok & (v > best[key])
                     best[key][better], pick[key][better] = v[better], p
-                    site_of[key][better], share_of[key][better] = site_index[better], site_share[better]
+                    site_of[key][better], share_of[key][better] = at[better], site_share[better]
             winners = {}
             for key in ("xp", "gp"):
                 winners[key] = self._per_name(best[key], first_valid)
@@ -207,9 +258,13 @@ class CandidateRanker:
             gp_slots = [i for i in winners["gp"] if self.name_codes[i] not in taken][:k]
             out[combat_class] = (
                 [self._candidate(i, class_plans[pick["xp"][i]], plan_rates[pick["xp"][i]], site_of["xp"][i],
-                                 share_of["xp"][i], travel, gp_per_kill, pickups) for i in xp_slots]
+                                 share_of["xp"][i], travel, gp_per_kill, pickups,
+                                 character.arrow_piles, guarded, margin, duration_ticks,
+                                 character.shields_carried) for i in xp_slots]
                 + [self._candidate(i, class_plans[pick["gp"][i]], plan_rates[pick["gp"][i]], site_of["gp"][i],
-                                   share_of["gp"][i], travel, gp_per_kill, pickups) for i in gp_slots])
+                                   share_of["gp"][i], travel, gp_per_kill, pickups,
+                                   character.arrow_piles, guarded, margin, duration_ticks,
+                                   character.shields_carried) for i in gp_slots])
         return out
 
     def _per_name(self, values: np.ndarray, first_valid: np.ndarray) -> np.ndarray:
@@ -224,11 +279,13 @@ class CandidateRanker:
         return winners[np.lexsort((name_first[self.name_codes[winners]], -values[winners]))]
 
     def _candidate(self, i: int, plan: Plan, rates: _PlanRates, site_index: int, share: float, travel: np.ndarray,
-                   gp_per_kill: np.ndarray, pickups: np.ndarray) -> Candidate:
+                   gp_per_kill: np.ndarray, pickups: np.ndarray, arrow_piles: bool, protected: np.ndarray,
+                   margin: float, duration: float, shields: frozenset[int]) -> Candidate:
         entry, fight = self.pool[i], rates.rates[i]
-        r = with_pickups(fight, float(pickups[i]), plan.combat_class)
-        scale = fight.ticks_per_kill / r.ticks_per_kill
         site = entry.sites[int(site_index - self.segment_starts[i])]
+        r, _ = site_rates(entry, plan, fight, site, float(pickups[i]), arrow_piles, bool(protected[i]), margin,
+                          duration, shields)
+        scale = fight.ticks_per_kill / r.ticks_per_kill
         return Candidate(entry, plan, site, r, r.kills_per_hour * share,
                          {skill: xp * share for skill, xp in r.xp_per_hour.items()},
                          fight.kills_per_hour * gp_per_kill[i] * scale * share, float(travel[site_index]))

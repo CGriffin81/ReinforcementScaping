@@ -38,6 +38,7 @@ COMBAT_SPELL_DIR = SERVER_CONTENT.parent / "core" / "game" / "node" / "entity" /
 MODERN_SPELLS = SERVER_CONTENT / "global" / "skill" / "magic" / "modern"
 PRICES = REPO / "data" / "prices_v2.csv"
 AVA_INTERFERENCE = REPO / "data" / "ava_interference.csv"
+RANGED_SAFESPOTS = REPO / "data" / "ranged_safespots.csv"
 ITEM_DEFINITIONS = REPO / "data" / "item_definitions.csv"  # scripts/export_item_definitions.py (cache)
 NPC_DEFINITIONS = REPO / "data" / "npc_definitions.csv"  # scripts/export_npc_definitions.py (cache)
 BANKS = REPO / "data" / "banks.csv"  # curated bank tiles; see the file's "check" column
@@ -205,6 +206,36 @@ def ava_interfering_items() -> frozenset[int]:
     server's own list, exported by scripts/export_ava_interference.py). Only the chest slot counts."""
     with AVA_INTERFERENCE.open(newline="", encoding="utf-8") as f:
         return frozenset(int(r["item_id"]) for r in csv.DictReader(f))
+
+
+@dataclass(frozen=True)
+class RangedSafespot:
+    """The best tile to shoot a site's monster from that it can't attack back from (the bridge's ranged_safespots,
+    exported by scripts/export_ranged_safespots.py)."""
+
+    tile: tuple[int, int, int]
+    held: int  # the site's monsters (spawned within its radius) it holds against
+    share: float  # of their wandering it holds from, on average (attacked at their spawn, it always does)
+    steps: float  # how far they walk chasing before they stick, on average
+    walk: int | None  # tiles from it to where their arrows land, on average; None if there's no way there
+    threats: int  # aggressive monsters that reach it until aggression runs out
+    pickup_threats: int  # aggressive monsters, besides the one killed, whose leash covers its arrows
+
+
+@cache
+def ranged_safespots() -> dict[tuple[int, tuple[int, int, int], int], RangedSafespot | None]:
+    """(NPC id, site spawn, range) -> its best safespot, or None where the export found none. Range is the attack
+    style's (7, or 9 long-ranged). A site missing from the file wasn't checked; no file, nothing was."""
+    if not RANGED_SAFESPOTS.exists():
+        return {}
+    out: dict[tuple[int, tuple[int, int, int], int], RangedSafespot | None] = {}
+    with RANGED_SAFESPOTS.open(newline="", encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            key = (int(r["npc_id"]), (int(r["site_x"]), int(r["site_y"]), int(r["site_z"])), int(r["range"]))
+            out[key] = None if r["found"] != "1" else RangedSafespot(
+                (int(r["tile_x"]), int(r["tile_y"]), int(r["tile_z"])), int(r["held"]), float(r["share"]),
+                float(r["steps"]), int(r["walk"]) if r["walk"] else None, int(r["threats"]), int(r["pickup_threats"]))
+    return out
 
 
 @cache

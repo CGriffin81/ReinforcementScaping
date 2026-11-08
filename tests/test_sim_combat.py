@@ -240,13 +240,13 @@ def test_each_looted_drop_takes_its_pickup_time_in_the_sim_and_the_rates():
         per_kill[mode] = ticks / kills
     pickups = pickups_per_kill(cow.drops, loot_rule("all"))
     assert pickups == pytest.approx(3, abs=0.1)  # bones, hide and beef, and now and then a stackable
-    assert per_kill["all"] - per_kill["none"] == pytest.approx(PICKUP_TICKS["melee"] * pickups, abs=2.0)
+    assert per_kill["all"] - per_kill["none"] == pytest.approx(PICKUP_TICKS * pickups, abs=2.0)
     state = with_levels(CharacterState.fresh(), 40, "attack", "strength", "defence")
     state.inventory = {RUNE_SCIMITAR: 1}
     wield_best(state, "melee")
     fought = combat_rates(fighter_for(state), plan, cow.npc, 0)
-    looted = with_pickups(fought, pickups, "melee")
-    assert looted.ticks_per_kill == pytest.approx(fought.ticks_per_kill + pickups * PICKUP_TICKS["melee"])
+    looted = with_pickups(fought, pickups)
+    assert looted.ticks_per_kill == pytest.approx(fought.ticks_per_kill + pickups * PICKUP_TICKS)
     assert looted.kills_per_hour == pytest.approx(6000 / looted.ticks_per_kill)
     assert looted.damage_taken_per_kill == fought.damage_taken_per_kill
-    assert with_pickups(fought, 0.0, "melee") is fought
+    assert with_pickups(fought, 0.0) is fought

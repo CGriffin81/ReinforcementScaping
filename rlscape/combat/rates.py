@@ -8,8 +8,8 @@ Known simplifications, to refine against calibration data:
 - time to kill is the expected number of swings until their damage reaches the NPC's HP, the last hit's overkill
   included (swings_to_kill; Caleb, 2026-11-07), with the flicked and plain swings mixed at random rather than in
   their pattern; the NPC doesn't regenerate;
-- a constant per-kill overhead covers finding the next target and walking to it, and each looted drop adds a
-  constant pickup time (with_pickups);
+- a constant per-kill overhead covers finding the next target and walking to it, and each ground item picked up
+  (a drop, a pile of arrows) adds a constant pickup time (with_pickups);
 - a melee weapon attacks with whichever of stab / slash / crush it has the highest bonus in.
 
 Fights flick prayers (rlscape.combat.prayers): the monster's hits of a style the character can protect itself from
@@ -37,13 +37,12 @@ HP_XP_PER_DAMAGE = 1.33
 # want 1, the experiments' cave about 7. It was 10 and 8 on 2026-11-05, when a bridge character's kills took about
 # three clicks each (every character had account uid 0); now about one. Magic is taken as ranged (uncalibrated).
 OVERHEAD_TICKS_PER_KILL = {"melee": 3, "ranged": 3, "magic": 3}
-# Picking up a drop the loot mode keeps, per drop (a ground item, whatever its amount): the click and the walk to it.
-# Fitted on the loot runs with the overhead above, the runner looting between kills attacked or not as the sim does
-# (Caleb, 2026-11-07; the ranker's top gp picks, combat-20261107-0357-valuable.json): melee 0.98 to 1.13; ranged 0.90
-# to 1.27, two cases outside the gate. Ranged's also covers the walks to its landed arrows, a few piles a kill, taken
-# as they land, which the sim recovers with the kill and a cost a drop can't follow (raised for Caleb). Magic, with no
-# ammunition to pick up, is taken as melee (uncalibrated).
-PICKUP_TICKS = {"melee": 5, "ranged": 18, "magic": 5}
+# Picking up a ground item the loot mode keeps (a drop, or a pile of arrows), whatever its amount: the click and the
+# walk to it, one time for every class (Caleb, 2026-11-07, OQ-27 (d)). Melee's fit on the loot runs, the runner
+# looting between kills attacked or not as the sim does (the ranker's top gp picks, combat-20261107-0357-valuable.json:
+# 0.98 to 1.13). Ranged's arrow piles are now counted apiece (rlscape.combat.safespots), so its own 18, which covered
+# them, is gone; to refit on ranged runs from safespots.
+PICKUP_TICKS = 5
 EAT_BELOW_FRACTION = 0.5  # combat options eat below 50% HP and retreat when food runs out (option catalog §4.B)
 ESCAPE_ATTACKS = 2  # NPC attacks a retreating character can still take while it disengages; calibrate on the server
 # Poison (core.game.system.timer.impl.Poison): a timer that hits every 30 ticks for floor((severity + 4) / 5), the
@@ -51,6 +50,7 @@ ESCAPE_ATTACKS = 2  # NPC attacks a retreating character can still take while it
 # in 10 (the swing handlers' adjustBattleState), so a protection prayer stops its damage but not its poison.
 POISON_TICKS = 30
 POISON_CHANCE = 0.4
+REGEN_TICKS = 101  # SkillRestore: a hitpoint back each time the counter check `++ >= 100` fires, every 101 ticks
 # Dragonfire (DragonfireSwingHandler; ChromaticDragonNPC, MetalDragonNPC): a dragon picks each swing at random from its
 # two melee attacks and its breath (MultiSwingHandler), so one in three is breath, and from a distance every one. The
 # breath always lands, uniform from 0 to its max, 52, which an anti-dragon shield cuts by 90% and an antifire potion by
@@ -255,14 +255,15 @@ def swings_to_kill(hitpoints: int, kinds: tuple[tuple[float, float, int], ...]) 
     return sum(p / rate * landed_hits_to_kill(hitpoints, max_hit) for p, max_hit in landing) / rate
 
 
-def with_pickups(rates: Rates, pickups_per_kill: float, combat_class: str) -> Rates:
-    """The rates with each kill's pickups timed in: `pickups_per_kill` drops picked up, PICKUP_TICKS each, after the
-    kill. The hourly rates fall in proportion; the monster's damage doesn't (it's dead), but poison runs on. The
-    per-kill damage, which the danger filter reads, stays the fight's: a pickup's poison is a few hundredths of a
-    hitpoint. The fast ranker (rlscape.combat.ranking) does the same arithmetic on its arrays."""
-    if pickups_per_kill <= 0:
+def with_pickups(rates: Rates, pickups_per_kill: float, extra_ticks: float = 0.0) -> Rates:
+    """The rates with each kill's pickups timed in: `pickups_per_kill` ground items picked up, PICKUP_TICKS each,
+    after the kill, and `extra_ticks` more (a ranger's walk from its safespot to them and back). The hourly rates fall
+    in proportion; the monster's damage doesn't (it's dead), but poison runs on. The per-kill damage, which the danger
+    filter reads, stays the fight's: a pickup's poison is a few hundredths of a hitpoint. The fast ranker
+    (rlscape.combat.ranking) does the same arithmetic on its arrays."""
+    if pickups_per_kill <= 0 and extra_ticks <= 0:
         return rates
-    ticks = rates.ticks_per_kill + PICKUP_TICKS[combat_class] * pickups_per_kill
+    ticks = rates.ticks_per_kill + (PICKUP_TICKS * pickups_per_kill + extra_ticks)  # as the fast ranker adds them
     scale = rates.ticks_per_kill / ticks
     fighting = rates.damage_taken_per_hour - rates.poison_per_hour
     return replace(rates, kills_per_hour=rates.kills_per_hour * scale,
@@ -271,6 +272,14 @@ def with_pickups(rates: Rates, pickups_per_kill: float, combat_class: str) -> Ra
                    damage_taken_per_hour=fighting * scale + rates.poison_per_hour,
                    damage_taken_variance_per_hour=rates.damage_taken_variance_per_hour * scale,
                    breath_per_hour=rates.breath_per_hour * scale)
+
+
+def unharmed(rates: Rates) -> Rates:
+    """The rates fought from a safespot, where the monster can't attack (rlscape.combat.safespots): no damage, no
+    poison, no breath."""
+    return replace(rates, damage_taken_per_hour=0.0, damage_taken_variance_per_hour=0.0, npc_hit_chance=0.0,
+                   npc_max_hit=0, damage_taken_per_kill=0.0, damage_taken_variance_per_kill=0.0, poison_per_kill=0.0,
+                   poison_per_hour=0.0, breath_per_kill=0.0, breath_per_hour=0.0)
 
 
 def site_slowdown(ticks_per_kill, respawn, spawns, overhead: float):

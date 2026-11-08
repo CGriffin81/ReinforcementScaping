@@ -95,11 +95,11 @@ def test_shots_that_land_come_back_only_when_the_loot_mode_takes_arrows():
     state.inventory[BRONZE_ARROW] = 10_000
     wield_best(state, "ranged")
     plan, rng = Plan("ranged", f.RAPID), np.random.default_rng(0)
-    possible, pay = _ammunition(state, plan, 20_000, rng, loot_rule("valuable"))
+    possible, pay, _ = _ammunition(state, plan, 20_000, rng, loot_rule("valuable"))
     assert possible == 20_000
     pay(possible)
     assert 10_025 - state.worn(AMMO) == pytest.approx(20_000 / 5, rel=0.05)  # 1 in 5 breaks at level 1
-    possible, pay = _ammunition(state, plan, 20_000, rng, loot_rule("none"))
+    possible, pay, _ = _ammunition(state, plan, 20_000, rng, loot_rule("none"))
     stack = state.worn(AMMO)
     assert possible == stack  # every shot is gone
     pay(possible)

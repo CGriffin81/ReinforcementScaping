@@ -15,10 +15,19 @@ on, and loot with the case's mode (`--loot`, option catalog §4.D; the default, 
 was measured).
 
 A server run: debug_teleport to the site's spawn (setup only), then as a person plays, a tick at a time: when the
-character has no target and isn't walking, click "Attack" on the nearest monster of the case's id; eat when
+character has no target and isn't walking, click "Attack" on the nearest monster of the case's id (in the case's
+style: a ranged case in the ranker's, clicked on the weapon tab, as Caleb chose on 2026-11-07, or with --style
+accurate the server's default, as before; melee in accurate); eat when
 hitpoints are at or under half (the sim's rule, rlscape.sim.health); click again only after IDLE_TICKS idle, as a
 person waits for the walk to start; stop when there's no food left to eat then
 (the sim retreats), at death, or when the budget runs out. Busy STUCK_TICKS without XP, it walks back to the spawn.
+Ranged fights safespot as the sim's do (rlscape.combat.safespots; Caleb, 2026-11-07, OQ-27 (d)): where the sim's
+fight shoots from the site's safespot, the runner stands on it (setup only) with auto-retaliate off, as rangers
+safespotting do (retaliating walks them off it), and attacks only a monster it holds against, once that one stands
+still where it holds (the bridge's `npcs`), so the chase sticks; between kills it fetches its drops and arrows and
+walks back; walked off it in a fight (the target stepped before its first hit landed), it clicks back onto it. Ranged loots only between kills (no target), so its arrows wait for the kill; while aggressive monsters
+guard them and aggression hasn't run out (TOLERANCE_TICKS at the site), it leaves them until the oldest would go, and against dragons wears the
+anti-dragon shield it carries for that trip, the bow back after (Caleb, OQ-33).
 Looting, as a person loots their own kills: after a kill it waits for the drop (up to DROP_WAIT_TICKS, the default
 death animation, DeathTask) before the next attack; between kills, attacked or not (Caleb, 2026-11-07: the sim picks
 up after every kill), it takes the nearest of its own drops the loot mode keeps and has room for (`take`, after
@@ -48,15 +57,17 @@ from typing import Any
 import numpy as np
 
 from rlscape.bridge.client import BridgeClient, BridgeError, run_suffix
-from rlscape.combat.candidates import LOOT_MODES, enemy_pool, loot_rule
+from rlscape.combat.candidates import (ANTI_DRAGON_SHIELD, LOOT_MODES, SITE_RADIUS, enemy_pool, loot_rule,
+                                       special_damage_shields)
+from rlscape.combat.safespots import GROUND_TICKS, style_range, trip_ticks
 from rlscape.combat.rates import HP_XP_PER_DAMAGE, Plan, combat_rates
 from rlscape.gamedata import server as gd
-from rlscape.sim.combat import fight
+from rlscape.sim.combat import fight, safespot_for
 from rlscape.sim.equipment import fighter_for, wield_best
 from rlscape.sim.health import retreat_hp
 from rlscape.sim.skills import SKILL_INDEX, XP_FOR_LEVEL
 from rlscape.sim.slots import CombatSlots
-from rlscape.sim.state import SPAWN, CharacterState
+from rlscape.sim.state import SPAWN, TOLERANCE_TICKS, CharacterState
 from rlscape.vocabulary import vocabulary
 
 REPO = Path(__file__).resolve().parents[1]
@@ -78,9 +89,17 @@ MELEE = {31: (1331, 1161, 1111, 1073, 1199),  # adamant scimitar, full helm, cha
 MELEE[1] = (1277, 1171)  # the starter kit's bronze sword and wooden shield
 RANGED = {1: ((841, 1), (882, 500)),  # the starter kit's shortbow, and its bronze arrows made 500
           31: ((853, 1), (890, 500), (1169, 1), (1129, 1), (1095, 1)),  # maple shortbow, adamant arrows, coif, leather
-          61: ((861, 1), (892, 500), (1169, 1), (1129, 1), (1099, 1)),  # magic shortbow, rune arrows, coif, leather
-          91: ((861, 1), (892, 500), (1169, 1), (1129, 1), (1099, 1))}  # body, green d'hide chaps
+          # rune crossbow and rune bolts (Caleb, 2026-11-07: one-handed, so the anti-dragon shield is worn), coif,
+          # leather body, green d'hide chaps
+          61: ((9185, 1), (9144, 500), (1169, 1), (1129, 1), (1099, 1)),
+          91: ((9185, 1), (9144, 500), (1169, 1), (1129, 1), (1099, 1))}
+# A ranger also carries an anti-dragon shield, worn for a late pickup trip where dragons guard its arrows (Caleb,
+# 2026-11-07, OQ-33); a bow takes no shield, so it stays in the inventory otherwise
+RANGED = {band: (*kit, (ANTI_DRAGON_SHIELD, 1)) for band, kit in RANGED.items()}
 FOOD = {1: TROUT}  # above band 1: lobsters
+WEAPON_TABS = {"CROSSBOW": 79}  # the weapon tab with the weapon wielded (WeaponInterfaces.CROSSBOW; bows, BOW's 77)
+BOW_TAB = 77
+BOW_STYLE_BUTTONS = {"accurate": 2, "rapid": 4, "longrange": 3}  # WeaponInterface.setAttackStyle's, bows and crossbows
 
 
 @dataclass(frozen=True)
@@ -93,10 +112,11 @@ class Case:
     hitpoints: int  # the monster's
     slot: int = 0  # the ranker's slot it came from
     loot: str = "none"  # the loot mode both sides fight with
+    style: str = "accurate"  # the attack style both sides fight in
 
     @property
     def plan(self) -> Plan:
-        return Plan(self.combat_class, "accurate")
+        return Plan(self.combat_class, self.style)
 
 
 def gear(case_class: str, band: int) -> tuple[tuple[int, int], ...]:
@@ -125,24 +145,35 @@ def character(combat_class: str, band: int, food: int = MAX_FOOD) -> CharacterSt
     return state
 
 
+def case_safespot(case: "Case", budget: int) -> gd.RangedSafespot | None:
+    """The safespot the sim's fight shoots from in this case, if it does (rlscape.sim.combat.safespot_for)."""
+    state = character(case.combat_class, case.band, food=0)
+    wield_best(state, case.combat_class)
+    entry = next(e for e in enemy_pool() if e.npc.id == case.npc)
+    site = next(s for s in entry.sites if s.spawn == case.site)
+    return safespot_for(state, case.plan, entry.npc, site, budget)
+
+
 def food_for(case: "Case", budget: int) -> int:
     """The food a fight of `budget` ticks needs: the sim's expected damage over it (prayers flicked as the fight
-    flicks them, so none from a monster whose one style they cover), less the hitpoints above the retreat point,
-    in the band's food, plus FOOD_MARGIN; at most MAX_FOOD."""
+    flicks them, so none from a monster whose one style they cover; none from a safespot), less the hitpoints above
+    the retreat point, in the band's food, plus FOOD_MARGIN; at most MAX_FOOD."""
     state = character(case.combat_class, case.band, food=0)
     wield_best(state, case.combat_class)
     npc = gd.npcs()[case.npc]
     rates = combat_rates(fighter_for(state), case.plan, npc, 0.0)
     if rates is None:
         return MAX_FOOD
-    damage = rates.damage_taken_per_hour * budget / TICKS_PER_HOUR - (state.hp - retreat_hp(state))
+    taken = 0.0 if case_safespot(case, budget) is not None else rates.damage_taken_per_hour
+    damage = taken * budget / TICKS_PER_HOUR - (state.hp - retreat_hp(state))
     heal = gd.food_healing()[food_item(case.band)]
     return min(max(ceil(damage / heal), 0) + FOOD_MARGIN, MAX_FOOD)
 
 
-def cases(bands: list[int], classes: list[str], slot: int = 0, loot: str = "none") -> list[Case]:
+def cases(bands: list[int], classes: list[str], slot: int = 0, loot: str = "none", ranked_style: bool = False) -> list[Case]:
     """The sim ranker's slot (0: the top by XP) for each band and class, the character at Lumbridge, ranking with
-    the loot mode (without looting, with the fresh character's, as the fit set was chosen)."""
+    the loot mode (without looting, with the fresh character's, as the fit set was chosen). Fought in the accurate
+    style, or with `ranked_style` a ranged case in the ranker's (its safespot can need a long-ranged bow's reach)."""
     slots, out = CombatSlots(VOCABULARY), []
     for band in bands:
         for combat_class in classes:
@@ -154,7 +185,9 @@ def cases(bands: list[int], classes: list[str], slot: int = 0, loot: str = "none
             if candidate is None:
                 continue
             npc = candidate.entry.npc
-            out.append(Case(combat_class, band, npc.id, npc.name, candidate.site.spawn, npc.hitpoints, slot, loot))
+            style = candidate.plan.style if ranked_style and combat_class == "ranged" else "accurate"
+            out.append(Case(combat_class, band, npc.id, npc.name, candidate.site.spawn, npc.hitpoints, slot, loot,
+                            style))
     return out
 
 
@@ -205,8 +238,19 @@ def holding(state: dict[str, Any]) -> dict[int, int]:
     return out
 
 
-def setup(client: BridgeClient, case: Case, budget: int) -> int:
+def setup(client: BridgeClient, case: Case, budget: int) -> tuple[int, dict | None]:
+    """The character for a run, at the site; with the sim's safespot for the case, on it (the server's tile the sim's
+    is, found again for this world's monster indices) with the indices of those it holds against. Despawned if
+    anything fails, so no character is left in the world."""
     uid = client.spawn()["uid"]
+    try:
+        return uid, _prepare(client, uid, case, budget)
+    except BaseException:
+        client.despawn(uid)
+        raise
+
+
+def _prepare(client: BridgeClient, uid: int, case: Case, budget: int) -> dict | None:
     if case.band > 1:
         client.debug_set_levels(uid, {skill: case.band for skill in (*COMBAT, "prayer")})
     for item in {i["id"] for i in client.state(uid)["inventory"]}:
@@ -229,47 +273,80 @@ def setup(client: BridgeClient, case: Case, budget: int) -> int:
         client.wait(1)
     worn = {i["id"] for i in client.state(uid)["equipment"]}
     assert set(worn_by_the_sim(case)) <= worn, f"wearing {worn}, the sim wears {worn_by_the_sim(case)}"
-    client.set_retaliate(uid, True)
+    if case.style != "accurate":  # the weapon tab's style button (WeaponInterface.setAttackStyle)
+        weapon = next(i["id"] for i in client.state(uid)["equipment"] if i["id"] in gd.ranged_weapons())
+        tab = WEAPON_TABS.get(gd.ranged_weapons()[weapon].weapon_type, BOW_TAB)
+        assert client.interface_button(uid, tab, BOW_STYLE_BUTTONS[case.style]), f"no {case.style} button"
+    spot = case_safespot(case, budget)
+    client.set_retaliate(uid, spot is None)  # rangers safespotting turn it off: retaliating walks them off the tile
     client.flick(uid)  # protection prayers, as the sim's fights flick them (none below their levels)
     client.debug_teleport(uid, *case.site)
-    client.wait(3)
-    return uid
+    client.wait(1)
+    if spot is None:
+        client.wait(2)
+        return None
+    tiles = client.ranged_safespots(uid, case.name, ids=[case.npc], radius=SITE_RADIUS, range=style_range(case.plan),
+                                    limit=10)["tiles"]
+    assert tiles, f"the server finds no safespot for {case.name} at {case.site} (range {style_range(case.plan)})"
+    mine = [s for s in tiles if (s["tile"]["x"], s["tile"]["y"], s["tile"]["z"]) == spot.tile]
+    chosen = (mine or tiles)[0]
+    tile = (chosen["tile"]["x"], chosen["tile"]["y"], chosen["tile"]["z"])
+    client.debug_teleport(uid, *tile)
+    client.wait(2)
+    return {"tile": tile, "held": {a["index"] for a in chosen["against"]}, "guarded": spot.pickup_threats > 0,
+            "trip": trip_ticks(spot), "same_tile": bool(mine)}
 
 
 def server_run(client: BridgeClient, case: Case, budget: int) -> dict[str, Any]:
     """One run on the server, a tick at a time (a `schedule` step sends the click decided from the last reading)."""
-    uid = setup(client, case, budget)
+    uid, spot = setup(client, case, budget)
     try:
         attack = {"cmd": "interact", "uid": uid, "name": case.name, "option": "Attack", "object": False,
                   "ids": [case.npc], "packet": True}
-        back = {"cmd": "walk_to", "uid": uid, "x": case.site[0], "y": case.site[1], "z": case.site[2], "packet": True}
+        home = spot["tile"] if spot else case.site
+        back = {"cmd": "walk_to", "uid": uid, "x": home[0], "y": home[1], "z": home[2], "packet": True}
         looting, keep, stackable = case.loot != "none", loot_rule(case.loot, VOCABULARY), gd.stackable_items()
         fills = looting and fills_inventory(case)
         ammo = {i["id"] for i in client.state(uid)["equipment"] if i["id"] in stackable}
-        pending, first, prev_hp, prev_xp, last_gain, idle, still = [attack], None, 0, 0.0, 0, 0, 0
-        mine: set[tuple[int, int, int]] = set()  # its drops (id, x, y), still its own once they turn public
-        fighting, ended_at, dropped_at = False, -DROP_WAIT_TICKS, -1
+        pending, first, prev_hp, prev_xp, last_gain, idle, still = [attack] if not spot else [], None, 0, 0.0, 0, 0, 0
+        mine: dict[tuple[int, int, int], int] = {}  # its ground items (id, x, y) -> when first seen
+        fighting, ended_at, dropped_at, started_at, last_kill = False, -DROP_WAIT_TICKS, -1, 0, 0
         counts = {"clicks": 0, "no_target": 0, "eaten": 0, "eat_clicks": 0, "hits_taken": 0, "damage_taken": 0,
-                  "walked_back": 0, "taken": 0}
+                  "walked_back": 0, "taken": 0, "trips": 0, "off_tile": 0}
+        if spot:
+            counts["same_tile"] = spot["same_tile"]
         food = None  # food carried at the last reading
         ended = "completed"
+        fetching = False  # a safespotter out for its drops and arrows
+        late, shield_on = False, False  # out late, the guards there; its shield worn for that against special damage
+        guards_shield = next(iter(special_damage_shields(gd.npcs()[case.npc]) & set(holding(client.state(uid)))),
+                             None)
+        bow = client.state(uid)["equipment"]
+        bow = next((i["id"] for i in bow if i["id"] in gd.ranged_weapons()), None)
         while True:
             reads = [{"cmd": "state", "uid": uid}, {"cmd": "ground_items", "uid": uid, "radius": LOOT_RADIUS}]
+            if spot:
+                reads.append({"cmd": "npcs", "uid": uid, "name": case.name, "ids": [case.npc], "object": False,
+                              "radius": LOOT_RADIUS, "range": style_range(case.plan)})
             step = client.schedule([[*pending, *reads]])[0]
-            results, state, ground = step["results"], step["results"][-2]["state"], step["results"][-1]["items"]
-            if pending and pending[0] is attack:
+            results = step["results"]
+            state, ground = results[len(pending)]["state"], results[len(pending) + 1]["items"]
+            seen = results[-1]["npcs"] if spot else []
+            if pending and pending[0].get("cmd") == "interact":
                 counts["clicks" if results[0].get("ok") else "no_target"] += 1
             first = first or (step["tick"], state)
             offset = step["tick"] - first[0]
             for item in ground:
                 key = (item["id"], item["location"]["x"], item["location"]["y"])
                 if item["own"] and key not in mine:
-                    mine.add(key)
+                    mine[key] = offset
                     dropped_at = offset
             if state["target"] is not None:
+                if not fighting:
+                    started_at = last_gain = offset  # STUCK_TICKS counts from the fight's start (a safespotter waits)
                 fighting = True
             elif fighting:  # the target is gone: killed, most likely
-                fighting, ended_at = False, offset
+                fighting, ended_at, last_kill = False, offset, offset - started_at
             hp, gained = state["hitpoints"], sum(xp(state, s) for s in COMBAT)
             now = food_count(state)
             counts["eaten"] += max((food if food is not None else now) - now, 0)  # food looted only adds
@@ -280,6 +357,9 @@ def server_run(client: BridgeClient, case: Case, budget: int) -> dict[str, Any]:
             if gained > prev_xp:
                 last_gain = offset
             prev_hp, prev_xp = hp, gained
+            if spot and not fetching and (state["location"]["x"], state["location"]["y"],
+                                          state["location"]["z"]) != spot["tile"]:
+                counts["off_tile"] += 1  # a safespotter off its tile, not out for its loot
             if hp <= 0:
                 ended = "died"
                 break
@@ -292,10 +372,25 @@ def server_run(client: BridgeClient, case: Case, budget: int) -> dict[str, Any]:
             held = holding(state)
             loot = [i for i in ground if (i["id"], i["location"]["x"], i["location"]["y"]) in mine and keep(i["id"])
                     and (free > 0 or (i["id"] in stackable and i["id"] in held))] if looting else []
+            if case.combat_class == "ranged" and state["target"] is not None:
+                loot = []  # its arrows wait for the kill
+            if spot and loot and not fetching:
+                # out for them between kills, unless the walk would take hits: guarded, aggression not yet run out;
+                # then just before the oldest would go, the next kill and the walk counted (the sim's rule)
+                oldest = min(mine[(i["id"], i["location"]["x"], i["location"]["y"])] for i in loot)
+                # nothing attacking it (a stuck monster would hit it off the tile), and no guards unless tolerated
+                safe = not state["attackers"] and (not spot["guarded"] or offset >= TOLERANCE_TICKS)
+                if safe or offset - oldest + last_kill + spot["trip"] >= GROUND_TICKS:
+                    fetching, late = True, not safe
+                    counts["trips"] += 1
+                else:
+                    loot = []
+            elif spot and not fetching:
+                loot = []
             waiting = looting and offset - ended_at < DROP_WAIT_TICKS and dropped_at < ended_at
             pending = []
-            if state["target"] is not None or state["moving"] or state["attackers"]:
-                idle = 0
+            if state["target"] is not None or state["moving"] or (state["attackers"] and not spot):
+                idle = 0  # (on a safespot, monsters stuck attacking it don't hold it back)
             still = 0 if state["moving"] else still + 1
             max_hp = next(s["level"] for s in state["skills"] if s["name"].lower() == "hitpoints")
             if hp <= max_hp // 2:  # the sim's rule: eat at or under half (retreat_hp)
@@ -305,6 +400,15 @@ def server_run(client: BridgeClient, case: Case, budget: int) -> dict[str, Any]:
                     break
                 pending = [{"cmd": "item_option", "uid": uid, "item": held[0], "option": "Eat", "packet": True}]
                 counts["eat_clicks"] += 1
+            elif spot and not fetching and not loot and not state["moving"] and (
+                    state["location"]["x"], state["location"]["y"], state["location"]["z"]) != spot["tile"]:
+                # walked off its safespot (a target that stepped before its first hit chased from where the tile
+                # doesn't hold it): back on, as a ranger re-clicks the spot; that stops the fight, which starts again
+                pending = [back]
+                counts["walked_back"] += 1
+            elif loot and late and guards_shield and not shield_on:  # the shield on for the guarded trip (OQ-33)
+                pending, shield_on = [{"cmd": "item_option", "uid": uid, "item": guards_shield, "option": "Wear",
+                                       "packet": True}], True
             elif loot and still >= TAKE_IDLE_TICKS:
                 # loot first, attacked or not (Caleb, 2026-11-07), as the sim picks up after each kill before the next:
                 # the runner starts no fight with its loot on the ground, so a target now is one it retaliated on
@@ -312,11 +416,27 @@ def server_run(client: BridgeClient, case: Case, budget: int) -> dict[str, Any]:
                 pending, idle, still = [{"cmd": "take", "uid": uid, "item": item["id"], "x": item["location"]["x"],
                                          "y": item["location"]["y"], "packet": True}], 0, 0
                 counts["taken"] += 1
+            elif spot and not loot and state["target"] is None and not state["moving"] and not waiting:
+                # on the safespot (walking back to it first): a held monster standing still where it holds
+                here = (state["location"]["x"], state["location"]["y"], state["location"]["z"])
+                fetching, late = False, False
+                if shield_on and bow is not None:  # the bow back on for the fight
+                    pending, shield_on = [{"cmd": "item_option", "uid": uid, "item": bow, "option": "Wield",
+                                           "packet": True}], False
+                    continue
+                if here != spot["tile"]:
+                    pending = [back]
+                    continue
+                idle += 1
+                ready = [n for n in seen if n["index"] in spot["held"] and n["holds"]
+                         and (n["attacking_me"] or not (n["fighting"] or n["moving"]))]
+                if ready and idle >= IDLE_TICKS:
+                    pending, idle = [{**attack, "index": ready[0]["index"]}], 0
             elif state["target"] is None and not state["moving"] and not state["attackers"]:
                 idle += 1
                 if not loot and not waiting and idle >= IDLE_TICKS:
                     pending, idle = [attack], 0
-            elif offset - last_gain > STUCK_TICKS:
+            elif offset - last_gain > STUCK_TICKS and not spot:  # (a safespotter's hits are just slow)
                 pending, last_gain = [back], offset
                 counts["walked_back"] += 1
     finally:
@@ -414,6 +534,8 @@ def main() -> None:
     parser.add_argument("--classes", nargs="+", default=["melee", "ranged"])
     parser.add_argument("--slot", type=int, default=0, help="the ranker's slot: 0 the top by XP, 3 the top by gp")
     parser.add_argument("--loot", choices=LOOT_MODES, default="none", help="the loot mode (with --cases-from too)")
+    parser.add_argument("--style", choices=("accurate", "ranked"), default="ranked",
+                        help="fight ranged cases in the style the ranker chose (Caleb, 2026-11-07), or accurate")
     parser.add_argument("--cases-from", type=Path, help="rerun the cases of an earlier results file instead")
     parser.add_argument("--runs", type=int, default=3)
     parser.add_argument("--sim-runs", type=int, default=200)
@@ -429,7 +551,8 @@ def main() -> None:
         old_ms = client.ping()["tick_ms"]
         client.set_tick_ms(args.tick_ms)
         try:
-            chosen = cases(args.bands, args.classes, args.slot, args.loot) if args.cases_from is None else [
+            chosen = cases(args.bands, args.classes, args.slot, args.loot,
+                           args.style == "ranked") if args.cases_from is None else [
                 Case(**{**row["case"], "site": tuple(row["case"]["site"]), "loot": args.loot})
                 for row in json.loads(args.cases_from.read_text())["cases"]]
             for case in chosen:
@@ -443,7 +566,8 @@ def main() -> None:
         finally:
             client.set_tick_ms(old_ms)
     name = (f"combat-{datetime.now():%Y%m%d-%H%M}{run_suffix(args.tick_ms)}"  # the slot and loot: runs sharing a server
-            + (f"-slot{args.slot}" if args.slot else "") + (f"-{args.loot}" if args.loot != "none" else ""))
+            + (f"-slot{args.slot}" if args.slot else "") + (f"-{args.loot}" if args.loot != "none" else "")
+            + ("-accurate" if args.style == "accurate" and "ranged" in args.classes else ""))
     out = REPO / "results" / "calibration" / f"{name}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps({"args": {**vars(args), "cases_from": str(args.cases_from or "")}, "cases": rows},
