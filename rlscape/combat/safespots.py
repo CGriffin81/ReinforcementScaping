@@ -9,8 +9,10 @@ is a bad ranged target unless the damage it does is trivial. So:
 - the safespot is the site's best from the server (gd.ranged_safespots, the bridge's ranged_safespots exported by
   scripts/export_ranged_safespots.py), for the style's range (RangeSwingHandler.canSwing: 7, long-ranged 9). It
   counts when it holds from at least MIN_SHARE of the monsters' wandering (attacked at their spawn, where they
-  respawn, it always holds); from it the monster deals nothing, and the site's supply is the monsters it holds
-  against;
+  respawn, it always holds) and no aggressive monster reaches it from its own wandering (an agent choice: before
+  aggression runs out such a monster hits a ranger there, and live it killed one at the Black Knights by Draynor
+  and the Wilderness green dragons); from it the monster deals nothing, and the site's supply is the monsters it
+  holds against;
 - arrows land where the monster stands when hit (RangeSwingHandler.useAmmo), and join a pile only while it's
   private, its first PILE_PRIVATE_TICKS (GroundItemManager.increase): a pile per PILE_PRIVATE_TICKS of a kill
   (`piles_per_kill`). Ground items last GROUND_TICKS;
@@ -59,9 +61,10 @@ def hp_margin(current_hp: float, max_hp: float) -> float:
 
 
 def safespot(npc_id: int, site: tuple[int, int, int], plan: Plan) -> gd.RangedSafespot | None:
-    """The site's usable safespot for the plan's range, if any."""
+    """The site's usable safespot for the plan's range, if any: holding from MIN_SHARE of the wandering, and no
+    aggressive monster reaching it."""
     spot = gd.ranged_safespots().get((npc_id, site, style_range(plan)))
-    return spot if spot is not None and spot.share >= MIN_SHARE else None
+    return spot if spot is not None and spot.share >= MIN_SHARE and spot.threats == 0 else None
 
 
 def piles_per_kill(fight_ticks: float) -> int:

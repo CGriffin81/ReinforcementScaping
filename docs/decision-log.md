@@ -4359,3 +4359,45 @@ attack." `m002-safespot-answers`.
   So the server's chase still differs from the emulation at many sites, and the sim, which takes a safespot as
   always holding, is optimistic there. The calibration cases (cows, unicorns, green dragons at another site) held
   with the runner's rules.
+
+### Investigated: the case deltas (ranged calibration and the safespot checks)
+Caleb, 2026-11-07: "Commit and push the changes, then investigate the case deltas." During it: "The safespot issue at
+cows may be because you are trying to fight them outside of their agro radius, so they try to pull back to get the
+attacker to get inside their radius." `m002-case-deltas`.
+- **The calibration deltas:**
+  - Rats, band 1 (rapid), 1.20 in 3 runs: 1.11 in 8. Per run the server's Ranged XP/h ran from 2,670 to 3,184, so
+    the 1.20 was noise.
+  - Abyssal demons, band 91 (rune crossbow, rapid), XP 1.16, inside the gate. gp 0.27: the rare drops' expected
+    value, which 3 runs can't sample (OQ-20's kind).
+  - Green dragons, band 61: 0.99 since the guards' rate was fixed.
+- **Why safespots failed live.** Each cause was found in tick traces of the server:
+  1. **Caleb's pull-back:** on this server a monster past 1.5 times its walk radius from its spawn walks home
+     (`NPC.handleTickActions`), refusing attacks on the way (`isAttackable`'s return-to-spawn). A character
+     attacking it then walks after it. The emulation checked the leash only after a chase step, so a monster
+     already past it counted as held. Fixed in the fork: `holdsFrom` checks the start too, and `npcs` reports
+     `returning` (and holds false then). At the failing sites the walk radius is 11 (a 16-tile leash), so this
+     wasn't their cause, but it is a hole the checks had.
+  2. **The setup:** the runner and the checks stood at the site's spawn among the monsters to ask for the safespot,
+     then teleported to it. An aggressive monster engaging there leaves the character "already under attack" for
+     17 ticks in single combat (`MapZone.continueAttack`), so its attack on the held monster is refused, and that
+     monster can follow it to the tile. Fixed: `ranged_safespots` takes the site as `at`, and the character goes
+     straight to the sim's tile.
+  3. **Threatened tiles:** aggressive monsters, often the target's own kind, reach the tile from their wandering
+     until aggression runs out, and they killed the checking character at the Black Knights by Draynor and the
+     Wilderness green dragons. Agent choice (reversible): a usable safespot now also needs no threats. That leaves
+     205 of the 2,185 sites at range 7 and 365 at range 9.
+  4. **The step race:** a monster read as standing still can start a random step in the tick it's clicked. Where
+     it ends, the tile may not hold, so the attack fails or the character walks after it. The runner clicks back
+     onto its tile; the sim doesn't model the lost time.
+- **After the fixes**, the usable sites among the seven: the moss giant west of Ardougne and Lumbridge's cows took
+  no hits. The cows' check walked off its tile once, unhit; the check doesn't click back, the runner does. The hill
+  giant west of Ardougne never stood where its tile holds in 500 ticks. The other four sites have no usable tile.
+- **The check set, rerun under the no-threats rule** (Caleb: "Rerun the check set, then commit and push."
+  `m002-check-set-rerun`). Sim over server, XP/hr then gp/hr:
+  - cows, band 1 (rapid, safespot): 0.96, 1.01;
+  - unicorns, band 31 (longrange, safespot): 1.07, 1.01;
+  - green dragons, band 61, now longrange from the unthreatened range-9 tile, its piles guarded: 1.06, 1.09, and no
+    food eaten on the server;
+  - abyssal demons, band 91 (rapid, no safespot needed): 1.19, 0.11 (a run got the whip; the sim counts its expected
+    value: OQ-20's rare-drop sampling).
+  All four are inside the gate on XP/hr.

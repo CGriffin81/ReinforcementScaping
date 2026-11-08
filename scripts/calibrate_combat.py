@@ -280,13 +280,16 @@ def _prepare(client: BridgeClient, uid: int, case: Case, budget: int) -> dict | 
     spot = case_safespot(case, budget)
     client.set_retaliate(uid, spot is None)  # rangers safespotting turn it off: retaliating walks them off the tile
     client.flick(uid)  # protection prayers, as the sim's fights flick them (none below their levels)
-    client.debug_teleport(uid, *case.site)
-    client.wait(1)
     if spot is None:
-        client.wait(2)
+        client.debug_teleport(uid, *case.site)
+        client.wait(3)
         return None
+    # straight onto the sim's tile, asking from there: standing at the site among aggressive monsters, one engaging
+    # it would hold it "under attack" in single combat (MapZone.continueAttack) and follow it to the tile
+    client.debug_teleport(uid, *spot.tile)
+    client.wait(1)
     tiles = client.ranged_safespots(uid, case.name, ids=[case.npc], radius=SITE_RADIUS, range=style_range(case.plan),
-                                    limit=10)["tiles"]
+                                    limit=200, at=case.site)["tiles"]
     assert tiles, f"the server finds no safespot for {case.name} at {case.site} (range {style_range(case.plan)})"
     mine = [s for s in tiles if (s["tile"]["x"], s["tile"]["y"], s["tile"]["z"]) == spot.tile]
     chosen = (mine or tiles)[0]

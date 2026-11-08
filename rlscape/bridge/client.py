@@ -135,16 +135,20 @@ class BridgeClient:
         return self.request("safespots", **fields)["tiles"]
 
     def ranged_safespots(self, uid: int, name: str, ids: list[int] | None = None, radius: float | None = None,
-                         range: int | None = None, limit: int | None = None) -> dict[str, Any]:
+                         range: int | None = None, limit: int | None = None,
+                         at: tuple[int, int, int] | None = None) -> dict[str, Any]:
         """Where to shoot a melee monster called ``name`` (of ``ids``, spawned within ``radius``) from that it can't
         hit back from, as rangers safespot: ``tiles``, best first, each with the monsters it holds against
         (``against``: index, spawn, where it gets stuck chasing, the chase's steps, the walk to its arrows, and the
         aggressive monsters whose leash covers them). ``range`` is the attack style's (7, or 9 long-ranged); ``melee``
-        is false, with no tiles, for a monster that casts or shoots."""
+        is false, with no tiles, for a monster that casts or shoots. ``at`` centres the search on a site's tile
+        instead of the character's (so it can ask from its safespot, not among the monsters)."""
         fields: dict[str, Any] = {"uid": uid, "name": name}
         for key, value in (("ids", ids), ("radius", radius), ("range", range), ("limit", limit)):
             if value is not None:
                 fields[key] = value
+        if at is not None:
+            fields["at"] = {"x": at[0], "y": at[1], "z": at[2]}
         return self.request("ranged_safespots", **fields)
 
     def npcs(self, uid: int, name: str, ids: list[int] | None = None, radius: int | None = None,

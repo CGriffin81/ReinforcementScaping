@@ -202,7 +202,8 @@ the current stats, gear, food and ammunition.
 - **Ranged fights safespot (2026-11-07, OQ-27 (d), Caleb):** a monster without a safespot is a bad ranged target
   unless its damage is trivial (below). Otherwise a ranged
   slot offers it only at sites with a safespot from the server (`data/ranged_safespots.csv`, the bridge's
-  `ranged_safespots`): a tile it can be shot from where, chasing, it gets stuck short of attacking. Melee monsters
+  `ranged_safespots`): a tile it can be shot from where, chasing, it gets stuck short of attacking, holding from at
+  least half its wandering, and which no aggressive monster reaches. Melee monsters
   are held by walls and fences; skeletal wyverns, which shoot, are outranged (Caleb). From there it does no damage,
   and only the site's monsters the safespot holds against count. Arrows lie where the monster stands, a pile per
   100 ticks of shooting, picked up with the drops between kills, plus the walk from the safespot and back. While
