@@ -73,6 +73,7 @@ class Map:
         # a tile a character can stand on: nothing blocks it from every side, and it can be stepped off
         self.standable = ((self.flags & np.uint32(BLOCKS_TILE)) == 0).ravel() & (np.diff(self.graph.indptr) > 0)
         self._anchors: dict[tuple[int, int, int], int | None] = {}
+        self._reverse: csr_matrix | None = None  # the graph with every edge turned round (lengths_to)
 
     def node(self, tile: tuple[int, int, int] | tuple[int, int]) -> int | None:
         c, r = tile[0] - self.x0, tile[1] - self.y0
@@ -171,6 +172,13 @@ class Map:
         """The shortest walk from the node to every node, in steps (inf where there's none)."""
         return dijkstra(self.graph, indices=node)
 
+    def lengths_to(self, node: int) -> np.ndarray:
+        """The shortest walk from every node to this one, in steps (inf where there's none): a search on the reversed
+        graph. The graph is directed (a wall flagged on one side, a one-way crossing), so this isn't `lengths`."""
+        if self._reverse is None:
+            self._reverse = self.graph.transpose().tocsr()
+        return dijkstra(self._reverse, indices=node)
+
     def steps(self, a: tuple[int, ...], b: tuple[int, ...]) -> float:
         """The length of the shortest walk from a to b in steps (doors included), or inf."""
         start, end = self.node(a), self.node(b)
@@ -256,8 +264,9 @@ class Places:
     def __init__(self, world: Map, nodes: np.ndarray, table: np.ndarray):
         self.world, self.nodes, self.table = world, nodes, table
         self.index = {int(n): i for i, n in enumerate(nodes)}
-        self.rows: dict[int, np.ndarray] = {}  # a node off the table: its lengths to the table's places
-        self.pairs: dict[tuple[int, int], float] = {}  # lengths between two nodes off the table
+        self.rows: dict[int, np.ndarray] = {}  # a node off the table: the walks from it to the table's places
+        self.columns: dict[int, np.ndarray] = {}  # a node off the table: the walks from the table's places to it
+        self.pairs: dict[tuple[int, int], float] = {}  # (a, b), both off the table: the walk from a to b
         self.searches = 0
 
     def _search(self, node: int) -> np.ndarray:
@@ -274,25 +283,30 @@ class Places:
         return self.rows[node]
 
     def steps(self, a: int, b: int) -> float:
-        """The planned length from node a to node b, in steps; inf if there's no walk. Walks are taken as the same
-        both ways (walls are flagged on both sides)."""
+        """The planned length of the walk from node a to node b, in steps; inf if there's no walk. The graph is
+        directed (a wall flagged on one side, a one-way crossing: 834,294 of its 5.1M edges), so a walk's length can
+        depend on its direction, and each is searched from its own start: the same in any process, whatever was asked
+        before (Caleb, 2026-11-09, OQ-64 (a); the pairs were cached both ways under the first one asked)."""
         if a == b:
             return 0.0
         i, j = self.index.get(a), self.index.get(b)
         if i is not None and j is not None:
-            value = self.table[i, j]
+            value = self.table[i, j]  # row i: the search from place i
             return float("inf") if value == UNREACHABLE else float(value)
         if i is None and j is None:
-            key = (min(a, b), max(a, b))
-            if key not in self.pairs:
+            if (a, b) not in self.pairs:
                 dist = self._search(a)
                 self.rows.setdefault(a, dist[self.nodes])
-                self.pairs[key] = float(dist[b])
-            return self.pairs[key]
-        off, on = (a, j) if i is None else (b, i)
-        if off not in self.rows:
-            self.rows[off] = self._search(off)[self.nodes]
-        return float(self.rows[off][on])
+                self.pairs[(a, b)] = float(dist[b])
+            return self.pairs[(a, b)]
+        if i is None:  # off the table to a place: the search from a
+            if a not in self.rows:
+                self.rows[a] = self._search(a)[self.nodes]
+            return float(self.rows[a][j])
+        if b not in self.columns:  # a place to a node off the table: the search to b, on the reversed graph
+            self.searches += 1
+            self.columns[b] = self.world.lengths_to(b)[self.nodes]
+        return float(self.columns[b][i])
 
 
 def build_table(world: Map, nodes: np.ndarray, batch: int = 8) -> np.ndarray:

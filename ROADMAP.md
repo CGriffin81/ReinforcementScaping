@@ -259,7 +259,8 @@ E1. Everything above this plan, the approved documents and the records use the p
   | E7, the stretch (cut; RQ5 is OQ-1) | none |
 
 **Branches** (Caleb, OQ-61, OQ-62 and OQ-63 for the names):
-- each experiment runs on its own `experiment/<name>` branch from `main`, after the `sim-v1` tag (PR #8's merge),
+- each experiment runs on its own `experiment/<name>` branch from `main`, after the `sim-v1.1` tag (`sim-v1`, PR #8's
+  merge, with OQ-64's directional walks),
   its config `configs/<name>.yaml` and its summary `results/summary/<name>/`:
 
   | Experiment | Branch, config and summary name |
@@ -284,6 +285,8 @@ E1. Everything above this plan, the approved documents and the records use the p
 The old weeks 6 to 8 (E6 on the server, the stretch, a replay with the client) are superseded.
 
 *Nov 9–10: freeze and tooling*
+- [x] Sim v1.1 (2026-11-09, OQ-64 (a), env contract v1.43): walks are directional, so an episode depends only on its
+  seed. Found by the mask speed-up's proof, it's its own PR; E1 is rerun on it.
 - [x] Freeze sim v1 (done 2026-11-09, a day early: Caleb approved every contract version and the guide). The Runecrafting work is all in: the Abyss's fights by OQ-49 (a) are built, with the
   leeches a documented gap (OQ-51 (a)). The gate's 600 ms speed checks for Crafting, Herblore and Runecrafting
   (OQ-21) pass, 43 of 43 (2026-11-09). Picked flax can be banked or spun (OQ-52, env contract v1.38). Caleb confirmed

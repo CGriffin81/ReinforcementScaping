@@ -206,12 +206,12 @@ def _abyss_landings() -> np.ndarray:
 @cache
 def _abyss_steps(a: tuple[int, int, int], b: tuple[int, int, int]) -> float:
     """A walk inside the Abyss on its own map (data/abyss), in steps; from the teleport's anchor (ABYSS_LANDING), the
-    mean over its landings. The map's walks are taken as the same both ways, as the places' table takes them."""
+    mean over its landings. Walks to b, from one search on the reversed map (the map is directed: OQ-64 (a))."""
     world = abyss_map()
     target = world.anchor(b)
     if target is None:
         return inf
-    lengths = world.lengths(target)
+    lengths = world.lengths_to(target)
     if a == ABYSS_LANDING:
         return float(lengths[_abyss_landings()].mean())
     source = world.anchor(a)
@@ -270,11 +270,11 @@ def travel_ticks(a: tuple[int, int, int], b: tuple[int, int, int], home: bool = 
 
 
 def travel_ticks_from_many(sources: list[tuple[int, int, int]], target: tuple[int, int, int]) -> np.ndarray:
-    """`travel_ticks` from each of many tiles to one, from a single search from the target (walks are taken as the
-    same both ways, as the table takes them): for the combat pool's spawns, most of which aren't places."""
+    """`travel_ticks` from each of many tiles to one, from a single search to the target on the reversed map (the map
+    is directed: OQ-64 (a)): for the combat pool's spawns, most of which aren't places."""
     world = surface()
     node = world.anchor(target)
-    lengths = world.lengths(node) if node is not None else None
+    lengths = world.lengths_to(node) if node is not None else None
     out = np.empty(len(sources))
     for i, source in enumerate(sources):
         if in_abyss(source) != in_abyss(target):  # the Abyss's link or exit, as travel_ticks has them
