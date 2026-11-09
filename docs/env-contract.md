@@ -22,7 +22,7 @@ approval and is logged in `docs/decision-log.md`.
   both backends: every Herblore recipe needs level 3, and quests are otherwise flags only. A fresh character's
   total level is 35. The schema is unchanged.
 - **v1.38** (2026-11-09, Caleb, OQ-52: "For flax, we should add the option to move into spinning it into
-  bowstrings or bank"; the task's name and the feature Claude's, to confirm) gives picking flax its own task,
+  bowstrings or bank"; the task's name and the feature Claude's, confirmed by Caleb on 2026-11-09) gives picking flax its own task,
   `flax`, whose kit is nothing. So `bank_deposit` banks the flax a picker carries, and `spin_flax` (Crafting 10)
   spins it. Under the crafting task the kit kept flax as spinning's input, so the deposit was masked after a
   load. The observation's task part grows by one (§3, 18). 2,291 actions, 3,480 features.

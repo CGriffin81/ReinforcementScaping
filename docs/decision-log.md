@@ -6550,3 +6550,10 @@ it has selected." `m002-oq60`.
   The guide's episodes run at most 519 decisions, with no deaths.
 - **Written up:** `docs/scripted-guide-draft.md`'s fifth revision, for Caleb's review before E1.
 - **Tests:** the suite without the server, 423 passed, 75 skipped.
+
+### Confirmed: env contract v1.38, picking flax's own task (Caleb)
+Caleb, 2026-11-09: "Env contract 1.38 is accepted." `m002-confirm-138-pr`.
+- **Confirmed:** v1.38 (OQ-52). It covers what Claude chose: the task's name, `flax`, and its feature in the
+  observation's task one-hot (18).
+- **Still to confirm:** v1.42 (`kill_cows`: its site, plan and ammunition), and the scripted guide's fifth revision
+  (`docs/scripted-guide-draft.md`), before E1.

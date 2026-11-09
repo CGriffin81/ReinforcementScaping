@@ -180,7 +180,7 @@ by the mage's teleport and out by a teleport or its exit (validated: 0.95 in, 1.
 its monsters and they drop the pouches (env contract v1.36). A fight there also takes the outer ring's crowd,
 with no prayer (Caleb, OQ-49 (a); its rate fitted to the server's fights: env contract v1.37). Two of the three
 cases held out of the fit pass; the leeches' food (0.68 of the server's) is a documented gap (Caleb, OQ-51 (a)).
-Picked flax can be banked or spun (Caleb, OQ-52: env contract v1.38, to confirm), which took greedy GP from about 144k
+Picked flax can be banked or spun (Caleb, OQ-52: env contract v1.38), which took greedy GP from about 144k
 to about 2M net worth at hour 20. The start has Druidic Ritual's 250 Herblore XP, so Herblore can be trained (Caleb,
 OQ-56, v1.39). The Gem Store's uncut gems stand for 2009's 87 members' worlds on one world (Caleb, OQ-57 (a), v1.41). Crafting gathers
 hides by killing cows, their bones buried (Caleb, v1.42). The scripted guide's fifth revision trains all 18 skills
@@ -255,7 +255,7 @@ The old weeks 6 to 8 (E6 on the server, the stretch, a replay with the client) a
 - [ ] Freeze sim v1 on Tue Nov 10. The Runecrafting work is all in: the Abyss's fights by OQ-49 (a) are built, with the
   leeches a documented gap (OQ-51 (a)). The gate's 600 ms speed checks for Crafting, Herblore and Runecrafting
   (OQ-21) pass, 43 of 43 (2026-11-09). Picked flax can be banked or spun (OQ-52, env contract v1.38). Caleb confirmed
-  every env contract version to v1.37 and option catalog v1.4 on 2026-11-09; v1.38 is to confirm.
+  every env contract version to v1.38 and option catalog v1.4 on 2026-11-09; v1.42 is to confirm.
 - [ ] Speed up the action mask without changing its results, one day at most. It's 92% of a decision's time, and
   training runs at about 1M decisions an hour.
 - [ ] `scripts/train.py`:
