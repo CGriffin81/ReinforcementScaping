@@ -4135,3 +4135,2476 @@ from different files then ran on several workers at once, each setting the
 one tick speed, and a full parallel run hung (a bridge request waiting
 past 20 minutes). Ours now runs first (`tryfirst`): all 53 live tests on one
 worker, and the whole suite, 348 tests, passed in 4 minutes.
+
+### Decided: OQ-29 (a), the server's rule for which armour stops Ava's devices
+Caleb, 2026-11-07: "OQ29 - Option a" `m002-oq29`.
+- **The question** (raised 2026-11-07 from Caleb's note that the devices
+  don't work while any metal item is worn): which armour stops a device.
+  The server's rule is narrower. Only the chest piece counts, and only if
+  its worn model is one of the three in `AvasDevice.metalBodies`, which is
+  38 pieces. The iron chainbody, the Saradomin platebody and the dragon
+  chainbody aren't among them, nor is any helm, legs, shield, glove or
+  boot. Interference stops only the 80% catch.
+- **The options:** (a) keep the server's rule, on both backends
+  (recommended); (b) fix the server's gaps in the fork, so that every metal
+  chest piece interferes and interference stops the whole device; (c)
+  Caleb's rule in the fork, any metal item worn, with a definition of
+  metal.
+- **Answer:** (a). Nothing changes: the rule as built in `m002-device-rules`
+  stands (`data/ava_interference.csv`, `equipment.shot_outcomes`), and a
+  ranger wearing a device leaves those chest pieces off. The option catalog
+  and the env contract's Ammunition row now state it.
+
+### Built: ranged fights from safespots and their arrow piles (OQ-27 (d)); Caleb's note on safespots and wyverns
+Caleb, 2026-11-07: "Continue with implementation." Then, while it ran: "Safespots work when a monster's southwest
+tile is in line of sight of our character, is in range of our weapons, and they cannot attack us. This is most
+common for melee only monsters, but a "safespot" for Skeletal Wyverns exists because you can outrange their long
+range attacks, once aggression has run out in their area. Skeletal Wyverns should be an incredible money maker."
+`m002-safespots`.
+- **Found on the server** (for the chase):
+  - Monsters chase with the DUMB pathfinder (MovementPulse; no NPCBehavior overrides it), a step a tick toward the
+    tile beside their target that `DestinationFlag.ENTITY` picks, until their swing handler's `canSwing` lets them
+    attack. A wall or fence holds a melee monster.
+  - A monster that shoots stops at its reach: `RangeSwingHandler` 7 tiles between centres, plus half the sizes. The
+    skeletal wyvern's handlers (`SkeletalWyvernBehavior`, switching at 5 tiles from a player) both check that reach,
+    so its chase can stick beyond its reach and a ranger outranges it, as Caleb said. A long-ranged bow reaches 9.
+  - Chromatic dragons attack only in melee reach, breath included (`ChromaticDragonNPC`: its MultiSwingHandler takes
+    each attack's own reach, and the dragonfire's is melee), so they can be safespotted too.
+  - A ranged attack's line of sight is a clear projectile path between any tile of the character and any of the
+    monster (`isProjectileClipped`), not only the south-west one: OQ-31.
+  - An NPC chasing past its leash (1.5 times its walk radius from its spawn) turns home; one walking when attacked
+    keeps walking until the first hit lands, and then chases from there.
+- **Built in the fork** (uncommitted):
+  - `ranged_safespots` runs that chase with the server's own functions on detached copies of the monster (never
+    initialised, never in the world): the tiles a character can walk to and shoot from where the chase from the
+    monster's spawn sticks with every tile of it in shot. For each: the monsters it holds against, where they stick,
+    the walk to their arrows, the share of their wandering it holds from, and the aggressive monsters that reach it,
+    which aggression running out (Caleb) lets it keep. Ranked: no threats first, then the most held, the largest
+    share, the shortest walk.
+  - `npcs`: the monsters a character sees, whether each is walking or fighting, and whether it would stay stuck in
+    shot from the character's tile.
+- **Built in the sim** (`rlscape/combat/safespots.py`):
+  - A ranged target needs a safespot unless its damage over a kill is no more than the hitpoints regenerated
+    meanwhile, or, from a safespot only, when the gear doesn't guard against its special damage (a bow takes no
+    shield, so green dragons are ranged only from one).
+  - The safespot comes from the export, for the style's range, and needs to hold from at least half the monsters'
+    wandering. From it the monster does nothing, and the site's supply is the monsters it holds against.
+  - Arrows lie where the monster stands: a pile per 100 ticks of shooting, which is how long a pile stays private
+    and takes more. They're picked up with the drops between kills, a pickup each, plus the walk from the safespot
+    and back.
+  - When aggressive monsters guard the piles and aggression hasn't run out, the fight leaves them until the oldest
+    would go, 200 ticks after it was dropped. The rankers take a trip after every kill.
+  - One pickup time for every class: 5 ticks, melee's fit. Ranged's 18, which covered its arrows, is gone. To refit
+    on the ranged runs.
+- **The runner** (`scripts/calibrate_combat.py`): a case the sim safespots stands on the server's tile with
+  auto-retaliate off, as rangers safespotting do, since retaliating walks them off it. It attacks only a monster the
+  tile holds against, once it stands still where it holds. Ranged loots only between kills, and a safespotter walks
+  back afterwards.
+- **Agent choices (reversible):** the half-share threshold; the walk at a tile a tick; the rankers' trip after every
+  kill; threats counted for a fresh character; the runner's standing-still rule.
+- **Live, a ranger on the top tile** (Ranged 70, 99 hitpoints), attacking only held monsters:
+  - no hits at Varrock sewers' moss giants, two sets of hill giants, the Taverley Black Knights (aggressive, ten of
+    them), the Asgarnian Ice Dungeon's skeletal wyverns and the Wilderness green dragons;
+  - west of Ardougne, a hill giant held, but most attacks didn't start;
+  - a Black Knight by the Wilderness edge hit, on the tile the share ranking picked (the walk ranking's first tile
+    held).
+  Before the character was kept from attacking a monster that wasn't held, or a walking one, it walked off the tile.
+- **The export** (`data/ranged_safespots.csv`, `scripts/export_ranged_safespots.py`; three servers): every pool
+  site at both ranges.
+  - **A first export was wrong.** 145 of 150 sampled tiles were inside objects (fences, trees, rocks: a clipping
+    flag's 0x100). Only a teleport stands there, and no monster reaches it, so "safespots" were everywhere (93% of
+    sites) and the live checks above held for that reason. `reachesTile` had accepted a walk ending beside the
+    tile. Now the tile must pass the server's `RegionManager.isTeleportPermitted` and the walk must end on it
+    (`walksOnto`).
+  - **Re-exported:** 51% of the 2,236 sites have a range-7 safespot and 57% a range-9 one. Holding from at least
+    half the wandering, 15% and 25%. At 619 of the usable ones aggressive monsters guard the piles.
+  - Live again on the fixed tiles: the moss giants west of Ardougne held (no hits). The Edgeville
+    dungeon's hill giants and Lumbridge's cows didn't: the character's own combat walked it off its tile, and it
+    was hit. The server's chase still differs from the emulation somewhere not yet found.
+  - Four sites have no answer (two quest bosses not spawned, two God Wars Dungeon monsters the teleport didn't
+    reach); the export retries a teleport until it lands.
+- **Raised for Caleb:** OQ-30 (what's trivial), OQ-31 (which tiles a ranger must see), OQ-32 (Slayer for the
+  wyverns: they need 72, which the sim can't train).
+
+### Decided: OQ-30 (b), OQ-31 (a), OQ-32 (c): what's trivial, what a ranger sees, no Slayer levels
+Caleb, 2026-11-07: "OQ31 - Keep the server's rule. OQ 32 - Drop slayer requirements for all monsters. OQ 30 -
+Option B" `m002-safespot-answers`.
+- **OQ-30, what counts as trivial damage** for a ranged target without a safespot (raised in `m002-safespots`):
+  - The options:
+    - (a) keep the rule as built: no more damage over a kill than the hitpoints regenerated meanwhile (recommended,
+      since most sites have a safespot);
+    - (b) the fight needs no food: over the option (*D*), the expected damage less what regenerates fits in the
+      hitpoints above the retreat point;
+    - (c) the monster's max hit, after the prayers flicked, is at most 1.
+  - Caleb: (b).
+  - Built: `safespots.needs_safespot` takes the hitpoints above the retreat point and the option's duration, in
+    both rankers, the fight and the runner. A fresh ranger has 5 to spare and regenerates about 15 over 1,500
+    ticks, so a rat is still the only trivial target. A stronger one has more to spare.
+- **OQ-31, which tiles of a monster a ranger must see** (Caleb's note: its south-west tile):
+  - The options: (a) the server's rule, a clear projectile path between any tile of each and the centres in range
+    (recommended); (b) a fork change to the south-west tile.
+  - Caleb: (a). Nothing changes: the safespot search already calls the server's own functions.
+- **OQ-32, skeletal wyverns** (they need Slayer 72, which the sim can't train):
+  - The options:
+    - (a) leave them out (recommended, with peer review three weeks off);
+    - (b) Slayer tasks as options;
+    - (c) drop the Slayer level requirement, in the fork and the sim.
+  - Caleb: (c), for every monster.
+  - Built in the fork: neither `NPC.isAttackable` nor `IdleAbstractNPC.isAttackable` refuses an attack any more.
+    The fork had refused since 2026-10-28. `NPC.checkImpact` no longer cancels a player's hits on a monster above
+    its Slayer level, as upstream did. The ice cooler no longer asks for Slayer 22.
+  - Built in the sim: no Slayer gate in either ranker or in access.
+  - Agent choice (reversible): the Slayer monsters that need gear the sim doesn't model stay out of the pool
+    (`candidates.SLAYER_GEAR_NPCS`, 15 of the 35 that had a level). Before, their Slayer levels kept them out.
+    Their gear: a nose peg, earmuffs, a face mask, a leaf-bladed weapon, a rock hammer, a bag of salt, an ice
+    cooler, a lit bug lantern, a witchwood icon, a mirror shield, insulated boots. The other 20 are open, among
+    them abyssal demons, bloodvelds, nechryaels and skeletal wyverns. Slayer item uses that need levels, such as
+    Magic Dart's 55, are untouched.
+  - Live test: `test_slayer_levels_lock_no_monster` (a fresh character fights cave crawlers, Slayer 10, and gains
+    XP), in place of `test_slayer_level_blocks_attacks`.
+
+### Decided: OQ-33, guarded arrows fetched with a shield; the calibration's rangers use a rune crossbow
+Caleb, 2026-11-07: "OQ33 bring a shield to pick up the arrows. Or use anti dragonfire potions. Or both." Then: "Use a
+rune crossbow instead of a bow." `m002-safespot-answers`.
+- **OQ-33** (raised in `m002-safespots`: at the Wilderness green dragons the late trip for guarded arrows took
+  dragonfire, unshielded, and every run ran out of food):
+  - The options:
+    - (a) at a guarded site, leave the loot until aggression runs out (recommended);
+    - (b) keep the late trip and model its hits;
+    - (c) rule out guarded sites unless the guards' damage on the trip is trivial.
+  - Caleb: the late trip stays, with an anti-dragon shield worn for it, an antifire potion, or both.
+  - **Found:** on this server the potion alone cuts dragonfire by only a tenth, 52 to 46
+    (`ContentAPI.calculateDragonfireMaxHit`). The shield cuts 90%, to 5, and both together cut it to nothing.
+    Protect from Magic alone cuts 60%. So the shield is what makes the trip survivable, and the potion completes
+    it.
+  - Built in the sim:
+    - the late trip takes the guards' hits (`combat.guarded_trip`: each guard, taken as the target's kind, swings
+      over the trip);
+    - against dragonfire the ranger wears the shield it carries (a swap with the bow, `SWAP_TICKS`) or already
+      wears (a crossbow's), and drinks an antifire dose if it has one;
+    - the rankers offer a guarded safespot against special damage only to a ranger with a shield for it, worn or
+      carried (`Character.shields_carried`).
+  - Built in the runner: it wears the carried shield before a late trip and wields the bow again after.
+- **Rune crossbow (Caleb).** A crossbow is one-handed, so the anti-dragon shield is worn throughout. Bands 61 and 91
+  of the calibration fight with a rune crossbow and rune bolts (61 Ranged each) in place of the magic shortbow and
+  rune arrows. Bands 1 and 31 keep their bows; the rune crossbow needs 61.
+  - Every ranged calibration character carries an anti-dragon shield (agent choice, reversible): with a bow it
+    stays in the inventory for the trips.
+  - Neither crossbows nor bolts are in *V*, so an agent can't buy one yet.
+  - The runner sets the style on the crossbow's own weapon tab (79).
+
+### Decided and built: every crossbow and bolt joins *V* and the GE buys (Caleb)
+Caleb, 2026-11-07: "What crossbows are available in 09scape?" Then: "Add all crossbows and bolts to the vocabulary."
+`m002-safespot-answers`.
+- **On the server:** 11 crossbows are tradeable and on the 2009 GE:
+  - plain and bronze (Ranged 1), iron (26), Dorgeshuun (28, bone bolts), steel (31), black (33), mithril (36),
+    adamant (46), Hunters' (50, kebbit bolts), rune (61), Karil's (70, two-handed, bolt racks);
+  - left out: blurite (untradeable), Phoenix (a quest item, no 2009 price) and Karil's degraded states.
+  All but Karil's are one-handed, so a shield goes with them.
+- **The bolts:** 53, every tradeable bolt the crossbows fire that has a 2009 price: bronze to rune, black, silver,
+  bone, kebbit, broad, the bolt rack, and the poisoned, gem-tipped and enchanted kinds. Left out: blurite bolts,
+  jade bolts, and two adamant poisons (untradeable or no price).
+- **Built:**
+  - 63 new *V* items (mithril bolts were in already, as a drop): *V* 279. They're GE buys, one crossbow at a time
+    while nothing as good is held, and bolts in lots of 100 (the arrows' rule).
+  - A crossbow's equipment tier in the observation is the bows' its Ranged level allows (`encoding._bow_tier`).
+  - 1,709 actions, 2,624 features.
+  - Checked live: the frozen GE sells a rune crossbow at 9,927 gp and rune bolts at 610 each.
+- **Not modelled:** the bolts' poison and enchantment effects; they rank by ranged strength alone. Broad bolts are
+  Destroy-only, so their drop action stays masked, as Ava's devices' does.
+
+### Decided: ranged calibration fights in the ranker's style; the ranged runs from safespots; the guards' rate
+Caleb, 2026-11-07: "Yes, fight in the style the ranker picks. Rapid should be picked over accurate in most
+circumstances. Longrange has the feature of splitting xp between range and def and also increases the range of the
+attack." `m002-safespot-answers`.
+- **The question** (raised in `m002-safespots`): ranged calibration had fought in the server's default style,
+  accurate, while the ranker picks targets on its best style. A safespot can depend on long-ranged reach: the
+  Wilderness green dragons' needs range 9.
+  - The options: (a) fight in the ranker's style, set on the weapon tab (recommended); (b) keep accurate.
+  - Caleb: (a). `scripts/calibrate_combat.py`'s `--style` now defaults to `ranked`, and melee stays accurate. The
+    ranker does pick rapid in most cases, and the sim has long-ranged's split XP and reach.
+- **The ranged runs** (sim over server, XP/hr; rune crossbow kit at 61 and 91, the shield worn; the runner as
+  rebuilt; the corrected table):
+  - Check set, the top by gp, looting:
+    - cows, band 1 (rapid, safespot): 1.01 (gp 1.03), no hits;
+    - unicorns, band 31 (longrange, safespot): 1.06 (gp 1.00), 1 to 7 damage a run;
+    - green dragons, band 61 (rapid, safespot, guarded): 1.11 on the first sim; 0.99 (kills 1.00, gp 1.02) once the
+      guards' rate was fixed (below). No food eaten on the server.
+  - Fit set, the top by XP, no looting, no safespot needed: rats 1.20 (rapid; accurate gave 1.01), scorpions 1.03,
+    experiments 1.02 and 1.06.
+- **Fixed in the sim: a late trip's guards.** The sim had every guard swing at its attack speed for the whole trip:
+  30 to 86 damage a trip at the green dragons, where the server's runs took none. The export counts as a guard any
+  aggressive monster whose leash covers the arrows, and most never come. Each guard now swings at
+  `aggression.ATTACKS_PER_TICK`, the rate measured while gathering (agent choice, reversible).
+- **The pickup time, refit:** 5 ticks for every class, on the four melee loot cases and the two ranged safespot
+  ones (mean |log ratio| 0.053, all six inside the gate; 4 and 6 do worse). It stays 5.
+- **Runner fixes on the way** (`scripts/calibrate_combat.py`):
+  - The stuck rule's clock starts with a fight, and there's no stuck rule on a safespot (a safespotter waits, and
+    a weak one hits rarely).
+  - A safespotter fetches its loot only when nothing is attacking it, waits for its loot instead of walking back
+    between pickups, and clicks back onto its tile when walked off it.
+  - The live safespot query uses the case's range.
+  - A failed setup despawns its character.
+  - Monsters stuck attacking it don't hold a safespotter back.
+- **Live checks of the corrected tiles** (a ranger on the top tile, auto-retaliate off, attacking only a held monster
+  standing still; no clicking back onto the tile, no wait for aggression to run out): 2 of 7 clean.
+  - Held: the moss giant west of Ardougne (`test_a_ranger_on_a_ranged_safespot_takes_no_hits` now uses it) and a
+    woman north of Varrock.
+  - Mostly held: the hill giant west of Ardougne (2 hits, 7 hitpoints; most attacks didn't start).
+  - Walked off its tile and hit: hill giants (Edgeville dungeon), cows (Lumbridge's fence), and a Black Knight by
+    Draynor, which died.
+  - Attacked by other aggressive dragons before its first shot, aggression not yet run out: the Wilderness green
+    dragons at (3118, 3820).
+  - Other aggressive giants reach every tile at Varrock sewers' moss giants.
+  So the server's chase still differs from the emulation at many sites, and the sim, which takes a safespot as
+  always holding, is optimistic there. The calibration cases (cows, unicorns, green dragons at another site) held
+  with the runner's rules.
+
+### Investigated: the case deltas (ranged calibration and the safespot checks)
+Caleb, 2026-11-07: "Commit and push the changes, then investigate the case deltas." During it: "The safespot issue at
+cows may be because you are trying to fight them outside of their agro radius, so they try to pull back to get the
+attacker to get inside their radius." `m002-case-deltas`.
+- **The calibration deltas:**
+  - Rats, band 1 (rapid), 1.20 in 3 runs: 1.11 in 8. Per run the server's Ranged XP/h ran from 2,670 to 3,184, so
+    the 1.20 was noise.
+  - Abyssal demons, band 91 (rune crossbow, rapid), XP 1.16, inside the gate. gp 0.27: the rare drops' expected
+    value, which 3 runs can't sample (OQ-20's kind).
+  - Green dragons, band 61: 0.99 since the guards' rate was fixed.
+- **Why safespots failed live.** Each cause was found in tick traces of the server:
+  1. **Caleb's pull-back:** on this server a monster past 1.5 times its walk radius from its spawn walks home
+     (`NPC.handleTickActions`), refusing attacks on the way (`isAttackable`'s return-to-spawn). A character
+     attacking it then walks after it. The emulation checked the leash only after a chase step, so a monster
+     already past it counted as held. Fixed in the fork: `holdsFrom` checks the start too, and `npcs` reports
+     `returning` (and holds false then). At the failing sites the walk radius is 11 (a 16-tile leash), so this
+     wasn't their cause, but it is a hole the checks had.
+  2. **The setup:** the runner and the checks stood at the site's spawn among the monsters to ask for the safespot,
+     then teleported to it. An aggressive monster engaging there leaves the character "already under attack" for
+     17 ticks in single combat (`MapZone.continueAttack`), so its attack on the held monster is refused, and that
+     monster can follow it to the tile. Fixed: `ranged_safespots` takes the site as `at`, and the character goes
+     straight to the sim's tile.
+  3. **Threatened tiles:** aggressive monsters, often the target's own kind, reach the tile from their wandering
+     until aggression runs out, and they killed the checking character at the Black Knights by Draynor and the
+     Wilderness green dragons. Agent choice (reversible): a usable safespot now also needs no threats. That leaves
+     205 of the 2,185 sites at range 7 and 365 at range 9.
+  4. **The step race:** a monster read as standing still can start a random step in the tick it's clicked. Where
+     it ends, the tile may not hold, so the attack fails or the character walks after it. The runner clicks back
+     onto its tile; the sim doesn't model the lost time.
+- **After the fixes**, the usable sites among the seven: the moss giant west of Ardougne and Lumbridge's cows took
+  no hits. The cows' check walked off its tile once, unhit; the check doesn't click back, the runner does. The hill
+  giant west of Ardougne never stood where its tile holds in 500 ticks. The other four sites have no usable tile.
+- **The check set, rerun under the no-threats rule** (Caleb: "Rerun the check set, then commit and push."
+  `m002-check-set-rerun`). Sim over server, XP/hr then gp/hr:
+  - cows, band 1 (rapid, safespot): 0.96, 1.01;
+  - unicorns, band 31 (longrange, safespot): 1.07, 1.01;
+  - green dragons, band 61, now longrange from the unthreatened range-9 tile, its piles guarded: 1.06, 1.09, and no
+    food eaten on the server;
+  - abyssal demons, band 91 (rapid, no safespot needed): 1.19, 0.11 (a run got the whip; the sim counts its expected
+    value: OQ-20's rare-drop sampling).
+  All four are inside the gate on XP/hr.
+
+### Decided: env contract v1.17 confirmed. Built and measured: magic calibration by hand casts; OQ-19's first measurement (OQ-34, OQ-35)
+Caleb, 2026-11-07: "The env contract v1.17 looks good. Continue with implementation." `m002-magic-calibration`.
+- **Env contract v1.17 confirmed** (Caleb): ranged from safespots, Slayer levels lock no monster, the crossbows and
+  bolts in *V* (1,709 actions, 2,624 features). v1.11 and v1.14 to v1.16 still carry "to confirm".
+- **Casting on a monster through the bridge** (fork): `cast` sends a client's spell-on-NPC packet
+  (`ComponentNpcAction`: the standard spellbook's button on the NPC, which `PacketProcessor.processComponentUseWith`
+  hands to `MagicSpell.castSpell`). `npcs` also reports each monster's hitpoints. The spells' buttons come from the
+  server's `SpellBook.MODERN.register` calls (`gd.combat_spells()[...].button`).
+- **The sim's hand-casting assumption, checked live:** a hand cast is one spell (the combat pulse stops after it,
+  `MagicSwingHandler.swing`). Cast again each tick, the server refuses it until 3 ticks after the last
+  (`magic-delay`), and the next spell lands when the attack is due: 5 ticks apart, the autocast rate the sim assumes
+  (option catalog §4.B). Test: `test_a_hand_cast_is_one_spell_and_casting_again_each_tick_keeps_the_autocast_rate`.
+- **The runner** (`scripts/calibrate_combat.py --classes magic`; agent choices, reversible):
+  - kits: band 1 runes only (a fresh character has no staff); 31, wizard robes, an amulet of magic and a staff of air
+    (earth bolt); 61 and 91, mystic robes and boots, the amulet and a staff of fire (fire blast, fire wave); runes
+    for 400 casts, less the staff's rune;
+  - Magic is set to the band in magic cases only: melee and ranged cases keep it at 1, as the fit and check sets were
+    measured;
+  - auto-retaliate off (retaliating between hand casts would swing the staff in melee); it casts again each tick
+    after a spell, on the same monster, until it dies; between kills it casts on whatever attacks it, the case's kind
+    first, as retaliating would.
+- **Results**, sim over server XP/hr (3 runs a case, 200 sim runs):
+  - fit set (the top by XP): rats, band 1, 1.00; poison spiders, band 91, 1.07 (a pair of hobgoblins nearby);
+  - check set (the top by gp, looting valuable drops): unicorns, band 1, 1.03; Black Knights, band 31, 1.07; abyssal
+    demons, bands 61 and 91, 0.95 and 0.95. Their gp/hr is 2.1 (Black Knights) and 6.6 to 11 (abyssal demons) sim over
+    server: three short runs can't sample the rare drops (the whip, the rare drop table), which OQ-20's drop probe
+    checks table by table instead;
+  - the per-kill overhead (3 ticks, fitted on melee and ranged) needs no refit for magic.
+- **OQ-19's first measurement: the animated spades** at (3420, 9657), the ranker's top magic case at bands 31 and 61.
+  An aggressive possessed pickaxe there engages the character first, holding it "already under attack" in single
+  combat. With auto-retaliate off and casting only on spades, the first runs got almost nothing (band 61: 46 XP/hr,
+  48 walk-backs). Fighting back:
+  - band 61, 7 runs: 1.14 (1.07 without one run whose ~250 casts did ~1.5 damage each against the others' ~6.5,
+    unexplained and not seen again in 4 traced runs). The server killed 64 spades an hour to the sim's 101, and 15
+    pickaxes; the pickaxes give about the spades' XP, so XP/hr holds while kills and drops don't;
+  - band 31, 3 runs (each out of food in about 500 ticks): 1.33.
+  - An aggressive monster of another kind that would engage the character spawns within 10 tiles of 1,014 of the
+    2,185 combat sites at band 1, 916 at 31, 748 at 61 and 562 at 91. New question: OQ-35, how the sim should treat
+    them.
+- **New question OQ-34:** should magic safespot as ranged does (magic reaches 10 tiles by the same test).
+- **Tests:** the full suite with the server up, 359 of 360 passed; the new cast test failed on its own counting (a
+  spell landing before its first reading), and passed 3 of 3 after the fix.
+
+### Decided: OQ-34, magic safespots as ranged does; OQ-35 (a), monsters of another kind near a fight are modelled
+Caleb, 2026-11-07: "35 - a / 34 - yes". `m002-magic-safespots-neighbours`.
+- **OQ-34** (raised in `m002-magic-calibration`: ranged fights safespot since OQ-27 (d), magic fights didn't, so a
+  caster stood where the monster reached it):
+  - The options: (a) yes, by ranged's rules (OQ-30 (b)'s trivial-damage test; a usable safespot holding from half
+    the wandering with no threats), from the table exported at range 10 (`MagicSwingHandler.canSwing` is ranged's
+    test with distance 10), ranked per site as ranged is (recommended); (b) no.
+  - Caleb: yes.
+- **OQ-35** (raised in `m002-magic-calibration`, as OQ-19's measurement: at the animated spades an aggressive
+  possessed pickaxe engages the character first, and in single combat it must be killed before the next spade; such
+  monsters are within 10 tiles of a quarter to a half of the combat sites):
+  - The options: (a) model them as the gathering sites' aggressors are: a site's aggressors of other kinds engage at
+    a measured rate until the region's tolerance runs out, each engagement a fight with that monster in the fight's
+    plan (its kill time, damage, XP and drops), in place of target kills, counted by both rankers, calibrated at two or
+    three sites (recommended); (b) cut a site for a character when such a monster would engage it, unless it's
+    trivial; (c) leave them out and report it.
+  - Caleb: (a).
+
+### Built: magic safespots (OQ-34) and monsters near a fight (OQ-35 (a)); the safespot table re-exported; the runner attacks back
+Caleb's answers above. `m002-magic-safespots-neighbours`. Env contract v1.18 (to confirm), option catalog §4.A.
+- **The safespot table, re-exported** from the current fork (`f5d1aba` plus this work's `cast`, which the search
+  doesn't use), at three ranges: 7, 9 and magic's 10 (`scripts/export_ranged_safespots.py`, three servers). The
+  first pass left 90 sites unanswered: its level-3 character died at dangerous sites while the slower range-10
+  searches ran. The export now refills its hitpoints before each site (its own level, so its combat level, which
+  decides the threats, stays), and a second pass answered all but 4 (the same kind as before: a boss not spawned,
+  teleports that didn't land). Usable safespots (share 0.5 or more, no threats): 207 at range 7, 375 at 9, 460 at 10
+  (205 and 365 before). The leash check (`f5d1aba`, not in the old table) moved 20 range-7 and 44 range-9 tiles and
+  changed few usable ones (range 7: 1 lost, 3 gained; range 9: 1 lost, 11 gained).
+  - Found on the way: the safespot search runs on the game thread, so while three exports ran, each world ticked at
+    about one tick a second, not 20. Measurements count ticks, so the runs made meanwhile stand; they just took
+    longer.
+- **Magic safespots** (`rlscape.combat.safespots.distance_class`, `MAGIC_TILES`): both rankers and the fight treat a
+  magic plan as ranged's, at range 10, without arrow piles; the runner stands a caster on the tile as it does a
+  ranger, and casts only on monsters the tile holds against.
+- **Monsters near a fight** (`rlscape.combat.neighbours`; `site_aggressors` moved there from the gathering model,
+  which shares it):
+  - **The server's rule** (`AggressiveBehavior.canSelectTarget`): an aggressive monster picks a character only if it
+    isn't "in combat" (swung at within 17 ticks), outside multi-combat areas. So neighbours engage between kills.
+  - **The engagement rate**, measured at the animated spades' possessed pickaxe (4 traced band-61 magic runs): 29
+    engagements in 622 ticks before tolerance with nothing attacking the character, 0.047 a tick; the sim's fight
+    matches the server's 3.7 pickaxe kills a run at 0.045 (`ENGAGE_PER_TICK`). All 29 came before tolerance ran out
+    (the last at tick 976).
+  - **The sim's fight** (`FightNeighbours`): each neighbour spawn whose level would pick the character engages at
+    that rate while it's exposed (the overhead to the next monster, its pickups, a wait for a respawn) until the
+    region's tolerance runs out; each engagement is a kill in the fight's plan (the same `kill` as a target's, its
+    drops by the loot mode), before the next target. Sites without neighbours fight exactly as before (the earlier
+    fit set re-simulated to the same numbers).
+  - **Both rankers** (identical, as the test has them): the expected fights per target kill, timed in as pickups
+    are (`with_neighbours`); a site where an engaging neighbour can't be hurt by the plan, needs gear the fighter
+    lacks, or fails the danger filter is none while aggression lasts. `Character` carries the combat level and the
+    tolerance left in its region. The sites' choice is now compared rounded, as the monsters' is: under an
+    ammunition cap every site's kill rate is equal, and float noise in the neighbours' arithmetic broke the tie
+    differently in each ranker.
+  - **Not modelled:** multi-combat areas (neighbours attack alongside the target); the short attacks a neighbour
+    makes while the character fights (13 of the 29 at the spades); the ammunition neighbour fights use, in the
+    rankers' cap (the fight pays it).
+- **The runner attacks back** (agent choice, reversible): with no target and attacked (an eat click stops the fight
+  on this server; a neighbour engaged it), a melee or ranged character attacks the attacker at once, its own kind
+  first, as the magic runner does, rather than waiting for a hit to retaliate on. Traced at the poison spiders: each
+  of 14 to 15 eats a run cost 8 ticks before fighting again (the sim charges 3).
+- **Results**, sim over server XP/hr (3 or 4 server runs a case):
+  - magic fit set (the ranker's picks now): rats 1.01, market guards 1.05, animated spades (band 61, the pickaxe
+    modelled) 1.12, experiments 0.97;
+  - magic check set (top by gp, looting): unicorns band 31 1.03, abyssal demons 0.95 and 0.97 (gp/hr again the rare
+    drops', OQ-20); unicorns band 1, 1.31: its magic safespot holds from 61% of the wandering, and the step race let
+    a unicorn reach the caster in every run (new question OQ-36);
+  - beside neighbours: poison spiders with a hobgoblin, melee band 61, 1.28 with the old runner and 1.17 attacking
+    back; magic band 31 there, 1.28 (four runs each out of food in about 330 ticks); the Dwarven Mine scorpions,
+    ranged band 1, fight from a safespot (the King Scorpions don't reach it): 0.99.
+- **Tests:** `tests/test_neighbours.py` (7). 367 passed with the server up.
+
+### Decided: OQ-36 (a), a usable safespot holds from 80% of the wandering
+Caleb, 2026-11-08: "OQ36 - Option a". `m002-oq36`.
+- **The question** (raised in `m002-magic-safespots-neighbours`): the band-1 unicorns' magic safespot holds from 61%
+  of their wandering, over the 0.5 a safespot needed (an agent choice of 2026-11-07). In all 5 server runs a unicorn
+  read as standing still where the tile holds started a random step as it was cast on, chased from where the tile
+  doesn't hold and attacked from beside the caster; XP/hr 1.31 sim over server.
+- **The options:** (a) a usable safespot needs a share of 0.8 (recommended); (b) keep 0.5 and model the race (the
+  share not held as the chance an attack's chase reaches the character); (c) keep 0.5 and report the gap.
+- **Caleb:** (a). `rlscape.combat.safespots.MIN_SHARE` is 0.8; env contract v1.18 and option catalog §4.A say so.
+- **Usable safespots now** (range 7 / 9 / 10): 53 / 107 / 155, from 207 / 375 / 460.
+- **The calibration cases it changes** (the ranger's and caster's fit and check sets): the ranged check set's
+  unicorns (longrange, share 0.57) and green dragons (0.58), both measured inside the gate on 2026-11-07, are no
+  longer offered, nor the band-1 and band-31 magic unicorns (0.61). Their places: cows at band 1 from a tile with a
+  share of 0.81; men (band 31) and Black Knights (band 61) without a safespot; Black Knights by the Wilderness edge
+  for magic at bands 1 and 31 (share 0.88); experiments for magic's band-31 fit case. Measured below.
+
+### Decided: OQ-15 (a), the observation shows the home teleport's cooldown; OQ-7 (a), the rate model vectorised and E2 sized to the speed; OQ-2, the sim v1 skills' options
+Caleb, 2026-11-08: "OQ15 - Yes, show the cooldown for home teleport. OQ-7 option a. OQ 2 - crafting should include
+leather armor, dragonhide armor, spinning, and gems. Agility should add course laps. Herblore should add herbs and
+potions. Runecrafting should add runes and essence." `m002-oq2-oq7-oq15`.
+- **OQ-15** (raised 2026-11-01, building the home teleport's 30-minute cooldown: the agent didn't see it; the
+  candidates' travel counts the teleport only when it's ready):
+  - The options: (a) one more observation feature, the minutes until the home teleport is ready over 30, 0 when
+    ready (recommended); (b) leave it out, since the travel features change when it's ready.
+  - Caleb: (a). Env contract v1.19.
+- **OQ-7** (raised 2026-10-31 by the week-2 benchmark: the sim ran at about 800 decisions a second with 16 workers,
+  then about 500 after planned routes and transports, against the contract's 20k; most of the time in the combat
+  ranker recomputing the enemy pool's rates after each combat level-up):
+  - The options: (a) vectorise the rate model over the enemy pool (numpy, tested identical to the scalar model), about
+    twice the speed, then size E2's budget to the measured speed (recommended); (b) go further toward 20k:
+    incremental masks and features, candidates recomputed only when their inputs change, perhaps numba; days, with
+    an uncertain result; (c) keep the speed and size E2 to it.
+  - Caleb: (a).
+- **OQ-2** (raised 2026-10-28: what options Crafting, Agility, Herblore and Runecrafting get in sim v1, and which
+  items join *V*; the starting point was option catalog §3.5's likely options):
+  - Caleb: Crafting gets leather armour, dragonhide armour, spinning and gems; Agility, course laps; Herblore, herbs
+    and potions; Runecrafting, runes and essence.
+  - Next: Claude drafts them as an option-catalog version (the options, their items for *V*, the server code they're
+    ported from), for Caleb to check before they're built.
+
+### Decided: OQ-16 (a), the travel model's missing ways checked on the server, then added where they're needed
+Caleb, 2026-11-08: "OQ16 - A". `m002-oq2-oq7-oq15` (the same session's answers).
+- **The question** (raised 2026-11-01, making places with no way unreachable, OQ-12): 231 of the sim's 2,792 places
+  are unreachable, mostly behind quests outside the set, pens and cells; some have a way the model doesn't know:
+  behind a quest now complete (Crandor, by Karamja's volcano wall), an Agility shortcut or an item (the moss giant
+  island by Brimhaven, the Mage Arena's lever), and unclear ones (Wilderness spots, the ice giants by White Wolf
+  Mountain, Tree Gnome Village, a dwarf by Ice Mountain, north of Varrock, the Kharazi jungle).
+- **The options:** (a) check the unclear places on the server first (a walk there with the bridge, a few minutes
+  each), then add each way with what needs it: Crandor and the lever as transports now, Agility shortcuts with
+  Agility (sim v1); for the areas the complete quests open, a way only where the ranker would send a character in
+  20 hours (recommended); (b) only the quests' ways in sim v1, the rest left unreachable.
+- **Caleb:** (a).
+
+### Measured: the cases OQ-36 changed; the guards' rate on late pickup trips refitted
+`m002-oq36`. Sim over server XP/hr, 3 server runs a case:
+- ranged check set: cows (band 1, the share-0.81 tile) 0.84, men (band 31) 1.14, Black Knights (band 61) 1.15;
+- magic: experiments (band 31, fit set) 0.97; the Black Knights by the Wilderness edge (bands 1 and 31, check set, a
+  share-0.88 safespot) 1.12 and 0.97 at first, but the sim died in 84% of its band-1 runs and ate at band 31 while the
+  server took no damage.
+- **The guards' rate, refitted** (agent choice, reversible; it was an agent choice to take the gathering rate): the
+  deaths were the late pickup trips' guards (6 there), each swinging once every 29 ticks, as aggressive monsters do
+  at the willows while a character gathers (86 of 100 band-1 runs died with them, none without). On the server those
+  37 trips took 3 hits in all (band 31) and none at band 1: about 6 swings in 8,250 guard-ticks, one per 1,350
+  (`safespots.GUARD_SWINGS_PER_TICK`; three hits, so a rough figure: a Poisson 95% range of about 1 in 460 to 1 in
+  6,700). The Wilderness green dragons' guarded trips took none either (2026-11-07). Re-simulated: 1.04 and 0.97, no
+  deaths and no food on either side.
+
+### Built: the home teleport's cooldown in the observation (OQ-15); the rate model vectorised (OQ-7 (a)); measured speed
+`m002-oq2-oq7-oq15`.
+- **OQ-15:** the observation's `home_teleport` part, one feature: the ticks until the home teleport is ready again
+  over its 30-minute cooldown, 0 when ready. 2,625 features (env contract v1.19, Caleb).
+- **OQ-7 (a):** `rlscape/combat/vector_rates.py` computes `combat_rates` over a list of monsters with numpy, the
+  scalar model's expressions in its order, so every column is the scalar model's to the last bit (one difference
+  found and matched: Python 3.12's `sum()` of floats is compensated, Neumaier's, which the vector sum now does too).
+  `tests/test_vector_rates.py` checks every pool monster for 5 fighters and 10 plans exactly. The fast ranker reads
+  its columns from it for the pool and the neighbours, and computes a scalar `Rates` only for the candidates it
+  picks. Two smaller fixes the profile showed: the walk times to every site are cached per location (each class's
+  ranking asked for the same), and the candidates' neighbours come from the ranker's cached neighbour rates and loot.
+- **Measured** (`scripts/benchmark_sim.py`, masked random actions, 60 s; `results/benchmark/sim-speed-20261108-0156.json`):
+  110 decisions a second in one process, 410 with 4 workers, 817 with 16 (51 a worker: 8 cores). The same sim with
+  the old scalar paths patched back in: 42.5 in one process, so 2.6 times as fast; the last benchmark (2026-11-01,
+  before neighbours and safespots) was 71 and 489. What's left in a profile: the skilling slots' ranking, the nearest
+  bank and the travel routes, and the observation's encoding, none above a sixth.
+- **E2's budget at this speed** (OQ-7 (a): sized to it): a run of 2M decisions takes about 41 minutes on 16 workers,
+  before PPO's own updates; E2's 25 runs (five weightings by five seeds) about 17 hours, 15 runs (three seeds, OQ-17's
+  option (a)) about 10. How many decisions PPO needs here isn't known until the sanity ladder runs.
+
+### Built (part): OQ-16 (a), the unclear places checked on the server; the Crandor passage; OQ-2's draft
+`m002-oq2-oq7-oq15`.
+- **The unclear places, checked on the server** (OQ-16 (a)'s first step): for each of the 15 unclear areas, a
+  character click-walked from the nearest place with a way toward the area, and from the area out, 300 ticks each.
+  None got there:
+  - the Wilderness spots: the hill giants and King Scorpion by the Lava Maze (within 7 tiles), the lesser demons
+    (33), the battle mages (11: they're the Mage Arena's, inside its walls), the hill giants further north (7), the
+    greater demons (40; their tile can't be stood on), the red dragon (8), the skeletons (2);
+  - the ice giants by White Wolf Mountain (5, and 5 beside them), Tree Gnome Village (15; the tile can't be stood
+    on), the dwarf by Ice Mountain (2), the grizzly bear and Monk of Zamorak north of Varrock (9), the Kharazi jungle
+    (14, 6 and 3).
+  A walk click searches only so far (about 25 tiles), so this alone wouldn't prove a long maze shut, but the planner,
+  which searches the whole map, finds no way either: no plain walking way is missing. What leads in, if anything,
+  is a special way (a gate's or shortcut's handler, a quest entrance), found per area if one is worth it.
+- **The Mage Arena's lever** (`WildernessLeverPlugin`): the arena lever lets a character in only once it has killed
+  Kolodion (the Mage Arena minigame), so the battle mages stay out. The other levers (Ardougne to the Wilderness's
+  deserted keep, and the mage bank's) lead nowhere the sim fights.
+- **The Crandor passage, built** (Dragon Slayer complete, so the secret wall opens): Karamja volcano's pot hole
+  (492) down to the Musa Point dungeon, its secret wall (2606, `DragonSlayerPlugin`), the rope up (25213) onto Crandor
+  at (2834, 3258); back by Crandor's hole (25154, "Enter") and the dungeon's rope (1764).
+  - Timed on the server, as clicks: 77 ticks to Crandor and 83 back in two of three runs (117 and 134 in the third).
+  - The walking planner takes it as one crossing from the volcano's rim (2856, 3167) to Crandor (`routes.CROSSINGS`
+    492: its 89 steps across plus 6; `data/travel/crossings.csv` gets the pot hole's row, as the export would write
+    it). Crandor's 12 places get a way: 219 of the 2,792 places have none now (231 before). Its access rule (Dragon
+    Slayer) already gates it, as for every quest area.
+  - The server walker (`rlscape.bridge.walker`) crosses it with a scripted sequence in the route's direction, and
+    looks for a door or crossing before its 20-tile hop limit (a crossing's far side can be further: the walker had
+    clicked on the spot 3,000 times). Live test: `test_the_walker_takes_the_crandor_passage_both_ways`.
+- **Left for OQ-16 (a):** the areas quests now open whose way in the model lacks (West Ardougne's, about 28 places by Claude's reading of the groups,
+  and the others the access table opens: the Fremennik Isles, Waterbirth, Trollheim, Keep Le Faye, …), each added
+  where the ranker would send a character in 20 hours; and the Agility shortcuts, with Agility in sim v1.
+- **OQ-2's draft:** `docs/sim-v1-skills-draft.md`, the four skills' options from the server's code, with the
+  choices for Caleb (A to I). Found while drafting:
+  - gem cutting never fails on this server (`GemCutPulse` has no crushing);
+  - the Barbarian Outpost course needs Alfred Grimhand's Barcrawl, a miniquest `spawn` doesn't flag;
+  - the astral, death and blood altars need quests the server lacks;
+  - the travel model has no way to the Barbarian Outpost course and Agility Pyramid tiles checked;
+  - every candidate input has a 2009 GE price but the bird's nest.
+- **Tests:** 324 passed offline; the live walker tests pass.
+
+### Built (part): OQ-16 (a)'s quest-opened areas: the Rellekka ferries; West Ardougne (OQ-37) and Trollheim found
+`m002-commit-oq16-ways`.
+- **Which areas count** (OQ-16 (a): a way only where the ranker would send a character in 20 hours): of the 219
+  places with no way, 66 lie in an access rule a fresh character now meets: West Ardougne 28, Trollheim 25, the
+  Fremennik Isles 12, Waterbirth 1; the other 153 in none (quests the server lacks, cells and pens, the unclear
+  areas above). For their combat sites, each site's own rates (at the site, travel and banking aside) against the
+  ranker's top three by XP and by gp for the calibration characters of bands 1, 31, 61 and 91 in each class: West
+  Ardougne's men, women, zombies, ghosts and rats, Trollheim's mountain trolls, troll spectators, ice trolls and
+  ice wolves, and the Fremennik Isles' yaks and ice trolls would be offered somewhere; Waterbirth's one place
+  wouldn't.
+- **The Fremennik Isles, built:** the Rellekka ferries (`RellekkaListeners`: Maria Gunnars to Neitiznot, Mord Gunnars
+  to Jatizso, each with The Fremennik Trials, free, and back), 17 ticks from the click to the far side, measured on
+  the server (3 runs each way, one at 14), in `transports.RELLEKKA_FERRIES`. 9 places get a way (210 without one now);
+  three of the ice trolls' spots still have none (the islands' bridges, to look at).
+- **West Ardougne:** the only way in on this server (Biohazard isn't here) is Plague City's: Edmond's dug hole (shown
+  only with the quest's tunnel varbit), the sewer, and the pipe, which lets a character through only wearing a gas
+  mask, a quest item `spawn`'s flags don't give. New question OQ-37.
+- **Trollheim:** Death Plateau's large door (3743) is on the map and opens with the quest done, but past it the walk
+  stops 15 tiles short of the plateau ((2885, 3589) to (2900, 3604)), and Trollheim's mountain is 18 and 73 tiles
+  beyond what's walkable: climbing obstacles (Troll Stronghold is on the server), to find on the server one by one.
+- **Tests:** `test_the_rellekka_ferries_reach_the_fremennik_isles`. 325 passed offline.
+
+### Decided: OQ-37 (b), West Ardougne stays unreachable; the gap is documented for post-project work
+Caleb, 2026-11-08: "OQ37 - leave it unreachable. Document the gap for post-project work." `m002-oq37`.
+- **The question** (raised in `m002-commit-oq16-ways`, building OQ-16 (a)'s ways into areas complete quests open):
+  West Ardougne's 28 places have no way in the model, and its monsters would be offered. The server's only way in
+  (Biohazard isn't on it) is Plague City's: Edmond's dug hole (shown only with the quest's tunnel varbit), the sewer,
+  and the pipe, which lets a character through only wearing a gas mask, a quest item `spawn`'s flags-only completion
+  doesn't give.
+- **The options:** (a) `spawn` sets the tunnel's varbit and gives a gas mask, as an unlock the quest leaves, and the
+  sim's walk takes the hole, the sewer and the pipe as one crossing (recommended); (b) leave West Ardougne unreachable,
+  a known gap.
+- **Caleb:** (b), and the gap documented for post-project work: `docs/post-project-gaps.md`, started with it.
+
+### Decided and built: Trollheim by its teleport, its climbing-boots climbs left out (Caleb)
+Caleb, 2026-11-08: "Yes, ignore the Trollheim crossing that require climbing boots. The important things to access in
+Trollheim are accessible from the teleport location without those boots." `m002-commit-trollheim`.
+- **Found:** every climb in `TrollheimPlugin` (option "climb": the rocks up to Death Plateau's path, the rock
+  scaling, the rocks beyond, and the summit's) needs climbing boots worn ("You need Climbing boots to negotiate these
+  rocks", checked live), and several also need Agility 15 to 47. Crossings for the ones with no Agility check were
+  built, then taken out when the boots turned up; the direct way up from Burthorpe needs Agility 15 besides.
+- **Left out** (Caleb): the climbs that need climbing boots. Death Plateau's troll arena and the summit's ice trolls
+  and ice wolves stay without a way.
+- **Built, the Trollheim teleport:** Eadgar's Ruse isn't on the server, so the spell's check
+  (`ModernListeners`: `hasRequirement(EADGARS_RUSE)`) asks the quest's own requirement (`Requirement.kt`: Druidic
+  Ritual and Troll Stronghold, both complete from the start, and Herblore 31, boosts counting). The sim had it shut
+  behind the quest; it now asks the same: Magic 61, Herblore 31, 2 fire and 2 law runes (`transports.SPELL_SKILLS`,
+  a teleport's `skills`). It lands at (2891, 3678), in a pocket of 2,055 walkable tiles with five mountain trolls'
+  and five thrower trolls' sites. Herblore is trainable from sim v1, so in sim v0 the teleport stays out of reach.
+- **Checked live:** refused at Herblore 30; cast at 31, landing at (2891, 3678); the walker reaches a mountain
+  troll's site from there. Tests: `test_the_trollheim_teleport_asks_eadgars_ruses_own_requirement`,
+  `test_the_trollheim_teleport_needs_eadgars_ruses_own_requirement_and_lands_by_the_trolls`.
+- **The same rule elsewhere:** the Watchtower and Ape Atoll teleports' checks are also `hasRequirement` of quests
+  the server lacks (Watchtower, Monkey Madness), which the sim keeps shut behind the quests; not changed.
+- **Tests:** 326 passed offline.
+
+### Decided and built: the Watchtower and Ape Atoll teleports open as the server opens them (Caleb)
+Caleb, 2026-11-08: "For watchtower and Ape Atoll, those teleports should be open, because we have made the decision to
+flag the quests as complete." `m002-teleports`. Env contract v1.20.
+- **What the server does:** Watchtower and Monkey Madness aren't on the server, so `spawn` can't flag them complete.
+  Their teleports' checks (`ModernListeners`) are `ContentAPI.hasRequirement`, which for a quest the server lacks
+  evaluates the quest's own requirement (`QuestReq.evaluate`; `Requirement.kt`), and for one it has asks only that
+  it be complete (its stage 100), so a complete quest's own requirements aren't asked again:
+  - Monkey Madness: The Grand Tree and Tree Gnome Village, both on the server and complete from the start, so the Ape
+    Atoll teleport is open to every character with Magic 64, 2 fire, 2 water and 2 law runes and a banana;
+  - Watchtower: Magic 14, Thieving 15, Agility 25, Herblore 14 and Mining 40 (boosts count), besides the spell's Magic
+    58. Agility and Herblore are trainable from sim v1, so it opens there;
+  - Eadgar's Ruse (the Trollheim teleport, above): Druidic Ritual and Troll Stronghold, complete, and Herblore 31.
+  The quest points they ask are met (every quest the server has is complete: 126).
+- **Built:** `gd.quest_requirements` reads `Requirement.kt`'s 137 entries; `gd.quest_gate(quest)` turns one into what
+  `hasRequirement` asks (the quests the server has that must be complete, the levels, unfolding the quests it lacks);
+  the teleport spells take their quests through it (`transports._spell_gate`), in place of the Trollheim case
+  written by hand before. Only the spells: the charters and tablets check quests their own way.
+- **Checked live:** the Ape Atoll teleport cast by a Magic-64 character with the runes and a banana, landing at
+  (2795, 2798, 1); the Watchtower teleport refused a level short of each of its five skills and cast with them;
+  Trollheim's as before. Tests: `test_the_teleports_of_quests_the_server_lacks_open_with_their_own_requirements`
+  (both), the offline transport test.
+- **Tests:** 326 passed offline.
+
+### Decided: OQ-2's sim v1 choices (Caleb); built: the Barcrawl and Enter the Abyss complete from the start
+Caleb, 2026-11-08, on `docs/sim-v1-skills-draft.md`'s choices: "OQ2 / Choice A - option A / Choice C - Leave out
+studded leather, snakeskin, and jewelry. / Choice D - Leave out the agility pyramid and brimhaven. Mark the barcrawl as
+complete so that agents may access barbarian agility. Also include Barbarian Fishing as a viable agility training
+method. If there are miniquest requirements to be able to do barbarian fishing, mark those as complete as well. Make the
+heavy fishing rod purchaseable from the GE. / Choice E - Option A / Choice F - Option A / Choice H - Include The Abyss
+and tiaras as options / Choice I - Option A". `m002-oq2-choices`.
+- **Choice A, the inputs: (a).** The options: (a) recommended: a path uses inputs the character holds or has banked,
+  and the agent buys them with the GE buy actions, which these inputs join; (b) a path also buys its own inputs as it
+  goes. Caleb: (a).
+- **Choice C, what Crafting has: tanning, leather and dragonhide armour, spinning, gems.** The options: (a)
+  recommended: everything drafted; (b) without studded armour (it needs Smithing's steel studs); (c) without snakeskin
+  as well. Jewellery was out unless added. Caleb: studded leather, snakeskin and jewellery are all left out. The leather
+  pieces are the eight soft and hard ones (gloves to coif), with the 12 dragonhide pieces.
+- **Choice D, the courses: the Gnome Stronghold, the Barbarian Outpost and the Wilderness (the draft's (b)).** The
+  options: (a) recommended: those three and the Agility Pyramid, its top handed to Simon Templeton for coins; (b) the
+  same without the Pyramid; the Brimhaven arena out in both. Caleb: the Pyramid and Brimhaven are left out. Also:
+  - **D2, the Barcrawl: (a).** The options: (a) recommended: flag the Barcrawl finished at spawn, as the quests are
+    (flags only); (b) leave the Barbarian course out. Caleb: flag it.
+  - **Barbarian Fishing trains Agility too** (Caleb's addition). Any miniquest it needs is flagged complete too, and the
+    heavy fishing rod can be bought on the GE.
+- **Choice E, the potions: (a).** The options: (a) recommended: the 21 standard potions, leaving out the quest and
+  minigame mixes; (b) the combat ones alone; (c) all the server has. Caleb: (a).
+- **Choice F, grinding: (a).** The options: (a) recommended: a path grinds its secondary when the character holds the
+  whole ingredient and a pestle and mortar, and the dust can also be bought; (b) dusts only bought. Caleb: (a).
+- **Choice H, the Abyss and tiaras are in.** The options: (a) recommended: talismans only, without the Abyss, its
+  pouches and tiaras; (b) tiaras as well. Caleb: the Abyss and tiaras both.
+- **Choice I, the vocabulary: (a).** The options: (a) recommended: the inputs the agent buys or holds join *V*, and the
+  products only where something else uses them; the other products stay misc; (b) every input and product. Caleb: (a).
+- **Not answered:** Choice B (picking flax) and Choice G (mining essence paired with crafting it). They're OQ-38.
+- **Found on the server:**
+  - **Barbarian Fishing** (`gather/fishing/barbfishing/`) needs no miniquest. `BarbFishingPulse` asks for Fishing 48,
+    Agility 15 and Strength 15, a barbarian rod (11323) in the inventory, a free slot, and bait (fish offcuts, feathers,
+    fishing bait, roe or caviar).
+    - Every 5 ticks it tries leaping trout (Fishing 48), salmon (58, with Strength and Agility 30) and sturgeon (70,
+      with 45), in that order, each at its own catch chance (`Fish.getSuccessChance`, linear in the level: trout 43% at
+      level 1 down to 35% at 99, salmon 25% up to 28%, sturgeon 19% up to 25%). The first that succeeds is caught, for
+      one bait.
+    - XP a catch: Fishing 50, 70 or 80; Agility and Strength 5, 6 or 7 each.
+    - Five spots move among seven tiles at Otto's Grotto (2500–2506, 3494–3516), each after 400 to 2,000 ticks
+      (`SpotManager`).
+    - Barbarian Training's rod stage only gates the rod under Otto's bed. It stays unflagged, so the GE is where the
+      rod comes from.
+    - The rod is untradeable, with no 2009 price, so it goes on the frozen GE at a set price, as Ava's devices did
+      (`SET_PRICES`). The price is OQ-41.
+  - **The Barcrawl:** the Barbarian Outpost course's gate (2115, 2116; `BarbarianOutpostCourse`) lets a character
+    through only once every bar is done and the card handed in. Until then the guard's dialogue opens.
+  - **The Abyss** (`runecrafting/abyss/`):
+    - **Getting in:** the Mage of Zamorak in the Wilderness is at (3105, 3554), level 5, north of Edgeville. It shows a
+      Teleport option once Enter the Abyss is done: the mage is a multi-NPC, 2257, shown as 2259 at the miniquest's
+      stage 4 (varp 492). The teleport lands the character at a random point of the outer ring, drains its prayer to 0
+      and skulls it for 2,000 ticks.
+    - **The outer ring:** 12 obstacles stand around it, rotated so the character lands by a blocked one. A passage
+      always lets it through. The others each take a tool and a skill:
+      - rocks: a pickaxe, Mining;
+      - tendrils: an axe, Woodcutting;
+      - a boil: a tinderbox, Firemaking;
+      - eyes: Thieving;
+      - a gap: Agility.
+
+      Each try passes with chance (level + 1)/100 and takes about 8 ticks. The abyssal leeches, guardians and walkers
+      (2263–2265) are aggressive.
+    - **The inner ring's rifts:** each sends the character to its altar, with the ruins' own checks
+      (`MysteriousRuinListener.checkReq`):
+      - every rift: Rune Mysteries;
+      - cosmic: Lost City (complete);
+      - law: Entrana's rule of no weapons or armour;
+      - the chaos rift lands beside the chaos altar;
+      - death and blood: `hasRequirement` of quests the server lacks, Mourning's End Part II and Legacy of Seergaze.
+        Mourning's End unfolds to Ranged 60 and Thieving 50, plus Roving Elves, Big Chompy Bird Hunting and Sheep
+        Herder (all complete). Whether the death rift opens is OQ-39. Legacy of Seergaze unfolds to nine levels,
+        including Construction 20, which the sim can't train, so the blood rift never opens.
+    - **Pouches:**
+      - the small pouch (3 essence) is Enter the Abyss's reward;
+      - the medium, large and giant (Runecrafting 25, 50 and 75; 6, 9 and 12 essence) drop from the abyssal monsters.
+        Each kill has a 12-in-750 chance of the next one the killer lacks, in that order;
+      - those three decay with use, and the Dark Mage in the Abyss's centre repairs them;
+      - all four are untradeable.
+
+      Whether there are pouches is OQ-40.
+  - **The astral altar:** Lokar Searunner's boat from Rellekka to Lunar Isle (`LokarSearunnerDialogue`) and the altar
+    ask Lunar Diplomacy, which the server lacks. It unfolds to eight levels the sim trains (Magic 65, Crafting 61,
+    Mining 60, Woodcutting 55, Firemaking 49, Defence 40, Agility 32, Herblore 5) and four quests that are complete.
+    Whether it opens is OQ-39, with the death rift.
+  - **Tiaras** (`TalismanEnchantingListener`):
+    - A plain tiara (5525) and the talisman, used on the altar, make the rune's tiara. That gives 25 to 47.5
+      Runecrafting XP, air to law.
+    - Worn, it opens the ruins in place of the talisman (`handleTiaraOrStaff`), freeing the talisman's slot.
+    - Plain and elemental tiaras are tradeable, 45 gp each in January 2009.
+    - A plain tiara is cast from a silver bar in a tiara mould at a furnace, the silver crafting left out with jewellery
+      (Choice C), so it's bought.
+- **Built:**
+  - **The fork** (`RLCommands.completeMiniquests`): `spawn` flags the Barcrawl finished (every bar done, the card
+    handed in) and Enter the Abyss done (varp 492 = 4). Flags only: Enter the Abyss's 1,000 Runecrafting XP, small
+    pouch and research notes aren't given.
+  - **The bridge** finds NPCs by the name a player sees. For an NPC with forms, that's the form shown to the character
+    (`NPC.getShownNPC`), whose options a client's click reads (`processNpcAction`); the mage's own definition is named
+    "null". `interact`, `npcs`, `use_item_on`, `cast` and the safespot commands match the shown name, and the shown or
+    base id.
+  - **Checked live:**
+    - A fresh character passes the course gate both ways.
+    - The mage teleports it to the outer ring, 24 tiles from the centre, with its prayer at 0.
+    - With Fishing 48, Agility 15, Strength 15, a rod and feathers, it caught 8 leaping trout in 200 ticks, each for 50
+      Fishing, 5 Agility and 5 Strength XP.
+    - Tests: `test_the_barcrawl_and_enter_the_abyss_are_complete_from_the_start` and
+      `test_barbarian_fishing_needs_no_miniquest_and_trains_agility_and_strength`.
+  - **Tests:** every live file passed with the changed lookup (`test_bridge_inputs_live.py` and `test_bridge_live.py`
+    42, the human-player, quests and run-energy files 19), and 326 offline.
+- **The draft is now the spec** (`docs/sim-v1-skills-draft.md`), with each choice's answer. It adds `barb_fish`,
+  `make_tiara_<rune>` and `abyss_rc_<rune>`. *V* grows by about 85 items, to about 2,065 actions and 3,300 observation
+  features. The option catalog gets the options (v1.4) once their actions are fixed.
+- **Open:** OQ-38 (Choices B and G), OQ-39 (the death and astral altars), OQ-40 (pouches), OQ-41 (the rod's price).
+
+### Decided: OQ-38, picking flax paired with spinning; essence mined and crafted by separate paths (Caleb)
+Caleb, 2026-11-08, on sim v1's two choices left open by his OQ-2 answers: "OQ 38 B option a / G Option b".
+`m002-oq38-oq41`.
+- **Choice B, flax: (a).** The options: (a) recommended: `pick_flax_spin` picks flax in Seers' Village's field and
+  spins it at the wheel there (a gathering path paired with its processing, as the catalog's §2 pairs them), and
+  `pick_flax` is a gathering path of its own; (b) spinning bought flax only. Caleb: (a).
+  - **On the server** (`FieldPickingPlugin`): a pick every 2 ticks, no XP. Each flax plant gives 4 to 9 picks (its
+    charge, re-rolled each pick), then is gone for 30 ticks. The field is south of Seers' Village and the wheel on a
+    house's first floor there, as the bundled flax bot's route has them (`bots/SeersFlax.kt`).
+- **Choice G, essence: (b).** The options: (a) recommended: `mine_essence_rc_<rune>` as well, for the six runes whose
+  ruins are near the essence mine's wizards (air, mind, water, earth, fire, body): mine a load, craft it, again;
+  (b) only the separate paths, `mine_essence` and `rc_<rune>`. Caleb: (b). An agent that wants both mines with one
+  option and crafts with the next.
+- **The spec** (`docs/sim-v1-skills-draft.md`) states both answers. *V* doesn't change (flax is in it already), and
+  the bridge needs the flax's Pick, a scenery click it already sends.
+- **Open:** OQ-39 (the death and astral altars), OQ-40 (pouches), OQ-41 (the rod's price).
+
+### Decided: OQ-39 (b), the death altar; OQ-40 (c), the pouches as the server gives them; OQ-41, the rod at 1,000 gp (Caleb); built: the small pouch at spawn, the rod on the GE
+Caleb, 2026-11-08: "OQ 39 - B / OQ 40 - C / OQ 41 - Set the heavy rod at 1,000 gp." `m002-oq38-oq41`.
+- **OQ-39, the death and astral altars: (b), death only.** The question was whether they open as the server opens
+  them, by the lacking quests' own requirements. The options: (a) recommended: both (`abyss_rc_death`, and Lokar
+  Searunner's boat in the travel model with `rc_astral`); (b) death only, since the Abyss is in and the boat is more
+  work; (c) neither (the server would still let a character in, but no option goes there). Caleb: (b).
+  - The death rift opens at Ranged 60 and Thieving 50 (Mourning's End Part II's own requirement, as the server asks
+    it) with Runecrafting 65, for pure essence only, 10 XP an essence. The death rune is in *V* already.
+  - **Found:** the death altar's portal leads to its ruins at (1862, 4639), in the Temple of Light, which the travel
+    model doesn't reach. So a death trip ends with a teleport from the altar: the home teleport when it's ready, or a
+    teleport spell the character can cast.
+  - The astral altar gets no option. The server would still let a character with Lunar Diplomacy's levels take
+    Lokar's boat, but the travel model has no way there.
+- **OQ-40, essence pouches: (c), as the server gives them.** The options: (a) recommended: no pouches; (b) the small
+  pouch at spawn and the others on the GE at set prices, with their decay and the Dark Mage's repair; (c) as the
+  server gives them: the small pouch at spawn, the others from killing abyssal monsters (a fight option in the Abyss).
+  Caleb: (c). Read from the server (`PouchManager`, `AbyssalNPC`, `DarkMageDialogue`):
+  - **The drop:** each kill of an abyssal leech, guardian or walker (2263–2265) has a 12-in-750 chance of the next
+    pouch the character lacks (small, medium, large, giant), counting the inventory, bank and equipment, and a decayed
+    pouch as the pouch. It's dropped on the ground. It needs no level; filling needs Runecrafting 25, 50 or 75.
+  - **Decay:** the medium, large and giant count the essence put in: 264, 186 and 140 before the first decay. Each
+    decay cuts the capacity by 1, 2 or 3, and the next comes after 9 × the new capacity; at 0 the pouch disappears.
+    The server keeps one state for each kind of pouch. The small pouch never decays.
+  - **Repair:** the Dark Mage in the Abyss's centre repairs every pouch, free.
+  - **Value:** untradeable and not alchable, so net worth counts them at 0.
+  - **The fight option in the Abyss:** the combat pool already lists the three monsters (39, 32 and 29 spawns; drops
+    about 760 to 780 gp a kill, mostly noted pure essence). The travel model needs the mage's teleport, the outer ring
+    as a site and a way out. The teleport skulls the character, so a death there keeps no items (`DeathTask`).
+- **OQ-41, the rod's price: 1,000 gp** (Caleb). The options: (a) recommended: a nominal 77 gp, the fly fishing rod's
+  January 2009 price; (b) another price Caleb sets. Caleb: 1,000 gp.
+- **Built:**
+  - **The small pouch at spawn** (the fork, `RLCommands.completeMiniquests`), in the bank, so no other option's
+    inventory changes. That's Claude's choice, reversible: the miniquest itself gives the pouch to the inventory.
+    Enter the Abyss's 1,000 Runecrafting XP and notes still aren't given. The sim's fresh character has it too
+    (`gamedata.server.MINIQUEST_ITEMS`, in `starter_kit`'s bank). Env contract v1.22 (§1), to confirm.
+  - **The rod on the GE** (`scripts/build_price_tables.py`, `SET_PRICES`): 11323 at 1,000 gp, as Ava's devices are.
+    Rebuilt and checked against the previous tables: only the rod's rows were added (a `price_index` row and the
+    historical list in the frozen database, a `ge_set` row in `prices_v2`). Installed into the three instances. Its
+    buy action joins *V* with the Agility build (`barb_fish`).
+  - **Tests:** `test_the_barbarian_rod_is_bought_on_the_ge_at_calebs_price_and_sold_back` (live: bought for 1,000,
+    sold back for 1,000); the spawn tests (`test_bridge_live`, `test_quests_live`) and the sim's fresh character
+    (`test_sim`) expect the pouch in the bank.
+- **The spec** (`docs/sim-v1-skills-draft.md`) states the three answers, with the pouches' table and rules and the
+  Abyss's fight option. *V* gains the four pouches (held, not bought): about 89 items.
+
+### Built (sim v1, Crafting part 1): the paths at a bank (gems, leather and dragonhide armour) and Crafting's slots
+2026-11-08, building `docs/sim-v1-skills-draft.md` §2 (Caleb's OQ-2 answers). `m002-commit-crafting`.
+- **The recipes** (`gamedata.server.crafting_recipes`), read from the server's source (`content/global/skill/crafting`):
+  - 9 gems (`Gems`, `GemCutPulse`): an uncut gem into the cut one with a chisel. The pulse has no stage counter, so it
+    cuts one every tick, from the first.
+  - 8 leather pieces (`LeatherCrafting.SoftLeather`, `SoftCraftPulse`; `HardCraftPulse` for the hardleather body) and
+    12 dragonhide pieces (`DragonHide`, `DragonCraftPulse`: 1, 2 or 3 leathers), with a needle and thread, one every 5
+    ticks (`++ticks % 5`), the first at the 5th.
+  - Thread (`decayThread`): each sewn item uses a charge of the reel, and when the charges run out a thread is taken
+    and the reel starts again at 5. The charges are saved on the character (`threadCharges`), so the sim keeps them on
+    `CharacterState.thread_charges`. Every item needs a thread held as it starts.
+- **The paths** (`rlscape/sim/crafting.py`), as Fletching's: `cut_<gem>` and `craft_<item>`, 29 in all. At the nearest
+  bank, bank everything but the tool, the thread and the inputs; take out the tool, all the thread and a load (27
+  uncut gems, or 26 leathers beside the needle and thread); craft them, bank, again. The rate model (`_craft_rate`)
+  counts the loads, the bank time and the thread used.
+- **The slots:** Crafting joins the skilling slots (`skill_crafting_xp1/xp2/gp1/gp2`) and the kits (`crafting`: the
+  tools, the thread and the carried inputs), with a `crafting` task in the observation. 1,713 actions (+4) and 2,650
+  features (+25: 20 candidate features, 4 mask entries, the task). Env contract v1.23, to confirm; option catalog
+  v1.4 started (§2), to confirm when the four skills are built.
+- **Found: at the frozen January 2009 prices, Crafting loses gold.** Every recipe's product is worth less than its
+  inputs but red topaz (+11 gp) and onyx (even). An uncut sapphire is 616 gp and a cut one 393; soft leather 167 and
+  leather gloves 6; a green dragonhide body loses 926. So Crafting trains XP for gold, and its gp slots hold the
+  smallest losses.
+- **Not yet:** tanning, spinning and picking flax; the crafting inputs in *V* (so the agent can't buy them yet: the
+  paths open with drops or held inputs); the server's measured times (the bridge's make-X dialogues).
+- **Agent choices (reversible):** the needle or chisel is carried, not worn; a load takes all the banked thread (it
+  stacks); the thread's value is counted in a path's gp.
+- **Speed:** 104 decisions a second in one process (110 before).
+- **Tests:** `tests/test_sim_crafting.py` (9): the recipes against the server's enums, a gem a tick, leather every 5
+  ticks and a thread every 5 items, dragonhide's leathers and level, the bank path's loads, its tool and thread, the
+  slots and kit, the rate. The counts in `test_vocabulary` and `test_sim_skilling`.
+
+### Built (sim v1, Crafting part 2): tanning, spinning and flax; XP slots hold paths that give XP; found and fixed: a dead RL character respawned on its spawn tile
+2026-11-08, building `docs/sim-v1-skills-draft.md` §2. `m002-commit-crafting`.
+- **The recipes** (`gamedata.server`):
+  - `tanning_recipes` (`TanningProduct`, with `tan`'s fees): cowhide to soft leather (1 gp) or hard leather (3 gp),
+    and the four dragonhides to dragon leather (20 gp each). Snakeskin is out (Choice C). No XP: one interface click.
+  - `spinning_recipes` (`SpinningItem`): wool to a ball of wool (level 1, 2.5 XP) and flax to a bowstring (level 10, 15
+    XP), one every 4 ticks (`SpinningPulse`; the 2-tick rate needs a Seers' Village diary). Roots, sinew and yak hair
+    are out.
+  - Picking flax (`FieldPickingPlugin`): a pick every 2 ticks, no XP. A plant goes once its picks pass 1 +
+    `RandomFunction.random(2, 8)`, drawn afresh each pick: 4 to 9 picks, 5.77 on average, then 30 ticks before it's
+    back.
+- **The stations** (`data/stations.csv`):
+  - **Tanners** from their NPCs' spawns: Ellis in Al Kharid; Sbott in Canifis; the Ranging Guild's Leatherworker
+    (Ranged 40, the guild's door); the Crafting Guild's tanner (`never`: the guild needs Crafting 40 and a brown apron
+    worn, which no option gets).
+  - **13 spinning wheels**, found on the server by scanning every map region with `debug_nearby` (setup only): Lumbridge
+    Castle, Seers' Village, Barbarian Village, south of Falador, Witchaven, the Gnome Stronghold (three), Rellekka,
+    Neitiznot, Lletya, Sophanem, the Crafting Guild (`never`).
+  - A fresh character reaches Ellis and eight wheels. Canifis, the Ranging Guild, Lletya and Sophanem aren't in the
+    travel model's reach.
+  - **Found:** the travel model lets a character into the Crafting Guild, which the server's door refuses without
+    Crafting 40 and a brown apron. The stations there are `never`; the guild's other content isn't used.
+  - The scan found 181 flax plants. The paths use Seers' Village's field (Choice B (a)): 48 plants in (2737-2750,
+    3438-3452). Others grow by the Gnome Stronghold, Rellekka, Taverley, Lletya and on Lunar Isle.
+- **The paths** (`rlscape/sim/crafting.py`):
+  - `tan_<leather>` (6) and `spin_wool`, `spin_flax` (`AtStation`): take a load from the nearest bank, walk to the
+    nearest usable station, work it, bank at the bank nearest the station, again.
+  - `pick_flax` and `pick_flax_spin` (`PickFlax`, `SpinFlaxAtWheel`) are gathering paths, like trees
+    (`gather_depleting`): they end at a full inventory, of flax or of bowstrings, as fishing's cooking paths do (catalog
+    §1). The spec's draft said `pick_flax_spin` "banks the bowstrings, again"; Claude's choice, reversible.
+  - Their rates (`skilling._station_rate`, and `_unit` and `_process` for flax). For example, from Lumbridge, at
+    Crafting 10 and 2009 prices: picking flax about 58,000 gp/hr; picking and spinning it about 54,000 gp/hr and 4,300
+    Crafting XP/hr.
+  - Crafting has 39 paths. The `crafting` kit keeps the hides, wool and flax too.
+- **XP slots hold only paths that give XP** (Claude's choice, reversible; catalog v1.4). Picking flax and tanning give
+  none, and the ranker had put them in an XP slot. Now they go to the gp slots. A fresh character's Crafting gp1 is
+  picking flax, and its XP slots stay empty. No other skill has a path without XP, so nothing else changed.
+- **Found and fixed (the fork): a dead RL character respawned on its spawn tile.** `DeathTask` sends the dead to their
+  spawn location. A human's is the home location (`LoginParser`: `ServerConstants.HOME_LOCATION`, rl.conf's 3222,
+  3218), where the sim respawns a character (`combat.RESPAWN`). But `AIPlayer.init` sets the tile the bot was made on,
+  so an RL character came back at (3233, 3230). Reproduced live, a new character left in the Abyss: "Oh dear, you are
+  dead!", then at (3233, 3230). `RLPlayer.init` now sets the home location. They're 12 tiles apart, so the sim's
+  deaths had been a few ticks' walk off.
+  - It also explains `test_the_barcrawl_and_enter_the_abyss_are_complete_from_the_start`'s failures in full runs: the
+    character sometimes died in the Abyss before the check (it was back at 3233, 3230). It now arrives with 99
+    hitpoints. The other two flaky live tests (the hand cast, the ranged safespot) are a task offered separately.
+- **Tests:** `tests/test_sim_crafting.py` (now 16): the recipes, the stations a fresh character uses, the tanning and
+  spinning paths, the flax plant's picks, picking and spinning, and XP-less paths in gp slots. Live:
+  `test_a_death_sends_the_character_to_lumbridges_home_tile`. The counts in `test_sim_skilling` and
+  `test_sim_gathering`. The full suite: 405 passed. Speed: 96 decisions a second in one process (110 before Crafting).
+
+### Decided and built: RL characters keep the regions in a client's view active (Caleb); the two flaky live tests explained
+2026-11-08, Caleb: "Do this task here: 'Harden two flaky live bridge tests'", then, on Claude's question, "Fix in the
+fork (Recommended)". `m002-flaky-tests-and-regions`.
+- **The hand-cast test** (`test_a_hand_cast_is_one_spell_and_casting_again_each_tick_keeps_the_autocast_rate`) failed
+  now and then with `assert 1 >= 3`: one cast seen.
+  - **Cause 1, a hurt cow.** A cow keeps the damage an earlier run left: it heals 1 hitpoint a 100 ticks
+    (`SkillRestore`), and only while its region is active. Run back to back, the test's cow was at 3, 5 and 1
+    hitpoints at the first cast. Wind strike hits at most 2 at Magic 1, so a cow at 1 or 2 died to the first.
+  - **Cause 2, a frozen cow.** While that cow was respawning, the test picked another, at (3264, 3259), which never
+    moved, and no spell landed on it in 60 ticks.
+  - **Fixed in the test:** it casts at the nearest cow at its full 8 hitpoints (`gd.npcs()`), which takes at least 4
+    casts. 4 of 4 passed alone.
+- **Cause 2 was the server: only the region an RL character stood in was active.** A human's client view keeps the
+  regions of its build area active (`MapChunkRenderer.render`: the 13 × 13 chunks around the scene's base count the
+  player as a viewer and flag them active). `AIPlayer.update` does nothing, so for an RL character only its own region
+  was active (`RegionChunk.addPlayer`). An NPC in an inactive region doesn't tick (`NPC.tick`), and a fight on one
+  ends at once (`CombatPulse.pulse`). Live, with the character at (3257, 3270), in region (50, 51): the cows in
+  (50, 50), (51, 50) and (51, 51) didn't move in 30 ticks, and a wind strike on one in (50, 50) did nothing; from
+  inside (50, 50), the same strike hit it for 2.
+  - **Scope:** 1,421 of the sim's 2,185 combat sites (65%) have a region boundary within 15 tiles (`SITE_RADIUS`) of
+    their spawn. On the server, the monsters across one hadn't moved, aggressed or been attackable from the site.
+  - **The options (Claude's question):**
+    - (a) recommended: fix it in the fork. `RLPlayer` keeps the regions a human's view would keep active, as "treated
+      as a human by every game rule" has it. Then re-check the server measurements that involve monsters near the
+      character.
+    - (b) leave it and document a gap. Sim-to-server comparisons near region boundaries stay biased.
+    - (c) make the sim match: only the character's own region's monsters are live.
+  - **Caleb: (a).**
+  - **Built** (fork, `RLPlayer.update`): each tick, what `MapChunkRenderer.render` does to the world, without the
+    packets. The regions of the 13 × 13-chunk build area around the scene's base (`playerFlags.lastSceneGraph`,
+    which `AIPlayer.reset` moves as a human's moves) count the character as a viewer and are flagged active. The ones
+    it no longer sees are checked for inactivity, as a human's are, and so is every region it viewed when it's
+    despawned (`RLPlayer.clear`). Live: all five cows moved, in all four regions. New test:
+    `test_the_monsters_in_the_regions_a_human_would_see_are_live`.
+  - **Gathering is unaffected:** every aggressive monster the sim counts at a gathering site spawns in the site's own
+    region (the willows, Al Kharid's iron, Draynor's shrimp spots), so the measured exposures stand.
+  - **The re-check** (Caleb's (a)): the latest stored run of each combat calibration set, its cases rerun on the fixed
+    server, 3 runs a case. These are the fit and check sets for melee, ranged and magic, 24 cases
+    (`results/calibration/combat-20261108-1814-i2`, `-1823-i2-valuable`, `-1814-i3`, `-1825-i3-valuable`, `-1850`,
+    `-1906-valuable`).
+    - The server's XP/hr is within 0.92 to 1.08 of the stored run in 20 of the 24 cases. Outside: ranged rats (band 1)
+      1.24, at the one site with monsters of its kind across a boundary within 15 tiles (the melee and magic rats
+      there: 0.98 and 1.06); chaos druids (melee, band 61) 1.15; ranged cows (band 1) 0.85; magic's animated spades
+      (band 61) 0.74. Melee experiments (band 61), 0.93, also moved by more than two standard errors.
+    - **A/B, to tell the fix from everything else:** the same runner, at the same time, on the fixed build and on a
+      build of the fork before it (`0af2cc4`, a separate instance), 5 runs a case. Fixed over before: melee experiments
+      1.05 ± 0.03, ranged rats 1.07 ± 0.04, chaos druids 0.99 ± 0.04, ranged cows 1.01 ± 0.06. The fix moves none
+      of them by more than about two standard errors; the other changes came with the runner's changes since the
+      stored runs, and noise.
+    - **The animated spades** (band 61, OQ-19's site), A/B too: the runs split between about 16 spade kills and none or
+      one, with about 1,200 recasts, on both builds (before: 3 of 5 stuck; fixed: 2 of 5). So it's not the fix. It is
+      the run noted on 2026-11-07 (about 250 casts at about 1.5 damage each), now more often. Unexplained, and
+      offered as a task of its own; the case's sim over server is 1.34 to 1.61 while it lasts.
+    - **Against the ±20% gate now:** 21 of 24 inside. Outside: the spades (above); ranged abyssal demons (band 91)
+      at 1.29, where the sim's XP/hr is unchanged and the server's is 0.92 ± 0.07 of before, so a borderline case
+      (1.19) tipped by noise; and melee experiments (band 91) at 1.20, where the sim's XP/hr has risen 14% since the
+      stored run (2026-11-07), with the sim's changes since, not the fix.
+- **The ranger test** (`test_a_ranger_on_a_ranged_safespot_takes_no_hits`) failed in a full parallel run: the
+  character's hitpoints fell to 0 of 59, so it died on the safespot. It passed 6 of 6 alone.
+  - **The likely cause: the click lands a tick after the reading.** (The failing run kept no trace, and the traces
+    below didn't catch a step off.) The bridge serves one request a tick, and each tick runs the
+    bridge's requests before the NPCs move and before players' combat pulses (`MajorUpdateWorker.handleTickActions`).
+    So the test read the giant still where it held, and a tick later clicked Attack. Now and then the giant stepped
+    out of shot in between, and the ranger walked after it, off the tile. A person's click lands the same way.
+    Nothing walked it back, and with auto-retaliate off and the giant no longer held, the giant could beat it to
+    death. The
+    window is wider when the server is loaded, as under the full suite, where more ticks pass between the reading and
+    the click.
+    - Not the giant's own aggression: a ranger standing on the tile without attacking was engaged at once in 4 runs of
+      950 ticks and never hit (the chase stuck). Nor the region fix: the giant and its tile are in one region. Two
+      traced runs of the test (3,100 readings, 50 clicks) never left the tile: the step is rare.
+    - The tile, (2831, 3255) at range 7, holds from only 51.5% of the giant's wandering (`data/ranged_safespots.csv`),
+      under OQ-36's 80% for a usable safespot, and no tile at any range holds from 80% there. So once dragged off, a
+      ranger walking back can't count on the giant getting stuck again.
+  - **Fixed in the test** (Claude's choice, reversible): as a person and the calibration runner do, it clicks back onto
+    the tile when it's off it, and it asserts no hit while it stands settled there (10 readings back on it). The
+    monster is the ogre at (2504, 2984): aggressive, with a range-7 tile that holds from all its wandering and no
+    other threats, one of two such in the table (the other a red dragon in the Wilderness).
+- **Tests:** the full suite with the server up (`-n 8 --dist loadgroup`): 407 passed. Alone, the reworked hand-cast
+  test passed 4 of 4 and the ranger test 3 of 3.
+
+### Built (sim v1, Crafting part 3): Crafting's inputs in *V* and the GE's buys
+2026-11-08, OQ-2's Choices A (a) and I (a) (Caleb). `m002-flaky-tests-and-regions`.
+- **The buys** (`buying.CRAFTING_INPUTS`, from the recipes: `crafting.inputs()`): the 25 items a crafting path uses,
+  all with a January 2009 GE price. They are the 9 uncut gems, the soft and hard leathers, the 4 dragon leathers, cowhide
+  and the 4 dragonhides, wool, flax, thread, a needle and a chisel. The needle and chisel are tools, one a buy and not
+  bought again while held (`ROLES` "unique"); the rest come in lots of 1,000, as Fletching's inputs do (agent choice,
+  reversible).
+- **Into *V*:** the 18 of them it lacked. Cowhide, the green and blue dragonhides and four uncut gems were in already
+  (their groups now say "bought" too). The products stay misc: the cut gems, the leather and dragonhide armour,
+  balls of wool. Bowstrings were in for Fletching. *V* is 297.
+- **Sizes** (env contract v1.24, to confirm): 1,828 actions (25 buys, and 5 for each new item) and 2,801 features (2
+  a new item, and the new actions' mask entries).
+- **Test:** `test_a_crafting_paths_inputs_are_bought_on_the_ge` (a fresh character buys a needle, thread and leather,
+  and the glove path opens). The counts in `test_vocabulary` and `test_sim_buying`. Speed: 96 decisions a second in
+  one process, as before.
+
+### Measured (sim v1, Crafting): the server's times, fitted; the bridge leaves Crafting's interfaces open
+2026-11-08, `docs/sim-v1-skills-draft.md` §7. `m002-crafting-times`.
+- **The runner** (`scripts/calibrate_crafting.py`, as `calibrate_processing.py` does the processing options): from a
+  full inventory, the clicks a person makes, against the sim's own option from the same state. A chisel or needle on
+  the input, then the how-many's All. Dragonhide's how-many has no All, so "Make 10" until the leather runs out (Claude's
+  choice; typing X needs an input the bridge doesn't send). Spinning is the wheel's Spin, then All. Tanning is Ellis's
+  Trade, then the interface's All. Flax is "Pick" on the nearest plant, a pick a click. 14 cases at the bands their
+  levels allow, 3 runs each (`results/calibration/crafting-20261108-1942-i5.json`). The server's runs were identical.
+- **Fixed on the way (fork, the bridge):** it closed what Crafting's clicks open. It closes interfaces it doesn't
+  list as used and chatboxes that aren't skill dialogues, so a needle on leather opened the leather interface (154)
+  and the next tick it was gone. Now the soft leather (154), spinning wheel (459) and tanning (324) interfaces are
+  used ones, and the hard leather and dragonhide how-many (`LeatherCraftDialogue` opens 309 and 304 itself) are make
+  chatboxes, as the furnace's and cooking's are (2026-11-07). New live test:
+  `test_craftings_interfaces_and_dialogues_stay_open_for_the_next_click`.
+- **Found:** the server takes a few ticks before a batch's first stage: the tool on the input and the how-many's
+  button. 3 ticks with a skill dialogue or an interface (gems, soft leather, spinning), 4 with
+  `LeatherCraftDialogue` (hard leather, dragonhide), and dragonhide pays it again at each "Make 10". Tanning takes 5
+  ticks beside the tanner (the sim had assumed 2).
+  - Before the fit, sim over server XP/hr: gems 1.11, soft leather 1.02, hard leather 1.03, dragonhide 1.10 to 1.12,
+    spinning 1.03; tanning's time 0.40; flax 0.91 to 1.00.
+- **Fitted** (`crafting.MAKE_START_TICKS`, `LEATHER_DIALOGUE_START_TICKS`, `DRAGON_BATCH`, `TAN_TICKS`;
+  `craft_ticks` and `spin_ticks`, which the options and the skilling slots' rate model both use): every case 1.00
+  (`results/calibration/crafting-20261108-1946-i5.json`). Picking flax wasn't fitted: 0.92 to 1.00, with the plants'
+  random depletion.
+- **A run against another session's server:** the server Claude started couldn't take the bridge's port. Another server,
+  started a few minutes earlier for the animated spades task, held 127.0.0.1:43610, and the first two cases ran
+  against it. That run set the tick to 50 ms, spawned and despawned two characters near Lumbridge, and set the tick
+  back. Its results file was deleted, and the rest ran on an instance of its own (5, port 43614). The fork change was
+  built in a separate worktree, so the jar that server may be running wasn't touched. The main checkout was rebuilt
+  with it once that server had stopped.
+- **Test:** `test_the_servers_measured_times_a_batch_starts_with_its_clicks`; the timing tests take the start. The
+  full suite on instance 5: 409 passed.
+
+### Found: the animated spades' stuck runs are a spade left alive at 0 hitpoints, a server bug (OQ-42, OQ-43)
+2026-11-08, Caleb's task: find the cause of the bimodal magic case at the animated spades (band 61, (3420, 9657),
+OQ-19's site), left unexplained in the region fix's re-check above. `m002-spade-zero-hitpoints`.
+- **Reproduced** on the current fork (`321d759`, with the region fix), at 50 ms ticks: the runner's own `server_run`
+  for the case, traced tick by tick (`results/calibration/trace-spades-20261108-1927/`). Runs 0 to 2 killed 18, 15
+  and 17 spades. Run 3 killed none: 6 pickaxes, 1,211 recasts and 6 walk-backs, as the stored stuck runs show.
+- **What the stuck run casts at:** spade 11294, at 0 hitpoints and still alive. `npcs` lists it, and it walks and
+  attacks the character. Each spell swings and gives the spell's base Magic XP (34.5) with no hitpoints XP: a hit is
+  capped at the target's hitpoints when it's swung (`MagicSwingHandler.swing`), so it's 0. When the spade heals to 1,
+  the next hit takes it back to 0, and it still doesn't die. Run 3 began with that spade at 15 hitpoints: run 2's
+  character had dealt it 59 and was despawned at the budget.
+- **The cause, in the server:**
+  - A monster's killer is the player who dealt it the most damage (`ImpactHandler.getMostDamageEntity`, from the
+    monster's impact log, by account uid). The log is cleared only when the monster dies. If that player has left
+    the world, `Repository.getPlayerByUid` returns null, and the death starts with a null killer.
+  - The spades stand in the Abandoned Mine's zone (`AbandonedMineZone`, a Kotlin `MapArea`; mine floor 1 is
+    (3395, 9609) to (3448, 9664)). The zone that `ClassScanner` wraps around every `MapArea` declares
+    `startDeath(e: Entity, killer: Entity)`, with a non-null killer. So a null killer throws
+    (`NullPointerException: Parameter specified as non-null is null: ... parameter killer`) out of
+    `ImpactHandler.handleImpact` before the death task starts, with the hitpoints already at 0. The server's log has
+    130 of these, all during run 3, none in runs 0 to 2.
+  - So a spade a departed character dealt more than half its hitpoints can't be killed: the next character can deal
+    only what's left (and what the spade heals meanwhile), so the departed character's share stays the largest. Below
+    half, the spade dies normally, which is why it happens only sometimes.
+  - It latches. The stored stuck runs come in streaks: `combat-20261108-1914-i2` runs 3 and 4, `-1915-i4` runs 1 to 4
+    (run 2 got 5 kills, from the other spade), `-1850` runs 1 and 2. After run 3, a fresh character found spade 11294
+    still alive at 4 hitpoints, with the departed characters' damage still logged.
+  - A human logging out does the same; for an RL character, every despawn does. `getMostDamageEntity` returns the
+    killer itself for upstream's artificial players (`isArtificial()`), which RL characters aren't (treated as human).
+  - Not the region fix: nothing in this involves regions, as the A/B found (both builds got stuck).
+- **Why the runner never left that spade:** `STUCK_TICKS` waits for any XP, and each swing at the 0-hitpoint spade
+  gives base Magic XP. So it cast at it all run, and walked back only when a pickaxe held it under attack (6 times).
+- **Scope:** 107 of the sim's 2,185 combat sites are inside a Kotlin `MapArea`, counting literal borders only (71 in
+  `MorytaniaArea`, 13 in the Lair of Tarn, 7 in the Abandoned Mine, 5 at the Kalphite Queen). Of the 24 gate cases,
+  only the spades. Elsewhere a null killer doesn't throw: `DeathTask` makes the monster its own killer, and
+  `NPC.finalizeDeath` passes no player to `handleDrops`, so that kill's drops and credit go to no player. In
+  calibration, that's a monster the previous run's character dealt most of the damage to. It would bear on the loot
+  cases' gp/hr; not checked.
+- **Found on the way, in the runner (every run, the good ones too):** when a possessed pickaxe engages the character
+  in the middle of a spade fight, its casts on the spade are refused ("You're already under attack!",
+  `MapZone.checkMulti`). The runner keeps recasting until `STUCK_TICKS` walks it back, and only then fights the
+  pickaxe. That's 59, 124 and 50 ticks in the three good runs (3% to 8% of 1,500). In the sim, such an engagement
+  is a kill in the fight's plan, with no wait (`FightNeighbours`). The melee and ranged loops weren't checked for
+  the same thing. OQ-43.
+- **Nothing changed yet:** the server fix is OQ-42 and the runner fix OQ-43.
+
+### Decided and built: OQ-42, the Abandoned Mine's animated spades are hazards (Caleb); OQ-44 raised
+2026-11-08, Caleb: "OQ-42 - Treat the spades as hazards." `m002-spade-zero-hitpoints`.
+- **OQ-42** (raised in the entry above): a monster whose top damager has left the world dies with a null killer,
+  which in a Kotlin `MapArea` zone leaves it alive at 0 hitpoints.
+  - The options: (a) fix it in the fork: in `getMostDamageEntity`, the killer is the top damager still in the world,
+    or the hit's source (recommended); (b) fix it for RL characters only: a despawned one's uid leaves the monsters'
+    impact logs; (c) leave the server and work around it in the runner.
+  - Caleb: none of these. The spades are hazards, as Taverley's eastern Black Knights and the Fishing Guild's moss
+    giants are, and the server stays as it is.
+- **Built** (`candidates.HAZARDS`): the animated spades (5414) on the Abandoned Mine's first floor, by the server's
+  own zone ((3395, 9609) to (3448, 9664), plane 0), are never targets there (agent choice: the floor, as the zone
+  that throws has it). They stay in the world. The possessed pickaxe beside them stays a target and an aggressor.
+  The spades' other site, in the Chaos Tunnels (3182, 5447), stays a target: its zone isn't a Kotlin `MapArea`, so a
+  null killer doesn't throw there. The pool has 2,184 sites.
+- **The gate's case:** the ranker's top magic fight at band 61 (slot 0) is now the experiments at (3488, 9934) with
+  fire blast, the site that bands 31 and 91 use. On the server (3 runs, 200 sim runs): XP/hr 81,170 on the server
+  and 82,617 in the sim (1.02), kills/hr 80 and 83 (1.03), inside the ±20% gate. The runs killed 19, 21 and 18
+  experiments, no monster of another kind engaged, and the server's log has no NPEs
+  (`results/calibration/combat-20261108-2003-magic-b61-hazard.json`).
+- **Tests:** the hazards test checks that the spades' only site left is the Chaos Tunnels' and that the pickaxe
+  beside the mine's spades is still a target. The neighbour tests keep the mine as their example, since
+  `ENGAGE_PER_TICK` was fitted to the server there. They build its site as the pool built it before (its two spades,
+  `mine_site()`). Its bank, the Chaos Tunnels', doesn't matter where nothing is looted: the fights are the same, seed
+  for seed, as on the pool's own site (20 of 20). Full suite without a server: 343 passed, 64 skipped.
+- **Still open:** OQ-43 (the runner's recasting while held under attack) no longer touches a gate case: no other
+  magic case meets a monster of another kind. OQ-44 (raised): the null killer beyond the spades.
+
+### Decided and built: OQ-44 (a), the null killer beyond the spades is a documented gap, and the runner flags stuck monsters (Caleb)
+2026-11-08, Caleb: "OQ-44 (a): document". `m002-spade-zero-hitpoints`.
+- **OQ-44** (raised in the entry above): the server's null killer reaches beyond the spades. The possessed pickaxe
+  beside them and 106 other sites inside Kotlin `MapArea` zones can get a monster stuck at 0 hitpoints, and
+  elsewhere a kill's drops go to no player, whenever a departed character dealt the monster most of its damage.
+  - The options: (a) document it as a gap, and treat a monster as a hazard where a calibration or E6 run finds one
+    stuck, the runner flagging a target listed alive at 0 hitpoints (recommended); (b) make every target in a
+    Kotlin `MapArea` zone a hazard now (106 sites); (c) the fork fix after all (OQ-42 (a)).
+  - Caleb: (a).
+- **Documented:** `docs/post-project-gaps.md`, "A monster whose top damager has left the world dies with no killer":
+  what's missing, why, what it costs, how it's found and how to close it.
+- **Built** (`scripts/calibrate_combat.py`, `alive_at_zero`): every run now reads `npcs` for the case's monsters (only
+  magic and safespot runs did; the read changes nothing in the world). Any monster listed alive at 0 hitpoints, or
+  attacking the character at 0, goes into the run's `at_zero` (index and id), and the report prints a warning for
+  the case. A normal death starts in the same tick as the last hit and stops the monster's own fight
+  (`ImpactHandler.handleImpact`), and `npcs` lists no dying monster, so this needs no timing allowance.
+  - Checked on the four traced spade runs (the server's own readings): it flags spade 11294 at the reading where it
+    reached 0 in run 3, and nothing in the 4,481 readings of runs 0 to 2.
+  - A live smoke run (melee and magic rats, 300 ticks, one run each): it runs, and flags nothing.
+- **Not built:** `ServerEnv` doesn't exist yet; the gap says it should flag the same.
+
+### Built (sim v1, Herblore part 1): herbs and the 21 potions, with grinding; Herblore's slots
+2026-11-08, `docs/sim-v1-skills-draft.md` §4 (OQ-2's Choices E (a), F (a) and A (a), Caleb). `m002-commit-herblore`.
+- **The data** (`gamedata.server`, from content/global/skill/herblore):
+  - `herbs()`: Herbs' 15 standard herbs, guam to torstol (the quest herbs after them are left out).
+  - `herblore_potions()`: FinishedPotion's 21 standard potions (`STANDARD_POTIONS`). Each has its clean herb, its
+    unfinished potion and that's level (UnfinishedPotion), its secondary, level, XP and three-dose product. The
+    Saradomin brew's secondary is the crushed nest (GrindingItem's).
+  - `grindings()`: GrindingItem, a whole ingredient to its dust.
+- **The times, from the server's source** (`rlscape/sim/herblore.py`; to measure on the server):
+  - cleaning: an item option that locks a tick, so a herb a tick (`CLEAN_TICKS`);
+  - unfinished potions: one a tick in a batch; a lone one, or a lone finished one, after 4 ticks (`HerblorePulse`'s
+    3-tick wait), with no how-many;
+  - finished potions: from 4 ticks, then one every 3;
+  - grinding: one every 2 (`GrindItemPlugin`).
+  Each batch starts with `START_TICKS` of clicks, assumed at the 3 Crafting's skill dialogue measured, until
+  Herblore's are measured.
+- **The paths** (36), at the nearest bank as Crafting's are:
+  - `clean_<herb>` (15): a load of the grimy herb, cleaned, banked, again.
+  - `potion_<potion>` (21): a load of as many units as fit, each from what's there. The base is an unfinished potion,
+    or a vial of water and the herb, clean or grimy (cleaned first, for its XP too). The secondary is the dust, or
+    its whole ingredient ground first, with the pestle and mortar taken out for it (Choice F (a)). The stages run in
+    order: grind, clean, the unfinished potions, the finished ones.
+  - Claude's choice, reversible: the base is a vial of water (79 gp at January 2009 prices). The draft's *V* list says
+    "vials (empty)", but `HerblorePulse` takes a vial of water, and no option fills vials at a water source.
+- **Slots and sizes** (env contract v1.25, to confirm): Herblore's 4 skilling slots, a `herblore` kit (the pestle and
+  mortar and the herblore inputs carried) and task. 1,832 actions, 2,826 features. The skilling slots' rate
+  (`skilling._herb_rate`) weighs a potion load's stages by the share of units from unfinished potions, grimy herbs and
+  whole ingredients.
+- **Speed:** about 100 decisions a second in one process, against about 106 with Herblore's paths left out. Those were
+  interleaved runs under the other sessions' servers and tests, whose load swung the runs between 86 and 117.
+- **Working beside two other sessions** (Caleb's Runecrafting and Agility sessions, in the same checkout):
+  `skilling.py`, `encoding.py`, `kits.py` and the two count tests now hold both Herblore's and Runecrafting's edits.
+  The sessions agreed on who edits which shared file when, and that nobody commits another's work.
+- **Tests:** `tests/test_sim_herblore.py` (7): the enums, the pulses' timing, cleaning, a potion load from grimy herbs,
+  unfinished potions and grinding, the slots, kit and rate.
+- **Next:** Herblore's inputs in *V* and the GE buys (Choice I (a)), then its times measured on the server.
+
+### Built (sim v1, Runecrafting part 1): essence mining and the rc_<rune> paths; Runecrafting's slots
+2026-11-08, building `docs/sim-v1-skills-draft.md` §5 (Caleb: "Work on Runecrafting."). `m002-runecrafting`.
+- **The server's data** (`rlscape/gamedata/runecrafting.py`): the runes (`Rune.java`), the ruins (`MysteriousRuins`:
+  the tile outside and where entering lands), the talismans and tiaras, the essence wizards and the mine's landing spots
+  (`EssenceTeleport`), and essence mining's pickaxe delays (`MiningListener`). rl.conf's
+  `runecrafting_formula_revision` is 530, where an essence makes as many runes as the multiple levels reached, with no
+  chance of one more between them (`RuneCraftPulse.getMultiplier`). The Lumbridge diary's bonus never applies.
+- **`mine_essence`** (`MineEssence`, a Mining path):
+  - walk to the nearest wizard who teleports to the mine (Aubury, Cromperty or Distentor; Sedridor's basement is off
+    the travel map), then his Teleport, to one of the seven landing spots at random;
+  - walk to the nearest essence rock (the pathfinder's steps on the server from each spot: 1 to 20);
+  - mine to a full inventory. Essence always succeeds: an essence every pickaxe delay plus the script's extra tick
+    (bronze 8, rune 3), 5 Mining XP each, pure essence from Mining 30;
+  - then the mine's portal back to the wizard.
+  - It ends there, with a full inventory, as gathering paths do (catalog §1). The draft had it banking (Claude's
+    choice, reversible, as picking flax's).
+- **`rc_<rune>`** (`RunecraftAtRuins`, between the nearest bank and the ruins, as tanning and spinning are):
+  - At the bank it banks all but the essence and the talisman, and takes out the talisman and a load of one kind of
+    essence: rune essence first for air to body, as `getEssenceItem` crafts them, and pure only for the rest.
+  - Then it enters the ruins with the talisman, crafts every essence carried at the altar, and leaves by the portal.
+  - Nine runes: air, mind, water, earth, fire, body, chaos, nature and law, the ruins the travel model reaches.
+  - Law's ruins are on Entrana, so the path banks the worn weapons and armour the monks refuse (the travel model's
+    boat rule).
+  - Nature's are reached from Draynor's bank by the Karamja boat, so the path carries 60 gp for the fares.
+    Shilo Village's bank is walled off from the ruins on the travel map (535 ticks to them, more than from
+    Lumbridge).
+  - **Cosmic's ruins are in Zanaris**, which the travel model doesn't map, so `rc_cosmic` isn't built. New question:
+    OQ-45. Death's altar comes with the Abyss; astral and blood stay out (OQ-39).
+- **Inside the ruins** (found with `debug_nearby` on the server, setup only): the steps from the landing to the altar
+  and the tiles from the altar to the portal: air 4 and 5, mind 12 and 13, water 2 and 12, earth 10 and 11, fire 15
+  and 9, body 5 and 6, law 12 and 14, nature 5 and 6. They're walked with run energy, as walks outside are.
+  - Chaos's altar is at the foot of a maze three floors below its landing: an estimate (30 tiles and 3 changes of
+    floor each way), to measure.
+  - Entering (3 ticks), crafting (4, the altar's lock), leaving (3), the wizard's teleport (5) and the mine's portal
+    (3) are estimates, to measure on the server next.
+- **Found:** at the frozen 2009 prices, fire and body runes lose gold at the levels a character reaches them early.
+  Two runes an essence don't cover 44 gp of rune essence. Air, law and nature gain: at Runecrafting 60, about 35,000,
+  145,000 and 31,000 gp/hr from Lumbridge's banks.
+- **The slots:** Runecrafting joins `SKILLS`, with its 4 slots, a `runecrafting` task and a kit (the essence and
+  talismans carried). `mine_essence` goes in Mining's slots: from a fresh character, it takes Mining's first gp slot,
+  since a fresh character's bronze pickaxe and Aubury's teleport open it.
+  - 1,836 actions and 2,851 features with Herblore's (env contract v1.26, to confirm).
+- **Built alongside:** `crafting.AtStation` asks its own `station()`, so a subclass picks its station; tanning and
+  spinning are unchanged.
+- **Tests:** `tests/test_sim_runecrafting.py` (7): the runes at revision 530, the ruins and talismans, mining essence,
+  a path's loads, the essence kinds, law's arms and nature's fares, the slots, kit and rates. The counts in
+  `test_vocabulary`, `test_sim_skilling` and `test_sim_gathering`.
+- **Speed:** with and without Runecrafting's paths, alternating in one process: 105 and 101 decisions a second after the
+  first warm-up, so no measurable cost. `scripts/benchmark_sim.py` gave 56 while three other sessions were using the
+  machine.
+- **Three sessions, one checkout:** Herblore, Agility and Runecrafting were built at once by three Claude sessions in
+  this working tree. They agreed by message which shared lines each adds (`skilling.py`, `encoding.py`, `kits.py`, the
+  count tests), each its own server instance (Agility 5, Runecrafting 6, Herblore 7), the contract's version numbers
+  and the questions' ids. Commits stage explicit paths only.
+
+### Decided: the bird's nest on the GE at 1,765 gp (Caleb)
+2026-11-08, Caleb, while Herblore's inputs joined *V*: "Add bird's nests to the GE." `m002-herblore-inputs`.
+- **Why it came up:** the Saradomin brew's secondary is the crushed nest, ground from a bird's nest (5075; Choice F).
+  The nest had no January 2009 GE price, and it's untradeable on this server (its item config), so it could come only
+  from drops and woodcutting's nests.
+- **The options (Claude's question):** (a) recommended, 1,865 gp, the crushed nest's 2009 price, since grinding costs
+  nothing, so a cheaper nest would be free gold (buy, grind, sell the dust) and a dearer one would never be ground;
+  (b) a price of Caleb's own. Caleb: "Set the price at 1,765 gp."
+- **Built:** `scripts/build_price_tables.py`'s `SET_PRICES` takes it, as the rod and Ava's devices are (a price_index
+  row as `::allowge` would, and the historical list), so the frozen seller sells it and the frozen buyer buys it at
+  1,765, and net worth values it there. The rebuilt tables changed only the nest's rows. The servers' GE databases
+  take it at their next `install_ge_db.py` (or `server_instances.py`).
+- **So:** buying nests and grinding them gains 100 gp a crushed nest at the frozen prices.
+
+### Built (sim v1, Herblore part 2): Herblore's inputs in *V* and the GE's buys
+2026-11-08, OQ-2's Choices A (a) and I (a) (Caleb). `m002-herblore-inputs`.
+- **The buys** (`buying.HERBLORE_INPUTS`, from `herblore.inputs()`): the 66 items a Herblore path uses:
+  - the 15 herbs grimy and clean;
+  - the 14 unfinished potions the 21 potions use;
+  - the 15 secondaries and the 5 whole ingredients ground into them;
+  - vials of water and a pestle and mortar (a tool, one a buy).
+
+  The rest come in lots of 1,000, as Crafting's do. The bird's nest is sold at Caleb's 1,765 gp (above).
+- **Into *V*:** the 51 it lacked (11 grimy herbs, unicorn horns and their dust, limpwurt roots and vials of water were
+  in already, and now say "bought" too). The made potions stay misc (three doses; OQ-25). *V* is 348.
+  - The nest is untradeable on this server, so the alchemy spell and the stores refuse it, as they do Ava's devices.
+    It can be dropped, sold on the GE and withdrawn. `test_vocabulary` makes it an exception beside them.
+- **Sizes** (env contract v1.27, to confirm): 2,157 actions and 3,274 features. That's with Runecrafting's slots
+  (v1.26): 66 buys, and 5 actions and 2 features for each new item.
+- **Test:** `test_a_potion_paths_inputs_are_bought_on_the_ge`; the counts in `test_vocabulary` and `test_sim_buying`.
+
+### Measured (sim v1, Herblore): the server's times; cleaning's first tick fitted, every case 1.00
+2026-11-08, `docs/sim-v1-skills-draft.md` §7. `m002-herblore-times`.
+- **The runner** (`scripts/calibrate_herblore.py`, as Crafting's): from a full inventory, a person's clicks, against
+  the sim's times.
+  - A stage at a time: cleaning (the grimy herb's Clean, a click a tick); the unfinished potions (a vial of water on
+    the clean herb, then the how-many's All); the finished ones (the unfinished potion on the secondary, then All);
+    grinding (the pestle and mortar on the whole ingredient, then All).
+  - Two whole loads, as `PotionAtBank.mix` makes them: attack potions from grimy guam, and super antipoison grinding
+    its unicorn horns.
+  - 9 cases at bands 31 to 91, 3 runs each, on instance 7 (`results/calibration/herblore-20261108-2048-i7.json`). The
+    server's runs were identical.
+  - The jar was the main checkout's build, `df2b8a6` with the Agility session's uncommitted 4-line `at` filter in
+    `RLCommands.candidates`, which does nothing unless a request sends `at`.
+- **Found:** the times from the server's source hold, and so does the 3-tick start of a how-many batch, assumed from
+  Crafting's. 14 unfinished potions take 17 ticks, 14 finished 46, 27 horns ground 57, all 1.00. Cleaning is a tick
+  slower than the sim had it: 28 herbs in 29 ticks, the first a tick after the first click. The loads were 1.01 and
+  1.02.
+- **Fitted:** `herblore.CLEAN_FIRST` (1 tick a batch of cleaning; `clean_ticks`, which the paths and the rate model
+  use). Every case 1.00 (`results/calibration/herblore-20261108-2049-i7.json`). The bridge needed no change: the
+  how-many is a skill dialogue, which it leaves open.
+- **Test:** the measured times in `test_the_pulses_timing`.
+
+### Decided: OQ-43 (a), the magic runner fights back at once when held "under attack"; OQ-45 (a), the cosmic altar only by the Abyss (Caleb)
+2026-11-08, Caleb: "OQ 43 - Option a / OQ 45 - Option a". `m002-oq43-oq45`.
+- **OQ-43, the caster held "under attack" in the middle of a fight** (raised by the spades session, from its traces: a
+  possessed pickaxe engaging the character mid-fight got the casts on the spade refused, "You're already under
+  attack!", and the runner's magic loop recast until `STUCK_TICKS`, 30 ticks without XP, walked it back; 3% to 8% of
+  a run, where the sim has no wait).
+  - The options: (a) recommended, the runner does as a person who reads the message does: when a cast on its target
+    is refused and a monster of another kind is attacking it, cast on that monster at once, and take up the target
+    again after; and `STUCK_TICKS` waits for damage (hitpoints XP), not any XP, since a 0-damage swing still gives
+    base Magic XP. (b) Keep the runner and give the sim the same wait, measured. (c) Keep both, and report the bias at
+    sites with neighbours.
+  - **Caleb: (a).** Built in `scripts/calibrate_combat.py` (next entry).
+- **OQ-45, the cosmic altar through Zanaris** (raised by the Runecrafting session: the cosmic ruins are in Zanaris,
+  which the travel model has no map of, entered by the shed in Lumbridge Swamp with a dramen staff, which has no 2009
+  GE price).
+  - The options: (a) recommended, the cosmic altar only by the Abyss's cosmic rift, once the Abyss is built; no
+    Zanaris route. (b) Zanaris too: the shed checked on the server, Zanaris's collision map, the shed as a travel link,
+    and a way to the dramen staff (about a day). (c) Leave cosmic runes out.
+  - **Caleb: (a).** `rc_cosmic` waits for the Abyss (the Runecrafting session's).
+
+### Decided: no essence mining (Caleb); measured: the times at the ruins, fitted; OQ-45 (a) applied
+2026-11-08, Caleb: "Ignore rune essence mining. Rune essence is very cheap and mining it yourself will almost always
+be seen as a time waste." `m002-runecrafting`.
+- **Built that way:** `mine_essence` is gone, with the essence mine's data (the wizards, the landings, the pickaxe
+  delays). A character gets essence from the GE (the inputs in *V*, next) or from drops. A fresh character's Mining
+  slots are as before Runecrafting.
+- **OQ-45 (a)** (Caleb, decided in the Herblore session's log): no `rc_cosmic`; the cosmic altar waits for the
+  Abyss's rift.
+- **Measured** (`scripts/calibrate_runecrafting.py`; `results/calibration/runecrafting-20261108-2104-i6.json`; 8
+  ruins, 3 runs each, run on, on instance 6):
+  - A character 3 tiles from the ruins, with the talisman and 27 essence, uses the talisman on them, clicks the altar
+    once inside, and the portal once the crafting's lock is over.
+  - The portal's first click always landed in that lock: the bridge's `busy` shows pulses, not locks. So the runner
+    clicks again the next tick, which times the earliest click the server takes.
+  - Every run took the same ticks: entering 5 or 6; from landing to standing outside, air 13, mind 21, water 18, earth
+    19, fire 20, body 13, nature 13, law 21.
+- **Found:** inside a ruin, the walks are plain running, a step each half tick, with none of the start-of-walk
+  overhead walks outside have (2.3 ticks each in the model). Water's portal is 16 steps from its altar, not the 12
+  straight-line tiles. The estimates had put every trip 23% to 53% too slow.
+- **Fitted** (`rlscape/sim/runecrafting.py`):
+  - inside, the walks run at 2 tiles a tick with run energy (`walk_plan`, no overhead), over the pathfinder's steps
+    from beside each altar to its portal (`debug_nearby`);
+  - `CRAFT_TICKS` 3 (the altar's click, beside it, to the runes), `PORTAL_TICKS` 5 (the runes to standing outside,
+    beyond the walk), `ENTER_TICKS` 1 (beyond the walk to the ruins, which has its start overhead).
+  - **Result, sim over server:** entering 0.84 to 1.01, inside 0.92 to 1.00, every rune within ±20%. Chaos's maze is
+    still an estimate: its ladders aren't climbed by the runner yet.
+- **Found (the bridge):** the ruins are a multi-object (2452 at the air ruins) whose own definition is named "null";
+  a player sees "Mysterious ruins". The bridge matches scenery by its own name, so the runner names the ruins "null"
+  by id. The fix is in `RLCommands.shown`, resolving scenery to the form a player sees (`Scenery.getChild`), as it does
+  NPCs. The Agility session, which has another hunk in that file, agreed. Not made yet: it changes every scenery
+  lookup by name, so it wants a build and the live suite first.
+- **Tests:** `test_the_times_inside_the_ruins_are_the_servers`; the essence-mining test and assertions are gone.
+
+### Built (sim v1, Runecrafting part 2): the essence and talismans in *V* and on the GE
+2026-11-08, OQ-2's Choices A (a) and I (a) (Caleb), now that essence isn't mined. `m002-runecrafting`.
+- **The buys** (`buying.RUNECRAFTING_INPUTS`, from `runecrafting.inputs()`): rune essence (44 gp in January 2009) and
+  pure essence (137 gp), in lots of 1,000, and the talismans of the nine runes the paths craft (158 to 3,287 gp), one a
+  buy and not again while held (`ROLES` "unique"). The cosmic and death talismans aren't bought: the Abyss's rifts need
+  none.
+- **Into *V*:** the 9 it lacked (the essences, and the air, water, fire, body, chaos, nature and law talismans; mind's
+  and earth's were in). The runes made were in *V* already for magic, but body runes, which nothing else uses: they stay
+  misc. *V* is 357.
+- **Sizes** (env contract v1.29, to confirm): 2,217 actions and 3,373 features with Herblore's and Agility's.
+- **Test:** `test_a_paths_essence_and_talisman_are_bought_on_the_ge`; the counts in `test_vocabulary` and
+  `test_sim_buying`.
+
+### Built and measured (sim v1, Agility): the three courses' laps, Agility's slots
+2026-11-08, Caleb: "Work on agility." OQ-2's Choice D: the Gnome Stronghold, the Barbarian Outpost, the Wilderness.
+`m002-agility`.
+- **The courses** (`rlscape/gamedata/agility.py`, from the handlers in `content/global/skill/agility`; the ids and
+  tiles checked on the server): each obstacle in lap order, its XP, the lap's flags and bonus, whether and how it fails
+  (`AgilityHandler.hasFailed`: it fails when (1 + Agility - level) / 100 times one uniform draw is at most failChance
+  times another, so 1 - a/(2c) or c/(2a); never 70 levels above). XP a lap: Gnome Stronghold 86.5, Barbarian Outpost
+  152.2, Wilderness 571.5.
+- **Found on the server:**
+  - **A rope swing's fail does nothing.** `AgilityHandler.fail` plays out only with an animation, and both courses'
+    swings pass none: no fall, no hit, the character clicks again. The pits below them are never reached.
+  - **A fall off the Barbarian ledge lands west of the net,** which can't be climbed from that side, so the lap goes on
+    at the walls without the ledge's flag, and without the bonus.
+  - **The Barbarian Outpost's pipe** (the way onto the course, Agility 35) gives no XP: `AgilityShortcut` never awards
+    a shortcut's. The Wilderness course's pipe needs Agility 49.
+  - **The Barbarian course's three low walls share an id,** and the bridge's `interact` took the nearest, often the
+    one behind, which refuses. A fork change: `candidates` takes an optional tile (`at`), as a player clicks the one
+    they see.
+  - **The Wilderness log's spike pit has aggressive skeletons** (level 25), which killed a measurement character of
+    combat level about 26 after three falls in one lap. New question: OQ-46.
+- **The measurement** (`scripts/measure_agility.py`): a calibration character teleported onto the course (setup
+  only), laps as a person runs them, falls and all, hitpoints set back to 99 between laps. Per obstacle: its click to
+  the next obstacle's click; per fall, its click to the next click and any XP on the way; the entries from their
+  approach tiles. 147 laps in all, at Agility 1 (Gnome), 15, 35 and 75 (Barbarian; 15 to sample its falls) and 52 and
+  99 (Wilderness).
+- **The sim** (`rlscape/sim/agility.py`, `agility_<course>`): walk to the course, cross its entry (the pipe; the door
+  and ridge, which can fail into the wolf pit), then laps until the option's time is up at the measured times. Each
+  failing obstacle is rolled at the Agility as it stands; a fall's hit and its measured recovery; a success right after
+  a fall pays its measured walk back. It eats as thieving does (the retreat point, or the largest fall hit if higher)
+  and stops out of food. A lap path has no gp, so it fills only XP slots. Agility's 4 skilling slots and an agility task
+  (env contract v1.28, to confirm: 2,161 actions and 3,299 features then); an agility kit keeps food.
+- **The gate** (sim over server XP/hr, over whole laps, against the expected lap at the run's middle level): Gnome
+  Stronghold 1.00 (9 laps); Barbarian Outpost 1.00 at Agility 75 without falls, 1.03 over 39 laps at 35; Wilderness 1.00
+  at 99, 0.86 over 45 laps at 52. Fed the observed fall rates, the lap model gives the server's XP/hr at 52 (1.01): the
+  stepping stones fell 20% of the time against the formula's 29% (1.5 standard errors), the log 43% against 48%.
+- **Rough:** the Wilderness ridge's fall into the wolf pit, about 40 ticks from one run of three falls (two other runs
+  didn't find the way out); a once-an-option cost.
+- **Tests:** `tests/test_sim_agility.py` (the fall chance against the server's two draws, the courses against their
+  handlers, the Gnome laps, the lap loop against the expected rate on every course); the counts in
+  `test_sim_skilling`, `test_sim_gathering` and `test_vocabulary`.
+
+### Built: OQ-43 (a) in the combat runner's magic loop
+2026-11-08, Caleb's OQ-43 (a). `m002-oq43-oq45`.
+- **Built** (`scripts/calibrate_combat.py`):
+  - A cast refused with "You're already under attack!" (a new game message since the last reading) while a monster of
+    another kind attacks the character: it casts on that one at once, and takes up the case's monster again after,
+    through the loop's fight-back step (attackers first, the case's kind first). Counted as `held_switches`.
+  - A caster's `STUCK_TICKS` counts from its last damage (hitpoints XP), not any XP, since a spell that does no damage
+    still gives its base Magic XP. Melee and ranged keep any XP.
+- **Checked on the server** (instance 7):
+  - The band-31 poison spiders, OQ-35's magic case with neighbours, 4 runs
+    (`results/calibration/combat-20261108-2104-i7.json`): the switch fired in two runs. Walk-backs fell from about one
+    a run (the stored runs) to none in three of four. XP/hr was 35,262 against 36,120 stored (the runs are short: the
+    food runs out in about 300 ticks). That case was outside the gate before, and is now 1.31 against 1.28.
+  - The band-91 spiders, 3 runs: no other kind engaged; the runs match the stored ones (24 to 27 kills, about 500
+    recasts, 90,770 XP/hr against 92,560).
+  - The magic fit and check sets, as the ranker picks them now, were still running when the tree was committed. Their
+    results follow.
+
+### Decided and built: OQ-46 (a), the Wilderness log's spike pit and its skeletons (Caleb)
+2026-11-08, Caleb: "OQ46 - option a". `m002-oq46`.
+- **The question:** a fall off the Wilderness course's log drops the character onto the spikes in a pit below (2998,
+  10345), among aggressive skeletons (level 25, picking a character of combat level 50 or under). A measurement
+  character of combat level about 26 died there after three falls in one lap. The sim's laps didn't count the pit.
+- **The options:**
+  - (a) recommended: count them as a gathering site's aggressors are counted (`rlscape.sim.aggression`): while the
+    character climbs out, the skeletons that would pick it attack at a rate measured on the server, each attack
+    rolled with their hit chance and max hit; the laps' eating rule covers it, and with no food left the path stops;
+  - (b) offer the Wilderness laps only to a character the skeletons won't pick (combat level over 50);
+  - (c) leave them out and document that the sim is optimistic there.
+- **Caleb: (a).**
+- **Measured** (`scripts/measure_agility.py --pit`; `results/calibration/agility-pit-20261108-2126` and `-2131`): a
+  calibration character (Agility 1, so the log fails; Hitpoints 99; combat level 25; auto-retaliate off, as Caleb's rule
+  for gathering has it) teleported to the log's start (setup only), fell 89 times and climbed the pit's ladder as soon
+  as it could. It was underground 18 ticks every time, and took 41 damaging hits, 81 damage, about 0.9 a fall. The 4
+  skeletons in reach of the pit (the sim's `site_aggressors`) hit such a character 86% of the time for up to 3, so an
+  attack does damage 65% of the time: an attack every 101 ticks each (`PIT_ATTACKS_PER_TICK`), and 2.0 damage a hit, as
+  the model gives.
+- **Built** (`rlscape/sim/agility.py`; the obstacle's `pit` in `rlscape/gamedata/agility.py`): after a fall into a pit,
+  `pit_attacks` draws the attacks over the 18 ticks from the aggressors that pick the character, each rolled with
+  `npc_offence`. A death there, or from a fall's own hit, ends the path (`die`; in the Wilderness the items go). The 18
+  ticks are inside the log fall's measured 105.6, so the lap's times don't change. The skeletons' aggression tolerance
+  isn't counted: a fall's stays are short.
+- **Tests:** the sim's damage a fall against the measured 0.91 (within 10%), none for a character of combat level over
+  50, and a low-hitpoint character without food can die in the pit.
+
+### Built (sim v1, Runecrafting part 3): the tiaras, worn and made; the bridge finds the ruins by the name a player sees
+2026-11-08, OQ-2's Choice H (Caleb: the tiaras are in). `m002-commit-runecrafting`.
+- **Worn:** `rc_<rune>` puts on the rune's tiara at the bank when the character has one (whatever was on its head goes
+  to the bank), and enters without the talisman (`MysteriousRuinListener.handleTiaraOrStaff`). So the trip carries 28
+  essence, not 27. A tiara has no combat bonuses, so Entrana's monks let it pass.
+- **Made:** `make_tiara_<rune>` (`MakeTiaraAtRuins`), for the nine runes, takes 14 pairs of a plain tiara and the rune's
+  talisman to its altar. Each pair used on the altar makes the tiara for its Runecrafting XP (25 for air to 47.5 for
+  law), with the talisman used up (`TalismanEnchantingListener`). It takes no level. A tiara takes 8 ticks, measured at
+  the air altar (7.85, 14 a run, the same each run; `scripts/calibrate_runecrafting.py --tiaras`): the enchanting
+  script's 2-tick wait, then its 3-tick lock, which drops the next click until it's over.
+  - **Found:** the GE sells the tiaras for 45 gp or so in January 2009 (fire's 52, water's 3,204), well under a talisman
+    (158 to 3,287 gp) and a plain tiara (45). So a tiara path loses gold, and is for the XP; a character after a tiara
+    to wear buys it.
+- **The buys and *V*:** the plain tiara and the nine runes' tiaras join the GE buys and *V* (*V* 367). The rune tiaras
+  are tools, one each.
+  - **Changed (Claude's choice, reversible):** talismans and plain tiaras now come in lots of 14, a tiara load, not one
+    each as part 2 had the talismans. A tiara uses its talisman up, so one at a time would make a tiara a trip. At the
+    frozen prices the GE buys them back for what they cost, so the spare talismans cost no net worth.
+  - **Sizes** (env contract v1.30, to confirm): 2,277 actions and 3,453 features. Runecrafting has 18 paths.
+- **The bridge (fork):** `RLCommands.shown` now resolves scenery to the form a player sees (`Scenery.getChild`), as it
+  does NPCs, so the runecrafting ruins (2452 at the air ruins, named "null") are found as "Mysterious ruins". Built in a
+  fork worktree first and run on instance 6: the live suite passed (66). Then put in the main checkout's fork, on top
+  of the Agility session's `4f58237`, uncommitted.
+  - New live test: `test_the_runecrafting_ruins_are_found_by_the_name_a_player_sees`.
+  - `scripts/calibrate_runecrafting.py` names the ruins that way now.
+- **Tests:** `test_a_worn_tiara_lets_the_character_in_and_the_trip_carries_28_essence`,
+  `test_a_tiara_path_makes_a_tiara_of_each_pair_and_uses_the_talisman_up`; the buy test's lots; the counts.
+
+### Measured: the magic fit and check sets with OQ-43 (a); a caster's damage-based wait walks it back at band 1
+2026-11-08, `m002-oq43-oq45`. The magic sets as the ranker picks them now, with the spades hazards (OQ-42), 3 runs a
+case on instance 7, with OQ-43 (a) in the runner (`results/calibration/combat-20261108-2122-i7.json`, `-2138-i7-slot3-
+valuable.json`).
+- **Sim over server XP/hr, all within ±20%:**
+  - fit set: rats (band 1) 0.94; experiments (31, 61, 91) 0.98, 1.03, 1.01;
+  - check set (valuable loot): Black Knights (1, 31) 1.09, 0.99; abyssal demons (61, 91) 0.94, 0.95.
+  - The check set's gp/hr is still off where rare drops make the loot (OQ-20's drop probe checks those).
+- **The switch:** no monster of another kind engaged in these 24 runs, so it never fired (it did at the band-31 poison
+  spiders, above).
+- **Found, the damage-based wait:** at the band-1 Black Knights, wind strike at Magic 1 often goes 6 casts (30 ticks)
+  without damage. The runner now walks back 11 to 17 times a run, against 4 before. XP/hr fell from 8,679 to 8,315
+  (about 4%), still within the gate. The band-31 Black Knights' walk-backs (18 to 22, against 16 to 20) are mostly
+  safespot returns, which count the same way. A longer wait for casters would avoid it (for example 60 ticks, 12
+  casts); that's for Caleb, since it shapes what the server side measures.
+
+### Decided: OQ-47 (c), a cast that lands for 0 counts as a caster's progress (Caleb)
+2026-11-08, Caleb: "OQ47 - Option c". `m002-oq47`.
+- **The question** (raised from the magic sets' rerun, above): OQ-43 (a) made a caster's `STUCK_TICKS` (30 ticks)
+  count from its last damage. At the band-1 Black Knights, wind strike at Magic 1 often goes 6 casts without damage
+  by chance, so the runner walked back 11 to 17 times a run (4 before), about 4% of its XP/hr.
+- **The options:** (a) recommended, a caster waits 60 ticks (12 casts) before walking back for want of damage; (b) keep
+  30 ticks and accept the walk-backs; (c) count a cast that lands without damage (a 0 hit, not a splash) as progress,
+  which needs the bridge to tell a 0 hit from a splash.
+- **Caleb: (c).** Built next.
+
+### Built: OQ-47 (c), the bridge counts landed hits, and a caster's progress is a spell that lands
+2026-11-08, Caleb's OQ-47 (c). `m002-oq47`.
+- **The fork** (two small changes):
+  - `ImpactHandler.handleImpact` adds one to `rl:hits-landed` on the hit's source for every hit that lands, 0s
+    included. A splash never gets there: `MagicSwingHandler` sets a missed spell's hit to -1, and `impact` skips it. A
+    player tells them apart the same way, by the hitsplat or the splash graphic.
+  - The bridge's `state` reports it as `hits_landed`.
+- **The runner** (`scripts/calibrate_combat.py`): a caster's `STUCK_TICKS` counts from its last landed spell, a 0
+  included, instead of its last damage. On a server without the count, it falls back to damage (hitpoints XP).
+- **Live test:** `test_a_spell_that_lands_counts_in_hits_landed_and_a_splash_doesnt`. Wind strike at Magic 1, on cows
+  at full hitpoints, 20 casts: more hits land than do damage (0s count), and none land beyond the casts. Passed 3 of 3
+  on instance 7.
+- **The band-1 Black Knights again**, 3 runs (`results/calibration/combat-20261108-2151-i7-valuable.json`): walk-backs
+  8 to 11 a run, against 11 to 17 with the damage rule and 4 with the first, XP-based rule. XP/hr 8,578, against 8,315
+  and 8,679, and sim over server 1.06.
+  - What's left is about 4 safespot returns, which count as walk-backs at this site, and runs of 6 splashes in a row.
+    Wind strike at Magic 1 splashes often against a Black Knight, and a target the character keeps missing is what
+    (c) still treats as no progress.
+- The main checkout's jar was rebuilt with these and the Runecrafting session's uncommitted `shown()` change in
+  `RLCommands.kt`, which is in the same working tree.
+
+### Built and measured (sim v1, Barbarian Fishing): `barb_fish` in the Fishing and Agility slots; the rod on the GE
+2026-11-08, OQ-2's Choice D (Caleb: "include Barbarian Fishing as a viable agility training method"; the rod on the GE
+at 1,000 gp, OQ-41). `m002-barbfishing`.
+- **The server** (`gather/fishing/barbfishing`): `BarbFishingPulse` needs Fishing 48, Agility 15 and Strength 15, a
+  barbarian rod in the inventory, a free slot and bait (fish offcuts, feathers, fishing bait, roe or caviar, used in that
+  order). Its first try comes 6 ticks after the click, then one every 5. A try goes through leaping trout (Fishing 48),
+  salmon (58, Strength and Agility 30) and sturgeon (70, 45) in that order and catches the first whose roll passes
+  (`Fish.getSuccessChance`), so trout come first at every level. A catch gives 50, 70 or 80 Fishing XP and 5, 6 or 7
+  Agility and Strength XP.
+  - **Found:** the pulse fishes a placeholder spot (`NPC(FISHING_SPOT_2722)`), not the one clicked, so the spots'
+    moves (every 400 to 2,000 ticks) don't stop it. Measured: no run needed a second click.
+- **The sim** (`rlscape/sim/barbfishing.py`): `barb_fish` walks to Otto's Grotto and fishes to a full inventory, the
+  bait's end or the option's time, as fishing's paths do (the agent banks or drops the fish). The one path ranks in
+  both the Fishing and the Agility slots, by its XP in each, valued as fishing's paths are (a bank trip a load). At
+  Fishing 48 and Agility 15, from Lumbridge: about 9,700 Fishing and 970 Agility XP an hour of the option, so the
+  courses outrank it for Agility. A barbfishing task keeps the rod and the bait.
+- **The rod** joins *V* (*V* 368) and the GE buys (a tool, one), at Caleb's 1,000 gp. It's untradeable on this server
+  as the bird's nest is: the spell and the stores refuse it, and it drops. The leaping fish stay misc. Sizes (env
+  contract v1.31, to confirm): 2,283 actions, 3,462 features.
+- **Calibrated** (`scripts/calibrate_barbfishing.py`, 5 runs a case to a full inventory): sim over server, Fishing,
+  Agility and Strength XP/hr and catches/hr: Fishing 48 (trout only) 1.00; Fishing 70 with Agility and Strength 45 1.00
+  to 1.03; all 99 1.02 to 1.03 (`results/calibration/barbfishing-20261108-2157-i5.json`).
+- **Tests:** `tests/test_sim_barbfishing.py` (the fish's order and levels, a load's XP in the three skills and the bait's
+  order, what it needs and its two rankings, the kit); the counts in `test_vocabulary`, `test_sim_buying` and
+  `test_sim_skilling`.
+
+### Built: the skilling slots price a gathering site's aggressive monsters (the willows' aggression rates)
+2026-11-08, the ROADMAP's open item ("the skilling slots' rate model doesn't price it yet", 2026-10-31).
+`m002-aggression-rates`.
+- **The problem:** the sim's gathering options suffer a site's aggressive monsters (`rlscape.sim.aggression`: attacks,
+  trivial fights, runs away and back, eating, deaths), but the skilling slots' rate model priced every path as if
+  nothing attacked. So a fresh character's fishing slots ranked Draynor's shrimp, where the Dark wizards kill a level-3
+  fisher on about half its runs away, above Lumbridge Swamp's.
+- **Built** (`aggression.gathering_share`, applied in `skilling.path_rate`):
+  - The share of the option's XP per tick its own run keeps with the aggressors, over without them: 20 seeded
+    sessions each way (`no_aggression()` switches them off), cached.
+  - The runs start at the site, from a state built from the cache key alone: the combat skills and the gathering
+    one, the hitpoints, the gear, the task's kit carried (food at most 10), and the tolerance it would have there.
+    So the share is a function of the key, whatever was computed before, and trajectories stay the same across
+    processes (`test_the_same_seed_gives_the_same_trajectory_in_another_process`). The walk there is left to the rate
+    model, which already prices travel.
+  - It's 1.0 where no aggressor picks the character, or its tolerance in the region has run out, without running
+    anything. A cache miss costs 20 to 60 ms.
+- **For a fresh character** (combat 3, at the gathering level each path needs): the willows keep 0.48 of their XP/hr
+  (and the willow-and-burn path the same), Al Kharid's iron 0.70, Draynor's shrimp 0.63. At combat 34 all are 1.00.
+  The slots change: a level-30 woodcutter's second XP slot is oaks, not willows. A fresh fisher's swamp shrimp rank
+  above Draynor's.
+- **Claude's choices (reversible):**
+  - a death ends the session with the XP it had, and its other costs (the respawn, the gravestone) aren't priced;
+  - the share measures one load, at its site.
+- **Speed:** within noise of the rate model without it (interleaved: 74, 94, 91 decisions a second against 74, 103,
+  89).
+- **Tests:** `tests/test_sim_aggression_rates.py` (3): the willows' share and the strong character's 1.0; no_aggression
+  leaves the cache alone; the fresh fisher's ranking. The suite without the server: 382 passed.
+
+### Built and measured (sim v1, Agility in travel): seven shortcuts, taken from their levels on both backends
+2026-11-08, OQ-16 (a) (Caleb: "Agility shortcuts with Agility"). `m002-agility-shortcuts`.
+- **Which** (Claude's choice, reversible; to confirm): the server's shortcuts (`agility/shortcuts/`) whose two ends
+  the travel planner joins only by a long walk round, in places the sim travels. Each comes as a pair of one-way links:
+
+  | Shortcut | Agility | Walk round (steps) | Across (tiles) | Ticks alone | XP |
+  |---|---|---|---|---|---|
+  | Falador's west wall | 5 | 202 | 2 | 4 | 0 |
+  | the lumberyard's fence | 13 | 56 | 7 | 5 | 0 |
+  | the coal trucks' log balance | 20 | 242 | 5 | 7 | 5 |
+  | the River Lum's stepping stone | 31 | 157 | 5 | 13 | 0 |
+  | Ardougne's log balance | 33 | 91 | 4 | 6 | 1 |
+  | the Al Kharid pit | 38 | 73 | 4 | 6 | 0 |
+  | Rellekka's log balance | 48 | 216 | 4 | 6 | 1 |
+
+  - Left out: those into areas the sim doesn't travel (Tirannwn's logs, Karamja's jungle and Shilo, the lighthouse's
+    basalt rocks, Trollheim's climbs, which Caleb left out), the dungeons' (the planner has no underground map), and
+    the grapples (a mithril grapple and a crossbow).
+- **The model** (`rlscape/gamedata/shortcuts.py`): each link is a transport of kind "shortcut", which the route search
+  treats as a boat (a start and an end, at most one transport a route), usable from its Agility level.
+  - None of them can fail: each handler uses `AgilityShortcut`'s constructor without a fail chance.
+  - Only the log balances' handler gives XP, and the sim gives it on the way.
+- **Measured** (`scripts/measure_shortcuts.py`, `results/calibration/shortcuts-20261108-2246-i5.json`): from the start
+  tile to standing idle on the far end, 3 runs each way, every one the same.
+  - **Found:** the stepping stone jumps a tile every 2 ticks and stands idle between jumps. A first runner that counted
+    "idle within a tile of the end" timed it at 3 ticks, which was wrong; it's 13.
+- **In a trip**, a shortcut costs 3 ticks beyond its own (`TRIP_TICKS`): the approach and the click (2), and the start
+  of the walk on, which the sim's walk overhead counts once a route.
+  - Fitted, as the boats' boarding was, on 7 trips over each shortcut one way with walks either side
+    (`scripts/validate_travel.py --set shortcuts`). Before the fit, the server's trips were 2 to 6 ticks longer (sim
+    over server 0.79 to 0.94).
+- **The server backend** (`rlscape/bridge/travel.py`): a shortcut is taken as a player takes it, by its option on the
+  nearest of its scenery, done once the character stands idle on the far end. Before this, `perform` raised on any
+  kind it didn't know, so a server trip over a shortcut would have failed.
+- **Validated** on the server (instance 5, 50 ms):
+  - the fit set: sim over server 0.90 to 1.03, 7 of 7 within ±20% (`travel-validation-20261108-2249-i5.json`);
+  - the check set, each shortcut the other way: 0.90 to 1.00, 7 of 7 (`travel-validation-20261108-2248-i5.json`).
+  - Every trip took the shortcut the sim planned.
+- **Env contract v1.32** (to confirm): travel's ways gain the shortcuts. No actions or features change (2,283 and
+  3,462).
+- **Speed:** about 7% fewer decisions a second over 450 seeded decisions (27.0 against 28.9). Most of it is one-time
+  searches from the shortcuts' ends, which aren't places in the planner's table. They're remembered per process, so a
+  long-running worker pays them once. Adding the 14 ends to the places table would remove them, at the cost of
+  rebuilding `data/travel/places.npz`.
+- **Tests:**
+  - `tests/test_shortcuts.py` (3): each link is its handler's scenery and level; Falador's west wall from Agility 5;
+    a log balance's XP on the way.
+  - `tests/test_shortcuts_live.py` (2): the trip over Falador's wall on the server in the sim's time; a level short,
+    the server keeps the character outside.
+  - The seeded trajectories change where a route crosses a shortcut.
+
+### Measured: the gate's speed check passes for Agility's calibrations (OQ-21); `set_tick_ms` never set the tick back
+2026-11-08, OQ-21 (a) (Caleb, 2026-11-06: a speed check at 600 ms in the gate). `m002-agility-speed-check`.
+- **Why now:** none of sim v1's calibrations had been run at 600 ms. Of the processing family, only burying had.
+  These are Agility's three: the courses, Barbarian Fishing and the shortcut trips. Crafting, Herblore and
+  Runecrafting are their sessions'.
+- **The cases** (Claude's choice, reversible), the same at 50 and 600 ms on instance 5:
+  - the Gnome Stronghold at Agility 30, 5 laps (no obstacle there can fail);
+  - the Barbarian Outpost at 75, 8 laps;
+  - the Wilderness at 99, 6 laps;
+  - Barbarian Fishing at Fishing 70, Agility and Strength 45, 3 runs to a full inventory;
+  - the 7 shortcut check trips.
+
+  The Barbarian and Wilderness courses still fall at 99, which is fewer than 69 levels above them.
+- **The rule** is the gate's (`scripts/speed_check.py`): XP/hr means within two standard errors of their
+  difference (a course's whole laps, or the runs), and travel within 5% a trip. The script now reads `measure_agility`
+  and `calibrate_barbfishing` files.
+- **Result: 11 of 11 agree** (`results/calibration/speed-check-20261108-2331.json`).
+  - Laps, 600 ms over 50 ms: Gnome 1.00, Barbarian 1.01, Wilderness 1.01.
+  - Barbarian Fishing: 1.06, within the noise of 3 runs a side.
+  - The shortcut trips: every one the same to the tick.
+- **Found: scripts running at once on one server shift a trip's timing.** With all five 600 ms cases at once, 5 of
+  the 7 shortcut trips took 1 to 3 ticks longer, all in the shortcut's own step. Run alone, every one matched its
+  50 ms time to the tick.
+  - The laps and the fishing, run at once with them, still agreed: their obstacle times were if anything slightly
+    shorter at 600 ms.
+  - Whether the character got there later or the polling saw it a tick late isn't known.
+  - So timing measurements are best run one script per server. The CLAUDE.md note that a server takes several scripts
+    at once doesn't say so (for Caleb).
+- **Found and fixed: `BridgeClient.set_tick_ms` returned the new tick.** The bridge answers with the tick it has just
+  set. Nine scripts keep that answer as the old tick and set it back at the end, so the server stayed at whatever
+  tick the script used:
+  - `calibrate_crafting`, `_herblore`, `_processing`, `_runecrafting` and `_barbfishing`;
+  - `measure_agility`, `_shortcuts` and `_abyss`;
+  - `export_abyss`.
+
+  The first 600 ms batch ran on a server that had been left at 50 ms. The first script to finish set it back to 50,
+  and those files were deleted.
+  - Fixed in the client (`rlscape/bridge/client.py`): it reads the tick first and returns the one it replaced, as every
+    caller expects. No script changes.
+  - Earlier results stand: each script set its own tick before measuring.
+  - **Test:** `tests/test_bridge_client_live.py`.
+
+### Built and measured (sim v1, Runecrafting part 4): the Abyss's crossing and `abyss_rc_<rune>`, inside the gate on the server
+2026-11-08, building `docs/sim-v1-skills-draft.md` §5 (Caleb, OQ-2's Choice H: the Abyss is in). `m002-runecrafting-abyss`.
+- **Read from the server** (`AbyssPlugin.kt`, `MysteriousRuinListener.checkReq`, `DeathTask`, `GraveController`):
+  - **The teleport:** the mage's Teleport lands the character on the outer ring at a random angle, drains its prayer
+    and skulls it for 2,000 ticks.
+  - **The obstacles:** varbit 625, set to the landing's segment, turns the twelve obstacles (scenery 7142–7153), so
+    the place by the landing is blocked.
+  - **A try:** passes at (level + 1) / 100 and locks the character 8 ticks; a fail unlocks it on the third. The
+    passage always lets it through.
+  - **The rifts:** each lands the character where entering its ruins does, and chaos's beside its altar, past the
+    maze.
+  - **The rifts' checks:** law asks Entrana's rule, death Mourning's End Part II's own requirement (OQ-39 (b)) and
+    cosmic Lost City (complete).
+  - **The skull:** a skulled death keeps nothing and makes no gravestone (env contract §1 already says so), and the
+    skull clears on death.
+- **Exported** (`scripts/export_abyss.py` → `data/abyss/`):
+  - the Abyss's collision (map region 47, 75), and the tiles of its obstacles and rifts;
+  - the twelve layouts, from 104 teleports: every segment seen 3 to 17 times, never two layouts for one;
+  - the planner's steps, from a segment's landings to beside each obstacle (their mean) and from each inner-ring
+    landing to beside each rift.
+
+  The layouts:
+  - In segments 0 to 5, the rocks stand beside the landing on both sides, then the tendrils, boils, eyes and gaps, and
+    the passage opposite.
+  - Segments 6 to 11 put the gaps beside it and the rocks five places round, each with small variants.
+- **Built:**
+  - **The crossing** (`rlscape/sim/abyss.py`):
+    - the segment is drawn; the character takes the obstacle that reaches the rift soonest on average, from those it
+      can use;
+    - the tries are drawn from the chance, and the walks are timed as the travel model's (run energy and the walker's
+      overhead).
+  - **The outer ring's monsters:** they attack at a fitted rate.
+    - The three kinds share it by their spawns over their attack speeds, each kind only if its level allows (a
+      character at most twice its combat level).
+    - Each attack rolls `npc_offence` with no prayer.
+    - Under twice the hardest hit, the character eats the food it carries (the line Caleb's gathering rule uses).
+  - **`abyss_rc_<rune>`** (`AbyssRunecraft`, eleven: the nine ruins' runes, cosmic and death). A trip:
+    1. At Edgeville's bank: bank everything but the essence.
+    2. Eat banked food, wasting none, up to the crossing's need (its expected damage and twice the hardest hit,
+       within the maximum), or stop with `out_of_food`.
+    3. Take the best-healing food for the rest of the need, and essence in the other slots (a rift needs no talisman,
+       so up to 28).
+    4. The mage, the crossing, the altar.
+    5. Leave by the portal or by a teleport, whichever reaches Edgeville's bank sooner.
+
+    Cosmic's and death's portals lead where the travel model doesn't go (Zanaris, the Temple of Light), so those trips
+    leave by teleport, and one starts only when a teleport will be ready. Law's banks the worn arms, as `rc_law`'s
+    does.
+  - **The skull** on the state (`skulled_until`); `die()` keeps nothing while skulled, makes no gravestone and clears
+    the skull.
+  - **Chaos's way out:** a second portal on the altar's own floor, 15 steps from beside it. `rc_chaos`'s leg to the
+    portal goes from the estimate (30 steps and 3 floors) to that.
+  - **The slots' rate:** the way back leaves out the home teleport (ready once every 30 minutes, as bank trips have
+    it), so cosmic and death rate 0 without another teleport. The outer ring's risk isn't in the rate.
+- **Measured on the server** (`scripts/measure_abyss.py`, instance 6, 50 ms):
+  - **Teleport:** 3 ticks from beside the mage (0.94 of the server).
+  - **Outer ring:** 30 trips, walking to beside an obstacle as the travel walker does, then clicking it. Fitted:
+    `PASS_TICKS` 14 and `PASSAGE_TICKS` 5 (the residual over the walk's timing and the lock: 6.1, spread 1.2).
+  - **Fails:** 7 ticks between tries, every time.
+  - **Rifts:** 132 walks, from the twelve inner landings to the eleven rifts. Fitted: `RIFT_TICKS` 6 (3.6 over the
+    walk's timing, spread 0.74; 1.02).
+  - **Damage:**
+    - Standing on the ring, the sim's damage a swing is the server's: 634 hitpoints against the sim's 636 over 678
+      swings.
+    - `ATTACKS_PER_TICK` 0.43 is fitted on the hitpoints the trips lost at Defence 99 (0.40 a tick). A count of
+      swings missed every one while the walker had the character moving.
+    - The check set: Defence 40, 0.99; Defence 20, 1.23 (a small, noisy sample); both together 1.10.
+    - A Defence-40 character loses about 0.8 hitpoints a tick on the outer ring, as on the server, so weak characters
+      die there.
+  - **Whole trips:** 33, three for each rune, from the teleport's click to the runes, with the obstacle the sim takes:
+    0.94 to 1.00 for each rune and 0.97 over all (the sim's expectation for the segment, 0.98).
+- **Claude's choices (reversible):**
+  - only a worn pickaxe or axe is used, never one carried, nor a tinderbox (each would take an essence's slot);
+  - the food rule and the need;
+  - the bank is Edgeville's;
+  - the rate leaves the risk out (the agent sees it in the outcomes).
+- **Tests:**
+  - `tests/test_sim_abyss.py` (12): the export's layouts, the tries, the tools, the crossing's choice, the skull and
+    its death, the monsters' levels and damage, eating, the paths' rules, a run and its rate;
+  - live: `tests/test_abyss_live.py` (2): the landing's layout is the export's, and a rift lands inside its ruins;
+  - counts: `test_sim_runecrafting`, `test_sim_skilling` (Runecrafting's paths 18 → 29).
+  - The offline suite: 401 passed.
+- **The env contract:** v1.33 (to confirm). No actions or features change.
+- **Open:** OQ-48 (the drained prayer, and the skull in the observation).
+- **Next:**
+  - the pouches (OQ-40 (c)) and the fight option in the Abyss;
+  - chaos's maze, the way in for `rc_chaos`;
+  - the gate's 600 ms speed check for Runecrafting's calibrations (OQ-21).
+
+### Decided and built: the RL stack (CUDA torch, Caleb); the SMDP rollout buffer and MaskablePPO with γ_hr^τ
+2026-11-08, ROADMAP week 3's first item (and week 1's "Add the RL stack"). `m002-smdp-ppo`.
+- **The stack** (Claude's question: CPU torch, recommended, about 250 MB, since the sim is the bottleneck for small
+  MLP policies; or CUDA torch, about 2.5 GB; or not now. **Caleb: CUDA torch.**): torch 2.14.1 with CUDA 13.0 (the
+  RTX 3050's driver supports CUDA 13.4; 2.15 was the newest, 2.14.1 the more settled), stable-baselines3 and
+  sb3-contrib 2.9.2, tensorboard 2.21. torch sees the GPU.
+  - **Found:** on this connection a long TLS download breaks partway (uv: "cannot decrypt peer's message"; curl:
+    SEC_E_DECRYPT_FAILURE), inside the sandbox or not. uv starts the 1.9 GB wheel again each time and never finished.
+    So `scripts/fetch_torch_wheel.py` downloads it with resumes into `wheels/` (git-ignored) and checks PyTorch's
+    published SHA-256, and pyproject.toml installs torch from there (a local flat index). On a fresh checkout, run
+    that script before `uv sync` (CLAUDE.md).
+- **Built:**
+  - `rlscape/agents/smdp.py`:
+    - `option_discounts` (γ_hr^τ, τ in game-hours);
+    - `smdp_gae` (δ_t = r_t + γ_hr^{τ_t} V(s_{t+1}) − V(s_t), A_t = δ_t + λ γ_hr^{τ_t} A_{t+1});
+    - `pbrs_bonus` (F = γ_hr^τ Φ(s′) − Φ(s), Φ of a terminal state 0).
+  - `rlscape/agents/ppo.py`:
+    - `SMDPMaskableRolloutBuffer`, sb3-contrib's buffer storing each decision's τ, with GAE by `smdp_gae`;
+    - `SMDPMaskablePPO`, MaskablePPO with that buffer. Its `collect_rollouts` reads `info["duration"]`, and a time
+      limit's bootstrap is discounted by γ_hr^τ. sb3's per-decision `gamma` is 1 and unused, and passing one is an
+      error.
+- **Claude's choices (reversible, for Caleb's review):**
+  - λ applies once a decision, not per game-hour;
+  - an option's reward counts at its start, undiscounted within the option (the env reports its total, as the plan's
+    δ = r + γ^τ V(s′) − V(s) has it).
+- **Tests:**
+  - `tests/test_smdp.py` (7), against hand-computed returns: an episode at λ 1, the TD errors at λ 0, a cut rollout's
+    bootstrap, no leakage across an episode's end, two envs, equal durations as standard GAE, PBRS telescoping to
+    −Φ(s₀);
+  - `tests/test_smdp_ppo.py` (4): the buffer against the same returns, sb3's episode starts turned into ends, and a
+    short run on the sim (two envs, 32 decisions).
+
+  The suite without the server: 405 passed.
+- **Next:** `scripts/train.py` (configs, checkpoints, TensorBoard, the decision logger), then the sanity ladder.
+
+### Decided: OQ-48 (a), the skull in the observation and the Abyss's prayer drain a documented gap (Caleb); built
+Caleb, 2026-11-09: "OQ 48 - Option A." `m002-oq48`.
+- **The question** (raised 2026-11-08, building the Abyss): the Mage of Zamorak's teleport drains the character's
+  prayer points to 0 and skulls it for 2,000 ticks.
+  - The sim has no prayer points: fights flick prayers for free, so the drain changes nothing in the sim.
+  - The skull was on the state (`skulled_until`, which `die()` follows), but not in the observation.
+- **The options:**
+  - (a) recommended: the skull's ticks left in the observation (one feature), and the drain as a documented gap;
+  - (b) both: the skull in the observation, and prayer points in the state, drained by the Abyss, restored at an altar
+    or by a prayer potion, and read by the fights' flicking;
+  - (c) neither: both documented gaps.
+
+  **Caleb: (a).**
+- **Built:**
+  - **The observation:** a `skull` part (one feature, `skull_ticks`: the ticks left over the Abyss's 2,000, 0 without
+    one), after the home teleport's (`rlscape/envs/encoding.py`). 3,463 features: env contract v1.34.
+  - **The bridge** reports `skull_ticks`, the `Skulled` timer's ticks left (fork, `RLCommands.snapshot`), for
+    `ServerEnv`'s state, as it reports the home teleport's.
+  - **The gap:** "The Abyss's prayer drain isn't in the sim" in `docs/post-project-gaps.md`: what it costs (a fight
+    soon after an Abyss trip is easier in the sim), and how to close it (prayer points on the state, restored by a
+    potion or at an altar, read by the flicking).
+- **Tests:**
+  - `test_the_observation_shows_the_skulls_ticks_left` (`tests/test_sim_abyss.py`): 0, half, after a crossing, after
+    a death;
+  - live: `tests/test_abyss_live.py` checks `skull_ticks` (0 before the teleport, about 2,000 after);
+  - the size count: `test_vocabulary`, 3,463.
+  - On instance 6 with the fork's build: the Abyss's live tests (2) and the bridge's (7) passed.
+
+### Decided: chaos rune crafting is out, an intentional gap (Caleb); built
+Caleb, 2026-11-09: "Carry on with the pouches and abyss fight option and remove Chaos Rune crafting, documenting it
+as an intentional gap." `m002-runecrafting-pouches`.
+- **Why it came up:** the chaos altar is at the foot of a ladder maze, three floors down from the ruins' landing. The
+  sim's way down was only an estimate (30 steps and three floors), and the server runner doesn't climb the maze. The
+  Abyss's chaos rift, which skips the maze, was measured (Runecrafting part 4).
+- **Built:**
+  - `rc_chaos`, `make_tiara_chaos` and `abyss_rc_chaos` are gone: `RC_RUNES` has eight runes and `ABYSS_RUNES` ten, so
+    Runecrafting has 26 paths.
+  - The chaos talisman (1452) and the chaos tiara (5543) left *V* (366) with their GE buys, since only those paths
+    used them.
+  - `CHAOS_LANDING` and chaos's `INSIDE` and `RIFT_INSIDE` entries are gone. The Abyss's export and the bridge's
+    `RIFTS` keep the server's eleven rifts, chaos's among them.
+  - The gap, with what it costs and how to close it: `docs/post-project-gaps.md`, "Chaos runes aren't crafted".
+  - Chaos runes themselves stay in *V* (bought, dropped, cast).
+- **The env contract:** v1.35 (Caleb): 2,271 actions and 3,447 features (12 actions and 16 features fewer).
+- **Tests:**
+  - the counts: `test_vocabulary` (*V* 366, 2,271, 3,447), `test_sim_buying` (328 buys, 291 on the GE),
+    `test_sim_skilling` (26), `test_sim_runecrafting` (26 paths, 19 inputs, no chaos);
+  - `test_sim_abyss` (ten Abyss paths).
+
+### Measured: sim v1's training throughput, for OQ-17's reassessment
+2026-11-09, `m002-viability-reassessment`. Measured at main repo `dc92982` (in a separate worktree, since another
+session's edits were in the working tree), with another session working on the machine at the same time.
+- **The sim, one worker, masked random actions:** about 70 to 80 decisions a second once its caches warm up, which
+  takes about two minutes (sim v0 made 110 after OQ-7 (a)). In a 45-second run, warm-up included, it was 49 on one
+  worker and 228 on 16 (`scripts/benchmark_sim.py`).
+  - **Where the time goes** (cProfile): 92% is the action mask. It ranks the skilling and combat slots for every
+    decision, and their rates plan routes (`movement.route`, `travel.path`, `economy.nearest_bank`).
+  - **A random episode** (20 game-hours) takes about 385 decisions (299 to 493, 65 episodes).
+- **Training,** `SMDPMaskablePPO` on the GPU (`n_steps` 128, batch 256, 4 epochs):
+  - **one run, 16 workers:** about 200 decisions a second (125 to 250 a rollout). The workers step in lockstep, so
+    each step waits for the slowest. That's 2.7 times one worker on 16.
+  - **four runs at once, 4 workers each:** 60 to 80 each, about 280 in all (240 including warm-up).
+  - **The PPO update** costs 0.2 to 0.6 seconds a rollout, a few percent of the time.
+- **So:** about 1M training decisions an hour, or 24M a day with the machine doing nothing else. E2's 25 runs take
+  about a day at 1M decisions a run, or two days at 2M.
+
+### Built and measured (sim v1, Runecrafting part 5): the essence pouches (OQ-40 (c)), the Abyss closed in the travel model, and its fight option
+2026-11-09, building `docs/sim-v1-skills-draft.md` §5 (Caleb, OQ-40 (c): the pouches as the server gives them; "Carry
+on with the pouches and abyss fight option"). `m002-runecrafting-pouches`.
+- **Found: the travel model walked into the Abyss.** Off the planner's map every tile counts as walkable by a
+  straight line, so the Abyss looked about 1,770 steps from Edgeville (about 1,330 ticks). Its monsters were fight
+  candidates by that impossible walk.
+  - Half of them spawn in map region (47, 76), north of the ring the teleport lands in: a second copy of the Abyss
+    that nothing reaches.
+- **Built: the Abyss is closed** (`rlscape/gamedata/transports.py`, `rlscape/travel.py`, `rlscape/sim/movement.py`):
+  - **No walk** joins it (both regions) to anywhere else.
+  - **In:** the Mage of Zamorak's teleport is a link from beside him, as a boat is. It skulls the character
+    (`sim.transport.use`).
+  - **Out:** a teleport, or the Abyss's exit, taken only from inside it: the passage, the body rift, and the body
+    altar's portal out by the body ruins. 54 ticks, estimated from its measured parts.
+  - **Walks inside** go by the Abyss's own map (`routes.abyss_map`). From the teleport's anchor, the walk is the mean
+    over its landings, one a degree round the ring. The northern copy isn't on that map, so its sites are unreachable.
+  - **The static estimates** (`travel_ticks`, the ranker's `Destinations`, `travel_ticks_from_many`) count the link
+    and the exit.
+  - **The server walker** (`rlscape/bridge/travel.py`) takes both:
+    - the mage's Teleport;
+    - for the exit, a walk to beside the passage where the obstacles' varbit puts it (the bridge's new
+      `abyss_obstacles`, the export's layouts), Go-through, the body rift, the portal;
+    - walks inside on the Abyss's map.
+  - **Validated** (`scripts/validate_travel.py --set abyss`, instance 6), 8 trips:
+    - in from Edgeville's bank to each quarter of the ring, 0.90 to 1.05 (mean 0.95);
+    - out by the exit, 0.88 to 1.21 (mean 1.02);
+    - 7 of the 8 within ±20%. The 1.21 starts beside the passage.
+    - The trips' characters are sturdy: a fresh one dies there, and travel doesn't model the monsters.
+- **Built: the pouches** (`rlscape/sim/pouches.py`, from `PouchManager.kt` and `RunePouchPlugin.kt`):
+  - small 3, medium 6, large 9 and giant 12 essence, from Runecrafting 1, 25, 50 and 75;
+  - one state for each kind on `CharacterState` (its capacity and the essence left before its next decay);
+  - decay as the server's: 264, 186 and 140 essence before the first, then 9 × the new capacity; gone at 0;
+  - Fill takes the kind the inventory holds more of; Empty gives back as much as the free slots take;
+  - the Dark Mage repairs them all.
+  - **In the paths** (`rc_<rune>` and `abyss_rc_<rune>`):
+    1. the pouches the character can fill come out of the bank (a slot each) with the load;
+    2. they're filled in rounds, the slots topped up after each, until full;
+    3. inside, after the first craft, the altar's lock, then the empties and a craft, in rounds while the slots
+       allow.
+
+    All four carry 30 more essence: 53 a trip, not 28. An Abyss trip with a decayed pouch goes by the Dark Mage on
+    the inner ring (the planner's steps by him to the rift).
+  - **The drop:** a kill of an abyssal leech, guardian or walker has a 12-in-750 chance of the next pouch the character
+    lacks (`combat.fight`'s kill), picked up. The rng is drawn only for those three, so other fights' seeded streams
+    don't change.
+  - ***V*** gains the four pouches, held (370); their sell and alchemy actions stay masked, untradeable. The
+    observation gains each one's capacity now over new (4 features).
+  - **The bridge's state** reports each kind's capacity, charges and contents (`pouches`), for `ServerEnv`, which
+    will map a decayed pouch's item (the next id) to the pouch.
+- **Measured on the server** (`scripts/measure_abyss.py --pouches`, instance 6):
+  - a Fill or an Empty: 1 tick each;
+  - the altar locks the character 2 ticks after a craft: clicks 1 and 2 ticks after the runes were dropped, the third
+    taken;
+  - a second Craft-rune beside it: 2 ticks to its runes;
+  - the medium pouch's decay: on the 44th fill, capacity 5, 45 charges, 5 put in, its item 5511, as the sim has it;
+  - the Dark Mage's Repair-pouches: 5 ticks from a click 11 tiles off, about all of it the walk, and the pouch back to
+    6 and 264.
+- **The fight option:** the combat slots' abyssal sites are reachable now, by the link (from Edgeville, 82 ticks to the
+  guardians' site); a fight there is skulled. Checked on the server (`scripts/calibrate_combat.py --cases-from
+  results/calibration/abyss-fight-cases.json`: 3 runs each against 200 of the sim's, set down at the site):
+  - melee at the guardians, band 61: XP/hr 1.00 (32,057 on the server, 32,171 in the sim), kills/hr 120 against 121;
+  - at the walkers, band 91: 1.07 (48,787 against 52,237).
+  - **Found: food.** The server's band-61 runs ate 2.9 food an hour, and one of the three ran out of it; the sim ate
+    none. So the sim underestimates the damage the Abyss's crowd of aggressive monsters does around a fight: OQ-35's
+    neighbours' engagement rate is the one measured elsewhere, and the Abyss is multi-combat in practice (2 to 4
+    attack at once on the ring). Raised as OQ-49.
+- **Claude's choices (reversible):**
+  - pouches always go on a trip when the level allows;
+  - a repair whenever one has decayed;
+  - the exit by the body rift (its ruins are nearest Edgeville);
+  - the travel model's exit leaves out the outer ring's monsters;
+  - the rate leaves the repairs' detours out (one every 12 to 44 trips).
+- **Not modelled:** the prayer drain (OQ-48 (a)'s gap), so fights in the Abyss flick prayers the server's character
+  wouldn't have.
+- **Tests:**
+  - `tests/test_sim_pouches.py` (8): the table, the 44th fill's decay, a pouch worn to nothing, the fill's rules, the
+    drop, a ruins trip's 53 essence and ticks, the Dark Mage's repair, the observation;
+  - `test_sim_abyss` (the closed Abyss);
+  - live: `tests/test_abyss_live.py` (the pouches' state and a fill, the walker in and out);
+  - counts: `test_vocabulary` (370, 2,291, 3,479).
+- **Speed:** unchanged. `scripts/benchmark_sim.py --seconds 120 --workers 1`, the CPU otherwise idle: 65 decisions a
+  second at `dc92982` (a temporary worktree) and 65 with these changes. The checks on the common path are a tile-in-box
+  comparison; a path search runs only when an end is in the Abyss, and is cached.
+- **The env contract:** v1.36 (to confirm).
+
+### Decided: OQ-17, the finishing scope is (a′) with every research question answered, and a simple peer review (Caleb)
+Caleb, 2026-11-09: "OQ 17 - Let's pair things down a bit to option a'. I still want to answer all of the research
+questions we initially identified. However, I want to make sure that the peer review is as simple as it can be."
+`m002-oq17-scope`.
+- **The question** (Caleb raised it on 2026-11-05, `m000-feasibility-review`, and Claude reassessed it on 2026-11-09,
+  `m002-viability-reassessment`): something must go to peer review about Nov 26, and the report is due Nov 30. What
+  scope does the project finish with? Sim v1 is built, and training runs at about 1M decisions an hour (the entry
+  above).
+- **The options** (Claude's estimates):
+  - **(a′) recommended:**
+    - freeze the sim on Nov 10;
+    - spend at most a day speeding up the action mask;
+    - build `train.py` and run the sanity ladder;
+    - rerun E1;
+    - run E2 (5 × 5, or 5 × 3);
+    - RQ4 by E3 (RND) alone, with the γ_hr sweep only if compute allows;
+    - a weight-conditioned PPO for RQ3's second half (the first part to cut);
+    - the calibration gate in place of E6;
+    - cut E4 as planned, `ServerEnv` and E6's replays, PBRS and E5's granularity, and E7;
+    - a draft by Nov 25.
+
+    About 13 days of building.
+  - **(b):** E1 and E2 alone (RQ1, RQ2, RQ3's first half). About 10 days.
+  - **(c):** the full scope, about 25 days of building and 3 to 6 of compute. It doesn't fit.
+- **Caleb: (a′), with every research question answered.** That changes (a′) in two places:
+  - **RQ4 is answered in full.** It asks whether "an exploration bonus, the discount factor, and potential-based
+    shaping" change which strategies are found and how fast. So E5's γ_hr sweep and PBRS are in, and they're no longer
+    optional. Only E5's option granularity stays cut, since no research question asks about it.
+  - **RQ3's second half stays.** The weight-conditioned PPO is no longer the first part to cut.
+
+  So if time runs short, depth gives way, not a research question: fewer γ_hr values or weightings, or shorter runs.
+  Fewer than 5 seeds goes last, since the proposal promises "at least 5 seeds" for every comparison. Caleb picks the
+  cut when it comes to that.
+
+  **RQ5** ("exploratory, time permitting" in the proposal) is still open, in OQ-1. It needs learned micro-options,
+  and (a′) has no room for the tick-level environment they need.
+- **The plan:** each research question and its experiment, all on sim v1, with 5 seeds per configuration, at
+  (.5, .5) unless the experiment varies the weights.
+  - **RQ1:** E1, rerun on sim v1, and E2's agents: total level and net worth at the checkpoints.
+  - **RQ2:** E2's and E3's decision logs. They give the order activities are found in, early investment (H1), and
+    whether learning is sudden or gradual (changepoints in the learning curves).
+  - **RQ3:**
+    - E2's five weightings, for H2 and the frontier with its hypervolume;
+    - a weight-conditioned PPO against E2's separate agents, for Pareto coverage and training cost. It replaces E4's
+      Envelope Q, and the report says so.
+  - **RQ4:**
+    - E3, PPO + RND (H3);
+    - E5's γ_hr sweep: two values beyond the default (ROADMAP §3's set: 0.5, 0.9, 0.99);
+    - E5's PBRS: Φ is ROADMAP §3's candidate, the best GP/hr the current unlocks allow. It's confirmed when built.
+  - **Validity:** the calibration gate's results per option replace E6.
+  - **Compute:** about 60 to 70 runs:
+
+    | Part | Runs |
+    |---|---|
+    | E2 | 25 |
+    | E3 | 5 |
+    | E5 | 15 |
+    | The weight-conditioned agent, counted in ordinary runs | 10 to 15 |
+    | The ladder | 5 to 10 |
+
+    That's 2.5 to 6 days of the machine at 1M to 2M decisions a run, inside the 10 days from Nov 12 to 21.
+  - **Building:** about 14 days. PBRS's potential adds half a day to (a′), and the γ_hr sweep is only configs.
+- **The peer review kept simple (Caleb):** OQ-50 asks what the reviewer gets. Whatever the answer, Claude builds the
+  rest in a way that suits it (as ROADMAP week 8 and §6 already planned):
+  - each experiment is one config file and one command;
+  - each figure and table in the report comes from one script reading small result summaries committed to
+    `results/summary/`, so a reviewer never has to train anything.
+- **Unchanged from (a′):**
+  - Cut: E4's Envelope Q, `ServerEnv` and E6's replays, E5's granularity, and E7 as planned (RQ5 is OQ-1).
+  - The fallback: if PPO doesn't learn, the report covers E1 and E2 with an analysis of why. `Requirements.md`
+    accepts negative results.
+
+### Confirmed: every env contract version to v1.37, and option catalog v1.4 (Caleb)
+Caleb, 2026-11-09: "I confirm all versions of the env contract and the option catalog." `m002-confirm-contract`.
+- **What it covers:**
+  - **The env contract:** every version marked "to confirm": v1.11, v1.14 to v1.16, v1.18, v1.22 to v1.33, v1.36
+    and v1.37. This includes the Claude's choices they hold, such as v1.37's no prayer in the Abyss's fights and its
+    rate fitted to the server's fights.
+  - **The option catalog:** v1.4 (sim v1's four skills, Barbarian Fishing, the shortcuts, the pouches and the
+    Abyss's crowd). This includes its Claude's choices: which seven Agility shortcuts, and no prayer flicking in the
+    Abyss.
+- **Marked:** each version's "to confirm" now reads "confirmed by Caleb on 2026-11-09".
+  - `docs/env-contract.md`'s status says every version to v1.37 is confirmed.
+  - `docs/option-catalog.md` is "v1.4, Signed off".
+  - ROADMAP's status line no longer says "to confirm".
+  - The entries above that say "to confirm" are left as they were written.
+- **So:** sim v1's contract is signed off for tomorrow's freeze. A later change (say, v1.37's text changing after the
+  Runecrafting session's server check) is a new version and needs Caleb again.
+- **Not covered:** the two GAE choices in `m002-smdp-ppo` (λ once a decision; an option's reward at its start). They
+  belong to the agent, not the contract.
+
+### Decided: OQ-49 (a), the outer ring's crowd attacks fights in the Abyss (Caleb); built, fitted and checked on the server
+Caleb, 2026-11-09: "OQ 49 - Option A." `m002-oq49`.
+- **The question** (raised 2026-11-09, checking the Abyss's fight option: Runecrafting part 5, above):
+  - The server's band-61 runs at the guardians ate 2.9 food an hour, and one in three ran out; the sim's ate none.
+  - The Abyss is multi-combat (`MultiwayCombatZone` registers its region, 12107), and 2 to 4 of its monsters attack
+    at once on the ring.
+  - The sim's fights let other kinds engage only between kills, as in single combat (OQ-35 (a)).
+- **The options:**
+  - (a) recommended: fights in the Abyss also take the outer ring's attacks, as the crossing does (its fitted rate,
+    the three kinds by their spawns over their attack speeds), less the target's own. Eaten for, and checked against
+    the server's food an hour;
+  - (b) a documented gap;
+  - (c) drop the fight option, and sell the pouches on the GE at set prices.
+
+  **Caleb: (a).**
+- **Found, building it: the check had flicked prayers.**
+  - The server's runs were set down at the site with full prayer, and the bridge flicked Protect from Melee. That
+    blocks all three kinds, which fight in melee.
+  - With several attackers, swings fall on ticks in a row, and a prayer on two ticks running drains (`Prayer.tick`).
+    That's the likeliest source of the one run's damage.
+  - An agent can't fight that way: the mage's teleport, the only way in, drains the prayer to 0 (OQ-48 (a)'s gap),
+    and nothing in the Abyss restores it.
+- **Built:**
+  - **`rlscape.sim.abyss.Ring`:**
+    - the crossing's mix of kinds: those the character's combat level draws, shared by their spawns over their
+      attack speeds;
+    - their hits with no prayer, drawn from the mix in one draw;
+    - until the region's tolerance runs out (1,000 ticks), as AggressiveBehavior picks no new target then, and as
+      OQ-35's neighbours stop.
+  - **`combat.fight` at an Abyss site:**
+    - during a kill, the ring's attacks at the rest of its rate (less 1 over the fought monster's attack speed), in
+      time order with that monster's swings and the bites;
+    - all of it between kills and while it waits for a respawn, eaten for as the fight eats (or `out_of_food`);
+    - the neighbours engage as before: each is the character fighting one back, as the XP/hr check matched.
+  - **No prayer in a fight in the Abyss** (Claude's choice, confirmed by Caleb with v1.37): nothing is flicked, against
+    the crowd or the monster fought. This closes OQ-48 (a)'s gap for fights in the Abyss itself; it stays for fights
+    after leaving it (`docs/post-project-gaps.md`).
+  - **Fights elsewhere are unchanged:** they draw nothing new from the rng. 24 of the fight check's cases outside the
+    Abyss, 30 seeds each, give the same results as `dc92982` (a temporary worktree).
+  - **The check** (`scripts/calibrate_combat.py`): its Abyss cases don't flick on the server, and their food covers
+    the crowd too, at most 15 lobsters.
+- **Checked on the server: the crossing's rate fails.** 5 runs a case on instance 6 at 50 ms, against 200 of the
+  sim's, both sides with the same food:
+
+  | Case | Food/hr: server | sim | sim / server | XP/hr, sim / server |
+  |---|---|---|---|---|
+  | Melee at the guardians, band 61 | 157 | 72 | 0.46 | 0.93 |
+  | Melee at the walkers, band 91 | 62 | 35 | 0.57 | 0.97 |
+
+  - Every band-61 run on the server ran out of its 15 lobsters, in 480 to 700 ticks.
+  - At band 91, four of five ran out of their 12. The one that didn't slowed down after 1,000 ticks, as the tolerance
+    rule has it.
+- **Fitted: the crowd around a fight, 0.8 attacks a tick** (`FIGHT_ATTACKS_PER_TICK`; Claude's choice, confirmed by
+  Caleb with v1.37):
+  - fitted to those 10 runs by the sim, sweeping the rate at the server's food: food/hr 0.86 and 1.06 of the
+    server's, and the time to run out of food 1.16 and 1.02;
+  - a crossing keeps its 0.43. More gather around a character that stays: 1.13 a tick was measured standing at
+    combat level 50, not fighting back.
+- **Checked on cases it wasn't fitted on:** three new cases (`results/calibration/abyss-fight-check-cases.json`), 5
+  server runs each against 200 of the sim's:
+
+  | Case | Food/hr: server | sim | sim / server | Time to out of food | XP/hr |
+  |---|---|---|---|---|---|
+  | Melee at the guardians, band 91 | 52.6 | 59.9 | 1.14 | 0.99 | 0.97 |
+  | Ranged at the walkers, band 91 | 148.8 | 175.2 | 1.18 | 0.85 | 0.90 |
+  | Melee at the leeches, band 61 | 197.5 | 133.5 | **0.68** | **1.48** | 0.94 |
+
+  - Two of the three are inside the ±20% gate.
+  - **The leeches fail.** Their site does more damage a tick on the server (0.47) than the guardians' (0.37), though a
+    leech barely hits. Most likely, killing leeches never thins the guardians and walkers that gather round, and they
+    do the damage; the sim's crowd has the same mix whatever the character kills. Raised as OQ-51: recommended, a
+    documented gap, as the sim freezes on Nov 10.
+- **What it costs an agent:** the Abyss's fights eat. In the sim, at the fit's cases, 136 lobsters an hour at the
+  guardians (band 61) and 65 at the walkers (band 91): about 31,000 and 15,000 gp an hour of food at 228 gp a lobster.
+  Without prayer, the XP/hr is lower too: 28,500 at the guardians against 32,000 flicking.
+- **Not modelled:**
+  - the crowd during the walk to the site from the teleport's landing (travel's walks take no attacks, as the exit's
+    don't);
+  - the crowd during a retreat: only the fought monster's escape swings.
+- **Tests:**
+  - `test_the_rings_attacks_on_a_fight_are_the_crossings_less_the_monster_fought`;
+  - `test_a_fight_in_the_abyss_takes_the_rings_attacks_with_no_prayer`: inside the Abyss, with the tolerance run out,
+    and outside it.
+- **The env contract:** v1.37 (§8's Prayer row, and a row for the Abyss's crowd), confirmed by Caleb.
+
+### Decided: OQ-51 (a), the Abyss's leeches are a documented gap (Caleb)
+Caleb, 2026-11-09: "OQ 51 - Option A." `m002-oq51`.
+- **The question** (raised 2026-11-09 by the Runecrafting session, checking OQ-49 (a)'s fitted rate on server cases
+  it wasn't fitted on; the entry above):
+  - Melee at the leeches, band 61, eats 0.68 of the server's food an hour in the sim, and takes 1.48 times as long to
+    run out. The other two held-out cases pass (1.14 and 1.18).
+  - Most likely, killing leeches never thins the guardians and walkers that gather round. The sim's crowd has the
+    same mix whatever the character kills.
+  - Leeches die fastest, so they drop the most pouches.
+- **The options:**
+  - **(a) recommended:** a documented gap, since the sim freezes on Nov 10.
+  - **(b):** model how the crowd builds up. It needs a gathering rate fitted on the server and new runs held out of
+    that fit: about half a day, and a new contract version after the freeze.
+  - **(c):** a factor on the crowd's rate at the leeches, fitted to these five runs, with nothing to check it.
+- **Caleb: (a).** `docs/post-project-gaps.md` has the gap: what, why, what it costs and how to close it.
+  - At band 61 the sim's leech fights eat about 64 lobsters an hour less than the server's (about 14,600 gp an hour),
+    so an agent could overrate the leeches for pouches.
+  - The gate reports the case as a residual gap.
+  - The sim and the env contract (v1.37) are unchanged.
+
+### Decided: OQ-52, picked flax can be banked or spun (Caleb); built
+Caleb, 2026-11-09, after asking "Why does flax not add value?": "For flax, we should add the option to move into
+spinning it into bowstrings or bank." `m002-oq52-question`, `m002-oq52`.
+- **The question** (raised 2026-11-09, in the pre-E1 audit's smoke run of E1):
+  - Greedy GP spent about 70% of its game time on 15-minute Agility stints that earn nothing.
+  - After a load of picked flax, `bank_deposit` was masked, because the Crafting kit kept flax as spinning's input.
+    Every option still allowed rated 0 gp, and the tie went to the lowest action id.
+- **The options:**
+  - **(a) recommended:** fix the kit, and break such ties by the shortest option;
+  - **(b):** the kit only;
+  - **(c):** the tie-break only;
+  - **(d):** neither.
+- **Caleb: bank it or spin it** (the kit). Built:
+  - **The task:** picking flax has its own task, `flax`, whose kit is nothing (`rlscape/sim/kits.py`,
+    `crafting.PickFlax`). After a load, `bank_deposit` banks the flax, or `spin_flax` (Crafting 10) spins it into
+    bowstrings. Spinning's task stays crafting, so leftover flax stays for the wheel.
+  - **The observation:** the task one-hot adds flax, making 3,480 features. Env contract v1.38 (the task's name and
+    the feature are Claude's, to confirm), and option catalog §2's Crafting line.
+- **The tie-break is unchanged.** After the fix, four whole greedy episodes (GP and XP, seeds 0 and 1) took no
+  zero-gain option except the bank fallback. So there's no tie left to break, and as Caleb said, there shouldn't be
+  one.
+- **What it changes:**
+  - **Greedy GP at hour 20:** about 1.98M net worth (1,985,363 and 1,973,198 at seeds 0 and 1), from about 144k. It
+    picks and banks flax all episode: 787 loads, about 99k gp an hour, with total level 34. Greedy XP is unchanged
+    (total level 155).
+  - **It never spins.** Picking gives no XP, so greedy GP never reaches Crafting 10. A bowstring is worth 186 gp
+    against flax's 90 (`data/prices_v2.csv`), so training Crafting to spin is a delayed-payoff investment H1 can look
+    for.
+  - **About 99k gp an hour from flax:**
+    - The pick and the bank trip are the server's times: `pick_flax` is calibrated at 69 ticks a load, 1.00 of the
+      server's, and the travel is validated.
+    - Flax is 90 gp at the January 2009 GE price, and the frozen-price buyer takes any amount.
+    - So it's what this server gives. That the market couldn't absorb so much flax isn't modelled, since the GE is
+      frozen by design.
+- **Tests:**
+  - `tests/test_sim_crafting.py::test_picked_flax_can_be_banked_or_spun`, reproduced first: the kit held the flax;
+  - `test_vocabulary`'s count, now 3,480.
+
+  The suite without the server: 418 passed, 74 skipped.
+
+### Measured: the gate's 600 ms speed check passes for Crafting, Herblore and Runecrafting (OQ-21)
+2026-11-09, OQ-21 (a) (Caleb, 2026-11-06: a speed check at 600 ms in the gate), the finishing plan's freeze item.
+`m002-speed-checks`.
+- **What ran:** the same cases on the server at 50 and 600 ms (`scripts/speed_check.py`,
+  `results/calibration/speed-check-20261109-1021.json`), one script per server (CLAUDE.md). The servers were
+  instances 4 to 7, on the current build, with the frozen GE reinstalled.
+  - **Crafting:** its 14 calibration cases, 3 runs each (`calibrate_crafting.py`).
+  - **Herblore:** its 9, 3 runs each.
+  - **Runecrafting:** `rc_<rune>` at the 8 ruins (entering and inside), 3 runs each, and the air tiaras.
+  - **The Abyss:** whole `abyss_rc` trips, 3 for each of the 10 runes (`measure_abyss.py --trips 3`).
+  - **The Abyss's fight** the crowd's rate was fitted on (melee at the guardians, band 61), 3 runs.
+- **The script now reads these files** (Claude's choices, reversible):
+  - **What it compares:**
+    - a load's ticks;
+    - the ruins' entering and inside ticks;
+    - the ticks between tiaras;
+    - each Abyss trip's server ticks over the sim's estimate for that trip, all the runes pooled. The landing is
+      random, and the sim's estimate is for the actual landing, so the ratio pairs them;
+    - combat also compares food an hour.
+  - **The rule:** these agree within two standard errors, or within 5% (travel's tolerance) where the runs have no
+    spread.
+  - **Checked:** rerun on the two earlier checks' files, it gives their results: 11 of 11, and 18 of 18 plus the two
+    new food rows.
+- **Result: 43 of 43 agree.**
+  - **Crafting, Herblore, the ruins and the tiaras:** the same ticks at both speeds (1.00), except picking flax at
+    1.01 (63.0 and 63.7 ticks).
+  - **The Abyss trips:** server over the sim 1.034 at 50 ms and 1.020 at 600 (30 trips each, 1.6 standard errors
+    apart).
+  - **The guardians' fight:** XP/hr 1.02 and food/hr 1.03 (3 runs each, within 0.4 and 0.2 standard errors).
+- **So every sim v1 calibration has its speed check.** The residual gaps are documented in
+  `docs/post-project-gaps.md`.
+- **Found:** a restart of the Claude Code process stopped the servers, and two 600 ms runs with them (Crafting and the
+  Abyss trips). Both were rerun on the same build.
+
+### Decided: OQ-56, the start has Druidic Ritual's 250 Herblore XP (Caleb); built
+Caleb, 2026-11-09, answering Claude's question while extending the guide (OQ-53): "Give Druidic's 250 XP".
+`m002-oq53-guide`.
+- **The question:**
+  - Every Herblore recipe needs level 3: guam, and the attack potion (`herblore/Herbs.java`, `FinishedPotion`).
+    Grinding and the unfinished potions give no XP.
+  - Quests are flags only (2026-11-06), so Druidic Ritual's 250 XP never arrives, and a fresh character stays at
+    Herblore 1.
+  - So no policy could train Herblore, on either backend.
+- **The options:**
+  - **(a) recommended:** give the start Druidic Ritual's 250 XP on both backends, an exception to flags only;
+  - **(b):** leave Herblore untrainable, as a documented gap.
+- **Caleb: (a).** Built:
+  - **The sim:** `CharacterState.fresh` has 250 Herblore XP (`DRUIDIC_RITUAL_XP`), which is level 3.
+  - **The fork:** `spawnFreshCharacter` adds it as the quest's finish does (`rewardXP`, that is,
+    `skills.addExperience(HERBLORE, 250.0)`). Built, not committed.
+  - A fresh character's total level is now 35 (it was 33).
+- **The env contract:** v1.39 (§1, the start).
+- **Tests:**
+  - `tests/test_sim.py`'s fresh character: 250 Herblore XP, level 3, total 35;
+  - `tests/test_bridge_live.py`'s spawn: run live on instance 7 with the new build, and it passed.
+
+### Decided: OQ-53, the scripted guide trains sim v1's skills too (Caleb)
+Caleb, 2026-11-09: "OQ 53 - Extend the guide."
+- **Caleb's answers to Claude's questions on how:**
+  - all four skills join the lowest-first schedule;
+  - Crafting below 10 trains on cowhides from cows;
+  - essence is bought after affordable upgrades.
+
+  Caleb asked first whether 44 gp was rune or pure essence. It's rune essence; pure is 137. `m002-oq53-guide`.
+- **The question** (raised in the pre-E1 audit): the guide trains sim v0's 14 skills and none of sim v1's four.
+- **The options:**
+  - **(a) recommended:** extend it from the January 2009 wiki pages, and Caleb reviews it before E1;
+  - **(b):** keep it as signed off.
+- **Caleb: (a)**, with:
+  - **The schedule:** the four join the lowest-first schedule as the other 14 are, each by its January 2009 method.
+    Herblore starts at level 3 (OQ-56).
+  - **Crafting below 10:** the sim has no sheep shearing, and wool is 123 gp on the frozen GE. So the guide uses
+    cowhides from cows, tanned at Ellis and made into soft leather, which is where the 2009 page gets its leather.
+  - **Essence:** rune essence (44 gp; pure is 137), bought only when no gear upgrade the guide wants is affordable.
+- **The sources:** the January 2009 revisions, `docs/resources.md` [43] to [49]:
+  - Pay-to-play Crafting training (883396) and Flax (889516);
+  - Agility training (895549);
+  - Herblore (875720);
+  - Free-to-play Runecrafting training (888316) and Pay-to-play Runecrafting training (832614);
+  - Server (893026), for OQ-57.
+- **Being built:** `rlscape/baselines/guide.py`, and the draft's fifth revision for Caleb's review.
+
+### Decided: OQ-54 (a), E1 evaluates 30 seeds per baseline (Caleb)
+Caleb, 2026-11-09: "OQ 54 - Option A". `m002-oq54-55-57`.
+- **The question** (the pre-E1 audit): how many evaluation seeds E1 uses. The proposal asks for at least 5 per
+  comparison, and E1 is cheap on sim v1 (16 episodes in 103 s on 4 workers).
+- **The options:**
+  - **(a) recommended:** 30 seeds (0 to 29), with the same seeds evaluating every PPO checkpoint, so comparisons are
+    paired seed by seed;
+  - **(b):** 10 seeds;
+  - **(c):** 5 seeds.
+- **Caleb: (a).**
+
+### Decided: OQ-55, the audit's housekeeping: all three (a) (Caleb)
+Caleb, 2026-11-09: "OQ 55 - 1 a - 2 a - 3 a". `m002-oq54-55-57`.
+- **1, the weekly rhythm:** ROADMAP §6's Friday status entries had never been written, and the rule is dropped. The
+  records, the decision log and ROADMAP's status line keep the running account.
+- **2, the records' Status values:** a mechanical pass to `docs/ai-log-requirements.md`'s set, each record's
+  parenthetical kept:
+  - DONE and COMPLETE become SUCCESS;
+  - IN PROGRESS becomes PARTIAL;
+  - RECOMMENDATION GIVEN becomes SUCCESS.
+- **3, the env contract's wording:** a wording-only version, v1.40:
+  - `ServerEnv` isn't built (OQ-17 (a′));
+  - the calibration gate is the sim-to-real evidence in place of E6;
+  - the preference features serve the weight-conditioned PPO in place of E4's agent.
+
+### Decided: OQ-57 (a), the Gem Store's uncut gem stock and restock multiplied by 2009's members' worlds (Caleb)
+Caleb, 2026-11-09: "OQ 57 - Option A - It is up to the agents to determine if they want to use the greedy GP loop to
+fund other progress or get fast crafting xp gains while gaining money." `m002-oq54-55-57`.
+- **The question** (Caleb, 2026-11-09, `m002-gem-shops`): gem shops sell uncut gems for less than they pay for cut
+  ones. Should the sim model it, with each shop's stock and restock multiplied by 2009's worlds?
+  - **On this server,** only the Gem Store (shop 92), whose shopkeeper on this server is Hervi in Keldagrim (NPC 2157, one spawn at
+    (2887, 10212)) sells gems for gp at
+    its normal stock: 1 uncut sapphire (25 gp) and 1
+    uncut emerald (50 gp), a unit every 100 ticks.
+  - **The frozen GE** prices them at 616 and 985, above the cut gems' 393 and 652.
+  - **2009 had 87 members' worlds** (Server, revision 893026).
+- **The options:**
+  - **(a):** as asked, with the GE as it is, and its arbitrage;
+  - **(b) recommended:** the shops' own loop, with the gems off the GE and valued at what the shops pay;
+  - **(c):** after the project.
+- **Caleb: (a).** The agents decide what to do with it: fund other progress from the GE loop, or train Crafting
+  quickly while gaining money.
+  - The method: buy uncut gems at Hervi's, then sell them on the frozen GE, or cut them and sell those. Its stock
+    and restock are × 87, the members' worlds, since Keldagrim is members-only.
+  - **Corrected the same day:** Claude first called it Shilo Village's Gem Store from the shop's title. The
+    shopkeeper NPC's only spawn is in Keldagrim. Shop 89 (Green Gemstone Gems, cut gems, all at stock 0) lists the
+    same NPC, and shop 92, parsed last, is the one he opens.
+  - The GE, net worth and every other shop stay as they are.
+- **Built** (Caleb, asked whether this meant 87 worlds: "I want you to -simulate- the number of worlds ... I don't
+  want the agents to have to learn to hop worlds or have to maintain that number of worlds running"; that's what
+  this is, on one server and one world):
+  - **The fork:**
+    - `world.shop_worlds` (`ServerConstants.SHOP_WORLDS`, "shop:worlds" pairs; empty in `default.conf`, so every
+      shop stays authentic) multiplies a shop's normal stock at startup (`Shops.startup`);
+    - each restock step moves that many units (`Shop.restock`);
+    - a unit is priced at one world's stock and overstock (`getGPCost`, `getGPSell`), as a hopping player meets
+      each world's shop;
+    - `rl.conf` has `shop_worlds = "92:87"`.
+  - **The sim:** `gd.shop_worlds()` reads the same setting from `rl.conf`, and `gd.shops()`, `rlscape.sim.shops`
+    and `BuyShop` follow it. `buy_shop_1623` and `buy_shop_1621` are new (env contract v1.41: 2,293 actions,
+    3,482 features).
+  - **Tests:**
+    - `test_sim_buying.py::test_the_gem_store_stands_for_2009s_members_worlds`, reproduced first;
+    - live, `tests/test_gem_store_live.py` on instance 7 with the new build: 9 uncut sapphires in one purchase (all
+      the inventory's room) at 25 gp each, where one world's stock of 1 would sell one.
+
+    The suite without the server: 419 passed, 74 skipped.
+  - **Not measured:** the shop's trip and buy time, which the sim takes from travel and `STORE_TICKS` (3 ticks),
+    as for its other shops.
+
+### Found and fixed: abyss_rc_<rune> was open when the hitpoints and food couldn't cover the crossing
+2026-11-09, building the guide's extension (OQ-53). `m002-oq53-guide`.
+- **Found:**
+  - A character with 1 essence and too few hitpoints, holding no food, could pick `abyss_rc_air`.
+  - Each pick walked to Edgeville's booth, found it couldn't eat up to what the crossing needs
+    (`AbyssRunecraft.need`: its expected damage and twice the attackers' hardest hit, at most full hitpoints), and
+    stopped with nothing done (OUT_OF_FOOD, 8 ticks at the bank).
+  - The guide picked it 46 times in an episode. Any policy could do the same.
+- **Fixed:** `AbyssRunecraft.available` now also asks `_can_cover`, the same test `run()` applies at the booth: the
+  hitpoints and all the food held or banked must reach the need.
+- **Test:** `tests/test_sim_abyss.py::test_a_crossing_the_hitpoints_and_food_cant_cover_is_masked`, reproduced first.
+
+### Decided (Caleb): the guide's early Crafting buys wool; half the loot is sold, and upgrades take at most half the coins
+Caleb, 2026-11-09, while the guide's extension was being built (OQ-53): "Add wool buying and spinning to early
+crafting." Then: "Change behavior such that half of loots are sold and half are preserved for processing. Similarly,
+half of gp should be preserved for training skills that are net negative on gp, when making upgrade decisions."
+`m002-oq53-guide`.
+- **Wool:** below Crafting 10, the guide buys wool on the GE (123 gp; the sim has no shearing) and spins it at a
+  wheel, beside the cowhides.
+- **Half the coins:** an upgrade or tool is bought only if it costs at most half the coins, and funding aims at
+  twice its price. What the skills that lose gp use up (rune essence, herbs, vials, secondaries, wool, thread) is
+  bought whenever due. This replaces OQ-53's "after affordable upgrades".
+- **Half the loot:** an item's stack is sold only while less than half of what's been obtained of it has been sold.
+  Looted hides, leathers, uncut gems and herbs count as loot. What the guide buys to use is never sold: its
+  talismans, essence, tools, thread, wool, vials and secondaries. (It had sold its air talisman to fund an upgrade.)
+- **Exact halves aren't possible in the action space,** which has whole-stack trades:
+  - a sale sells all of an item carried (option catalog v1.0, "selling all of an item");
+  - a GE buy takes as many as the coins allow, up to the item's lot.
+
+  So the loot's half holds over an episode, not to the unit, and an input buy can spend more than the reserved half.
+- **Also in the guide:** Runecrafting uses only the January 2009 page's methods, the ruins' air and earth runes. Its
+  top-slot fallback, which without a talisman was the Abyss, is gone.
+
+### Decided and built: kill_cows, Crafting's gathering path for hides, its bones buried (Caleb)
+Caleb, 2026-11-09: "Add cow killing as a gathering method for crafting supplies. It will use the highest combat style
+so as to have faster kills. Bury all normal bones gathered." `m002-oq53-guide`.
+- **Built** (`rlscape/sim/cows.py`, `KillCows`; a path in Crafting's skilling slots, as `pick_flax` is; env contract
+  v1.42, to confirm):
+  - **The plan:** Claude read "the highest combat style … faster kills" as the class and style with the most kills an
+    hour (`combat_rates`), ties going to the higher level. Only plans whose ammunition lasts a full inventory of kills
+    count. The first build chose Wind Strike, on the starter kit's 15 casts, and ran out with no kills.
+  - **The site:** the cow site with the least travel and bank trip, among those with two or more cows.
+  - **The fight:** fought as any fight is (`combat.fight`). It picks up the hides and the normal bones and leaves the
+    raw beef. Whenever the inventory fills, it buries the bones (3 ticks and 4.5 Prayer XP each) and fights on.
+  - **The end:** a full inventory of hides, the budget, out of food, or a death.
+  - **The task:** the class fought, so a deposit banks the hides.
+  - **In the slots:** no Crafting XP, so a gp path. For a fresh character it holds Crafting's second gp slot, behind
+    `pick_flax`.
+  - **The guide:** below Crafting 10 it takes this path, in place of the combat slots' cows.
+- **Tests:**
+  - `tests/test_sim_cows.py` (3), reproduced first: hides gathered and bones buried, the deposit banks the hides,
+    the fastest kills chosen, a gp path;
+  - the gathering and skilling tests' counts: Crafting's 40 paths, a fresh character's open paths and slots.
+
+  The suite without the server: 421 passed, 75 skipped, the two guide balance tests left out (OQ-59).
+- **What it does to the guide** (4 seeds, 20 hours):
+  - Prayer rises to 18–25, from the bones; it was 3–8.
+  - Crafting reaches 5–9, up from 1–4.
+  - But total level falls to 240–314 and net worth to 22k–68k, from 320–366 and 105k–173k.
+  - **The cause:** at seed 0 the guide spends 37% of the episode at cows (44,585 ticks, 42 runs: 23 stopped at the
+    option's 15 minutes without a full inventory, 18 out of food). A low-level character kills cows slowly, and the
+    lowest-first schedule keeps sending Crafting below 10 back to them.
+- **Caleb asked:** "Is wool -> ball of wool gp positive?" No. Wool is 123 gp and a ball of wool 11 gp
+  (`data/prices_v2.csv`), so a spin loses 112 gp for 2.5 Crafting XP, about 45 gp an XP. Crafting 10 from wool alone
+  is about 462 wool, or 57k gp.
+
+### Decided: the guide's wool out and cows kept; OQ-58 (a), a stalled stint passes on; OQ-59 (b), flax pays for the inputs (Caleb); built
+Caleb, 2026-11-09: "Remove wool. Keep cows. OQ 58 - pass the stint on. OQ 59 - Option B." Then, while it was being
+built: "The agents still are not banking everything they don't need for the task at hand, huh?" and "Also, let the
+money making fallback carry through the entire stint when it becomes active, instead of wasting a lot of time on
+travel." `m002-oq58-59`.
+- **OQ-58, the guide's stints stall on a skill that can't be trained.** The options:
+  - **(a) recommended:** pass it on;
+  - **(b):** the schedule as signed off.
+
+  **Caleb: (a).** When the plan falls to another skill's training, that skill starts a stint. Errands (sales,
+  deposits, upgrades) don't pass it. The flag is gone: it's the guide's schedule.
+- **OQ-59, the guide's Crafting, Herblore and Runecrafting barely trained.** The options:
+  - **(a) recommended:** accept it;
+  - **(b):** a money-maker, flax picked and sold;
+  - **(c):** something else.
+
+  **Caleb: (b).** Built:
+  - **When it starts:** a skill that buys its inputs is short when its input for the stint costs more than the coins.
+    The input for the stint is the units the XP to the stint's goal level takes (rune essence, or Herblore's
+    scarcest of herb, vial and secondary), at least a load.
+  - **While short,** the guide picks flax by Seers' Village and banks it.
+  - **When it sells:** once the flax covers the input and two fares, it takes the flax out as banknotes, sells it in
+    one GE trip, and buys.
+  - **Why two fares:** the sim's way from the GE to the field is the home teleport and the 1,000 gp charter from Port
+    Sarim to Catherby, and back the charter too while the teleport waits. Selling each load netted about nothing
+    (seed 0: 116 sales, 78% of the episode, Herblore never trained).
+  - **Caleb's "carry through the entire stint":** once the money-maker starts, the guide is funding that skill. No
+    upgrade takes the coins until the input is bought or the stint moves on.
+  - **The flax is sold in full,** not half: it's picked to sell.
+- **Wool:** out. A spin loses 112 gp, at 123 for wool against 11 for a ball.
+- **Cows:** kept, below Crafting 10 (`kill_cows`).
+- **Banking (Caleb's question):**
+  - **Why it happens:**
+    - `bank_deposit` keeps the last task's kit and runs only when a policy picks it: no auto-banking (option catalog
+      v1.0);
+    - the guide deposited only when the inventory was full;
+    - its sale withdrawals left the stacks it chose not to sell in the inventory, as banknotes.
+
+    Seed 1 at tick 24,602 started `kill_cows` with 3 free slots: arrow shafts, ores, burnt fish, two scimitars,
+    charms, runes.
+  - **Built in the guide:** before a gathering or combat option, it deposits if that would bank 5 or more slots of
+    what the coming task doesn't use. That's measured against the coming option's kit (a fight's class, the path a
+    skilling slot holds), and skipped right after a withdrawal or a deposit.
+  - **The sim's rule is unchanged** (OQ-60).
+- **Loops found and fixed on the way:**
+  - the pre-deposit measured against the last task's kit (Magic's runes banked and withdrawn, about 14,000 times);
+  - a ranged gear withdrawal undone by the next pre-deposit (1,584 times);
+  - flax banknotes deposited as soon as they were withdrawn for sale (thousands of Herblore decisions).
+- **Results,** 8 seeds × 20 hours:
+  - total level 325–370, one seed 284 (Crafting at its cows);
+  - net worth 103k–167k;
+  - every skill trained: Herblore 11–16, Runecrafting 8–16, Crafting 4–16, Agility 10–17, Prayer 10–22.
+
+  The signed-off 14-skill guide had 336–341 and 107k–122k.
+- **Tests:** `tests/test_guide.py`'s balance test no longer expects the melee stats within 5 of each other
+  (`kill_cows` trains its fastest style), and leaves Crafting out of its 6-hour check (its cows haven't paid off by
+  then; the 20-hour test checks it).
+
+### Decided: OQ-60 (a), the sim's deposit rule stays; the agent learns when to bank (Caleb)
+Caleb, 2026-11-09, after asking (the message cut off) "OQ 60 - if we go with Option A, does the simulation keep":
+"OQ 60 - Option A - I accept that the agent needs to learn to bank at intelligent opportunities. It just seems so
+counterintuitive to me that the agent would ever decide to not have the maximum opportunity to perform the action that
+it has selected." `m002-oq60`.
+- **The question** (raised 2026-11-09, from Caleb's "not banking everything they don't need for the task at hand"):
+  `bank_deposit` keeps the last task's kit and runs only when a policy picks it, so a policy that doesn't deposit
+  starts its next task with whatever it carries.
+- **The options:**
+  - **(a) recommended:** leave the sim as it is;
+  - **(b):** gathering and fighting bank what their kit doesn't use as they start, which reverses "no auto-banking";
+  - **(c):** a deposit keeps only tools, food and ammunition.
+- **Caleb: (a).** The agent learns to bank at good moments. The observation shows what it carries, its free slots,
+  the last task (which decides what a deposit keeps), and whether a deposit is allowed. The scripted guide deposits
+  before gathering or a fight (the entry above).
+- **To watch** (Claude's note, Caleb's concern): skipping a deposit pays only when the trip costs more than the room
+  is worth, near an episode's end, say, or on a short option. An agent that starts gathering with little room
+  otherwise is still learning. Each decision's log will hold the observation, so the free slots as a gathering or
+  fight starts can be checked on the sanity ladder and in E2.
+
+### Measured: the scripted guide's fifth revision on E1's 30 seeds; one more loop fixed
+2026-11-09. `m002-oq58-59`.
+- **Found on 30 seeds:** seed 14 looped about 1,300 times between `bank_withdraw_gear_magic` and a full inventory's
+  `bank_deposit`. The magic fight still couldn't start after the withdrawal.
+- **Fixed:** the guide doesn't deposit straight after a withdrawal while its plan allows anything else. Seed 14 then
+  ended at total level 357.
+- **Results** (`scripts/evaluate.py`, 30 seeds, 20 hours: `results/eval/guide-v5b-20261109` for the guide,
+  `guide-v5-20261109` for the others):
+
+  | At hour 20 (mean [95% CI]) | Total level | Net worth |
+  |---|---|---|
+  | Scripted guide | 351 [344, 357] | 131k [125k, 136k] |
+  | Random | 215 [207, 223] | 15k [10k, 19k] |
+  | Greedy XP | 157 | 1.2k (total XP 701k) |
+  | Greedy GP | 40 [36, 46] | 1.89M [1.77M, 1.98M] |
+
+  The guide's episodes run at most 519 decisions, with no deaths.
+- **Written up:** `docs/scripted-guide-draft.md`'s fifth revision, for Caleb's review before E1.
+- **Tests:** the suite without the server, 423 passed, 75 skipped.
+
+### Confirmed: env contract v1.38, picking flax's own task (Caleb)
+Caleb, 2026-11-09: "Env contract 1.38 is accepted." `m002-confirm-138-pr`.
+- **Confirmed:** v1.38 (OQ-52). It covers what Claude chose: the task's name, `flax`, and its feature in the
+  observation's task one-hot (18).
+- **Still to confirm:** v1.42 (`kill_cows`: its site, plan and ammunition), and the scripted guide's fifth revision
+  (`docs/scripted-guide-draft.md`), before E1.
+
+### Confirmed: every env contract version (to v1.42) and the scripted guide's fifth revision (Caleb); sim v1 frozen
+Caleb, 2026-11-09: "All environment contracts are approved. The guide is approved. After this branch is merged in, I
+want to start new branches to allow each experiment to be independently run for reproducibility." `m002-freeze`.
+- **Approved:**
+  - every env contract version to v1.42, including v1.42's choices of `kill_cows`' site, plan and ammunition;
+  - option catalog v1.4;
+  - the scripted guide's fifth revision (`docs/scripted-guide-draft.md`), as E1's scripted-guide baseline.
+- **So sim v1 is frozen,** a day ahead of the finishing plan's Nov 10. Its contract changes only by a new version
+  Caleb approves.
+- **Next (Caleb):** once PR #8 is merged, each experiment runs on its own branch, so it can be run again on its own.
+  The scheme is for Caleb to confirm (`m002-freeze`).
+
+### Decided: OQ-61, one branch per experiment, `experiment/<name>` (Caleb)
+Caleb, 2026-11-09: "OQ 61 - The recommendations are all good, but I want the branches to be experiment/<name>, rather
+than exp." `m002-oq61`.
+- **The question** (raised the same day from Caleb's "start new branches to allow each experiment to be independently
+  run for reproducibility"): how the branches work.
+- **The options:**
+  - **(a) recommended:**
+    - a `sim-v1` tag on PR #8's merge commit;
+    - shared tooling first, on short PRs that don't change results;
+    - a branch per experiment, holding only its config, its own code, its committed summary and its records;
+    - the sim never changed on an experiment branch;
+    - each experiment merged into `main` by its own PR.
+  - **(b):** the experiment branches left unmerged.
+- **Caleb: (a), with the branches named `experiment/<name>`:**
+
+  | Branch | Experiment |
+  |---|---|
+  | `experiment/e1-baselines` | E1 |
+  | `experiment/ladder` | the sanity ladder |
+  | `experiment/e2-weights` | E2 |
+  | `experiment/e3-rnd` | E3 |
+  | `experiment/e5-gamma` | E5's γ_hr sweep |
+  | `experiment/e5-pbrs` | E5's PBRS |
+  | `experiment/rq3-conditioned` | the weight-conditioned PPO |
+
+- **The rules,** as CLAUDE.md and ROADMAP now state them:
+  - **What a branch holds:** each `experiment/<name>` starts from `main` and holds only:
+    - its config (`configs/<name>.yaml`);
+    - the code only it uses;
+    - its results summary (`results/summary/<name>/`, with the git SHA, the fork's SHA and the config hash);
+    - its records.
+  - **The sim:** a branch never changes it. A sim change goes through its own PR and a contract version, and the
+    experiments it touches run again.
+  - **Tooling** several experiments share is a PR into `main` first: the mask speed-up, `train.py` with the decision
+    logger, and the un-ignored `results/summary/`. None changes results; the speed-up's proof is identical
+    trajectories on E1's 30 seeds.
+  - **Merging:** each experiment merges into `main` by its own PR once its run is checked. To run it again, check out
+    its merge commit and run its one command.

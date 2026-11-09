@@ -6,7 +6,7 @@
 - Timestamp CST: 2026-11-05 22:17:35 CST (from the session transcript's message timestamp, UTC−06:00)
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: DONE (the command, the uid fix, the hazards and the runner's looting built and tested; the first loot runs
+- Status: SUCCESS (the command, the uid fix, the hazards and the runner's looting built and tested; the first loot runs
   in; the uid fix, the hazards' scope, OQ-19 and OQ-20 wait on Caleb)
 - Commit: fork `d0a7af6` (branch `rl`) and the main repo commit that adds this record (branch `sim-v0`; its SHA
   can only be filled in by a later commit)

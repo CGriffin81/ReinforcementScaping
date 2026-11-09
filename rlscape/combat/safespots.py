@@ -1,0 +1,97 @@
+"""Ranged and magic fights from safespots, and the arrow piles (Caleb, 2026-11-07, OQ-27 (d); magic, OQ-34).
+
+Rangers and casters safespot: they stand where they can shoot a monster that, chasing them, gets stuck where none of
+its attacks reach (a fence or wall holds a melee monster; a long-ranged bow outranges a skeletal wyvern). A monster
+without one is a bad ranged or magic target unless the damage it does is trivial. So:
+- a ranged or magic plan (`distance_class`) needs a safespot at the site unless the monster's damage is trivial: the
+  fight needs no food, its expected damage over the option less the hitpoints regenerated meanwhile fitting in those
+  above the retreat point (`needs_safespot`; Caleb, 2026-11-07, OQ-30 (b));
+- the safespot is the site's best from the server (gd.ranged_safespots, the bridge's ranged_safespots exported by
+  scripts/export_ranged_safespots.py), for the style's range (RangeSwingHandler.canSwing: 7, long-ranged 9;
+  MagicSwingHandler.canSwing, the same test: 10). Casting leaves no piles, only the drops to fetch. It
+  counts when it holds from at least MIN_SHARE of the monsters' wandering (attacked at their spawn, where they
+  respawn, it always holds) and no aggressive monster reaches it from its own wandering (an agent choice: before
+  aggression runs out such a monster hits a ranger there, and live it killed one at the Black Knights by Draynor
+  and the Wilderness green dragons); from it the monster deals nothing, and the site's supply is the monsters it
+  holds against;
+- arrows land where the monster stands when hit (RangeSwingHandler.useAmmo), and join a pile only while it's
+  private, its first PILE_PRIVATE_TICKS (GroundItemManager.increase): a pile per PILE_PRIVATE_TICKS of a kill
+  (`piles_per_kill`). Ground items last GROUND_TICKS;
+- they're picked up between kills, a pickup a pile (rates.PICKUP_TICKS), with a walk from the safespot to them and
+  back (`trip_ticks`: the export's walk each way, at WALK_TILES_PER_TICK); without a safespot the monster dies
+  beside the character, and the walk is in the pickup time. When aggressive monsters guard the piles and aggression
+  hasn't run out, the walk would take hits, so the fight waits, picking them up just before the oldest would go
+  (rlscape.sim.combat). The rankers take a trip after every kill.
+"""
+
+from __future__ import annotations
+
+from math import ceil
+
+from rlscape.combat import formulas as f
+from rlscape.combat.rates import EAT_BELOW_FRACTION, REGEN_TICKS, TICKS_PER_HOUR, Plan, Rates
+from rlscape.gamedata import server as gd
+
+RANGE_TILES = 7  # RangeSwingHandler.canSwing: the accurate and rapid styles
+LONGRANGE_TILES = 9  # long-ranged: 2 more
+MAGIC_TILES = 10  # MagicSwingHandler.canSwing: the same test as ranged's, with distance 10 (Caleb, 2026-11-07, OQ-34)
+SAFESPOT_RANGES = (RANGE_TILES, LONGRANGE_TILES, MAGIC_TILES)
+# of the monsters' wandering a safespot must hold from (Caleb, 2026-11-08, OQ-36 (a); 0.5 before, an agent choice):
+# where it doesn't, a monster that starts a random step as it's attacked can chase from there and reach the
+# character (at 0.61 the band-1 unicorns' magic safespot let one through in every run)
+MIN_SHARE = 0.8
+PILE_PRIVATE_TICKS = 100  # GroundItem: private to its dropper for its first 100 ticks, when increase() still joins it
+GROUND_TICKS = 200  # then public until it goes, 200 ticks after it was dropped
+WALK_TILES_PER_TICK = 1  # the walk to the arrows and back, a tile a tick (short walks barely run; an agent choice)
+# A guard's swings a tick on a late pickup trip, measured on the server (2026-11-08, the Black Knights by the
+# Wilderness edge, magic bands 1 and 31: 3 hits in 37 trips with 6 guards, about 6 swings in 8,250 guard-ticks; the
+# Wilderness green dragons' guarded trips took none). It was the gathering rate (1/29), which killed 86 of 100
+# band-1 casters there in the sim; none died on the server.
+GUARD_SWINGS_PER_TICK = 1 / 1350
+
+
+def distance_class(plan: Plan) -> bool:
+    """Whether the plan attacks from a distance, so it can safespot: ranged, and magic (Caleb, OQ-34)."""
+    return plan.combat_class in ("ranged", "magic")
+
+
+def style_range(plan: Plan) -> int:
+    if plan.combat_class == "magic":
+        return MAGIC_TILES
+    return LONGRANGE_TILES if plan.style == f.LONGRANGE else RANGE_TILES
+
+
+def fighting_ticks(rates: Rates, overhead: float) -> float:
+    """A kill's fighting, without finding and reaching the monster."""
+    return max(rates.ticks_per_kill - overhead, 0.0)
+
+
+def needs_safespot(rates: Rates, hp_margin: float, duration: float) -> bool:
+    """Whether a ranged or magic fight needs a safespot: it would need food (OQ-30 (b)). The monster's expected damage
+    over the option's `duration` (poison and breath included), less the hitpoints regenerated meanwhile, is more than
+    `hp_margin`, the hitpoints above the retreat point."""
+    return rates.damage_taken_per_hour * duration / TICKS_PER_HOUR - duration / REGEN_TICKS > hp_margin
+
+
+def hp_margin(current_hp: float, max_hp: float) -> float:
+    """The hitpoints above the retreat point (rlscape.sim.health.retreat_hp)."""
+    return max(current_hp - EAT_BELOW_FRACTION * max_hp, 0.0)
+
+
+def safespot(npc_id: int, site: tuple[int, int, int], plan: Plan) -> gd.RangedSafespot | None:
+    """The site's usable safespot for the plan's range, if any: holding from MIN_SHARE of the wandering, and no
+    aggressive monster reaching it."""
+    spot = gd.ranged_safespots().get((npc_id, site, style_range(plan)))
+    return spot if spot is not None and spot.share >= MIN_SHARE and spot.threats == 0 else None
+
+
+def piles_per_kill(fight_ticks: float) -> int:
+    """Arrow piles a kill leaves where the monster stands: one per PILE_PRIVATE_TICKS of shooting."""
+    return max(1, ceil(fight_ticks / PILE_PRIVATE_TICKS))
+
+
+def trip_ticks(spot: gd.RangedSafespot | None) -> float:
+    """The walk from the safespot to the arrows and back (none without a safespot)."""
+    if spot is None or spot.walk is None:
+        return 0.0
+    return 2 * spot.walk / WALK_TILES_PER_TICK

@@ -8,7 +8,7 @@
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: PARTIAL (the branch is deleted and the docs committed; sim v0's first slice, the core plus woodcutting, is
   built and tested; the other families follow in later slices)
-- Commit: docs `493af16` (branch `sim-v0`); the sim code is uncommitted
+- Commit: docs `493af16` (branch `sim-v0`); the sim code and this record `f2baf2c`
 
 ## Full Prompt
 

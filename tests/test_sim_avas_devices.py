@@ -94,7 +94,7 @@ def test_a_fight_uses_the_arrows_the_outcomes_say():
                               (ranger(60, AVAS_ATTRACTOR, arrows=10**6), keep, AVA_CATCH + 0.1),
                               (ranger(60, arrows=10**6), none, 0.0)):
         before = state.worn(AMMO)
-        allowed, pay = _ammunition(state, Plan("ranged", "rapid"), 20_000, rng, loot)
+        allowed, pay, _ = _ammunition(state, Plan("ranged", "rapid"), 20_000, rng, loot)
         pay(allowed)
         assert (before - state.worn(AMMO)) / allowed == pytest.approx(1 - kept, abs=0.01)
 

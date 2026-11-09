@@ -68,3 +68,14 @@ def test_a_place_with_no_way_there_is_unreachable_even_from_off_the_map():
         state = CharacterState.fresh()
         state.location = origin
         assert route(state, shilo_bank) is None and route_ticks(state, shilo_bank) == float("inf")
+
+
+def test_the_rellekka_ferries_reach_the_fremennik_isles():
+    """Caleb, 2026-11-08, OQ-16 (a): Maria and Mord Gunnars ferry a character with The Fremennik Trials to Neitiznot
+    and Jatizso and back (RellekkaListeners; 17 ticks each, measured), so the yaks on Neitiznot have a way."""
+    from rlscape.gamedata.transports import transports
+    ferries = {t.id: t for t in transports() if t.id.startswith("ship:") and "rellekka" in t.id}
+    assert set(ferries) == {"ship:rellekka-neitiznot", "ship:neitiznot-rellekka", "ship:rellekka-jatizso",
+                            "ship:jatizso-rellekka"}
+    assert all(t.ticks == 17 and t.coins == 0 and t.quests == ("THE_FREMENNIK_TRIALS",) for t in ferries.values())
+    assert has_a_way((2323, 3790, 0))  # a Neitiznot yak

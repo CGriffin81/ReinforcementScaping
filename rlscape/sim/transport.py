@@ -14,7 +14,8 @@ from __future__ import annotations
 from functools import cache
 
 from rlscape.gamedata import server as gd
-from rlscape.gamedata.transports import HOME_COOLDOWN_TICKS, Transport, jewellery, transports, wilderness_level
+from rlscape.gamedata.transports import (ABYSS_SKULL_TICKS, HOME_COOLDOWN_TICKS, Transport, jewellery, transports,
+                                         wilderness_level)
 from rlscape.sim.equipment import WEAPON
 from rlscape.sim.skills import MAX_XP, SKILL_INDEX
 from rlscape.sim.state import COINS, CharacterState
@@ -71,6 +72,8 @@ def can_use(state: CharacterState, transport: Transport, origin: tuple[int, int,
         return False
     if transport.magic and state.level("magic") < transport.magic:
         return False
+    if any(state.boosted(skill) < level for skill, level in transport.skills):
+        return False
     if transport.runes and any(state.inventory.get(rune, 0) < n
                                for rune, n in _runes_needed(state, transport.runes).items()):
         return False
@@ -85,6 +88,12 @@ def can_use(state: CharacterState, transport: Transport, origin: tuple[int, int,
 
 
 @cache
+def _teleport_skills() -> tuple[str, ...]:
+    """The skills, Magic aside, a teleport needs a level in (its quest's own requirement)."""
+    return tuple(sorted({skill for t in teleports() for skill, _ in t.skills}))
+
+
+@cache
 def _teleport_items() -> frozenset[int]:
     return frozenset(i for t in teleports() for i in (*t.items, *(rune for rune, _ in t.runes)))
 
@@ -95,10 +104,11 @@ _usable: dict[tuple, tuple[Transport, ...]] = {}
 def usable_teleports(state: CharacterState) -> tuple[Transport, ...]:
     """The teleports the character can use from anywhere outside the Wilderness (callers check its depth and
     whether the home teleport is ready), remembered by what decides it: the teleport items and runes held, what's
-    worn, quests and Magic."""
+    worn, quests, Magic and the other levels a teleport needs."""
     relevant = _teleport_items()
     key = (tuple(sorted((i, n) for i, n in state.inventory.items() if i in relevant)),
-           tuple(sorted(state.equipment.items())), state.progress.quests_complete, state.level("magic"))
+           tuple(sorted(state.equipment.items())), state.progress.quests_complete, state.level("magic"),
+           tuple(state.boosted(skill) for skill in _teleport_skills()))
     if key not in _usable:
         if len(_usable) > 100_000:
             _usable.clear()
@@ -117,6 +127,8 @@ def use(state: CharacterState, transport: Transport, at: int) -> None:
     home teleport's cooldown (from the teleport); its XP."""
     if transport.kind == "home":
         state.home_teleport_ready = at + transport.ticks + HOME_COOLDOWN_TICKS
+    if transport.kind == "abyss":  # the Mage of Zamorak's teleport skulls (AbyssPlugin.teleport; the prayer drain: OQ-48)
+        state.skulled_until = at + transport.ticks + ABYSS_SKULL_TICKS
     for rune, n in _runes_needed(state, transport.runes).items():
         for _ in range(n):
             _take(state, rune)

@@ -9,8 +9,11 @@ Parts, in order (sizes for vocabulary V, A access rules, N actions):
 | time | 2 | elapsed / horizon; remaining / horizon |
 | skills | 2 × 20 | level / 99 and progress to the next level, for the 19 trainable skills and Slayer |
 | total_level | 1 | total level / 2376 |
-| hitpoints_prayer | 2 | current / max (prayer isn't drained in the sim, so it reads 1) |
+| hitpoints_prayer | 2 | current / max (prayer isn't drained in the sim, so it reads 1; the Abyss's drain is a documented gap, OQ-48 (a)) |
 | run_energy_weight | 2 | energy / 100; kg / 100, clipped |
+| home_teleport | 1 | the ticks until the home teleport is ready again / its 30-minute cooldown (0 when ready; OQ-15) |
+| skull | 1 | the ticks the skull has left / the Abyss's 2,000 (0 without one; OQ-48 (a)): a skulled death keeps nothing |
+| pouches | 4 | each essence pouch's capacity now / new, small to giant, 0 when it has none (OQ-40 (c): they decay) |
 | wealth | 2 | log1p(coins) and log1p(net worth), over log1p(10M) |
 | inventory | V + 1 | log1p(count) / log1p(28) per V item; free slots / 28 |
 | bank | V | log1p(count) / log1p(10k) per V item |
@@ -19,7 +22,7 @@ Parts, in order (sizes for vocabulary V, A access rules, N actions):
 | combat_candidates | 18 × 5 | per slot: XP/hr, gp/hr, damage per hour vs HP and food, travel, open |
 | skilling_candidates | 20 × 5 | per slot: the slot's skill's XP/hr, its processing counterpart's XP/hr, gp/hr, travel, open |
 | loot_mode | 4 | one-hot |
-| task | 12 | one-hot: the last activity's task, which decides what bank_deposit keeps (rlscape.sim.kits) |
+| task | 18 | one-hot: the last activity's task, which decides what bank_deposit keeps (rlscape.sim.kits) |
 | potions | 11 × 2 | each potion's doses in the inventory and the bank, log1p-scaled (four-dose potions alone are in V) |
 | access | A | 0/1 per access rule (data/access_areas.csv order) |
 | mask | N | the action mask |
@@ -52,6 +55,10 @@ import numpy as np
 from rlscape.combat.access import access_rules, unlocked_rules
 from rlscape.combat.candidates import COMBAT_CLASSES, LOOT_MODES
 from rlscape.gamedata import server as gd
+from rlscape.gamedata.transports import HOME_COOLDOWN_TICKS
+from rlscape.gamedata import runecrafting as rcd
+from rlscape.sim import pouches
+from rlscape.sim.abyss import SKULL_TICKS
 from rlscape.sim.energy import MAX_ENERGY, weight
 from rlscape.sim.equipment import AVAS_DEVICES
 from rlscape.sim.health import food_healing_held, poison_cover
@@ -104,7 +111,8 @@ REGION_RADIUS = 60  # tiles (Chebyshev)
 CANDIDATE_FEATURES = ("xp_per_hour", "gp_per_hour", "damage_vs_food", "travel", "open")
 SKILLING_FEATURES = ("gather_xp_per_hour", "process_xp_per_hour", "gp_per_hour", "travel", "open")
 TASKS = ("none", "woodcutting", "mining", "fishing:SMALL_NET", "fishing:LURE", "fishing:LOBSTER_CAGE", "thieving",
-         "fletching", "processing", "combat:melee", "combat:ranged", "combat:magic")
+         "fletching", "crafting", "flax", "herblore", "runecrafting", "agility", "barbfishing", "processing", "combat:melee", "combat:ranged",
+         "combat:magic")
 
 
 @dataclass(frozen=True)
@@ -118,8 +126,16 @@ def _metal_tier(name: str) -> int | None:
     return next((i + 1 for i, metal in enumerate(METALS) if lower.startswith(metal + " ")), None)
 
 
-def _bow_tier(name: str) -> int:
+BOW_LEVELS = (1, 5, 20, 30, 40, 50)  # the Ranged level each wood's bows need, BOW_WOODS' order
+RANGED_SKILL = 4  # Skills.RANGE, the item configs' requirement key
+
+
+def _bow_tier(name: str, item: int | None = None) -> int:
+    """A bow's wood; a crossbow (Caleb, 2026-11-07) takes the tier of the bows its Ranged level allows."""
     lower = name.lower()
+    if "crossbow" in lower or "c'bow" in lower:
+        level = gd.items()[item].requirements.get(RANGED_SKILL, 1) if item in gd.items() else 1
+        return max(i + 1 for i, need in enumerate(BOW_LEVELS) if need <= level)
     return next((i + 1 for i, wood in enumerate(BOW_WOODS) if wood and lower.startswith(wood + " ")), 1)
 
 
@@ -170,7 +186,7 @@ def item_roles(item: int) -> tuple[tuple[str, int], ...]:
     metal = _metal_tier(name) or 1
     if slot == WEAPON:
         if item in gd.ranged_weapons():
-            out.append(("ranged_weapon", _bow_tier(name)))
+            out.append(("ranged_weapon", _bow_tier(name, item)))
         elif item in _staves():
             out.append(("staff", _staff_tier(name)))
         else:
@@ -213,6 +229,9 @@ class ObsEncoder:
             Part("total_level", ("total_level",)),
             Part("hitpoints_prayer", ("hitpoints", "prayer")),
             Part("run_energy_weight", ("run_energy", "weight")),
+            Part("home_teleport", ("home_teleport_wait",)),
+            Part("skull", ("skull_ticks",)),
+            Part("pouches", tuple(f"pouch_{gd.items()[i].name.split()[0].lower()}" for i in rcd.pouches())),
             Part("wealth", ("coins", "net_worth")),
             Part("inventory", (*(f"inv_{item_name(i)}" for i in self.vocabulary), "free_slots")),
             Part("bank", tuple(f"bank_{item_name(i)}" for i in self.vocabulary)),
@@ -246,6 +265,14 @@ class ObsEncoder:
         obs[p["total_level"]] = state.total_level() / MAX_TOTAL_LEVEL
         obs[p["hitpoints_prayer"]] = (min(state.hp / state.max_hp(), 1.0), 1.0)
         obs[p["run_energy_weight"]] = (state.run_energy / MAX_ENERGY, min(max(weight(state), 0.0) / MAX_WEIGHT, 1.0))
+        # the time until the home teleport can be cast again, over its 30-minute cooldown (Caleb, 2026-11-08, OQ-15)
+        obs[p["home_teleport"]] = min(max(state.home_teleport_ready - state.tick, 0) / HOME_COOLDOWN_TICKS, 1.0)
+        # the ticks the skull has left, over the Abyss's 2,000: a skulled death keeps nothing (Caleb, 2026-11-09,
+        # OQ-48 (a))
+        obs[p["skull"]] = min(max(state.skulled_until - state.tick, 0) / SKULL_TICKS, 1.0)
+        # each pouch's capacity now over its capacity new: decay cuts it, the Dark Mage repairs it (OQ-40 (c))
+        obs[p["pouches"]] = [pouches.capacity(state, i) / pouch.capacity if pouches.held(state, i) else 0.0
+                             for i, pouch in rcd.pouches().items()]
         obs[p["wealth"]] = (min(log1p(state.coins()) / WEALTH_SCALE, 1.0),
                             min(log1p(max(state.net_worth(), 0.0)) / WEALTH_SCALE, 1.0))
         inventory, bank = p["inventory"], p["bank"]

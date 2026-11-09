@@ -7,7 +7,7 @@
   transcript's message timestamps (UTC−06:00)
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: DONE for these prompts (the devices are on the GE and in *V*, built and tested offline and live; OQ-27's
+- Status: SUCCESS for these prompts (the devices are on the GE and in *V*, built and tested offline and live; OQ-27's
   option (d) is logged, not built; OQ-28's remaining parts are raised for Caleb)
 - Commit: the main repo commit after `bc7bfec` that adds this record (branch `sim-v0`), pushed 2026-11-07 with
   `m002-pull-request`; the fork was unchanged by these prompts (still `d0a7af6`)

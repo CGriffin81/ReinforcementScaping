@@ -48,7 +48,7 @@ from rlscape.sim.health import food_healing_held, foods_held, poison_cover, retr
 from rlscape.sim.movement import reach, reachable
 from rlscape.sim.options import COMPLETED, Option, OptionResult
 from rlscape.sim.potions import antifire_cover, drink_boosts
-from rlscape.sim.state import CharacterState
+from rlscape.sim.state import TOLERANCE_TICKS, CharacterState
 from rlscape.sim.transport import home_ready
 
 K = 3  # monsters per list: 3 by XP/hr, then 3 by gp/hr
@@ -120,7 +120,10 @@ class CombatSlots:
             character = Character(state.location, state.max_hp(), state.hp, food, armed.free_slots(),
                                   armed.equipment.get(SHIELD), state.loot_mode, progress,
                                   _attacks_held(armed, plans[0], self.loot(state)), home_ready(state), where,
-                                  poison_cover=cover, antifire_cover=fire_cover)
+                                  poison_cover=cover, antifire_cover=fire_cover,
+                                  arrow_piles=_arrow_piles(armed, plans[0], self.loot(state)),
+                                  shields_carried=_shields_carried(armed), combat_level=state.combat_level(),
+                                  tolerance_left=state.region_since + TOLERANCE_TICKS - state.tick)
             self._slots[combat_class] = ranker.select({combat_class: (fighter, plans)}, character, self.duration_ticks,
                                                       K, self.vocabulary, shielded)[combat_class]
         for candidate in self._slots["melee"]:
@@ -158,6 +161,23 @@ def _attacks_held(armed: CharacterState, plan: Plan, loot) -> float:
         back, landed = shot_outcomes(armed)  # Ava's device sends some back to the quiver
         return stack / (1 - back - (landed if loot(ammo) else 0.0))
     return inf
+
+
+def _shields_carried(armed: CharacterState) -> frozenset[int]:
+    """The shields in the inventory (a ranger's, since a bow takes none): worn for a guarded pickup trip (OQ-33)."""
+    items = gd.items()
+    return frozenset(i for i in armed.inventory if i in items and items[i].equipment_slot == SHIELD)
+
+
+def _arrow_piles(armed: CharacterState, plan: Plan, loot) -> bool:
+    """Whether a ranged plan leaves arrow piles to pick up: its shots land (not all caught by Ava's accumulator, not a
+    crystal bow's) and the loot mode takes them (rlscape.combat.safespots)."""
+    if plan.combat_class != "ranged":
+        return False
+    ranged = gd.ranged_weapons()[armed.equipment[WEAPON]]
+    if ranged.weapon_type == "DEGRADING":
+        return False
+    return shot_outcomes(armed)[1] > 0 and loot(armed.equipment[ranged.ammo_slot])
 
 
 def _plans(armed: CharacterState, combat_class: str) -> list[Plan]:

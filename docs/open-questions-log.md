@@ -12,124 +12,60 @@ Started 2026-10-31 (Caleb), from a review of the documentation.
 
 ---
 
-### OQ-1. Which stretch experiment (E7), if any?
-- **Raised:** 2026-10-05, in the plan. The options are compared in `ROADMAP.md` Appendix B.
-- **Options:** A, an LLM planner (Voyager-style); B, DreamerV3; C, learned micro-options (RQ5); D, none.
-- **Recommendation:** A (Claude). Caleb accepted it tentatively on 2026-10-28: it's confirmed at the midpoint,
-  and only if E1–E6 are solid by then.
-- **Decides:** Caleb, at the week-5 midpoint review (Nov 2–8).
-- **Blocks:** week 7's plan.
-
-### OQ-2. What options do Crafting, Agility, Herblore and Runecrafting get in sim v1, and which items join *V*?
-- **Raised:** 2026-10-28, in the simulation review, which made these skills trainable from sim v1 (env contract
-  §5). Fletching, the fifth, was brought into sim v0 on 2026-10-31.
-- **Starting point:** option catalog §3.5's likely options: tanning, leather armour, spinning and gems; course
-  laps; herbs and potions (Druidic Ritual) and runes from essence (Rune Mysteries), both quests complete from the
-  start since 2026-11-06 (Caleb: quests are out, flagged complete). Their items join *V* by catalog §9's rule.
-- **Decides:** Caleb, on Claude's draft (a new option-catalog version).
-- **Needed by:** before sim v1 is built, which is before E2.
-- **Status:** not drafted.
-
-### OQ-7. The sim is far below the contract's 20k decisions a second: optimize, or size E2 to it?
-- **Raised:** 2026-10-31, by the week-2 benchmark (`scripts/benchmark_sim.py`; env contract §7 sets the target).
-- **Measured** (masked random actions, `results/benchmark/sim-speed-20261031-1304.json`): 112 decisions a second in
-  one process, 684 with 8 workers, 804 with 16 (8 cores, so the extra 8 threads add little). Caching the nearest
-  bank had already raised it from 83 and 585. A 20-hour episode is about 450 decisions.
-- **Since planned routes** (2026-11-01, `results/benchmark/sim-speed-20261101-1557.json`): 78 decisions a second in
-  one process, 284 with 4 workers, 553 with 16, about 30% slower (a path is remembered once asked for; each worker
-  also builds the map's graph, about 4 s). The options' estimates below scale down by as much.
-- **Since the transports** (2026-11-01, `results/benchmark/sim-speed-20261101-1838.json`): 69 decisions a second in
-  one process and 499 with 16 workers, another 10% slower (each walk also weighs the teleports and boats the
-  character can use).
-- **Since the unreachable rule and the home teleport's cooldown** (2026-11-01,
-  `results/benchmark/sim-speed-20261101-2042.json`): 71 a second in one process and 489 with 16 workers, unchanged.
-- **Where the time goes** (one process): the combat ranker recomputing the whole enemy pool after each combat
-  level-up (about 60%: some 26 ms each, every third step for a random agent), the observation's candidate features
-  (about 25%), and running the options themselves (about 5%).
+### OQ-1. Which stretch experiment (E7), if any, and how is RQ5 answered?
+- **Raised:** 2026-10-05, in the plan. The options are compared in `ROADMAP.md` Appendix B. Caleb tentatively
+  accepted A on 2026-10-28, to be confirmed at the midpoint and only if E1–E6 were solid by then.
+- **Now (2026-11-09):** OQ-17's (a′) leaves no week for a stretch, and E1 to E6 haven't started. Caleb wants every
+  research question answered. RQ5 asks: "Do learned low-level options (click-ahead pathing, prayer flicking) improve
+  high-level results over scripted versions?" The proposal marked it "exploratory, time permitting". Only C answers
+  it as asked, and C needs a tick-level environment on the server: 1.5 to 2 weeks (Appendix B), more than (a′)'s
+  slack.
 - **Options:**
-  - **(a) Recommended:** vectorize the rate model over the enemy pool (numpy, tested identical to the scalar model),
-    which should roughly double the speed, to about 1.5k decisions a second with 16 workers. Then size E2's budget
-    to the measured speed: at 1.5k a second, 2M decisions per run take about 25 minutes, and E2's 25 runs about 10
-    hours. (How many decisions PPO needs here isn't known until the sanity ladder runs.)
-  - (b) Go further toward 20k: incremental masks and features, candidates recomputed only when their inputs change,
-    perhaps numba. Days of work, with an uncertain result.
-  - (c) Keep today's 800 a second and size E2 to it: about 42 minutes per 2M-decision run, 17 hours for E2.
-- **Decides:** Caleb (the contract's target and E2's budget).
-- **Needed by:** before training starts (week 3's sanity ladder).
+  - **(C′) Recommended: bound RQ5 instead of testing it, with no new environment.** About half a day, during the
+    analysis (Nov 19 to 21).
+    - **Prayer flicking:** a learned flick can't beat the scripted one. The scripted flick never drains prayer and
+      gets the prayer's full effect (tested live on this server, env contract v1.8), so it's already the best a flick
+      can do.
+    - **Click-ahead pathing:** E2's decision logs give the share of game time spent walking. The travel model's
+      measured overhead per click gives the part of that walking a perfect click-ahead could save, at most.
+    - The report says this is a bound, not a test of learned options.
+  - **(D) None:** the report says RQ5 wasn't attempted, as "time permitting" allows, with what it would take. It goes
+    in `docs/post-project-gaps.md`.
+  - **(C) Learned micro-options as planned:** 1.5 to 2 weeks. It doesn't fit.
+  - **(A) the LLM planner or (B) DreamerV3:** these add to RQ1, not RQ5, and (a′) has no room for them.
+- **Decides:** Caleb (what the report claims).
+- **Needed by:** Nov 19, the analysis days. Nothing before then waits on it.
 
-### OQ-15. Should the observation show when the home teleport is ready?
-- **Raised:** 2026-11-01, building the home teleport's 30-minute cooldown (decision log, "the home teleport waits 30
-  minutes").
-- **Now:** the agent doesn't see the cooldown. The candidates' travel (env contract §3) counts the teleport only when
-  it's ready, so it shows the effect now, but not how long until it's ready again. The rest of the state can't tell
-  it either.
+### OQ-50. What does the peer reviewer get, and how is it made easy to review?
+- **Raised:** 2026-11-09, in Caleb's answer to OQ-17: "I want to make sure that the peer review is as simple as it can
+  be. I do not envy anybody who is handed this project to review, as they may not be overly aware of what is
+  important for them to look at and they may get lost in the ocean of code." Record `m002-oq17-scope`.
+- **Found:** the repo has no README.
+  - **Its size:**
+    - about 29,000 lines of Python (`rlscape/` 14,700, `scripts/` 6,600, `tests/` 7,800);
+    - 1,700 lines of Kotlin in the fork's `content/rl/`, on top of the server itself;
+    - 8,500 lines of docs and 134 interaction records.
+  - **The RL layer** (`envs/`, `agents/`, `baselines/`, `eval/`) is about 1,400 lines, 5% of the Python. With
+    `train.py`, RND, PBRS, the weight-conditioned agent and the analysis it may reach about 3,000.
+  - **Everything else** is the simulator and its calibration. The results rest on it, but a reviewer can take it on
+    the evidence of the gate's table and the tests.
+- **Not known (Caleb):** what the course's peer review covers (the report, the code or both), and how long a
+  reviewer has.
 - **Options:**
-  - **(a) Recommended:** one more observation feature: the minutes until the home teleport is ready, over 30 (0 when
-    ready). Env contract v1.11. It decides how long the next trips take, so a policy can plan around it.
-  - (b) Leave it out: the travel features already change when it's ready.
-- **Decides:** Caleb (the observation; env contract §3).
-- **Needed by:** before training starts (week 3's sanity ladder).
-
-### OQ-16. Which ways the travel model lacks should it get, and when?
-- **Raised:** 2026-11-01, making places with no way unreachable (OQ-12, answered). Caleb: some places that no walk,
-  teleport or boat reaches can be reached with an item or as part of a quest.
-- **Now unreachable** (231 of the sim's 2,792 places; the areas are in the decision log): mostly behind quests
-  outside the set, and pens and cells. But some have a way the model doesn't know yet:
-  - behind a quest now complete from the start (2026-11-06): Crandor (Dragon Slayer; the way back is the wall
-    from Karamja's volcano)
-  - an Agility shortcut or an item: the moss giant island by Brimhaven (a rope swing), the Mage Arena (a lever)
-  - unclear, perhaps the planner's gaps: Wilderness spots, the ice giants by White Wolf Mountain, Tree Gnome Village,
-    a dwarf by Ice Mountain, north of Varrock, the Kharazi jungle
-  - Upstairs and underground places keep the straight-line estimate until their stairs and ladders are mapped (on the
-    plan already).
-- **Options:**
-  - **(a) Recommended:** check the unclear places on the server first (walk there with the bridge; a few minutes
-    each), then add each way with what needs it: Crandor and the lever as transports now, Agility shortcuts with
-    Agility (sim v1). Since every quest the server has is complete from the start, the areas they open (decision log,
-    2026-11-06) get the same check: a way only where the ranker would send a character in 20 hours.
-  - (b) Only the quests' ways in sim v1; leave the rest unreachable.
-- **Decides:** Caleb (which content the agent can reach).
-- **Needed by:** sim v1, before E2.
-
-### OQ-17. Peer review is in three weeks: what scope does the project finish with?
-- **Raised:** 2026-11-05, by Caleb: something must go to peer review in three weeks (about Nov 26), at this tier of
-  support. Record `m000-feasibility-review`.
-- **Where it stands:** week 5 of 8, and the sim (week 2's work) is still being finished: sim v0 has 13 skills, combat,
-  buying and the GE; gathering, travel and banking are calibrated; combat isn't. Weeks 3 to 5 haven't started: no RL
-  stack installed, no SMDP buffer or training script, no E2 to E5. Nor have sim v1 (21 quests, four skills),
-  `ServerEnv` or E6. Claude's estimate for all of it: six weeks or more at the recent pace.
-- **Options:**
-  - **(a) Recommended:** freeze the sim at v0 now (a day of combat calibration at most); then masked PPO with the
-    SMDP buffer, E2 (five weightings × three seeds), one RQ4 experiment (RND or γ with PBRS), a weight-conditioned
-    PPO in place of Envelope Q (RQ3's second half), and the calibration results as the sim-to-real evidence in place
-    of E6. Cut sim v1, E4 as planned, E6 beyond a spot check, and E7. A draft for peer review by about Nov 24.
-  - (b) Smaller: E1 and E2 with the strategy analysis (RQ1, RQ2, RQ3's first half) and nothing else.
-  - (c) The full scope: not feasible in three weeks, in Claude's estimate.
-- **Decides:** Caleb (scope and what the report claims).
-- **Status:** *deferred* (Caleb, 2026-11-05): "Let's continue with the current plan for now and reevaluate on
-  Sunday." Caleb hopes calibration was an unusually heavy lift and is nearly done. Reopens Sunday, 2026-11-08.
-- **Since:** Caleb cut quests on 2026-11-06 (every quest the server has is complete from the start), so sim v1 is
-  the four skills only. The level-3 start stays.
-
-### OQ-29. Which armour stops Ava's devices?
-- **Raised:** 2026-11-07. Caleb noted that the devices don't work while any metal item is worn. The server's rule is
-  narrower (decision log).
-- **The server's rule** (`AvasDevice.isInterfered`, `RangeSwingHandler.getDropRate`):
-  - Only the chest piece counts, and only if its worn model is one of three (`AvasDevice.metalBodies`). That's 38
-    pieces (`data/ava_interference.csv`): the metal platebodies and chainbodies, trimmed, gilded, Zamorak and Guthix,
-    white, and the Temple Knight hauberks.
-  - It leaves out the iron chainbody, the Saradomin platebody and the dragon chainbody, whose models aren't listed,
-    and every helm, legs, shield, glove and boot.
-  - Interference stops only the device's 80% catch. The other 20% of shots still take the device's narrower roll, and
-    the accumulator still gathers those.
-  - Ava's own dialogue on the server says the device won't work with "certain metallic chest armours".
-- **Now:** the server's rule on both backends. A ranger wearing a device leaves interfering chest armour off, so
-  in the sim the device always works.
-- **Options:**
-  - **(a) Recommended:** keep the server's rule. Both backends agree, and the loadout keeps the device working.
-  - (b) Fix the server's gaps (a fork change): interference stops the whole device, and every metal chest piece
-    interferes, adding the three left out. Still chest only, as Ava says.
-  - (c) Caleb's rule (a fork change): any metal item worn stops the device. It needs a definition of metal, such as
-    the metals in item names (bronze to dragon). A ranger wearing a device would then leave all metal off.
-- **Decides:** Caleb (a game rule on both backends).
-- **Needed by:** before the combat gate closes.
+  - **(a) Recommended: the whole repo at a tagged commit, with a `README.md` that's a two-page reviewer's guide.**
+    The report gets the same map as a half-page appendix. The guide has four parts:
+    - **What the report claims:** one table that takes each research question and hypothesis to its result, the
+      figure or table, the command that rebuilds it, and the code behind it.
+    - **A reading path:** the 8 to 10 files of the RL layer, in order, with their sizes.
+    - **What to skip, and why it can be trusted:** the server fork, the bridge, `gamedata/`, `combat/`, `sim/`'s
+      mechanics and the calibration scripts. The gate's table per option and the tests stand in for them.
+    - **A 10-minute check with no server or GPU:** the SMDP tests, the figures rebuilt from committed summaries, and
+      a short training run.
+  - **(b) A slim review copy:** the RL layer, the results and the guide, in a separate branch or archive. There's less
+    to look at. But it hides the simulator the results depend on, can't run training, and is a second copy to keep in
+    step.
+  - **(c) The report alone,** with a link to the code and no guide. It's the least work, but it leaves the reviewer
+    lost in the code.
+- **Decides:** Caleb.
+- **Needed by:** Nov 22, when the guide is written alongside the draft. Nothing before then waits on it, since one
+  config and one command per experiment suits every option.

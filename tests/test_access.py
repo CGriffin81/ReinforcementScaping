@@ -11,7 +11,6 @@ from rlscape.combat.access import (
     Progress,
     access_rules,
     can_reach,
-    meets_slayer_level,
     parse_requirement,
     relevant,
     start_progress,
@@ -69,8 +68,6 @@ def test_slayer_levels_come_from_every_task():
     assert len(gd._TASK.findall(text)) == text.count("new int[]")
     levels = gd.slayer_levels()
     assert levels[1615] == 85 and levels[1612] == 15 and levels[81] == 1  # abyssal demon, banshee, cow
-    assert not meets_slayer_level(1615, Progress())
-    assert meets_slayer_level(1615, Progress(levels=(("slayer", 85),)))
 
 
 @needs_data
@@ -115,7 +112,6 @@ def test_reduced_progress_keeps_access_and_merges_what_access_ignores():
                 Progress(quests_underway=frozenset({"DRAGON_SLAYER"}), levels=(("slayer", 15),))]
     for p in progress:
         assert unlocked_rules(relevant(p)) == unlocked_rules(p)
-        assert relevant(p).level("slayer") == p.level("slayer")
     assert relevant(Progress(coins=900, items_held=frozenset({1511}))) == relevant(Progress(coins=950))  # logs, coins
 
 

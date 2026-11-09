@@ -12,10 +12,10 @@ item_id,name,groups
 1515,Yew logs,bought;gathered
 1519,Willow logs,bought;gathered
 1521,Oak logs,bought;gathered
-1617,Uncut diamond,gathered
-1619,Uncut ruby,gathered
-1621,Uncut emerald,gathered
-1623,Uncut sapphire,gathered
+1617,Uncut diamond,bought;consumed;gathered
+1619,Uncut ruby,bought;consumed;gathered
+1621,Uncut emerald,bought;consumed;gathered
+1623,Uncut sapphire,bought;consumed;gathered
 10138,Raw rainbow fish,consumed;gathered
 315,Shrimps,processed
 319,Anchovies,processed
@@ -105,19 +105,19 @@ item_id,name,groups
 2309,Bread,bought
 2347,Hammer,bought
 7946,Monkfish,bought
-199,Grimy guam,drop
-201,Grimy marrentill,drop
-203,Grimy tarromin,drop
-205,Grimy harralander,drop
-207,Grimy ranarr,drop
-209,Grimy irit,drop
-211,Grimy avantoe,drop
-213,Grimy kwuarm,drop
-215,Grimy cadantine,drop
-217,Grimy dwarf weed,drop
-225,Limpwurt root,drop
-235,Unicorn horn dust,drop
-237,Unicorn horn,drop
+199,Grimy guam,bought;drop
+201,Grimy marrentill,bought;drop
+203,Grimy tarromin,bought;drop
+205,Grimy harralander,bought;drop
+207,Grimy ranarr,bought;drop
+209,Grimy irit,bought;drop
+211,Grimy avantoe,bought;drop
+213,Grimy kwuarm,bought;drop
+215,Grimy cadantine,bought;drop
+217,Grimy dwarf weed,bought;drop
+225,Limpwurt root,bought;drop
+235,Unicorn horn dust,bought;drop
+237,Unicorn horn,bought;drop
 526,Bones,drop
 532,Big bones,drop
 563,Law rune,drop
@@ -138,9 +138,9 @@ item_id,name,groups
 1313,Black 2h sword,drop
 1363,Iron battleaxe,drop
 1448,Mind talisman,drop
-1739,Cowhide,drop
+1739,Cowhide,bought;consumed;drop
 1987,Grapes,drop
-2485,Grimy lantadyme,drop
+2485,Grimy lantadyme,bought;drop
 2859,Wolf bones,drop
 5288,Papaya tree seed,drop
 5295,Ranarr seed,drop
@@ -175,15 +175,15 @@ item_id,name,groups
 9379,Mithril bolts (unf),bought;consumed
 9380,Adamant bolts(unf),bought;consumed
 9381,Runite bolts (unf),bought;consumed
-227,Vial of water,drop
+227,Vial of water,bought;drop
 449,Adamantite ore,drop
 536,Dragon bones,drop
 1109,Mithril chainbody,drop
 1213,Rune dagger,drop
 1315,Mithril 2h sword,drop;smithed
 1540,Anti-dragon shield,bought
-1751,Blue dragonhide,drop
-1753,Green dragonhide,drop
+1751,Blue dragonhide,bought;consumed;drop
+1753,Green dragonhide,bought;consumed;drop
 3349,Blamish ochre shell,drop
 3361,Blamish blue shell,drop
 3363,Thin snail,drop
@@ -201,7 +201,7 @@ item_id,name,groups
 985,Tooth half of a key,drop
 1319,Rune 2h sword,drop
 1440,Earth talisman,drop
-9142,Mithril bolts,drop
+9142,Mithril bolts,bought;drop
 2446,Antipoison(4),bought
 2448,Super antipoison(4),bought
 113,Strength potion(4),bought
@@ -215,3 +215,157 @@ item_id,name,groups
 3040,Magic potion(4),bought
 10498,Ava's attractor,bought
 10499,Ava's accumulator,bought
+837,Crossbow,bought
+4734,Karil's crossbow,bought
+8880,Dorgeshuun c'bow,bought
+9174,Bronze crossbow,bought
+9177,Iron crossbow,bought
+9179,Steel crossbow,bought
+9181,Mith crossbow,bought
+9183,Adamant crossbow,bought
+9185,Rune crossbow,bought
+10156,Hunters' crossbow,bought
+13081,Black crossbow,bought
+877,Bronze bolts,bought
+878,Bronze bolts(p),bought
+879,Opal bolts,bought
+880,Pearl bolts,bought
+4740,Bolt rack,bought
+6061,Bronze bolts(p+),bought
+6062,Bronze bolts(p++),bought
+8882,Bone bolts,bought
+9140,Iron bolts,bought
+9141,Steel bolts,bought
+9143,Adamant bolts,bought
+9144,Rune bolts,bought
+9145,Silver bolts,bought
+9236,Opal bolts (e),bought
+9238,Pearl bolts (e),bought
+9239,Topaz bolts (e),bought
+9240,Sapphire bolts (e),bought
+9241,Emerald bolts (e),bought
+9242,Ruby bolts (e),bought
+9243,Diamond bolts (e),bought
+9244,Dragon bolts (e),bought
+9245,Onyx bolts (e),bought
+9287,Iron bolts (p),bought
+9288,Steel bolts (p),bought
+9289,Mithril bolts (p),bought
+9290,Adamant bolts (p),bought
+9291,Runite bolts (p),bought
+9292,Silver bolts (p),bought
+9294,Iron bolts(p+),bought
+9295,Steel bolts(p+),bought
+9296,Mithril bolts(p+),bought
+9298,Runite bolts(p+),bought
+9299,Silver bolts(p+),bought
+9301,Iron bolts(p++),bought
+9302,Steel bolts(p++),bought
+9303,Mithril bolts(p++),bought
+9305,Runite bolts(p++),bought
+9306,Silver bolts(p++),bought
+9336,Topaz bolts,bought
+9337,Sapphire bolts,bought
+9338,Emerald bolts,bought
+9339,Ruby bolts,bought
+9340,Diamond bolts,bought
+9341,Dragon bolts,bought
+9342,Onyx bolts,bought
+10158,Kebbit bolts,bought
+10159,Long kebbit bolts,bought
+13083,Black bolts,bought
+13084,Black bolts(p),bought
+13085,Black bolts(p+),bought
+13086,Black bolts(p++),bought
+13280,Broad-tipped bolts,bought
+1733,Needle,bought
+1734,Thread,bought;consumed
+1755,Chisel,bought
+1737,Wool,bought;consumed
+1779,Flax,bought;consumed;gathered
+1749,Red dragonhide,bought;consumed;drop
+1747,Black dragonhide,bought;consumed;drop
+1741,Leather,bought;consumed
+1743,Hard leather,bought;consumed
+1745,Green d-leather,bought;consumed
+2505,Blue d-leather,bought;consumed
+2507,Red dragon leather,bought;consumed
+2509,Black d-leather,bought;consumed
+1625,Uncut opal,bought;consumed
+1627,Uncut jade,bought;consumed
+1629,Uncut red topaz,bought;consumed
+1631,Uncut dragonstone,bought;consumed;drop
+6571,Uncut onyx,bought;consumed
+91,Guam potion(unf),bought;consumed
+93,Marrentill potion(unf),bought;consumed
+95,Tarromin potion(unf),bought;consumed
+97,Harralander potion(unf),bought;consumed
+99,Ranarr potion(unf),bought;consumed
+101,Irit potion(unf),bought;consumed
+103,Avantoe potion(unf),bought;consumed
+105,Kwuarm potion(unf),bought;consumed
+107,Cadantine potion(unf),bought;consumed
+109,Dwarf weed potion(unf),bought;consumed
+111,Torstol potion(unf),bought;consumed
+219,Grimy torstol,bought;consumed;drop
+221,Eye of newt,bought;consumed;drop
+223,Red spiders' eggs,bought;consumed;drop
+231,Snape grass,bought;consumed;drop
+233,Pestle and mortar,bought
+239,White berries,bought;consumed;drop
+241,Dragon scale dust,bought;consumed
+243,Blue dragon scale,bought;consumed
+245,Wine of zamorak,bought;consumed;drop
+247,Jangerberries,bought;consumed;drop
+249,Clean guam,bought;consumed
+251,Clean marrentill,bought;consumed
+253,Clean tarromin,bought;consumed
+255,Clean harralander,bought;consumed
+257,Clean ranarr,bought;consumed
+259,Clean irit,bought;consumed
+261,Clean avantoe,bought;consumed
+263,Clean kwuarm,bought;consumed
+265,Clean cadantine,bought;consumed
+267,Clean dwarf weed,bought;consumed
+269,Clean torstol,bought;consumed
+1973,Chocolate bar,bought;consumed
+1975,Chocolate dust,bought;consumed
+2152,Toad's legs,bought;consumed
+2481,Clean lantadyme,bought;consumed
+2483,Lantadyme potion(unf),bought;consumed
+2970,Mort myre fungus,bought;consumed;drop
+2998,Clean toadflax,bought;consumed;drop
+3000,Clean snapdragon,bought;consumed;drop
+3002,Toadflax potion(unf),bought;consumed
+3004,Snapdragon potion(unf),bought;consumed
+3049,Grimy toadflax,bought;consumed;drop
+3051,Grimy snapdragon,bought;consumed;drop
+3138,Potato cactus,bought;consumed;drop
+5075,Bird's nest,bought;consumed;drop
+6693,Crushed nest,bought;consumed
+9735,Desert goat horn,bought;consumed;drop
+9736,Goat horn dust,bought;consumed
+12172,Clean spirit weed,bought;consumed
+12174,Grimy spirit weed,bought;consumed;drop
+1436,Rune essence,bought;consumed
+7936,Pure essence,bought;consumed;drop
+1438,Air talisman,bought;drop
+1444,Water talisman,bought;drop
+1442,Fire talisman,bought;drop
+1446,Body talisman,bought;drop
+1462,Nature talisman,bought;drop
+1458,Law talisman,bought;drop
+5525,Tiara,bought;consumed
+5527,Air tiara,bought;made
+5529,Mind tiara,bought;made
+5531,Water tiara,bought;made
+5535,Earth tiara,bought;made
+5537,Fire tiara,bought;made
+5533,Body tiara,bought;made
+5541,Nature tiara,bought;made
+5545,Law tiara,bought;made
+5509,Small pouch,held
+5510,Medium pouch,held;drop
+5512,Large pouch,held;drop
+5514,Giant pouch,held;drop
+11323,Barbarian rod,bought

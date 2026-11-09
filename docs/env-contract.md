@@ -1,13 +1,110 @@
-# Environment Contract (v1.16, Signed off)
+# Environment Contract (v1.42, Signed off)
 
-**Status:** v1.16, 2026-11-07. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
-- **v1.16** (2026-11-07; to confirm) adds Ava's attractor and accumulator to *V* and the GE buys (Caleb: the GE
+**Status:** v1.42, 2026-11-09. Caleb confirmed every version, to v1.42, on 2026-11-09: sim v1's contract is frozen. Any change needs Caleb's
+approval and is logged in `docs/decision-log.md`.
+- **v1.42** (2026-11-09, Caleb; the choices of site, plan and ammunition Claude's, confirmed by Caleb on 2026-11-09) adds `kill_cows`,
+  Crafting's gathering path for hides (option catalog §2): it fights cows with the plan that kills them fastest
+  and whose ammunition lasts a load, keeps the hides and normal bones, buries the bones as the inventory fills, and
+  ends at a full inventory of hides. Its task is the class fought. It's a path in the skilling slots, so the
+  schema is unchanged (2,293 actions, 3,482 features).
+- **v1.41** (2026-11-09, Caleb, OQ-57 (a)) adds the Gem Store's buys: `buy_shop_1623` and `buy_shop_1621`, the
+  uncut sapphire and emerald at Hervi's in Keldagrim. Both backends give the shop January 2009's 87 members' worlds
+  on one world (rl.conf's `world.shop_worlds`): 87 of each, 87 back a restock (every 100 ticks), and 25 and 50 gp a
+  unit, one world's full-stock price. The GE and net worth are unchanged, so they're also worth their frozen 2009
+  prices (616 and 985 gp). 2,293 actions, 3,482 features (the mask's 2).
+- **v1.40** (2026-11-09, Caleb, OQ-55 (3)) is wording only, for OQ-17 (a′)'s scope:
+  - `ServerEnv` isn't built: the server side of the contract is the calibration runners;
+  - the calibration gate is the sim-to-real evidence, in place of E6;
+  - the preference features serve the weight-conditioned PPO, in place of E4's agent.
+
+  The schema is unchanged.
+- **v1.39** (2026-11-09, Caleb, OQ-56) starts the character with Druidic Ritual's 250 Herblore XP (level 3), on
+  both backends: every Herblore recipe needs level 3, and quests are otherwise flags only. A fresh character's
+  total level is 35. The schema is unchanged.
+- **v1.38** (2026-11-09, Caleb, OQ-52: "For flax, we should add the option to move into spinning it into
+  bowstrings or bank"; the task's name and the feature Claude's, confirmed by Caleb on 2026-11-09) gives picking flax its own task,
+  `flax`, whose kit is nothing. So `bank_deposit` banks the flax a picker carries, and `spin_flax` (Crafting 10)
+  spins it. Under the crafting task the kit kept flax as spinning's input, so the deposit was masked after a
+  load. The observation's task part grows by one (§3, 18). 2,291 actions, 3,480 features.
+- **v1.37** (2026-11-09, Caleb, OQ-49 (a); the prayer part and the fitted rate Claude's, confirmed by Caleb on 2026-11-09) has the outer
+  ring's crowd attack fights in the Abyss (§8): the crossing's mix of kinds, those the character's combat level draws,
+  at a rate fitted to fights on the server, less the swings of the monster it fights, until the region's tolerance
+  runs out. Those fights flick no prayer, as the mage's teleport, the only way in, drains it. The schema is
+  unchanged.
+- **v1.36** (2026-11-09, building OQ-40 (c) and the Abyss's fight option; confirmed by Caleb on 2026-11-09) adds the essence pouches: the
+  four in *V* (370; held, never bought), their 20 actions, and a `pouches` part of the observation (§3: each pouch's
+  capacity now over new, 4 features); `CharacterState` keeps each kind's wear and the essence in them. Travel (§7)
+  closes the Abyss: no walk joins it to anywhere else; the way in is the Mage of Zamorak's teleport (which skulls),
+  the way out a teleport or the Abyss's exit (the passage, the body rift and its altar's portal), so the combat slots
+  can fight its monsters in the ring the teleport lands in. The bridge's state reports the pouches and the
+  obstacles' varbit (`pouches`, `abyss_obstacles`). 2,291 actions, 3,479 features.
+- **v1.35** (2026-11-09, Caleb) takes chaos rune crafting out (an intentional gap, `docs/post-project-gaps.md`):
+  `rc_chaos`, `make_tiara_chaos` and `abyss_rc_chaos` leave Runecrafting's skilling candidates (§3; 26 paths), and the
+  chaos talisman and tiara leave *V* (366) with their 2 GE buys (§2). 2,271 actions, 3,447 features.
+- **v1.34** (2026-11-09, Caleb, OQ-48 (a)) shows the skull in the observation (§3): one feature, the ticks it has
+  left over the Abyss's 2,000, from the state on both backends (the bridge's `skull_ticks`). The Abyss's prayer drain
+  isn't modelled (the sim has no prayer points): a documented gap (`docs/post-project-gaps.md`). 2,283 actions, 3,463
+  features.
+- **v1.33** (2026-11-08, building sim v1's Runecrafting per OQ-2's Choice H; confirmed by Caleb on 2026-11-09) adds the Abyss: eleven
+  `abyss_rc_<rune>` paths among Runecrafting's skilling candidates (§3; 29 paths), and the skull the Mage of Zamorak's
+  teleport gives for 2,000 ticks, which §1's death rule reads (a skulled death keeps nothing and leaves no
+  gravestone). The skull isn't in the observation (OQ-48). No actions or features change: 2,283 actions, 3,462
+  features.
+- **v1.32** (2026-11-08, building sim v1's Agility in travel per OQ-16 (a); confirmed by Caleb on 2026-11-09) adds seven Agility shortcuts
+  to travel (§7), each both ways, taken from their levels on both backends. No actions or features change: 2,283
+  actions, 3,462 features.
+- **v1.31** (2026-11-08, building sim v1's Barbarian Fishing per OQ-2's Choice D; confirmed by Caleb on 2026-11-09) adds the barbarian rod: a
+  GE buy (§2, at Caleb's 1,000 gp, OQ-41) and the rod in *V* (*V* 368), with its 5 actions and 2 features; and a
+  barbfishing task (its kit, the rod and the bait). 2,283 actions, 3,462 features.
+- **v1.30** (2026-11-08, building sim v1's Runecrafting per OQ-2's Choices H and I (a); confirmed by Caleb on 2026-11-09) adds the tiaras: 10
+  GE buys (§2: the plain tiara and the nine runes' tiaras) and those 10 items in *V* (*V* 367), each with its 5 actions
+  and 2 features. 2,277 actions, 3,453 features.
+- **v1.29** (2026-11-08, building sim v1's Runecrafting per OQ-2's Choices A (a) and I (a); confirmed by Caleb on 2026-11-09) adds
+  Runecrafting's inputs: 11 GE buys (§2: rune and pure essence, which isn't mined, Caleb; the nine runes' talismans) and
+  the 9 of them not yet in *V* (*V* 357), each with its 5 actions and 2 features. 2,217 actions, 3,373 features.
+- **v1.28** (2026-11-08, building sim v1's Agility per OQ-2; confirmed by Caleb on 2026-11-09) adds Agility's 4 skilling slots (§3): 4
+  actions, their 20 candidate features and 4 mask entries, and an agility task. 2,161 actions, 3,299 features.
+- **v1.27** (2026-11-08, building sim v1's Herblore per OQ-2's Choices A (a) and I (a); confirmed by Caleb on 2026-11-09) adds Herblore's
+  inputs: 66 GE buys (§2; the bird's nest at Caleb's 1,765 gp) and the 51 of them not yet in *V* (*V* 348), each with its
+  5 actions and 2 features. 2,157 actions, 3,274 features.
+- **v1.26** (2026-11-08, building sim v1's Runecrafting per OQ-2; confirmed by Caleb on 2026-11-09) adds Runecrafting's 4 skilling slots
+  (§3): 4 actions, their 20 candidate features and 4 mask entries, and a runecrafting task. 1,836 actions, 2,851
+  features.
+- **v1.25** (2026-11-08, building sim v1's Herblore per OQ-2; confirmed by Caleb on 2026-11-09) adds Herblore's 4 skilling slots (§3): 4
+  actions, their 20 candidate features and 4 mask entries, and a herblore task. 1,832 actions, 2,826 features.
+- **v1.24** (2026-11-08, building sim v1's Crafting per OQ-2's Choices A (a) and I (a); confirmed by Caleb on 2026-11-09) adds Crafting's
+  inputs: 25 GE buys (§2) and the 18 of them not yet in *V* (*V* 297), each with its 5 actions and 2 features. 1,828
+  actions, 2,801 features.
+- **v1.23** (2026-11-08, building sim v1's Crafting per OQ-2; confirmed by Caleb on 2026-11-09) adds Crafting's 4 skilling slots (§3): 4
+  actions, their 20 candidate features and 4 mask entries, and a crafting task. 1,713 actions, 2,650 features.
+- **v1.22** (2026-11-08, Caleb: OQ-40 (c), the pouches as the server gives them; confirmed by Caleb on 2026-11-09) gives Enter the
+  Abyss's small pouch at spawn, in the bank (§1). The miniquest's other rewards still aren't given.
+- **v1.21** (2026-11-08, Caleb: OQ-2's Choice D and H) adds two miniquests to the start state, complete as flags
+  only (§1): Alfred Grimhand's Barcrawl (the Barbarian Outpost course) and Enter the Abyss (the Mage of Zamorak's
+  teleport), without Enter the Abyss's rewards.
+- **v1.20** (2026-11-08, Caleb) opens the Watchtower, Trollheim and Ape Atoll teleports as the server does for
+  quests it lacks: by the quests' own requirements (§1), so Ape Atoll's now (its two quests are complete), Trollheim's
+  at Herblore 31 and Watchtower's at its five levels. Trollheim's climbs, which need climbing boots, stay out.
+- **v1.19** (2026-11-08, Caleb) shows the home teleport's cooldown in the observation (§3, OQ-15): one feature,
+  the time until it's ready over its 30 minutes. 2,625 features.
+- **v1.18** (2026-11-07; confirmed by Caleb on 2026-11-09) has magic safespot as ranged does (OQ-34, Caleb: range 10, no piles), and fights
+  count the site's aggressive monsters of other kinds (OQ-35 (a), Caleb): away from a safespot, while aggression
+  lasts, they engage between kills and are fought in the fight's plan, in place of target kills (§8). A usable
+  safespot holds from 80% of the wandering, not half (OQ-36 (a), Caleb). No change to the observation or the
+  actions.
+- **v1.17** (2026-11-07, confirmed by Caleb the same day) fights ranged from safespots (OQ-27 (d), Caleb): a ranged target whose damage
+  isn't trivial (the fight would need food, OQ-30 (b)) needs the site's safespot, from which it does none; arrows
+  lie in piles picked up between kills, with one pickup time for every class (§8). Slayer levels lock no monster
+  (OQ-32, Caleb; §5). Every tradeable crossbow and bolt on the 2009 GE joins *V* and the GE buys (Caleb; 11 and 53,
+  mithril bolts already in): *V* 279, 1,709 actions, 2,624 features. A crossbow's equipment tier is the bows' its
+  Ranged level allows.
+- **v1.16** (2026-11-07; confirmed by Caleb on 2026-11-09) adds Ava's attractor and accumulator to *V* and the GE buys (Caleb: the GE
   sells them at 2,500 and 10,000 gp), and a cape role to the equipment part for them (OQ-28): 1,330 actions,
   2,119 features.
-- **v1.15** (2026-11-07; to confirm) refits the combat-rate model's per-kill overhead (§8: 3 ticks, from 10 and 8)
+- **v1.15** (2026-11-07; confirmed by Caleb on 2026-11-09) refits the combat-rate model's per-kill overhead (§8: 3 ticks, from 10 and 8)
   and adds a measured pickup time for each drop the loot mode keeps (5 ticks melee, 18 ranged); the time to kill
   counts the last hit's overkill (Caleb).
-- **v1.14** (2026-11-06; to confirm) puts poison and a dragon's breath in the combat-rate model's risk (§8), ported
+- **v1.14** (2026-11-06; confirmed by Caleb on 2026-11-09) puts poison and a dragon's breath in the combat-rate model's risk (§8), ported
   from the server, less the shares the antipoison and antifire carried cover, and combat potions' boosts in the
   fighter (Caleb added the potions); a potions part in §3, each potion's doses carried, with only the four-dose
   potions in *V* (OQ-25, Caleb); *V* 214 (§3's sizes).
@@ -17,7 +114,7 @@
 - **v1.12** (2026-11-06, Caleb) takes quests out: every quest the server has is complete from the start, as flags
   only (§1), the observation loses its quest part (§3), and sim v1 brings only the four skills (§7). The gate keeps
   the fast tick with a speed check, and judges gp/hr by its parts (§7).
-- **v1.11** (2026-11-05; to confirm) measures the combat-rate model's per-kill overhead and adds respawn waits at
+- **v1.11** (2026-11-05; confirmed by Caleb on 2026-11-09) measures the combat-rate model's per-kill overhead and adds respawn waits at
   sites short of monsters (§8), from the combat calibration.
 - **v1.10** (2026-11-01, Caleb) has every trip take the fastest way the character can use, teleports and boats
   included, paying for it; the home teleport waits 30 minutes, and a place with no way there is unreachable (§7).
@@ -39,16 +136,25 @@
 - **v1.0** added the death rule (§1) to v0.6.
 
 Both backends implement this contract exactly: `SimEnv` (the surrogate simulator) and `ServerEnv` (2009Scape
-through the bridge). Any policy, baseline or logger written against it runs on either one.
+through the bridge). Any policy, baseline or logger written against it runs on either one. *Under OQ-17 (a′)
+(Caleb, 2026-11-09), `ServerEnv` isn't built. The server side is the calibration runners, which drive options
+through the bridge as §7 describes, and the calibration gate is the sim-to-real evidence (v1.40).*
 
 ## 1. Time and episodes
 
 - **Game time:** 1 tick = 0.6 s. Durations are reported in ticks.
 - **Episode:** `reset(seed)` produces a fresh level-3 character exactly as it leaves Tutorial Island, at
-  Lumbridge (3233, 3230), with the starter kit and 25 coins in the bank.
+  Lumbridge (3233, 3230), with the starter kit, and 25 coins and the small pouch (v1.22, below) in the bank.
 - **Quests:** every quest the server has (68, worth 126 quest points) is complete from the start (Caleb, 2026-11-06),
   as flags only: the quest points and the unlocks come with them, no quest XP or items. There are no quest options.
-  The quests the server lacks stay incomplete, and so does the content behind them in the sim.
+  The quests the server lacks stay incomplete, and so does the content behind them in the sim, except where the
+  server checks one with `ContentAPI.hasRequirement`, which the quest's own requirement meets: the Watchtower,
+  Trollheim and Ape Atoll teleports, which the sim gates the same way (v1.20, Caleb). Two miniquests are complete
+  too, as flags only (v1.21, Caleb, 2026-11-08): Alfred Grimhand's Barcrawl, which opens the Barbarian Outpost
+  course, and Enter the Abyss, which gives the Mage of Zamorak's teleport to the Abyss. Of its rewards, only the
+  small pouch is given, in the bank (v1.22, Caleb, 2026-11-08: the pouches as the server gives them; the others
+  drop from the Abyss's monsters); its 1,000 Runecrafting XP and notes aren't. The rest stay incomplete: Barbarian Training's stages, for one, which nothing
+  in sim v1 needs.
 - **Horizon:** 20 game-hours = 120,000 ticks. Checkpoints every 2 game-hours (12,000 ticks).
 - **Decision structure:** a semi-MDP. Each `step(option)` runs one option until it ends and returns its
   duration τ in ticks.
@@ -86,8 +192,8 @@ class RSEnv(gymnasium.Env):
     def option_catalog(self) -> list[OptionSpec] # docs/option-catalog.md, same order as the action ids
 ```
 
-- **`reset` options:** `reward_weights=(w_s, w_b)`. For the preference-conditioned agent (E4) the weights are
-  also appended to the observation.
+- **`reset` options:** `reward_weights=(w_s, w_b)`. For the weight-conditioned PPO (RQ3, in place of E4's
+  agent under OQ-17 (a′)) the weights are also appended to the observation.
 - **`step` reward:** the scalar w_s·r_skill + w_b·r_wealth. The unweighted pair is in `info["reward_vec"]`.
 - **Masked action:** passing one to `step` is an error, never a silent no-op.
 
@@ -103,6 +209,9 @@ roughly [0, 1].
 | Total level | 1 | total level (all 24 skills) / 2376 |
 | Hitpoints, prayer | 2 | current / max |
 | Run energy, weight | 2 | energy / 100; weight in kg / 100, clipped to [0, 1] (option catalog §8) |
+| Home teleport | 1 | the ticks until the home teleport is ready again / its 30-minute cooldown; 0 when ready (v1.19, OQ-15) |
+| Skull | 1 | the ticks the skull has left / the Abyss's 2,000; 0 without one (v1.34, OQ-48 (a)): a skulled death keeps nothing |
+| Pouches | 4 | each essence pouch's capacity now / new, small to giant; 0 for one not held (v1.36, OQ-40 (c)) |
 | Wealth | 2 | log1p(coins) / log1p(10M); log1p(net worth) / log1p(10M) |
 | Inventory | V + 1 | log1p(count) / log1p(28) per vocabulary item; free slots / 28 |
 | Bank | V | log1p(count) / log1p(10k) per vocabulary item |
@@ -110,12 +219,12 @@ roughly [0, 1].
 | Equipment | E | tier index / max tier per slot: weapon (melee / ranged / staff), ammunition, head, body, legs, shield; tools (axe, pickaxe, fishing gear); cape (Ava's devices: attractor 1, accumulator 2) |
 | Region | R | one-hot over the catalog's regions |
 | Combat candidates | C × 5 | for each candidate slot: XP/hr, gp/hr, expected damage taken per hour vs food held, travel minutes, Slayer / level eligibility (option catalog §4) |
-| Skilling candidates | 20 × 5 | per skilling slot (option catalog §2): the gathering skill's XP/hr, its processing counterpart's XP/hr, gp/hr, travel, open; scaled as the combat candidates |
+| Skilling candidates | 36 × 5 | per skilling slot (option catalog §2; Crafting's 4 since v1.23, Herblore's since v1.25, Runecrafting's since v1.26, Agility's since v1.28): the gathering skill's XP/hr, its processing counterpart's XP/hr, gp/hr, travel, open; scaled as the combat candidates |
 | Loot mode | 4 | one-hot: all / valuable / vocabulary / none (option catalog §4.D) |
-| Task | 12 | one-hot: the last activity's task (none, woodcutting, mining, the three fishing methods, thieving, fletching, processing, the three combat classes), which decides what `bank_deposit` keeps (option catalog §5) |
+| Task | 18 | one-hot: the last activity's task (none, woodcutting, mining, the three fishing methods, thieving, fletching, crafting, flax picking (v1.38), herblore, runecrafting, agility, barbarian fishing, processing, the three combat classes), which decides what `bank_deposit` keeps (option catalog §5) |
 | Access | A | 0/1 per access rule (`data/access_areas.csv`, A = 55 today; `access.unlocked_rules`): unlocked by quests, items held, levels or coins (option catalog §4.C). Rules decided by quests alone are constant, since the quests are complete from the start |
 | Mask | N | the action mask |
-| Preference | 2 | (w_s, w_b), for the E4 agent only |
+| Preference | 2 | (w_s, w_b), for the weight-conditioned PPO only (E4's agent before OQ-17 (a′)) |
 
 Inventory and bank are separate because banking is now the agent's decision. *V* is the item vocabulary in the
 option catalog.
@@ -123,8 +232,11 @@ option catalog.
 **As built** (`rlscape/envs/encoding.py`, 2026-10-30): E = 12 roles (weapons for melee, ranged and magic,
 ammunition, head, body, legs, shield, axe, pickaxe, fishing gear), R = 12 (the catalog's 11 regions and
 "elsewhere"), C = 18 slots (6 per combat class). The encoder's docstring lists how each part is scaled. With the
-catalog as built (1,330 actions, *V* = 216) the vector has 2,119 features (v1.12 dropped the quest part's 64; v1.13
-added 7 buys and 27 items; v1.14 11 buys, 11 items and the potions part's 22; v1.16 2 buys, 2 items and the cape role).
+catalog as built (2,293 actions, *V* = 370) the vector has 3,482 features (v1.12 dropped the quest part's 64; v1.13
+added 7 buys and 27 items; v1.14 11 buys, 11 items and the potions part's 22; v1.16 2 buys, 2 items and the cape role;
+v1.17 64 buys and 63 items; v1.19 the home teleport's wait; v1.23 Crafting's slots and task; v1.24 25 buys and 18
+items; v1.25 Herblore's slots and task; v1.26 Runecrafting's; v1.27 66
+buys and 51 items; v1.28 Agility's slots and task; v1.29 11 buys and 9 items; v1.30 10 buys and 10 items; v1.31 the rod's buy and item, and a task; v1.34 the skull; v1.35 less 2 buys and 2 items, chaos's; v1.36 the 4 pouches and their capacities).
 
 **Left out on purpose:** GE prices. They're frozen, so a price snapshot would be a constant.
 
@@ -149,9 +261,11 @@ added 7 buys and 27 items; v1.14 11 buys, 11 items and the potions part's 22; v1
   Fishing, Cooking, Firemaking, Thieving, and Fletching (brought forward by Caleb, 2026-10-31)
 - added in sim v1, before E2 (4): Crafting, Agility, Herblore, Runecrafting (Caleb, 2026-10-28).
   Herblore needs Druidic Ritual and Runecrafting needs Rune Mysteries, both complete from the start (§1). Agility
-  levels also open the Agility shortcuts in the access table.
+  levels also open seven Agility shortcuts in travel (§7, v1.32).
 
-**Requirement checks only:** Slayer. There are no tasks, so it stays at 1 and Slayer-locked monsters stay out.
+**Slayer:** there are no tasks, so it stays at 1, and Slayer levels lock no monster (Caleb, 2026-11-07, OQ-32; the
+fork drops them too). Monsters that need Slayer gear the sim doesn't model stay out
+(`candidates.SLAYER_GEAR_NPCS`).
 
 **Out of scope:** Farming, Construction, Summoning, Hunter. Each is a whole system (growth timers, the player-owned
 house, familiars, traps). They stay at 1 and still count toward total level. The report lists this as a limitation.
@@ -195,19 +309,23 @@ for every step.
     for gathering (the bridge's `set_retaliate`).
   - **travel** (Caleb, 2026-11-01; option catalog §4): every trip takes the fastest way the character can use
     then, paying for it: walking on the server's collision map, the home teleport, teleport spells, jewellery,
-    tablets, the seed pod, ships and charters. The home teleport can be cast once every 30 minutes (a fork change,
+    tablets, the seed pod, ships and charters, and seven Agility shortcuts from their levels (v1.32:
+    `rlscape/gamedata/shortcuts.py`). The home teleport can be cast once every 30 minutes (a fork change,
     counted in game ticks). A place nothing the character can use reaches is unreachable for it: its options are
     masked. Both backends: `ServerEnv` takes the same transports by the player's clicks (`rlscape/bridge/travel.py`).
   - **staged:** sim v0 has every family except the four v1 skills, which sim v1 adds before E2. Quests are out
     (v1.12).
-  - **aggressive monsters near a combat site** (Caleb, 2026-11-06, OQ-19): a fight ignores every monster but its
-    target. They're measured on the server first, and modelled only if they move the rates beyond ±20%.
-  - target ≥ 20k decisions per second across `SubprocVecEnv` workers
+  - **aggressive monsters near a combat site** (Caleb, 2026-11-06, OQ-19; 2026-11-07, OQ-35 (a)): measured on the
+    server, they moved the rates beyond ±20%, so the site's aggressive monsters of other kinds engage between kills
+    until aggression runs out, each fought in the fight's plan (§8).
+  - speed: no fixed target (Caleb, 2026-11-08, OQ-7 (a), in place of ≥ 20k decisions a second): the combat-rate
+    model is vectorised over the enemy pool, and E2's budget is sized to the measured speed (2026-11-08: 110 a
+    second in one process, 817 across 16 workers)
 - **`ServerEnv`:**
   - `reset` reinstalls the frozen GE database. This is required, not optional: GE offers outlive the
     character that placed them, and in testing one test's offer filled the next test's.
   - then start the server with `rl.conf` and spawn through the bridge
-  - one RL character per world for validation (E6)
+  - one RL character per world for validation (E6; cut by OQ-17 (a′))
   - **ambient bots off** for calibration and E6 alike (Caleb, 2026-10-28). The gap then measures the model, not
     crowding.
   - not seedable (world randomness); reported as such
@@ -219,7 +337,8 @@ for every step.
   - turns run on (`set_run`) at the start of each walk, as the simulator assumes. The server turns it off when
     energy drops under 1%.
 - **Parity test:** the same scripted option sequence runs on both backends. The per-option XP, item, coin and
-  duration distributions are compared; that's the sim-to-real gap (E6).
+  duration distributions are compared; that's the sim-to-real gap (E6). Under OQ-17 (a′), the calibration
+  gate's per-option comparisons stand in for it.
 - **Calibration and the gate before E2** (Caleb, 2026-10-28):
   - **The gate:** each calibrated option's mean XP/hr, gp/hr and duration must be within **±20%** of the server's.
     Misses get one round of patching; anything still outside is listed as a known gap in the report.
@@ -250,13 +369,16 @@ from `drop_tables.json`, and spawns from `npc_spawns.json`.
 
 | Quantity | How it's computed |
 |---|---|
-| Kills/hr | from hit chance and max hit against the NPC's defence and HP (the expected swings until their damage reaches its HP, the last hit's overkill included, as the simulator's fights deal it), plus a measured overhead per kill for finding and reaching the next target (3 ticks; magic taken as ranged), and a measured pickup time for each drop the loot mode keeps (5 ticks melee, 18 ranged, which covers its arrows; magic taken as melee). A site short of the monster holds kills to one every (respawn + fighting) / spawns ticks: spawns of it within 15 tiles (`npc_spawns.json`), its `respawn_delay` (`npc_configs.json`). In the simulator each of a site's monsters has its own respawn, and nothing attacks while the character waits. |
+| Kills/hr | from hit chance and max hit against the NPC's defence and HP (the expected swings until their damage reaches its HP, the last hit's overkill included, as the simulator's fights deal it), plus a measured overhead per kill for finding and reaching the next target (3 ticks, every class; magic's calibration bears it out), and a measured pickup time for each ground item the loot mode keeps, a drop or a pile of arrows (5 ticks, one time for every class; ranged's to refit on safespot runs). A site short of the monster holds kills to one every (respawn + fighting) / spawns ticks: spawns of it within 15 tiles (`npc_spawns.json`), its `respawn_delay` (`npc_configs.json`). In the simulator each of a site's monsters has its own respawn, and nothing attacks while the character waits. |
 | XP/hr | combat XP and Hitpoints XP for the chosen style, plus the spell's base XP on every magic cast |
 | gp/hr | expected value (`prices_v2`) of the drops the loot mode keeps × kills/hr. **Not yet subtracted:** consumables used (food, arrows, runes) and entry fees (Brimhaven, Waterbirth). |
 | Risk | expected damage per kill, poison included (the server's Poison timer; prayer doesn't stop it) and a dragon's breath behind the shield (one swing in three, 0 to 5), less the shares the antipoison and antifire carried cover, and the monster's max hit, against HP above the retreat point and the food held (the retreat-aware filter). The fighter's levels are as its carried potions boost them at the fight's start |
 | Inventory and travel | kills continue until the looted drops fill the free slots, then a bank trip; the walk to the monster is taken out of the duration (*D* = 15 game-minutes = 1,500 ticks) |
-| Prayer | fights flick prayers (option catalog §4): a style the Prayer level can protect against deals nothing, defence prayers count otherwise, and the character's swings get its accuracy and damage prayers except those next to a monster swing. Prayer points never drain. |
-| Ammunition | fighting stops when the arrows or runes run out. Arrows that land and are picked back up stretch the arrows held, and so do Ava's devices: worn, a device sends 80% of shots back to the quiver, and the accumulator also gathers the shots it misses that would land (`equipment.shot_outcomes`, from `RangeSwingHandler`). Melee and crystal bows are unlimited. |
+| Prayer | fights flick prayers (option catalog §4): a style the Prayer level can protect against deals nothing, defence prayers count otherwise, and the character's swings get its accuracy and damage prayers except those next to a monster swing. Prayer points never drain, the Abyss's drain included (a documented gap: OQ-48 (a), `docs/post-project-gaps.md`), except that a fight in the Abyss flicks nothing: the teleport in drains the prayer, and nothing there restores it (v1.37). |
+| The Abyss's crowd | a fight at an Abyss site also takes the outer ring's attacks, the crossing's mix of kinds with no prayer, at 0.8 a tick shared by the kinds the character's level draws (fitted to fights on the server; a crossing takes 0.43), less the swings of the monster it fights, until the region's tolerance runs out (1,000 ticks); they're eaten for as the fight eats (v1.37, Caleb, OQ-49 (a)). |
+| Ranged and magic safespots | a ranged or magic target needs a safespot unless its damage is trivial: the fight needs no food, its expected damage over the option less the hitpoints regenerated meanwhile fitting in those above the retreat point (OQ-30 (b)), and unless the gear guards against its special damage (a bow takes no shield). The safespots are the server's, by its own chase (the bridge's `ranged_safespots`, exported to `data/ranged_safespots.csv`): a tile the monster, chasing, gets stuck short of attacking from, with it in shot (range 7, long-ranged 9, magic 10: OQ-34), holding from at least 80% of its wandering (OQ-36 (a)), with no aggressive monster reaching it. From one the monster deals nothing, and the site's supply is the monsters it holds against. Casting leaves no piles. Arrows land where the monster stands: a pile per 100 ticks of shooting, picked up between kills with the drops, a pickup each, plus the walk from the safespot and back; when aggressive monsters guard them and aggression hasn't run out, the simulator's fight leaves them until the oldest would go (200 ticks). `rlscape.combat.safespots` |
+| Monsters near a fight | away from a safespot, a site's aggressive monsters of other kinds (spawned within 10 tiles) whose level would pick the character engage it between kills (the overhead to the next monster, the pickups, a wait for a respawn: when nothing attacks it, as `AggressiveBehavior` needs outside multi-combat areas), each spawn at 0.045 a tick (measured at the animated spades' possessed pickaxe), until the region's tolerance runs out (1,000 ticks after arriving). Each engagement is a kill of that monster in the fight's plan, its time, damage, XP and drops, before the next target (single combat). The rankers count the expected fights per target kill; a site where one can't be hurt by the plan or fails the danger filter is no site while aggression lasts (OQ-35 (a)). `rlscape.combat.neighbours` |
+| Ammunition | fighting stops when the arrows or runes run out. Arrows that land and are picked back up stretch the arrows held, and so do Ava's devices: worn, a device sends 80% of shots back to the quiver, and the accumulator also gathers the shots it misses that would land (`equipment.shot_outcomes`, from `RangeSwingHandler`). The server's metal chest pieces stop the catch (`data/ava_interference.csv`), and a ranger wearing a device leaves them off. Melee and crystal bows are unlimited. |
 
 These are *theoretical* rates (expected values). The real server measures the actual ones during calibration
 (E6).
@@ -370,3 +492,9 @@ Caleb signed off both documents on 2026-10-28 (v1.0).
 30. ***V* is redrafted by its rule with every quest complete** (OQ-23): 16 items added, none taken out (option
     catalog §9). The buy list takes the dragon dagger and longsword and the Fremennik helms (OQ-24), which join *V*,
     and so do the 5 items the rule proposes once the drop tables' sub-tables are modelled.
+
+### Decided (Caleb, 2026-11-07, safespots and monsters near a fight): v1.17 and v1.18
+31. **Ranged and magic fights safespot** (§8; OQ-27 (d), OQ-30 (b), OQ-34): a target whose damage isn't trivial is
+    fought from the site's safespot, from which it deals nothing.
+32. **Monsters of other kinds near a fight are fought** (§8; OQ-35 (a)): away from a safespot, while aggression lasts,
+    a site's aggressive monsters of other kinds engage between kills, and each is killed before the next target.

@@ -7,7 +7,7 @@
   transcript's message timestamps (UTC−06:00)
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: IN PROGRESS (antipoison and the parallel tooling built and tested offline; the bridge's flicking written,
+- Status: PARTIAL (antipoison and the parallel tooling built and tested offline; the bridge's flicking written,
   to build once the running probe frees the servers; the dragon probe to rerun with it)
 - Commit: fork `d0a7af6` (branch `rl`) and the main repo commit that adds this record (branch `sim-v0`; its SHA
   can only be filled in by a later commit)

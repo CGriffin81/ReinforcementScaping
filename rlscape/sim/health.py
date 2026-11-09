@@ -21,11 +21,10 @@
 
 from __future__ import annotations
 
-from rlscape.combat.rates import EAT_BELOW_FRACTION, POISON_TICKS, poison_damage
+from rlscape.combat.rates import EAT_BELOW_FRACTION, POISON_TICKS, REGEN_TICKS, poison_damage
 from rlscape.gamedata import server as gd
 from rlscape.sim.state import CharacterState
 
-REGEN_TICKS = 101  # SkillRestore: the counter check `++ >= 100` fires every 101 ticks
 SUPER_ANTIPOISON = (2448, 181, 183, 185)  # 4 doses to 1
 ANTIPOISON = (2446, 175, 177, 179)
 VIAL = 229

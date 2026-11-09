@@ -10,6 +10,7 @@ from __future__ import annotations
 import csv
 import json
 import re
+import tomllib
 from dataclasses import dataclass, field
 from functools import cache
 from pathlib import Path
@@ -17,6 +18,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 SERVER_CONFIGS = REPO / "server" / "Server" / "data" / "configs"
 SERVER_CONTENT = REPO / "server" / "Server" / "src" / "main" / "content"
+RL_CONF = REPO / "server" / "Server" / "worldprops" / "rl.conf"  # the training world's config
 SLAYER_TASKS = SERVER_CONTENT / "global" / "skill" / "slayer" / "Tasks.java"
 QUESTS = SERVER_CONTENT / "data" / "Quests.kt"
 CHARACTER_DESIGN = SERVER_CONTENT / "region" / "misc" / "tutisland" / "handlers" / "iface" / "CharacterDesign.java"
@@ -38,6 +40,7 @@ COMBAT_SPELL_DIR = SERVER_CONTENT.parent / "core" / "game" / "node" / "entity" /
 MODERN_SPELLS = SERVER_CONTENT / "global" / "skill" / "magic" / "modern"
 PRICES = REPO / "data" / "prices_v2.csv"
 AVA_INTERFERENCE = REPO / "data" / "ava_interference.csv"
+RANGED_SAFESPOTS = REPO / "data" / "ranged_safespots.csv"
 ITEM_DEFINITIONS = REPO / "data" / "item_definitions.csv"  # scripts/export_item_definitions.py (cache)
 NPC_DEFINITIONS = REPO / "data" / "npc_definitions.csv"  # scripts/export_npc_definitions.py (cache)
 BANKS = REPO / "data" / "banks.csv"  # curated bank tiles; see the file's "check" column
@@ -207,6 +210,36 @@ def ava_interfering_items() -> frozenset[int]:
         return frozenset(int(r["item_id"]) for r in csv.DictReader(f))
 
 
+@dataclass(frozen=True)
+class RangedSafespot:
+    """The best tile to shoot a site's monster from that it can't attack back from (the bridge's ranged_safespots,
+    exported by scripts/export_ranged_safespots.py)."""
+
+    tile: tuple[int, int, int]
+    held: int  # the site's monsters (spawned within its radius) it holds against
+    share: float  # of their wandering it holds from, on average (attacked at their spawn, it always does)
+    steps: float  # how far they walk chasing before they stick, on average
+    walk: int | None  # tiles from it to where their arrows land, on average; None if there's no way there
+    threats: int  # aggressive monsters that reach it until aggression runs out
+    pickup_threats: int  # aggressive monsters, besides the one killed, whose leash covers its arrows
+
+
+@cache
+def ranged_safespots() -> dict[tuple[int, tuple[int, int, int], int], RangedSafespot | None]:
+    """(NPC id, site spawn, range) -> its best safespot, or None where the export found none. Range is the attack
+    style's (7, or 9 long-ranged). A site missing from the file wasn't checked; no file, nothing was."""
+    if not RANGED_SAFESPOTS.exists():
+        return {}
+    out: dict[tuple[int, tuple[int, int, int], int], RangedSafespot | None] = {}
+    with RANGED_SAFESPOTS.open(newline="", encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            key = (int(r["npc_id"]), (int(r["site_x"]), int(r["site_y"]), int(r["site_z"])), int(r["range"]))
+            out[key] = None if r["found"] != "1" else RangedSafespot(
+                (int(r["tile_x"]), int(r["tile_y"]), int(r["tile_z"])), int(r["held"]), float(r["share"]),
+                float(r["steps"]), int(r["walk"]) if r["walk"] else None, int(r["threats"]), int(r["pickup_threats"]))
+    return out
+
+
 @cache
 def destroy_only_items() -> frozenset[int]:
     """Items whose inventory option is Destroy, not Drop (item_configs' destroy flag: Ava's devices, quest items,
@@ -370,12 +403,50 @@ def quest_names() -> frozenset[str]:
     return frozenset(re.findall(r"^\s+([A-Z_0-9]+)\(\"", QUESTS.read_text(encoding="utf-8"), re.M))
 
 
+REQUIREMENTS = REPO / "server" / "Server" / "src" / "main" / "core" / "game" / "requirement" / "Requirement.kt"
+
+
+@cache
+def quest_requirements() -> dict[str, tuple[tuple[str, ...], tuple[tuple[str, int], ...]]]:
+    """Requirement.kt's QuestRequirements, by Quests enum name: (the QuestRequirements entries it needs, as their
+    quests' names; (skill, level) pairs). Quest points aside (every quest the server has is complete, 126 points)."""
+    text = REQUIREMENTS.read_text(encoding="utf-8")
+    body = text[text.index("enum class QuestRequirements"):]
+    entries: dict[str, tuple[str, list[str], list[tuple[str, int]]]] = {}
+    for name, quest, args in re.findall(r"\n\s*([A-Z_0-9]+)\s*\(\s*Quests\.([A-Z_0-9]+)\s*(,[^\n]*)?\)\s*[,;]", body):
+        reqs = re.findall(r"QuestReq\s*\(\s*([A-Z_0-9]+)", args or "")
+        skills = [(s.lower(), int(level)) for s, level in
+                  re.findall(r"SkillReq\s*\(\s*Skills\.([A-Z_]+)\s*,\s*(\d+)", args or "")]
+        entries[name] = (quest, reqs, skills)
+    return {quest: (tuple(entries[r][0] for r in reqs if r in entries), tuple(skills))
+            for quest, reqs, skills in entries.values()}
+
+
+def quest_gate(quest: str) -> tuple[frozenset[str], tuple[tuple[str, int], ...]]:
+    """What ContentAPI.hasRequirement(player, quest) asks of a character (QuestReq.evaluate): a quest the server has
+    must be complete; one it doesn't is met by its own requirements, each quest it needs taken the same way. Returns
+    (quests that must be complete, (skill, level) pairs, the highest of each)."""
+    quests, levels = set(), {}
+    pending = [quest]
+    while pending:
+        q = pending.pop()
+        if q in implemented_quests():
+            quests.add(q)
+            continue
+        needed, skills = quest_requirements().get(q, ((), ()))
+        pending += needed
+        for skill, level in skills:
+            levels[skill] = max(levels.get(skill, 0), level)
+    return frozenset(quests), tuple(sorted(levels.items()))
+
+
 @cache
 def implemented_quests() -> frozenset[str]:
     """The quests the server has (a Quest subclass it registers, @Initializable), by Quests enum name: 68 of the
     enum's 150. The bridge's `spawn` completes exactly these. The server can't mark the others complete: content
     behind one stays shut, or (where it checks ContentAPI.hasRequirement) opens once the character meets that quest's
-    own requirements, which the sim doesn't model. A live test checks the list against the running server's."""
+    own requirements (quest_gate), which the sim asks for the teleport spells (Caleb, 2026-11-08) and nowhere else
+    yet. A live test checks the list against the running server's."""
     out = set()
     for path in SERVER_CONTENT.rglob("*"):
         if path.suffix not in (".kt", ".java"):
@@ -394,15 +465,22 @@ UNREGISTERED_QUESTS = frozenset({"A_SOULS_BANE"})
 
 @cache
 def starter_kit() -> tuple[tuple[tuple[int, int], ...], tuple[tuple[int, int], ...]]:
-    """(inventory, bank) as (item id, amount): what a character leaves Tutorial Island with. CharacterDesign's
-    STARTER_PACK and STARTER_BANK, which the bridge's `spawn` also gives."""
+    """(inventory, bank) as (item id, amount): what a character leaves Tutorial Island with, CharacterDesign's
+    STARTER_PACK and STARTER_BANK, and the small pouch from Enter the Abyss in the bank (MINIQUEST_ITEMS), as the
+    bridge's `spawn` gives them."""
     text = CHARACTER_DESIGN.read_text(encoding="utf-8")
 
     def items(name: str) -> tuple[tuple[int, int], ...]:
         body = re.search(rf"{name}\s*=\s*new Item\[\]\s*\{{(.*?)\}};", text, re.S).group(1)
         return tuple((int(i), int(n)) for i, n in re.findall(r"new Item\(\s*(\d+)\s*,\s*(\d+)\s*\)", body))
 
-    return items("STARTER_PACK"), items("STARTER_BANK")
+    return items("STARTER_PACK"), items("STARTER_BANK") + MINIQUEST_ITEMS
+
+
+# Enter the Abyss is complete from the start, and of its rewards the small pouch is given, in the bank (Caleb,
+# 2026-11-08, OQ-40 (c): the pouches as the server gives them; RLCommands.completeMiniquests)
+SMALL_POUCH = 5509
+MINIQUEST_ITEMS = ((SMALL_POUCH, 1),)
 
 
 # WoodcuttingListener.rollDepletion: these tree identifiers fall after every log; every other tree falls 1 time in 8.
@@ -712,6 +790,210 @@ def fletching_recipes() -> dict[str, FletchRecipe]:
     return out
 
 
+CRAFTING = SERVER_CONTENT / "global" / "skill" / "crafting"
+CHISEL, NEEDLE, THREAD = 1755, 1733, 1734
+SOFT_LEATHER, HARD_LEATHER = 1741, 1743
+
+
+@dataclass(frozen=True)
+class CraftRecipe:
+    """One thing Crafting makes at a bank, as its pulse runs it: per unit, the inputs used, the product and the
+    experience; the first unit `first_ticks` after the pulse starts, then one every `stage_ticks`."""
+
+    name: str  # e.g. "sapphire", "leather_gloves", "green_d_hide_body"
+    kind: str  # gem, leather, dragonhide
+    inputs: tuple[tuple[int, int], ...]  # (item, amount) per unit
+    product: int
+    level: int
+    experience: float
+    first_ticks: int
+    stage_ticks: int
+    tool: int  # held in the inventory: the chisel, or the needle
+    thread: bool  # sewn: uses thread (LeatherCrafting.decayThread)
+
+
+@cache
+def crafting_recipes() -> dict[str, CraftRecipe]:
+    """Crafting's at-bank recipes (Caleb, 2026-11-08, OQ-2: gems, leather and dragonhide armour; studded leather,
+    snakeskin and jewellery left out), from content/global/skill/crafting:
+    - gem (Gems, GemCutPulse): an uncut gem into the cut one with a chisel, one a tick (the pulse has no stage
+      counter, so every pulse cuts one);
+    - leather (LeatherCrafting.SoftLeather, SoftCraftPulse; HardCraftPulse): a soft leather into gloves, boots, a
+      cowl, vambraces, a body, chaps or a coif, or a hard leather into a hardleather body, with a needle and thread,
+      one every 5 ticks (`++ticks % 5`);
+    - dragonhide (LeatherCrafting.DragonHide, DragonCraftPulse): 1, 2 or 3 dragon leathers into vambraces, chaps or a
+      body, as leather is."""
+    names = items()
+
+    def key(product: int) -> str:
+        return re.sub(r"[^a-z0-9]+", "_", names[product].name.lower()).strip("_")
+
+    out: dict[str, CraftRecipe] = {}
+    gems = (CRAFTING / "gem" / "Gems.java").read_text(encoding="utf-8")
+    for uncut, cut, level, xp in re.findall(
+            r"^\s*[A-Z_]+\(new Item\((\d+)\),\s*new Item\((\d+)\),\s*(\d+),\s*new Animation\(\d+\),\s*([\d.]+)\)",
+            gems, re.M):
+        out[key(int(cut))] = CraftRecipe(key(int(cut)), "gem", ((int(uncut), 1),), int(cut), int(level), float(xp),
+                                         1, 1, CHISEL, False)
+    leather = (CRAFTING / "armour" / "LeatherCrafting.java").read_text(encoding="utf-8")
+    for level, xp, product in re.findall(r"^\s*[A-Z_]+\(\d+,\s*(\d+),\s*([\d.]+),\s*new Item\((\d+)\)\)", leather,
+                                         re.M):
+        out[key(int(product))] = CraftRecipe(key(int(product)), "leather", ((SOFT_LEATHER, 1),), int(product),
+                                             int(level), float(xp), 5, 5, NEEDLE, True)
+    hard = (CRAFTING / "armour" / "HardCraftPulse.java").read_text(encoding="utf-8")
+    level = int(re.search(r"getLevel\(Skills\.CRAFTING\) < (\d+)", hard).group(1))
+    product = int(re.search(r"new Item\((\d+)\);", hard).group(1))
+    xp = float(re.search(r"addExperience\(Skills\.CRAFTING, ([\d.]+)", hard).group(1))
+    out[key(product)] = CraftRecipe(key(product), "leather", ((HARD_LEATHER, 1),), product, level, xp, 5, 5, NEEDLE,
+                                    True)
+    for hide, amount, product, level, xp in re.findall(
+            r"^\s*[A-Z_]+_D_HIDE_[A-Z]+\((\d+),\s*(\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)", leather, re.M):
+        out[key(int(product))] = CraftRecipe(key(int(product)), "dragonhide", ((int(hide), int(amount)),),
+                                             int(product), int(level), float(xp), 5, 5, NEEDLE, True)
+    return out
+
+
+@dataclass(frozen=True)
+class TanRecipe:
+    """A tanner's product (TanningProduct): a hide into leather, for a fee a hide. No XP."""
+
+    name: str  # e.g. "leather", "hard_leather", "green_d_leather"
+    hide: int
+    product: int
+    fee: int  # coins a hide
+
+
+@cache
+def tanning_recipes() -> dict[str, TanRecipe]:
+    """TanningProduct's hides and leathers, with TanningProduct.tan's fees (soft leather 1 gp, hard 3, dragonhide
+    20). Snakeskin is left out (Caleb, 2026-11-08, OQ-2's Choice C)."""
+    text = (CRAFTING / "TanningProduct.java").read_text(encoding="utf-8")
+    fees = {"SOFT_LEATHER": 1, "HARD_LEATHER": 3}
+    names = items()
+    out = {}
+    for name, hide, product in re.findall(r"^\s*([A-Z_]+)\(\d+,\s*(\d+),\s*(\d+)\)", text, re.M):
+        if name.startswith("SNAKESKIN"):
+            continue
+        key = re.sub(r"[^a-z0-9]+", "_", names[int(product)].name.lower()).strip("_")
+        out[key] = TanRecipe(key, int(hide), int(product), fees.get(name, 20))
+    return out
+
+
+@dataclass(frozen=True)
+class SpinRecipe:
+    """A spinning wheel's product (SpinningItem): one input into one product, for Crafting XP."""
+
+    name: str  # "wool", "flax": what's spun
+    need: int
+    product: int
+    level: int
+    experience: float
+
+
+@cache
+def spinning_recipes() -> dict[str, SpinRecipe]:
+    """SpinningItem's wool (a ball of wool) and flax (a bowstring), the two OQ-2's spinning has; the roots, sinew and
+    yak hair are left out."""
+    text = (CRAFTING / "spinning" / "SpinningItem.java").read_text(encoding="utf-8")
+    rows = {name: (int(need), int(product), int(level), float(xp)) for name, need, product, level, xp in
+            re.findall(r"([A-Z_0-9]+)\(\d+,\s*(\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)", text)}
+    return {key: SpinRecipe(key, *rows[name]) for key, name in (("wool", "WOOL"), ("flax", "FLAX"))}
+
+
+HERBLORE = SERVER_CONTENT / "global" / "skill" / "herblore"
+VIAL_OF_WATER, PESTLE_AND_MORTAR = 227, 233
+# OQ-2's Choice E (a) (Caleb, 2026-11-08): FinishedPotion's 21 standard potions, without the quest and minigame mixes,
+# weapon poisons, Summoning and Hunter potions
+STANDARD_POTIONS = ("ATTACK_POTION", "ANTIPOISON_POTION", "STRENGTH_POTION", "RESTORE_POTION", "ENERGY_POTION",
+                    "DEFENCE_POTION", "AGILITY_POTION", "COMBAT_POTION", "PRAYER_POTION", "SUPER_ATTACK",
+                    "SUPER_ANTIPOISON", "FISHING_POTION", "SUPER_ENERGY", "SUPER_STRENGTH", "SUPER_RESTORE",
+                    "SUPER_DEFENCE", "ANTIFIRE", "RANGING_POTION", "MAGIC", "ZAMORAK_BREW", "SARADOMIN_BREW")
+STANDARD_HERBS = 15  # Herbs' first 15, guam to torstol; the rest are quest herbs (snake weed, ardrigal, ...)
+
+
+@dataclass(frozen=True)
+class Herb:
+    """A Herbs constant: a grimy herb cleaned (an item option) for its XP, from its level."""
+
+    name: str  # e.g. "guam", "dwarf_weed"
+    grimy: int
+    clean: int
+    level: int
+    experience: float
+
+
+@dataclass(frozen=True)
+class Potion:
+    """A standard potion (FinishedPotion), as a path makes it: the clean herb into a vial of water makes the
+    unfinished potion (UnfinishedPotion, no XP, from `unfinished_level`), and the secondary finishes it into the
+    three-dose potion, for the XP, from `level`."""
+
+    name: str  # e.g. "attack", "super_restore", "zamorak_brew"
+    herb: int  # the clean herb
+    unfinished: int
+    unfinished_level: int
+    secondary: int
+    level: int
+    experience: float
+    product: int  # the three-dose potion
+
+
+def _item_const(text: str) -> int:
+    """An `Items.NAME_123` constant's id (org.rs09.consts.Items names end in the id)."""
+    return int(re.search(r"_(\d+)$", text).group(1))
+
+
+@cache
+def herbs() -> dict[str, Herb]:
+    text = (HERBLORE / "Herbs.java").read_text(encoding="utf-8")
+    rows = re.findall(r"([A-Z_]+)\(new Item\((\d+)\),\s*([\d.]+),\s*(\d+),\s*new Item\((\d+)\)\)", text)
+    return {name.lower(): Herb(name.lower(), int(grimy), int(clean), int(level), float(xp))
+            for name, grimy, xp, level, clean in rows[:STANDARD_HERBS]}
+
+
+@cache
+def unfinished_potions() -> dict[str, tuple[int, int, int]]:
+    """UnfinishedPotion's vial-of-water ones: herb name -> (the clean herb, the unfinished potion, the level)."""
+    text = (HERBLORE / "UnfinishedPotion.kt").read_text(encoding="utf-8")
+    clean = {h.name: h.clean for h in herbs().values()}
+    out = {}
+    for name, herb, level, potion in re.findall(
+            r"([A-Z_]+)\(Item\(Items\.VIAL_OF_WATER_227\),\s*Herbs\.([A-Z_]+)\.product,\s*(\d+),\s*Item\(Items\.([A-Z_0-9]+)\)\)",
+            text):
+        if herb.lower() in clean:
+            out[name.lower()] = (clean[herb.lower()], _item_const(potion), int(level))
+    return out
+
+
+@cache
+def grindings() -> dict[int, int]:
+    """GrindingItem: a whole ingredient -> its dust, ground with a pestle and mortar (one every 2 ticks, no XP)."""
+    text = (HERBLORE / "GrindingItem.java").read_text(encoding="utf-8")
+    return {_item_const(whole): _item_const(dust) for whole, dust in re.findall(
+        r"new Item\[\]\s*\{\s*new Item\(Items\.([A-Z_0-9]+)\)\s*\},\s*new Item\(Items\.([A-Z_0-9]+)\)", text)}
+
+
+@cache
+def herblore_potions() -> dict[str, Potion]:
+    text = (HERBLORE / "FinishedPotion.kt").read_text(encoding="utf-8")
+    grind = (HERBLORE / "GrindingItem.java").read_text(encoding="utf-8")
+    ground = {name: _item_const(dust) for name, dust in re.findall(
+        r"([A-Z_]+)\(new Item\[\][^}]*\},\s*new Item\(Items\.([A-Z_0-9]+)\)\)", grind)}
+    unf = unfinished_potions()
+    out = {}
+    for name, herb, secondary, level, xp, product in re.findall(
+            r"^\s*([A-Z_]+)\(UnfinishedPotion\.([A-Z_]+)\.potion,\s*(Item\(Items\.[A-Z_0-9]+\)|GrindingItem\.[A-Z_]+"
+            r"\.product),\s*(\d+),\s*([\d.]+),\s*Item\(Items\.([A-Z_0-9]+)\)", text, re.M):
+        if name not in STANDARD_POTIONS:
+            continue
+        clean, unfinished, unf_level = unf[herb.lower()]
+        second = (ground[secondary.split(".")[1]] if secondary.startswith("GrindingItem")
+                  else _item_const(secondary[len("Item(Items."):-1]))
+        key = name.lower().removesuffix("_potion")
+        out[key] = Potion(key, clean, unfinished, unf_level, second, int(level), float(xp), _item_const(product))
+    return out
+
+
 @cache
 def ground_spawns(item: int) -> tuple[tuple[tuple[int, int, int], int], ...]:
     """(tile, respawn ticks) for each spawn of an item (data/configs/ground_spawns.json, read by GroundSpawnLoader:
@@ -899,6 +1181,7 @@ class CombatSpell:
     level: int
     experience: float  # given on every cast, hit or splash (MagicSpell.addExperience)
     runes: dict[int, int]  # rune id -> amount per cast
+    button: int  # its button on the standard spellbook (interface 192): the id SpellBook.MODERN.register gives it
 
 
 ELEMENT_NAMES = {"Air": "wind", "Water": "water", "Earth": "earth", "Fire": "fire"}
@@ -907,15 +1190,15 @@ ELEMENT_NAMES = {"Air": "wind", "Water": "water", "Earth": "earth", "Fire": "fir
 @cache
 def combat_spells() -> dict[str, CombatSpell]:
     """The modern elemental combat spells, from the SpellBook.MODERN.register calls in AirSpell, WaterSpell,
-    EarthSpell and FireSpell."""
+    EarthSpell and FireSpell (each call's first argument is the spell's button)."""
     runes, out = rune_ids(), {}
     for element, prefix in ELEMENT_NAMES.items():
         text = (MODERN_SPELLS / f"{element}Spell.java").read_text(encoding="utf-8")
-        for kind, level, xp, args in re.findall(
-                rf"new {element}Spell\(SpellType\.(\w+),\s*(\d+),\s*([\d.]+),(.*?)\)\);", text):
+        for button, kind, level, xp, args in re.findall(
+                rf"register\((\d+),\s*new {element}Spell\(SpellType\.(\w+),\s*(\d+),\s*([\d.]+),(.*?)\)\);", text):
             cost = {runes[name]: int(n) for name, n in re.findall(r"Runes\.([A-Z_]+)\.getItem\((\d+)\)", args)}
             name = f"{prefix}_{kind.lower()}"
-            out[name] = CombatSpell(name, int(level), float(xp), cost)
+            out[name] = CombatSpell(name, int(level), float(xp), cost, int(button))
     return out
 
 
@@ -1039,6 +1322,7 @@ class Shop:
     general: bool
     currency: int
     stock: dict[int, tuple[int, int]]  # item -> (normal amount, restock rate in ticks)
+    worlds: int = 1  # rl.conf's world.shop_worlds (OQ-57): normal stock and restock step x worlds
 
     def tile(self) -> tuple[int, int, int] | None:
         """Where its first shopkeeper with a spawn stands."""
@@ -1057,8 +1341,25 @@ def shops() -> dict[int, Shop]:
             else:
                 stock[int(item)] = (normal, int(rate[0]) if rate and rate[0] else 100)
         npcs = tuple(int(n) for n in raw["npcs"].split(",") if n.strip())
+        worlds = shop_worlds().get(int(raw["id"]), 1)  # Shops.startup multiplies the normal stock (OQ-57)
+        if worlds > 1:
+            stock = {i: (n * worlds if n > 0 else n, r) for i, (n, r) in stock.items()}
         out[int(raw["id"])] = Shop(int(raw["id"]), raw["title"], npcs, raw["general_store"] == "true",
-                                   int(raw["currency"]), stock)
+                                   int(raw["currency"]), stock, worlds)
+    return out
+
+
+@cache
+def shop_worlds() -> dict[int, int]:
+    """rl.conf's world.shop_worlds, as the fork's ServerConfigParser reads it (ServerConstants.SHOP_WORLDS): shop id
+    -> the worlds its stock stands for, as a player hopping meets it (Caleb, 2026-11-09, OQ-57: the Gem Store for
+    January 2009's 87 members' worlds)."""
+    conf = tomllib.loads(RL_CONF.read_text(encoding="utf-8"))
+    out = {}
+    for pair in str(conf.get("world", {}).get("shop_worlds", "")).split(","):
+        shop, _, worlds = (part.strip() for part in pair.partition(":"))
+        if shop.isdigit() and worlds.isdigit() and int(worlds) >= 1:
+            out[int(shop)] = int(worlds)
     return out
 
 

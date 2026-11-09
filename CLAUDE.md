@@ -6,8 +6,12 @@ CS898BG Reinforcement Learning individual project (Caleb Griffin), due
 **2026-11-30**: *Learning to Climb: Hierarchical RL for Skill and Wealth
 Accumulation in 2009Scape*. A high-level policy picks activity-level options
 (train skill X at location L, kill N monsters, bank, sell or buy at the GE) in
-a semi-MDP. It is trained mostly on a calibrated surrogate simulator and
-validated on a local 2009Scape server.
+a semi-MDP. It is trained on a calibrated surrogate simulator, and the
+simulator is checked option by option against a local 2009Scape server (the
+±20% gate). Scope (Caleb, 2026-11-09, OQ-17 (a′)): every research question is
+answered (RQ5 per OQ-1), the peer review is kept simple (OQ-50), and
+`ServerEnv`, E6's replays, E4's Envelope Q and E7 are cut. The finishing plan
+is ROADMAP's weeks 6 to 8.
 
 - The research plan is in `CS898BG_RL_Project_Proposal_2009Scape.pdf`. The
   course requirements are in `Requirements.md`.
@@ -18,6 +22,8 @@ validated on a local 2009Scape server.
 - Undecided questions go in `docs/open-questions-log.md` as they come up, including future ones that can't be
   decided yet. When one is answered, move it (with its options and the answer) to the decision log and delete it
   from the open-questions log. Answered questions live only in the decision log; other docs state the design.
+- Gaps Caleb chose to leave for after the project are in `docs/post-project-gaps.md` (what, why, the cost, how
+  to close each).
 - External references (papers, code, data sources, related work) are listed in `docs/resources.md`,
   numbered to continue the proposal's bibliography. Add a resource there when the project starts using it.
 
@@ -25,12 +31,15 @@ Fixed decisions: every episode starts from a fresh level-3 character with
 the starter kit; training episodes are 20 game-hours with checkpoints every 2
 game-hours; combat is in scope. Quests are out (2026-11-06): every quest the
 server has (68) is complete from the start, as flags only (quest points and
-unlocks, no XP or items), and there are no quest options. Simulator
+unlocks, no XP or items), and there are no quest options. One exception
+(2026-11-09, OQ-56): the start has Druidic Ritual's 250 Herblore XP, since
+every Herblore recipe needs level 3. Simulator
 (2026-10-28):
 - event-level sampling
-- four more skills (Crafting, Agility, Herblore, Runecrafting) arrive in sim
-  v1, before E2; Fletching was brought into sim v0 (2026-10-31)
-- ambient bots off on the server for calibration and E6
+- four more skills (Crafting, Agility, Herblore, Runecrafting) in sim v1,
+  built and calibrated by 2026-11-09; Fletching was brought into sim v0
+  (2026-10-31)
+- ambient bots off on the server for calibration
 - a ±20% sim-to-server gate before E2 (env contract §7), calibrated at 50 ms
   ticks with a speed check at 600 ms (2026-11-06)
 
@@ -44,6 +53,10 @@ Claude writes the code; Caleb reviews and runs it. So:
   changes what the report claims. Present options with a recommendation; don't
   decide these yourself.
 - Commit or push only when Caleb asks.
+- Each experiment runs on its own branch, `experiment/<name>` (Caleb, 2026-11-09, OQ-61). It starts from `main`,
+  where the `sim-v1` tag marks the frozen sim, and holds only its config, the code only it uses, its committed
+  summary (`results/summary/<name>/`) and its records. It never changes the sim. It merges into `main` by its
+  own PR once its run is checked. Tooling several experiments share goes into `main` first, by its own PR.
 
 ## AI interaction logging (mandatory)
 
@@ -61,7 +74,12 @@ work.
 
 - Windows 11, Ryzen 7 5800X (16 threads), 32 GB RAM, RTX 3050 8 GB.
 - Python: a `uv` project pinned to 3.12. The system Python is 3.14, which is
-  too new for the RL stack.
+  too new for the RL stack. The RL stack (2026-11-08): torch 2.14.1 with CUDA
+  13.0 for the RTX 3050 (Caleb), stable-baselines3, sb3-contrib, tensorboard.
+  torch installs from `wheels/` (git-ignored, a local flat index in
+  pyproject.toml): uv's own download of the 1.9 GB wheel breaks on this
+  connection, so on a fresh checkout run `uv run --no-project python
+  scripts/fetch_torch_wheel.py` (resumes, checks the SHA-256) before `uv sync`.
 - JDK 11: `C:\Program Files\Eclipse Adoptium\jdk-11.0.32.101-hotspot`.
   Maven comes from the repo's `server/Server/mvnw.cmd` wrapper.
 - `server/` is a **git submodule** pointing to the fork
@@ -81,18 +99,30 @@ work.
     `Player.hasClientSession()` instead. Each has its own account uid
     (1,000,000,000 + its bridge uid, in `Repository.uid_map`), which kill
     credit and drops, gravestones and GE offers go by. `spawn` completes every
-    quest the server has (`completeEveryQuest`).
+    quest the server has (`completeEveryQuest`), and the Barcrawl and Enter the
+    Abyss miniquests (`completeMiniquests`, 2026-11-08), flags only, except
+    Enter the Abyss's small pouch, which goes in the bank (OQ-40 (c)), and
+    Druidic Ritual's 250 Herblore XP (OQ-56). A death
+    sends it to the home location, as a human (`RLPlayer.init`; AIPlayer used
+    the tile it was made on). It keeps the regions in a client's view active
+    (`RLPlayer.update`, 2026-11-08; AIPlayer's does nothing), so monsters
+    across a region boundary move, fight and aggress as near a human.
+  - The bridge finds NPCs by the form a player sees (`NPC.getShownNPC`): a
+    multi-NPC's own definition is often named "null".
   - Config: `server.tick_ms`, `server.bind_address`, `world.ge_freeze_prices`,
     `world.ge_frozen_buyer`, `world.ge_frozen_seller`, `world.ge_blocked_items`,
-    and the `[rl]` section (`bridge_enabled`, `bridge_port`, `random_events`).
+    `world.shop_worlds` (a shop's stock and restock stand for that many worlds,
+    on one server: rl.conf gives the Gem Store January 2009's 87 members'
+    worlds, OQ-57; the sim reads it from rl.conf), and the `[rl]` section (`bridge_enabled`, `bridge_port`, `random_events`).
   - `worldprops/rl.conf` is the training config: `default.conf` with the
     bridge on, prices frozen, the frozen-price GE buyer and seller on,
     nothing blocked on the GE (the anti-dragon shield was, until
     2026-11-06), random events off for RL characters, ambient bots off (`enable_bots = false`, since
     2026-10-31), dev mode off (`dev = false`, since 2026-11-07: it changes drop and catch rates), and
     the game port bound to 127.0.0.1.
-  - Other fork rule changes: Slayer levels are enforced on attack
-    (`NPC.isAttackable`); aggression tolerance counts 1,000 game ticks, not
+  - Other fork rule changes: no Slayer level requirements for any monster
+    (2026-11-07, OQ-32: `NPC.isAttackable` and `checkImpact`, `IdleAbstractNPC`,
+    the ice cooler; Slayer gear still applies); aggression tolerance counts 1,000 game ticks, not
     10 wall-clock minutes (`Region.isTolerated`), so a sped-up server behaves the
     same; the home teleport waits 3,000 game ticks (30 minutes) between casts
     (`homeTeleport`); being hit keeps an entity "in combat" for 17 game ticks,
@@ -101,6 +131,11 @@ work.
   - Ava's devices (2026-11-07): the accumulator needs 50 Ranged and gathers back
     the shots its 80% catch misses that would land; `spawn` switches the
     devices' attraction off.
+  - Ranged safespots (2026-11-07, OQ-27 (d)): the bridge's `ranged_safespots`
+    runs the server's own chase (DUMB pathing, each monster's `canSwing`) on
+    detached copies to find where a monster gets stuck short of attacking, and
+    `npcs` tells a safespotter which monsters would stay stuck in shot. The
+    export is `scripts/export_ranged_safespots.py` → `data/ranged_safespots.csv`.
 - **GE state:** before running the server for experiments, install the frozen
   2009 GE: `uv run python scripts/install_ge_db.py`. The server must be
   stopped; the old database is backed up. The pipeline is
@@ -110,7 +145,9 @@ work.
   to `data/travel/`, which `rlscape/routes.py` plans walking routes on.
 - **Net worth** uses `data/prices_v2.csv`: max(high alchemy − nature rune,
   January 2009 GE price). `prices_v1` is superseded. Ava's devices, untradeable
-  in the game, are on the frozen GE at Caleb's set prices (2,500 and 10,000 gp).
+  in the game, are on the frozen GE at Caleb's set prices (2,500 and 10,000 gp),
+  and so are the barbarian rod (1,000 gp) and the bird's nest (1,765 gp), both
+  2026-11-08.
 - Build from `server/Server`: `mvnw.cmd -B package -DskipTests` (about 3 min
   cold, about 1 min incremental).
 - Run from `server/Server` (the working directory matters for `data/`):
@@ -125,12 +162,14 @@ work.
 - More servers at once (Caleb, 2026-11-06): `uv run python
   scripts/server_instances.py 2 3` writes `results/servers/rl-<n>.conf`
   (world n, bridge port 43610 + n - 1, its own GE under
-  `data/eco/instance-<n>`); start each like the first with that config, and
-  point a script or the tests at one with `RL_BRIDGE_PORT`. Each world has
-  its own tick speed. One server also takes several scripts at once, each
-  with its own characters (the bridge serves each connection on a thread):
-  set its tick first, keep their sites apart, and give the live tests a
-  server of their own (they set the tick).
+  `server/Server/data/eco/instance-<n>`); start each like the first with that
+  config, and point a script or the tests at one with `RL_BRIDGE_PORT`. Each
+  world has its own tick speed. One server also takes several scripts at once,
+  each with its own characters (the bridge serves each connection on a
+  thread): set its tick first, keep their sites apart, and give the live tests
+  a server of their own (they set the tick). But run timing measurements
+  (calibration, the speed check) one script per server: scripts at once
+  shifted shortcut trips by 1 to 3 ticks (2026-11-08).
 - Database: not needed with the current config (auth and account persistence
   are off). `docker compose -f infra/docker-compose.db.yml up -d` starts
   MariaDB on 127.0.0.1:3306 if it's ever needed.

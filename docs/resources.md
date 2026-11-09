@@ -139,8 +139,43 @@ and is credited where used.
     https://runescape.wiki/w/Fletching?oldid=882419 (CC BY-NC-SA 3.0) — consulted for the fletching proposal (no
     January 2009 fletching training page exists). Added 2026-10-31.
 
+41. **Paszke, A., Gross, S., Massa, F., Lerer, A., et al. (2019).** PyTorch: An Imperative Style, High-Performance
+    Deep Learning Library. *NeurIPS*. https://pytorch.org (BSD-3-Clause) — **Used:** version 2.14.1 with CUDA 13.0,
+    under stable-baselines3 and sb3-contrib ([15]) for the PPO agents (`rlscape/agents/`). Added 2026-11-08.
+42. **TensorBoard** (the TensorFlow authors). https://github.com/tensorflow/tensorboard (Apache-2.0) — **Used:**
+    version 2.21, the training curves of the PPO runs. Added 2026-11-08.
+
+43. **RuneScape Wiki. "Pay-to-play Crafting training",** revision 883396 (2009-01-26).
+    https://runescape.wiki/w/Pay-to-play_Crafting_training?oldid=883396 (CC BY-NC-SA 3.0) — **Used:** the scripted
+    guide's Crafting (OQ-53): wool to 8, hard leather bodies from 28 from cows' hides tanned at Ellis, gems cut from
+    drops rather than bought. Added 2026-11-09.
+44. **RuneScape Wiki. "Flax",** revision 889516 (2009-01-28). https://runescape.wiki/w/Flax?oldid=889516
+    (CC BY-NC-SA 3.0) — **Used:** the scripted guide's Crafting from 10: flax picked by Seers' Village and spun into
+    bowstrings at its wheel. Added 2026-11-09.
+45. **RuneScape Wiki. "Agility training",** revision 895549 (2009-01-30).
+    https://runescape.wiki/w/Agility_training?oldid=895549 (CC BY-NC-SA 3.0) — **Used:** the scripted guide's
+    Agility: the Gnome Stronghold course to 25, Werewolf Skullball 25–52, the Wilderness course 52–80, Ape Atoll
+    80+. Added 2026-11-09.
+46. **RuneScape Wiki. "Herblore",** revision 875720 (2009-01-23). https://runescape.wiki/w/Herblore?oldid=875720
+    (CC BY-NC-SA 3.0) — **Used:** the scripted guide's Herblore, the potions by level (January 2009 had no Herblore
+    training page). Added 2026-11-09.
+47. **RuneScape Wiki. "Free-to-play Runecrafting training",** revision 888316 (2009-01-28).
+    https://runescape.wiki/w/Free-to-play_Runecrafting_training?oldid=888316 (CC BY-NC-SA 3.0) — **Used:** the
+    scripted guide's Runecrafting: air runes to 9, earth runes from 9. Added 2026-11-09.
+48. **RuneScape Wiki. "Pay-to-play Runecrafting training",** revision 832614 (2009-01-08).
+    https://runescape.wiki/w/Pay-to-play_Runecrafting_training?oldid=832614 (CC BY-NC-SA 3.0) — consulted: its
+    methods (Zanaris's cosmics, the ZMI altar, astral runes) aren't in the sim. Added 2026-11-09.
+49. **RuneScape Wiki. "Server",** revision 893026 (2009-01-29). https://runescape.wiki/w/Server?oldid=893026
+    (CC BY-NC-SA 3.0) — **Used:** 2009's worlds for OQ-57: 175 in its table, 88 free and 87 members'. Added
+    2026-11-09.
+
+sb3-contrib's MaskablePPO ([15]) has been in use since 2026-11-08: `SMDPMaskablePPO` and its rollout buffer
+(`rlscape/agents/ppo.py`) subclass it.
+
 ## Planned (named in ROADMAP.md, not used yet)
 
-- **MORL-Baselines** (Envelope Q-learning implementation) and **MO-Gymnasium**. E4.
 - **CleanRL** `ppo_rnd_envpool.py`, the reference for a dual-value-head RND. E3, if needed.
-- **sb3-contrib** MaskablePPO (with [15]). E2 onward.
+- **ruptures**, for the changepoints in the learning curves (RQ2). The analysis, Nov 19 to 21.
+
+No longer planned: **MORL-Baselines** (Envelope Q-learning) and **MO-Gymnasium**, for E4. OQ-17 (a′) (Caleb,
+2026-11-09) replaces E4's Envelope Q with a weight-conditioned PPO.

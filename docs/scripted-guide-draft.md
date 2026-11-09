@@ -1,5 +1,38 @@
 # Scripted-Guide Baseline
 
+> **Fifth revision (2026-11-09), signed off by Caleb the same day** as E1's scripted-guide baseline. Sim v1's four skills join the schedule (Caleb,
+> OQ-53), each by its January 2009 page ([43]–[48]), with the rules Caleb set while it was built:
+> - **Agility** ([45]): the Gnome Stronghold course to 51, the Wilderness course from 52. The page's Werewolf
+>   Skullball (25–52) and Ape Atoll (80+) aren't in the sim, so the courses beside them stretch.
+> - **Crafting** ([43], [44]):
+>   - below 10, soft leather (the best item the level allows) from cows' hides, tanned at Ellis. The hides come from
+>     `kill_cows`, a new Crafting gathering path in the sim. It fights cows in the style that kills fastest and buries
+>     their bones (Caleb).
+>   - from 10, flax picked by Seers' Village and spun into bowstrings;
+>   - hard leather bodies from 28 while hides are held;
+>   - gems cut only as drops bring them ("buying uncut gems for cutting is not worthwhile").
+>
+>   The page's wool (spun to 8) was tried and taken out (Caleb): a spin loses 112 gp.
+> - **Herblore** ([46]): from 3 (Druidic Ritual's XP, now in the start: Caleb, OQ-56), the best potion the level
+>   allows, its herb, vial and secondary bought.
+> - **Runecrafting** ([47], [48]): air runes to 9, then earth runes, at the ruins, the talisman and rune essence
+>   bought.
+> - **The schedule** (OQ-58 (a)): a stint whose skill can't be trained passes to the skill trained instead. Before,
+>   Prayer's stint held about 414 of some 470 decisions once bones ran out, in the signed-off guide too.
+> - **The coins:**
+>   - an upgrade takes at most half of them;
+>   - the inputs of the skills that lose gp are bought whenever due;
+>   - when the stint's inputs cost more than the coins, flax picked by Seers' Village pays for them (OQ-59 (b)). It's
+>     banked until it covers them and the GE trip's two fares (the sim's way to the field is a 1,000 gp charter),
+>     sold in one trip, and the inputs are bought before any upgrade: the money-maker carries through the stint.
+> - **Loot:** half of each item obtained is sold and half kept for processing, a whole stack at a time. What it buys
+>   to use is never sold.
+> - **Banking:** before gathering or a fight, it deposits if that banks 5 or more slots the coming task doesn't use,
+>   and never deposits straight after a withdrawal while anything else can be done.
+>
+> Results below: on 30 seeds, total level 351 [344, 357] and net worth 131k [125k, 136k], every skill trained. The
+> decision log's entries of 2026-11-09 have each choice and the loops found on the way.
+
 > **Fourth revision (2026-10-31):** Fletching, brought forward into sim v0 (Caleb), is the guide's 14th skill,
 > trained by the Fletching article's methods ([40]; January 2009 had no Fletching training page): arrow shafts from
 > normal logs to 25, then oak, willow and maple bows (u), and from 70 yew longbows, strung (the only bows here worth
@@ -48,6 +81,12 @@ BY-NC-SA 3.0; cited and paraphrased here, not copied):
 | [37] | Pay-to-play Fishing training | 876863, 2009-01-24 | small net, fly fishing from 20 (third revision) |
 | [38] | Pay-to-play Cooking training | 892859, 2009-01-29 | cook the catch (third revision) |
 | [39] | Pay-to-play Firemaking training | 881333, 2009-01-25 | logs by level (third revision) |
+| [43] | Pay-to-play Crafting training | 883396, 2009-01-26 | wool to 8, hard leather from 28, gems (fifth) |
+| [44] | Flax | 889516, 2009-01-28 | flax picked by Seers' Village and spun from 10 (fifth) |
+| [45] | Agility training | 895549, 2009-01-30 | courses by level (fifth) |
+| [46] | Herblore (the skill article) | 875720, 2009-01-23 | potions by level; no training page yet (fifth) |
+| [47] | Free-to-play Runecrafting training | 888316, 2009-01-28 | air runes to 9, earth from 9 (fifth) |
+| [48] | Pay-to-play Runecrafting training | 832614, 2009-01-08 | consulted: its methods aren't in the sim |
 
 No 2009 source says how to split time between skills; Caleb chose lowest first.
 
@@ -88,6 +127,22 @@ to smith) passes the turn to the next lowest.
   the loot, so thieving stops when HP runs low and the schedule moves on.
 
 ## Results (sim v0, uncalibrated; 10 seeds, 20 game-hours)
+
+**Fifth revision** (sim v1, calibrated; 30 seeds, the E1 seeds of OQ-54; `results/eval/guide-v5b-20261109` for the
+guide, `results/eval/guide-v5-20261109` for the others, the same sim):
+
+| At hour 20 (mean [95% CI]) | Total level | Total XP | Net worth |
+|---|---|---|---|
+| scripted guide | 351 [344, 357] | 98,285 [95,467, 101,201] | 130,567 [125,400, 135,895] |
+| random | 215 [207, 223] | 76,322 [70,940, 82,151] | 14,552 [10,461, 19,468] |
+| greedy XP | 157 [157, 157] | 700,606 [698,093, 703,035] | 1,160 [1,133, 1,188] |
+| greedy GP | 40 [36, 46] | 15,747 [1,639, 36,927] | 1,891,142 [1,766,299, 1,975,610] |
+
+- **The guide:** every one of its 18 skills is trained. In 8 earlier seeds of the same version: Herblore 11–16,
+  Runecrafting 8–16, Crafting 4–16, Agility 10–17, Prayer 10–22. At most 519 decisions an episode, no deaths. The
+  signed-off 14-skill guide, on seeds 0 and 1 the same day: total level 335 and 339, net worth 112k and 123k.
+- **Greedy GP** picks and banks flax all episode (about 99k gp an hour, OQ-52), and greedy XP chops and burns. The
+  guide is the only baseline that trains broadly.
 
 **Fourth revision** (with Fletching; `results/eval/guide-fletching-20261031`):
 

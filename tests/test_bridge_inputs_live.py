@@ -9,6 +9,7 @@ from __future__ import annotations
 import pytest
 
 from rlscape.bridge import BridgeClient
+from rlscape.gamedata import server as gd
 from test_bridge_live import bridge_reachable
 
 pytestmark = pytest.mark.skipif(not bridge_reachable(), reason="RL bridge not running on localhost")
@@ -108,6 +109,59 @@ def test_a_bar_on_an_anvil_and_raw_fish_on_a_range_open_their_interfaces_and_the
     assert client.state(uid)["chatbox_id"] == 307
     client.wait(3)
     assert client.state(uid)["chatbox_id"] == 307
+
+
+def test_the_runecrafting_ruins_are_found_by_the_name_a_player_sees(client, uid):
+    """The ruins are a multi-object (2452 at the air ruins) whose own definition is named "null"; a player sees
+    "Mysterious ruins". The bridge matches scenery by the form a player sees (RLCommands.shown, 2026-11-08), so the
+    talisman used on "Mysterious ruins" lands the character inside, beside the altar."""
+    from rlscape.gamedata import runecrafting as rcd
+    talisman, ruins = rcd.talismans()["air"], rcd.ruins()["air"]
+    client.debug_give(uid, talisman, 1)
+    client.debug_teleport(uid, ruins.base[0], ruins.base[1] - 3, 0)
+    client.wait(2)
+    client.use_item_on(uid, talisman, "Mysterious ruins")
+    for _ in range(12):
+        client.wait(1)
+        here = client.state(uid)["location"]
+        if here["y"] > 4000:
+            break
+    assert (here["x"], here["y"], here["z"]) == ruins.end
+
+
+def test_craftings_interfaces_and_dialogues_stay_open_for_the_next_click(client, uid):
+    """The bridge leaves open what Crafting's clicks open (2026-11-08): a needle on soft leather opens the leather
+    interface (154), and on hard leather the how-many (chatbox 309, LeatherCraftDialogue, not a skill dialogue); the
+    spinning wheel's Spin opens 459, Ellis's Trade the tanning interface (324). Before, the bridge closed them."""
+    needle, thread, soft, hard, wool, cowhide = 1733, 1734, 1741, 1743, 1737, 1739
+    for item in {i["id"] for i in client.state(uid)["inventory"]}:  # the starter kit, for room
+        client.item_option(uid, item, "Drop")
+    client.wait(2)
+    for item, amount in ((needle, 1), (thread, 5), (soft, 2), (hard, 2), (wool, 2), (cowhide, 2), (995, 1_000)):
+        client.debug_give(uid, item, amount)
+    client.debug_set_levels(uid, {"crafting": 30})
+    client.wait(1)
+
+    def stays(key: str, opened: int) -> None:
+        for _ in range(6):
+            if client.state(uid)[key] == opened:
+                break
+            client.wait(1)
+        client.wait(3)
+        assert client.state(uid)[key] == opened
+
+    client.request("use_item", uid=uid, item=needle, **{"with": soft}, packet=True)
+    stays("interface_id", 154)
+    client.request("use_item", uid=uid, item=needle, **{"with": hard}, packet=True)
+    stays("chatbox_id", 309)
+    client.debug_teleport(uid, 3209, 3213, 1)  # beside Lumbridge Castle's wheel
+    client.wait(2)
+    client.interact(uid, "Spinning wheel", "Spin")
+    stays("interface_id", 459)
+    client.debug_teleport(uid, 3274, 3192, 0)  # beside Ellis, Al Kharid's tanner
+    client.wait(2)
+    client.request("interact", uid=uid, name="Ellis", option="Trade", object=False, packet=True)
+    stays("interface_id", 324)
 
 
 def test_herb_on_tar_answers_its_dialogue_the_next_tick(client, uid):
@@ -280,6 +334,67 @@ def test_safespots_beside_rocks_from_every_melee_aggressor(client, uid):
     assert client.safespots(uid, "Rocks", sorted(gd.rock_objects()[6]), 10) == []
 
 
+OGRE, OGRE_SPAWN = 3419, (2504, 2984, 0)  # data/ranged_safespots.csv: a range-7 tile that holds from all its wandering
+SETTLED_READINGS = 10  # readings back on the tile before a hit counts against it (a swing in flight lands within a few)
+
+
+def test_a_ranger_on_a_ranged_safespot_takes_no_hits(client, uid):
+    """The ogre at (2504, 2984) (level 53, melee, aggressive): ranged_safespots finds a tile its chase can't get next
+    to from anywhere its wandering leaves it, and no other aggressive monster reaches (Caleb, OQ-27 (d) and OQ-36). A
+    ranger on it, auto-retaliate off, attacking only when the ogre stands still where `npcs` says it holds, gains
+    Ranged XP and takes no hit while it stands there.
+
+    The click lands a tick after the reading (the bridge serves a request a tick), and a person's does too. Now and
+    then the ogre steps out of shot first and the ranger walks after it; it then clicks back onto the tile, as a person
+    safespotting does (scripts/calibrate_combat.py). Until 2026-11-08 this was the moss giant at (2825, 3249), whose
+    best tile holds from only 51.5% of its wandering, under OQ-36's 80%: once a ranger was dragged off it, the giant
+    could reach it there, and it never walked back (a full run: 0 hitpoints of 59). (Varrock sewers' giants have no
+    such tile: other aggressive giants reach every one until aggression runs out.)"""
+    shortbow, leather, bronze_arrow = 841, 1129, 882
+    client.debug_set_levels(uid, {"ranged": 60, "hitpoints": 60})
+    client.set_retaliate(uid, False)
+    for item, amount in ((shortbow, 1), (leather, 1), (bronze_arrow, 500)):
+        client.debug_give(uid, item, amount)
+    client.wait(1)
+    for item, option in ((shortbow, "Wield"), (leather, "Wear"), (bronze_arrow, "Wield")):
+        client.item_option(uid, item, option)
+        client.wait(1)
+    client.debug_teleport(uid, *OGRE_SPAWN)
+    client.wait(1)
+    spots = client.ranged_safespots(uid, "Ogre", ids=[OGRE], limit=1)["tiles"]
+    assert spots and not spots[0]["threats"], "no unthreatened safespot at the ogre"
+    tile = (spots[0]["tile"]["x"], spots[0]["tile"]["y"])
+    held_by = {a["index"] for a in spots[0]["against"]}
+    client.debug_teleport(uid, *tile, 0)
+    client.wait(2)
+    start = client.state(uid)
+    xp = lambda s: next(k["xp"] for k in s["skills"] if k["name"].lower() == "ranged")  # noqa: E731
+    hitpoints, settled, off, hits_on_tile = start["hitpoints"], 0, 0, 0
+    for t in range(400):
+        s = client.state(uid)
+        here = (s["location"]["x"], s["location"]["y"])
+        hits_on_tile += s["hitpoints"] < hitpoints and settled >= SETTLED_READINGS
+        hitpoints = s["hitpoints"]
+        if here != tile:
+            off, settled = off + 1, 0
+            client.walk_to(uid, *tile, packet=True)  # back onto it
+        else:
+            settled += 1
+            if s["target"] is None and not s["moving"] and t % 2 == 0:
+                ready = [n for n in client.npcs(uid, "Ogre", ids=[OGRE], radius=20) if n["index"] in held_by
+                         and n["holds"] and (n["attacking_me"] or not (n["fighting"] or n["moving"]))]
+                if ready:
+                    client.interact(uid, "Ogre", "Attack", is_object=False, index=ready[0]["index"])
+        client.wait(1)
+    for _ in range(10):  # a walk back under way at the last reading
+        end = client.state(uid)
+        if (end["location"]["x"], end["location"]["y"]) == tile:
+            break
+        client.wait(1)
+    assert xp(end) > xp(start) and (end["location"]["x"], end["location"]["y"]) == tile
+    assert hits_on_tile == 0, f"hit on the tile ({off} readings off it)"
+
+
 def _tick(client: BridgeClient, uid: int, *cmds: dict) -> dict:
     return client.schedule([[*cmds, {"cmd": "state", "uid": uid}]])[0]["results"][-1]["state"]
 
@@ -448,3 +563,238 @@ def test_the_bridge_flicks_protection_so_no_swing_lands_and_no_prayer_drains(cli
         assert sum("PROTECT_FROM_MELEE" in s["prayers"] for s in states) >= 120 // 6 - 1  # on for the swings
     finally:
         client.despawn(uid)
+
+
+COWS = (3257, 3270, 0)  # Lumbridge's cow field, east of the castle
+AIR_RUNE, MIND_RUNE = 556, 558
+
+
+def test_a_hand_cast_is_one_spell_and_casting_again_each_tick_keeps_the_autocast_rate(client, uid):
+    """`cast`, a client's spell-on-NPC packet: wind strike on a cow takes an air and a mind rune a cast and gives at
+    least its 5.5 base XP. A hand cast is one spell: the combat pulse stops after it. Cast again each tick (the
+    server refuses one within 3 ticks of the last), the spells land 5 ticks apart, the autocast rate the sim's magic
+    fights assume (rlscape.sim.combat).
+
+    The cow is one at its full 8 hitpoints, so wind strike (at most 2 a hit at Magic 1) takes at least 4 casts to
+    kill it. A cow keeps the damage an earlier run left (it heals 1 a 100 ticks, only while someone is near), and
+    one at 1 or 2 died to the first cast: the flaky `assert 1 >= 3` (2026-11-08)."""
+    client.set_retaliate(uid, False)  # retaliating would swing in melee between casts
+    client.debug_set_levels(uid, {"hitpoints": 99})
+    client.debug_give(uid, AIR_RUNE, 100)
+    client.debug_give(uid, MIND_RUNE, 100)
+    client.debug_teleport(uid, *COWS)
+    client.wait(2)
+    spell = gd.combat_spells()["wind_strike"].button
+    unhurt = [n for n in client.npcs(uid, "Cow", ids=[81]) if n["hitpoints"] == gd.npcs()[81].hitpoints]
+    assert unhurt, "no cow at full hitpoints in the field"
+    start = client.state(uid)
+    casts, stopped, minds = [], 0, held(client, uid, MIND_RUNE)  # before the first cast, which can land at once
+    index = client.cast(uid, spell, "Cow", index=unhurt[0]["index"])["index"]
+    for _ in range(60):
+        step = client.schedule([[{"cmd": "state", "uid": uid},
+                                 {"cmd": "npcs", "uid": uid, "name": "Cow", "ids": [81], "object": False}]])[0]
+        state, seen = step["results"][0]["state"], step["results"][1]["npcs"]
+        now = sum(s["amount"] for s in state["inventory"] if s["id"] == MIND_RUNE)
+        if now < minds:
+            casts.append(step["tick"])
+        minds = now
+        if index not in {n["index"] for n in seen}:
+            break  # killed
+        if state["target"] is None:  # the pulse stopped after the spell: cast again
+            stopped += 1
+            client.cast(uid, spell, "Cow", index=index)
+    assert len(casts) >= 3, casts
+    assert stopped >= len(casts) - 1  # each spell stopped the pulse
+    assert all(b - a == 5 for a, b in zip(casts, casts[1:])), casts
+    client.wait(6)  # a cast sent at the last reading lands after it
+    end = client.state(uid)
+    runes = lambda s, rune: sum(i["amount"] for i in s["inventory"] if i["id"] == rune)
+    cast = runes(start, MIND_RUNE) - runes(end, MIND_RUNE)
+    assert runes(start, AIR_RUNE) - runes(end, AIR_RUNE) == cast and cast in (len(casts), len(casts) + 1)
+    magic = lambda s: next(k["xp"] for k in s["skills"] if k["name"].lower() == "magic")
+    assert magic(end) - magic(start) >= 5.5 * cast
+
+
+def test_a_spell_that_lands_counts_in_hits_landed_and_a_splash_doesnt(client, uid):
+    """`hits_landed` (ImpactHandler.handleImpact; Caleb, OQ-47 (c)): every hit that lands, 0s included; a splash never
+    reaches it (MagicSwingHandler.impact skips a hit of -1). Wind strike at Magic 1 on cows at their full 8 hitpoints,
+    20 casts: a third of the landed hits are 0s (RandomFunction.random(2) is 0, 1 or 2), so more hits land than do
+    damage, and none land beyond the casts."""
+    client.set_retaliate(uid, False)
+    client.debug_set_levels(uid, {"hitpoints": 99})
+    client.debug_give(uid, AIR_RUNE, 100)
+    client.debug_give(uid, MIND_RUNE, 100)
+    client.debug_teleport(uid, *COWS)
+    client.wait(2)
+    spell, full = gd.combat_spells()["wind_strike"].button, gd.npcs()[81].hitpoints
+    landed0, minds0 = client.state(uid)["hits_landed"], held(client, uid, MIND_RUNE)
+    damaging, index, hp, casts = 0, None, None, 0
+    for _ in range(300):
+        step = client.schedule([[{"cmd": "state", "uid": uid},
+                                 {"cmd": "npcs", "uid": uid, "name": "Cow", "ids": [81], "object": False}]])[0]
+        state, seen = step["results"][0]["state"], step["results"][1]["npcs"]
+        casts = minds0 - sum(s["amount"] for s in state["inventory"] if s["id"] == MIND_RUNE)
+        cow = next((n for n in seen if n["index"] == index), None)
+        if index is not None and cow is None:
+            damaging, index = damaging + 1, None  # killed: its last hit did damage
+        elif cow is not None and cow["hitpoints"] < hp:
+            damaging += 1
+        hp = cow["hitpoints"] if cow is not None else None
+        if casts >= 20 and state["target"] is None:
+            break
+        if index is None:
+            unhurt = [n for n in seen if n["hitpoints"] == full]
+            if unhurt:
+                index, hp = unhurt[0]["index"], full
+                client.cast(uid, spell, "Cow", index=index)
+        elif state["target"] is None:
+            client.cast(uid, spell, "Cow", index=index)
+    client.wait(6)  # the last spell's impact
+    landed = client.state(uid)["hits_landed"] - landed0
+    casts = minds0 - held(client, uid, MIND_RUNE)
+    assert casts >= 20 and damaging < landed <= casts, (casts, landed, damaging)
+
+
+def test_the_monsters_in_the_regions_a_human_would_see_are_live(client, uid):
+    """An RL character keeps the regions in a client's view active, as a human's does (RLPlayer.update; Caleb,
+    2026-11-08): from (3257, 3270), in region (50, 51), the cows across the boundary at y = 3264 walk about. Before,
+    only the character's own region was active, and those cows stood frozen and couldn't be attacked."""
+    client.debug_teleport(uid, *COWS)
+    client.wait(2)
+    here = client.state(uid)["location"]
+    region = lambda n: (n["location"]["x"] >> 6, n["location"]["y"] >> 6)  # noqa: E731
+    elsewhere = lambda: {n["index"]: n["location"] for n in client.npcs(uid, "Cow", ids=[81], radius=30)  # noqa: E731
+                         if region(n) != (here["x"] >> 6, here["y"] >> 6)}
+    before = elsewhere()
+    assert before, "no cow outside the character's region"
+    client.wait(60)
+    after = elsewhere()
+    assert any(after.get(index) not in (None, tile) for index, tile in before.items()), (before, after)
+
+
+def test_the_walker_takes_the_crandor_passage_both_ways(client, uid):
+    """The planned route from Karamja volcano's rim to Crandor is the passage (OQ-16 (a)): the walker's scripted
+    clicks take a character with Dragon Slayer complete through the pot hole, the secret wall and the rope, and back
+    by Crandor's hole."""
+    from rlscape.bridge.walker import walk_route
+    from rlscape.routes import surface
+    client.debug_set_levels(uid, {"hitpoints": 99, "defence": 99})
+    client.debug_teleport(uid, 2856, 3167, 0)
+    client.wait(2)
+    there = walk_route(client, uid, surface(), (2834, 3258, 0))
+    assert there.arrived and there.doors >= 1, there.tiles[-3:]
+    back = walk_route(client, uid, surface(), (2856, 3167, 0))
+    assert back.arrived, back.tiles[-3:]
+
+
+def test_the_trollheim_teleport_needs_eadgars_ruses_own_requirement_and_lands_by_the_trolls(client, uid):
+    """With Eadgar's Ruse not on the server, the Trollheim teleport (the standard spellbook's button 44) asks the
+    quest's own requirement: Druidic Ritual and Troll Stronghold (complete from the start) and Herblore 31. It lands
+    at (2891, 3678), from where the walker reaches a mountain troll's site (Caleb, 2026-11-08)."""
+    from rlscape.bridge.walker import walk_route
+    from rlscape.routes import surface
+    client.debug_set_levels(uid, {"magic": 61, "herblore": 30, "hitpoints": 99, "defence": 99})
+    client.debug_give(uid, 554, 10)  # fire runes
+    client.debug_give(uid, 563, 10)  # law runes
+    client.set_retaliate(uid, False)
+    client.interface_button(uid, 192, 44)
+    client.wait(8)
+    here = client.state(uid)["location"]
+    assert (here["x"], here["y"]) != (2891, 3678)  # Herblore 30: refused
+    client.debug_set_levels(uid, {"herblore": 31})
+    client.interface_button(uid, 192, 44)
+    for _ in range(12):
+        client.wait(1)
+        here = client.state(uid)["location"]
+        if (here["x"], here["y"]) == (2891, 3678):
+            break
+    assert (here["x"], here["y"], here["z"]) == (2891, 3678, 0)
+    walk = walk_route(client, uid, surface(), (2843, 3682, 0))
+    assert walk.arrived, walk.tiles[-3:]
+
+
+@pytest.mark.parametrize("spell,button,levels,runes,arrival", [
+    ("ape_atoll", 47, {"magic": 64}, {554: 2, 555: 2, 563: 2, 1963: 1}, (2795, 2798, 1)),
+    ("watchtower", 37, {"magic": 58, "agility": 25, "herblore": 14, "mining": 40, "thieving": 15}, {557: 2, 563: 2},
+     (2549, 3112, 0)),
+])
+def test_the_teleports_of_quests_the_server_lacks_open_with_their_own_requirements(client, uid, spell, button, levels,
+                                                                                   runes, arrival):
+    """Monkey Madness and Watchtower aren't on the server, so their teleports ask the quests' own requirements
+    (Caleb, 2026-11-08: open, as the quests are flagged complete): Ape Atoll's two quests, complete from the start;
+    Watchtower's levels, refused a level short."""
+    for item, amount in runes.items():
+        client.debug_give(uid, item, amount * 2)
+    short = {skill: (level - 1 if skill != "magic" else level) for skill, level in levels.items()}
+    if spell == "watchtower":
+        client.debug_set_levels(uid, short)
+        client.interface_button(uid, 192, button)
+        client.wait(8)
+        here = client.state(uid)["location"]
+        assert (here["x"], here["y"]) != arrival[:2]  # a level short: refused
+    client.debug_set_levels(uid, levels)
+    client.interface_button(uid, 192, button)
+    for _ in range(12):
+        client.wait(1)
+        here = client.state(uid)["location"]
+        if (here["x"], here["y"], here["z"]) == arrival:
+            break
+    assert (here["x"], here["y"], here["z"]) == arrival
+
+
+def test_the_barcrawl_and_enter_the_abyss_are_complete_from_the_start(client, uid):
+    """Two miniquests are flagged complete at spawn (Caleb, 2026-11-08, OQ-2): the Barcrawl, so the Barbarian Outpost
+    course's gate lets the character through (BarbarianOutpostCourse), and Enter the Abyss, so the Mage of Zamorak in
+    the Wilderness shows the form with Teleport (2257's 2259) and sends the character to the Abyss's outer ring,
+    draining its prayer. The bridge finds the mage by the name a player sees (its own definition is "null")."""
+    client.debug_teleport(uid, 2546, 3569)
+    client.wait(2)
+    client.interact(uid, "Gate", "Open", ids=[2115, 2116], radius=4)
+    client.wait(10)
+    assert client.state(uid)["location"]["x"] == 2545  # through the gate, not stopped by the guard's dialogue
+    # the Abyss's monsters are aggressive: at 10 hitpoints a landing beside them can kill a new character before the
+    # check (it failed now and then that way), so it arrives with 99
+    client.debug_set_levels(uid, {"hitpoints": 99})
+    client.debug_teleport(uid, 3103, 3554)
+    client.wait(2)
+    client.interact(uid, "Mage of Zamorak", "Teleport", is_object=False, radius=8)
+    client.wait(12)
+    state = client.state(uid)
+    x, y = state["location"]["x"] - 3039, state["location"]["y"] - 4832  # AbyssLoc.origin
+    assert 20 <= (x * x + y * y) ** 0.5 <= 27 and state["prayer_points"] == 0
+
+
+def test_a_death_sends_the_character_to_lumbridges_home_tile(client, uid):
+    """DeathTask sends the dead to their spawn location, a human's being the home location (rl.conf: 3222, 3218),
+    where the sim respawns a character (rlscape.sim.combat.RESPAWN). AIPlayer had set the tile the character was made
+    on (3233, 3230); the fork sets the home location (RLPlayer.init). The death: a new character left in the Abyss,
+    whose monsters are aggressive."""
+    client.debug_teleport(uid, 3103, 3554)
+    client.wait(2)
+    client.interact(uid, "Mage of Zamorak", "Teleport", is_object=False, radius=8)
+    client.wait(6)
+    for _ in range(200):
+        state = client.state(uid)
+        if abs(state["location"]["x"] - 3039) > 100:
+            break
+        client.wait(5)
+    assert any("you are dead" in m for m in state["messages"])
+    assert (state["location"]["x"], state["location"]["y"], state["location"]["z"]) == (3222, 3218, 0)
+
+
+def test_barbarian_fishing_needs_no_miniquest_and_trains_agility_and_strength(client, uid):
+    """Barbarian fishing (BarbFishingPulse) needs Fishing 48, Agility 15, Strength 15, a barbarian rod and bait, and
+    no miniquest. A leaping trout gives 50 Fishing XP and 5 Agility and Strength."""
+    client.debug_set_levels(uid, {"fishing": 48, "agility": 15, "strength": 15})
+    client.debug_give(uid, 11323, 1)
+    client.debug_give(uid, 314, 50)  # feathers
+    client.debug_teleport(uid, 2502, 3500)
+    client.wait(2)
+    before = {s["name"]: s["xp"] for s in client.state(uid)["skills"]}
+    client.interact(uid, "Fishing spot", "Use-rod", is_object=False, ids=[2722], radius=20)
+    client.wait(200)
+    after = {s["name"]: s["xp"] for s in client.state(uid)["skills"]}
+    trout = held(client, uid, 11328)
+    assert trout > 0
+    assert after["Fishing"] - before["Fishing"] == 50 * trout
+    assert after["Agility"] - before["Agility"] == after["Strength"] - before["Strength"] == 5 * trout

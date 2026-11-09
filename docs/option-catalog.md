@@ -1,4 +1,11 @@
-# Option Catalog (v1.3, Signed off)
+# Option Catalog (v1.4, Signed off)
+
+**v1.4** (2026-11-08, building sim v1 per OQ-2 and `docs/sim-v1-skills-draft.md`; confirmed by Caleb on 2026-11-09,
+the four skills built): Crafting's skilling slots and paths (§2), and XP slots hold only paths that give XP; Crafting's inputs in
+*V* and the GE buys (§8, §9); Herblore's skilling slots and paths (§2); Agility's skilling slots and laps (§2);
+Runecrafting's skilling slots and paths (§2), and its essence and talismans in *V* and the GE buys (§8, §9);
+Barbarian Fishing (§2) and the barbarian rod in *V* and the GE buys (§8, §9); seven Agility shortcuts in travel
+(§4).
 
 **Status:** v1.3, 2026-11-06: quests are out, and every quest the server has is complete from the start (Caleb;
 §10); the anti-dragon shield, the dragon dagger and longsword and the Fremennik helms are bought on the GE (§4.B,
@@ -51,11 +58,14 @@ each target's spawn area.
 
 **Skilling slots** (Caleb, 2026-10-30/31; `rlscape/sim/skilling.py`). Like the combat slots (§4), each gathering
 skill offers its best **paths** by XP/hr and by gp/hr at the current levels, gear and position, as actions, and
-agents choose a path, not a fixed method. Five skills (Woodcutting, Fishing, Mining, Thieving, Fletching) × 2 slots
-by XP/hr + 2 by gp/hr = 20 actions, `skill_<skill>_xp1/xp2/gp1/gp2`. They replace the 31 fixed gathering and thieving
+agents choose a path, not a fixed method. Nine skills (Woodcutting, Fishing, Mining, Thieving, Fletching, Crafting,
+Herblore, Runecrafting, Agility) × 2 slots by XP/hr + 2 by gp/hr = 36 actions, `skill_<skill>_xp1/xp2/gp1/gp2`. They replace the 31 fixed gathering and thieving
 actions.
 A path in an XP slot doesn't also fill a gp slot (the next best takes its place, as in combat), and slots are
-recomputed every decision. The observation carries each slot's rates (env contract §3).
+recomputed every decision. The observation carries each slot's rates (env contract §3). A gathering path's rate
+counts its site's aggressive monsters (2026-11-08): it keeps the share of XP per tick that the sim's own option keeps
+under their attacks (`aggression.gathering_share`), so a fresh character's slots rank Lumbridge Swamp's shrimp above
+Draynor's, where the Dark wizards are.
 
 A **path** is a gathering method plus what happens to its produce. Caleb: "pair gathering skills with their
 processing counterpart". Each method is either kept (the method below alone, ending at a full inventory) or
@@ -75,7 +85,76 @@ the strung bow is worth more than the unstrung bow and the bowstring (Caleb): ma
 shortbows. On 2009Scape every one of these is a queued script that a walk or any other action clears (checked
 live), so fletching can't be done on the move or between other actions.
 
-That's 83 paths: woodcutting 12, fishing 8, mining 7, thieving 20, fletching 36. Mining's include iron at the Al
+**Crafting** (sim v1, v1.4; Caleb, 2026-11-08, OQ-2; `rlscape/sim/crafting.py`) has paths at a bank as Fletching's
+are, one per recipe: `cut_<gem>` (9, with a chisel, a gem a tick) and `craft_<item>` (the 8 leather and 12
+dragonhide pieces, with a needle and thread, a piece every 5 ticks). The recipes are the server's (`Gems`,
+`LeatherCrafting`, `HardCraftPulse`). Thread goes as the server's `decayThread` takes it: a reel every 5 items,
+its charges saved on the character. Tanning and spinning work between the nearest bank and the nearest usable
+station: `tan_<leather>` (6, at a tanner, for its fee and no XP) and `spin_wool`, `spin_flax` (at a wheel, one every 4
+ticks). Hides are gathered by killing cows (`kill_cows`, Caleb, 2026-11-09; `rlscape/sim/cows.py`): the plan
+that kills them fastest (combat_rates' kills an hour, among those whose ammunition lasts a load; ties to the higher
+level), at the cow site with the least travel and bank trip; the hides and normal bones picked up, the bones
+buried whenever the inventory fills, the raw beef left; no Crafting XP, so a gp path. Flax is picked in Seers'
+Village's field (`pick_flax`, kept, no XP) or picked and spun at the Seers' wheel
+(`pick_flax_spin`), both ending at a full inventory. Picking flax is a task of its own, `flax`, with no kit
+(Caleb, 2026-11-09, OQ-52), so after a load `bank_deposit` banks the flax, or `spin_flax` (Crafting 10) spins it
+into bowstrings. The agent buys the inputs on the GE (§9).
+
+**Herblore** (sim v1, v1.4; Caleb, 2026-11-08, OQ-2's Choices E (a) and F (a); `rlscape/sim/herblore.py`) has paths
+at a bank too: `clean_<herb>` (15, the grimy herb cleaned, a herb a tick, for its XP) and `potion_<potion>` (the 21
+standard potions). A potion path takes out as many units as fit (3 slots a unit, 2 from unfinished potions, and one
+for a pestle and mortar if it grinds) and makes each from what's there: an unfinished potion, or a vial of water and the herb (clean, or grimy and cleaned first, for
+its XP too); and the secondary, or its whole ingredient ground first, with a pestle and mortar taken out for it. The
+stages are the server's (`HerblorePulse`, `GrindItemPlugin`): the unfinished potions one a tick, the finished ones
+one every 3 ticks, grinding one every 2, each batch after its clicks. The product has three doses.
+
+**Agility** (sim v1, v1.4; Caleb, 2026-11-08, OQ-2 Choice D; `rlscape/sim/agility.py`) has course laps:
+`agility_gnome` (Agility 1), `agility_barbarian` (35, entered by the outpost's pipe) and `agility_wilderness` (52,
+by the door and ridge). A path walks to the course and runs laps until the option's time is up, at the server's
+times: each obstacle's XP, the lap bonus at the lap's last flag, and on the two courses that can fail, each failing
+obstacle rolled at the character's Agility (`AgilityHandler.hasFailed`), a fall's hit and its measured recovery. It
+eats as thieving does, and stops when it's out of food then. No gp: a lap path fills only XP slots. A fall into the
+Wilderness log's pit is attacked by its skeletons (OQ-46 (a)). **Barbarian Fishing** (`barb_fish`,
+`rlscape/sim/barbfishing.py`) fishes Otto's Grotto with the barbarian rod (bought on the GE) to a full inventory,
+for Fishing, Agility and Strength XP; it ranks in the Fishing and the Agility slots by its XP in each. Agility
+levels open seven of the server's shortcuts in travel (§4).
+
+**Runecrafting** (sim v1, v1.4; Caleb, 2026-11-08, OQ-2; `rlscape/sim/runecrafting.py`) has `rc_<rune>` for the eight
+runes whose ruins the travel model reaches: air, mind, water, earth, fire, body, nature and law. Chaos rune crafting is
+out (Caleb, 2026-11-09: an intentional gap, `docs/post-project-gaps.md`; its altar is past a ladder maze). A path works
+between the nearest bank and the ruins, as tanning does: it takes out the talisman and a load of one kind of essence
+(rune essence first for air to body; pure only for the rest), enters the ruins, crafts every essence at the altar,
+and leaves by the portal. An essence makes as many runes as the rune's multiple levels the character has reached
+(rl.conf's formula revision 530). Law's path banks the weapons and armour Entrana's monks refuse; nature's carries the
+Karamja boat's 60 gp. The times inside the ruins are the server's. Essence isn't mined (Caleb: it's cheap, and mining
+it wastes the time); the agent buys it (§9). A path wears the rune's tiara when the character has one, in place of the
+talisman, and carries 28 essence. `make_tiara_<rune>` (eight) uses pairs of a plain tiara and the talisman on the altar,
+14 a trip, for the tiaras' XP (the talisman used up; a loss in gold, as the GE sells the tiaras for less).
+`abyss_rc_<rune>` (ten: the eight, cosmic, and death, open at Ranged 60 and Thieving 50, OQ-39 (b)) goes by the
+Abyss (Choice H; `rlscape/sim/abyss.py`):
+- from Edgeville's bank, with 28 essence (a rift needs no talisman) and the food the crossing needs;
+- the Mage of Zamorak's teleport, which skulls the character for 2,000 ticks;
+- the outer ring, through the obstacle that reaches the rift soonest that the character can use (rocks with a worn
+  pickaxe, tendrils with a worn axe, eyes with Thieving, a gap with Agility, or the passage), while the abyssal
+  monsters attack;
+- the rune's rift, the altar, and back by the portal or a teleport.
+
+Cosmic and death are left by teleport. The cosmic altar is reached only by its rift (OQ-45 (a)).
+
+Both kinds of path use the essence pouches the character can fill (Caleb, OQ-40 (c); `rlscape/sim/pouches.py`):
+- out of the bank with the load, a slot each, and filled from it, in rounds until full;
+- inside, after the first craft, emptied and crafted again, in rounds while the slots allow (all four carry 30 more
+  essence, 53 a trip);
+- they decay with use, and an Abyss trip with a decayed one goes by the Dark Mage, who repairs them.
+
+The small pouch is in the bank from the start. The others drop from the Abyss's monsters, which the combat slots can
+now fight: the travel model reaches the Abyss by the mage's teleport (§4).
+
+A path that gives no XP (tanning, picking flax) fills only a gp slot: the XP slots take the best paths that give XP
+(v1.4).
+
+That's 83 paths in sim v0: woodcutting 12, fishing 8, mining 7, thieving 20, fletching 36; and in sim v1 crafting's
+39, herblore's 36, runecrafting's 26 and agility's 3. Mining's include iron at the Al
 Kharid mine (Caleb, 2026-10-31), kept or smelted, beside Varrock's: scorpions roam it, so it costs a low-level miner
 hitpoints (below). Fishing's include shrimp at Lumbridge Swamp (Caleb, 2026-11-01), kept or cooked, beside
 Draynor's: Draynor's spots are next to the bank, but its Dark wizards make them dangerous for a character of combat
@@ -169,7 +248,7 @@ inputs, a fixed duration *D*, server formulas, and calibration. The likely shape
 | Crafting | tan hides into leather, make leather armour, spin flax, cut gems | processing; uses cowhides from combat |
 | Agility | course laps (Gnome Stronghold, Draynor, …) | a gathering-like activity with no product; levels open the access table's shortcuts |
 | Herblore | clean herbs, make potions | needs Druidic Ritual; herbs come from drops (vocabulary) |
-| Runecrafting | craft runes at an altar from essence | needs Rune Mysteries; essence from mining |
+| Runecrafting | craft runes at an altar from essence | needs Rune Mysteries; essence bought (not mined: Caleb, 2026-11-08) |
 
 These add roughly 15–25 actions and some vocabulary items; §9 is updated when they're specified.
 
@@ -198,7 +277,41 @@ the current stats, gear, food and ammunition.
     pays its runes, and a worn elemental staff stands in for its own.
   - Fights end `out_of_ammo`, and a candidate's rates are capped by how long the ammunition lasts.
   - **Agent choice (reversible):** spells are cast by hand at the autocast rate, so magic doesn't need a staff. The
-    server's autocast does, and the starter kit has none.
+    server's autocast does, and the starter kit has none. *Checked live (2026-11-07):* a hand cast is one spell, and
+    casting again as soon as the server takes it (3 ticks after the last) lands the spells 5 ticks apart, the
+    autocast rate.
+- **Ranged fights safespot (2026-11-07, OQ-27 (d), Caleb):** a monster without a safespot is a bad ranged target
+  unless its damage is trivial (below). Otherwise a ranged
+  slot offers it only at sites with a safespot from the server (`data/ranged_safespots.csv`, the bridge's
+  `ranged_safespots`): a tile it can be shot from where, chasing, it gets stuck short of attacking, holding from at
+  least 80% of its wandering (Caleb, 2026-11-08, OQ-36 (a); half before), and which no aggressive monster
+  reaches. Melee monsters
+  are held by walls and fences; skeletal wyverns, which shoot, are outranged (Caleb). From there it does no damage,
+  and only the site's monsters the safespot holds against count. Arrows lie where the monster stands, a pile per
+  100 ticks of shooting, picked up with the drops between kills, plus the walk from the safespot and back. While
+  aggressive monsters guard the piles and aggression hasn't run out, the fight leaves them until the oldest would
+  go. The pickup time is one for every class. Trivial damage (Caleb, OQ-30 (b)): the fight needs no food, its
+  expected damage over the option less what regenerates fitting in the hitpoints above the retreat point. A bow
+  takes no shield, so a monster with special damage, such as a dragon, is ranged only from a safespot.
+- **Magic fights safespot too (2026-11-07, OQ-34, Caleb),** by the same rules, at magic's range of 10 tiles
+  (`MagicSwingHandler.canSwing` is ranged's test with distance 10). Casting leaves no piles: only the drops are
+  fetched from the safespot.
+- **Monsters of other kinds near a fight (2026-11-07, OQ-35 (a), Caleb).** Away from a safespot, a site's aggressive
+  monsters of other kinds (spawned within 10 tiles) whose level would pick the character engage it between kills,
+  while nothing attacks it (the overhead to the next monster, the pickups, a wait for a respawn), each spawn at a
+  rate measured on the server (0.045 a tick, at the animated spades' possessed pickaxe), until the region's
+  aggression runs out. In single combat it must kill one before the next target, so each engagement is a kill of
+  that monster in the fight's plan, its time, damage, XP and drops counted. The slots count the expected fights; a
+  site where one can't be hurt by the plan, or fails the danger filter below, is left out while aggression lasts.
+  From a usable safespot none reaches the character. Not modelled: multi-combat areas, where they attack at once
+  (except the Abyss, below), and the ammunition the neighbour fights use (the slots' cap counts the target's only; the
+  fight pays it).
+- **The Abyss's crowd (2026-11-09, OQ-49 (a), Caleb).** The Abyss is multi-combat, and 2 to 4 of its monsters attack at
+  once. A fight there also takes the outer ring's attacks, the crossing's mix of kinds at 0.8 a tick shared by the
+  kinds the character's level draws (fitted to fights on the server; a crossing takes 0.43, as more gather around a
+  character that stays), less the swings of the monster it fights, all of it between kills and while it waits, until
+  the region's tolerance runs out. The fight flicks no prayer there (Claude's choice, confirmed by Caleb on 2026-11-09), since the
+  mage's teleport, the only way in, drains it.
 
 ### B. Retreat-aware danger filter with a special-damage gear check (decided)
 
@@ -225,7 +338,7 @@ dragon NPC handlers):
 | Dragonfire (all dragons) | an anti-dragon shield worn or carried: a fight against a dragonfire monster puts a carried one on (`wield_best`'s `protect`), and the ranking rates the monster for the character wearing it. Bought on the GE since 2026-11-06 (Caleb; §8). Behind the shield a third of a dragon's swings are breath, 0 to 5 each (`rlscape.combat.rates`); an antifire potion carried stops it (shield and potion: complete immunity, as in 2009), and the ranking takes off the share its doses cover |
 | Monsters that block a combat style (`protect_style`) | ruled out for the blocked class only |
 | Poison | no gear check; its damage is in the expected damage (2026-11-06): a poisonous monster's swings poison 4 times in 10, hit or miss, so a protection prayer doesn't stop it, and the poison hits every 30 ticks (`rlscape.combat.rates`). Antipoison carried (§8) takes off the share its doses cover: a dose cures it and keeps it off for 150 ticks, or 600 for the super, and fights drink one when poisoned |
-| Slayer-gear monsters (wall beasts, banshees and so on) | already Slayer-locked; also need their item |
+| Slayer-gear monsters (banshees, dust devils, turoths and so on) | never offered: their gear isn't modelled (`SLAYER_GEAR_NPCS`), and since 2026-11-07 no Slayer level keeps them out |
 
 The dragonfire list comes from the server's NPC classes: `ChromaticDragonNPC`, `MetalDragonNPC`,
 `KingBlackDragonNPC` and `ElvargNPC`. Protection follows `ContentAPI.hasDragonfireShieldProtection`: the anti-dragon
@@ -248,7 +361,10 @@ holds or what it's doing must be available.
 - **hazards aren't targets where they spawn** (`HAZARDS`, Caleb, 2026-11-05): Taverley dungeon's two Black
   Knights east of the lesser demons, whom the server doesn't let a character attack; only that pair (Caleb,
   2026-11-06), since the dungeon's other Black Knights fight as usual. The four moss giants west of the Fishing
-  Guild too (Caleb, 2026-11-06), for the same reason; the other moss giants stay targets.
+  Guild too (Caleb, 2026-11-06), for the same reason; the other moss giants stay targets. And the animated spades on
+  the Abandoned Mine's first floor (Caleb, 2026-11-08, OQ-42): there, one that a character who has since left dealt
+  more than half its hitpoints can't be killed, and stays alive at 0. The possessed pickaxe beside them and the
+  spades in the Chaos Tunnels stay targets.
 - **the Yanille Agility Dungeon is out of the project** (`IGNORED_AREAS`, Caleb, 2026-11-06): no monster in it is a
   target (zombies, a giant bat, skeletons, poison spiders, chaos druids, Salarin the Twisted); the same monsters
   elsewhere are. Its inner room is past a pile of rubble that takes Agility 67, and Salarin there, whom only the
@@ -274,8 +390,10 @@ underway, items held (inventory, bank or equipped), levels and coins. There are 
   bosses, Lucien, and Berry and Twig. Elvarg is fought inside the Dragon Slayer option, so she's never in the pool.
 - **Minigames** such as the Barrows tunnels are `never`.
 
-**Slayer levels** come from the server's `Tasks.java` (93 tasks, 1,127 NPC ids). Slayer has no training options, so it
-stays at 1, and every Slayer-locked monster stays out.
+**Slayer levels lock nothing** (Caleb, 2026-11-07, OQ-32: dropped for every monster, in the fork too). Slayer has no
+training options, so it stays at 1. The Slayer monsters whose gear the sim doesn't model stay out: 15 of the 35 in
+the pool that had a level. The other 20 are open, among them abyssal demons, bloodvelds, nechryaels and skeletal
+wyverns.
 
 The requirement grammar is `quest:` / `started:` / `underway:` / `item:` / `level:` / `coins:` / `never`, combined with
 `&` and ` or ` (see the module docstring).
@@ -285,11 +403,10 @@ leaves many 2009 gates unenforced: no check was found for Ape Atoll, the Lightho
 table applies the 2009 rule anyway. The candidate list is built in Python for both backends, so the server is never
 asked to fight a locked monster.
 
-**Slayer levels are now enforced in the fork too** (Caleb, 2026-10-28). Upstream, `NPC.isAttackable` and
-`IdleAbstractNPC.isAttackable` printed "You need a higher slayer level to know how to wound this monster" but had no
-`return false`, so the attack went ahead. The fork adds the `return false`. The live test
-`test_slayer_level_blocks_attacks` shows a fresh character can no longer fight cave crawlers (Slayer 10). The change
-applies to every player, including the ambient bots.
+**Slayer levels are dropped in the fork too** (Caleb, 2026-11-07, OQ-32). From 2026-10-28 the fork refused attacks
+above the attacker's Slayer level (`NPC.isAttackable`, `IdleAbstractNPC.isAttackable`). Now neither refuses, and
+`NPC.checkImpact` no longer cancels the hits (upstream had). The ice cooler no longer asks for Slayer 22. The live
+test `test_slayer_levels_lock_no_monster` has a fresh character fight cave crawlers (Slayer 10) and gain XP.
 
 **How the rows were chosen.** Not from memory of the whole map. A sweep ran the selection with every area open, over:
 - levels 1–99 with matching gear
@@ -317,8 +434,8 @@ any other. Dying there loses everything but 3 items, because there's no gravesto
   and travel links.
 - Colonel Radick (stats 1/1/1, 71 HP) passes the believability rule and is offered at every level. The rule misses this
   placeholder.
-- Light sources (the server has no dark zones) and Slayer gear (earmuffs, face masks) aren't modelled. Slayer gear
-  doesn't matter while Slayer stays at 1.
+- Light sources (the server has no dark zones) and Slayer gear (earmuffs, face masks) aren't modelled, so the
+  monsters that need the gear aren't offered.
 
 Quests aren't options (§10): every quest the server has is complete from the start, so the areas those quests open are
 available, and the monsters fought only while a quest is underway never are.
@@ -330,8 +447,9 @@ A candidate's XP/hr and gp/hr cover the option's whole duration, not just the fi
   arrows, banknotes, summoning charms) cost no new slot.
 - **Bank trips:** each full inventory costs the round trip to the site's nearest bank, plus 8 ticks of banking.
 - **Getting there:** the walk from the character's location is taken out of the option's duration.
-- **Between kills** (measured on the server, 2026-11-05): 10 ticks to find and reach the next monster for melee, 8
-  for ranged (magic as ranged, uncalibrated). Where a site has few of the monster, kills wait for respawns: at most
+- **Between kills** (measured on the server): 3 ticks to find and reach the next monster, for every class (refitted
+  on 2026-11-07 from 10 for melee and 8 for ranged on 2026-11-05; magic's calibration the same day bears it out).
+  Where a site has few of the monster, kills wait for respawns: at most
   one every (respawn + fighting) / spawns ticks, with the spawns within 15 tiles and the monster's respawn delay. So
   of two sites, the one with more of the monster can be worth the longer walk.
 
@@ -347,8 +465,15 @@ mapped yet), it's still straight-line distance × 1.3. The server walker clicks 
 unreachable: walking, the crossings, the Shantay gate, every teleport and every boat, from Lumbridge. That's 231 of
 the 2,792 places the sim travels to, mostly quest areas no way the model knows reaches, and pens and cells. A place the character
 can't get to now (an island without the fare or a teleport) is unreachable for it until it can: its options are
-masked, and the combat slots skip it. Ways the model doesn't know yet (some items, Agility shortcuts, quest steps)
-are OQ-16.
+masked, and the combat slots skip it. Ways the model doesn't know yet (some items, quest steps) are OQ-16.
+
+**Agility shortcuts (OQ-16 (a), 2026-11-08; built; which seven is Claude's choice, confirmed by Caleb on 2026-11-09).** Seven of the
+server's shortcuts, each both ways, are transports in travel, taken from their Agility levels like any other way
+(`rlscape/gamedata/shortcuts.py`): Falador's west wall (5), the lumberyard's fence (13), the coal trucks' log balance
+(20), the River Lum's stepping stone (31), Ardougne's log balance (33), the Al Kharid pit (38) and Rellekka's log
+balance (48). Each was measured on the server: 4 to 7 ticks a crossing (the stepping stone 13), and 3 more in a trip
+(fitted). None can fail, and the log balances give their XP on the way (5 at the coal trucks, 1 at the others). Both
+backends: the bridge clicks the shortcut as a player does (`rlscape/bridge/travel.py`).
 
 **Transports (Caleb, 2026-11-01; built).** Travel includes the home teleport, the standard teleport spells, every
 teleport jewellery item at every charge (usable and buyable at any charge), the teleport tablets, the Grand seed pod,
@@ -469,6 +594,10 @@ run energy and weight in `rlscape/sim/energy.py`).
   agent learns the price-versus-travel trade-off.
   - **Price:** ⌈value × m / 100⌉ a unit, with m rising from 100% at normal stock to 130% when sold out; each further
     unit of a purchase is priced at one less in stock.
+  - **The Gem Store** (Caleb, 2026-11-09, OQ-57 (a)): `buy_shop_1623` and `buy_shop_1621`, uncut sapphires and
+    emeralds at Hervi's in Keldagrim, the only gem shop selling uncut gems for coins. Its stock and restock stand
+    for January 2009's 87 members' worlds on one world (rl.conf's `world.shop_worlds`): 87 of each, 87 back each
+    restock, and a unit priced at one world's stock (25 and 50 gp until sold out). The agent needn't hop worlds.
   - **Stock:** shared (`personalized_shops = false`) and tracked within an episode. It restocks 1 unit per 100
     ticks.
   - **Paying:** the coins for the whole purchase must be in the inventory.
@@ -630,9 +759,30 @@ counts each potion's doses (env contract §3). Then Ava's attractor and accumula
 prices (2026-11-07). They're untradeable in the game, so their alchemy, store-sale and drop actions stay masked (the
 game offers Destroy, not Drop); the GE buys them back at the same prices. A ranged fight wears the best device
 carried (no other fight does), with its attraction off: it saves ammunition, and the accumulator, which needs
-Ranged 50, also gathers the shots its catch misses that would land (Caleb, OQ-28). 216 in all.
+Ranged 50, also gathers the shots its catch misses that would land (Caleb, OQ-28). The 38 metal chest pieces the
+server lists stop the catch (`data/ava_interference.csv`), so a ranger wearing a device leaves them off (Caleb,
+OQ-29). Then every tradeable crossbow and bolt on the 2009 GE (Caleb, 2026-11-07): 11 crossbows, one-handed but
+Karil's, so a shield goes with them, and 53 bolts with their poisoned, gem-tipped and enchanted kinds, whose effects
+aren't modelled (they rank by ranged strength); mithril bolts were in already. Broad bolts are Destroy-only, so their
+drop stays masked. 279 in all.
 
-**Size (*V* = 216: the 156 accepted, 20 fletching inputs added by the same rule on 2026-10-31, 38 on 2026-11-06 and 2
+Sim v1 (v1.4; OQ-2's Choice I (a), Caleb): the inputs the agent buys or holds join *V*, and the products
+only where something else uses them. Crafting's (2026-11-08): the uncut gems, the soft, hard and dragon leathers, the
+hides tanned, wool, flax, thread, a needle and a chisel, 25 in all, which the GE sells (§8, Choice A (a)); 18 weren't
+in *V* (cowhide, the green and blue dragonhides and four uncut gems were). The cut gems, the armour, and balls of wool
+stay misc; bowstrings were in *V* already. 297 in all. Herblore's (2026-11-08): the 15 herbs grimy and clean, the 14
+unfinished potions the 21 potions use, the 15 secondaries and the 5 whole ingredients ground into them, vials of water
+and a pestle and mortar, 66 in all, which the GE sells (§8, Choice A (a)); the bird's nest at Caleb's 1,765 gp, as it's
+untradeable on this server and had no 2009 price, and the alchemy spell and stores refuse it. 51 weren't in *V*. The
+made potions stay misc (three doses; OQ-25 keeps four-dose potions alone in *V*). 348 in all. Runecrafting's
+(2026-11-08): rune and pure essence, which isn't mined (Caleb), in lots of 1,000; the nine runes' talismans and plain
+tiaras, in lots of 14 (a tiara load); and the nine runes' tiaras, one each; 21 in all, which the GE sells. 19 weren't
+in *V* (the mind and earth talismans were). The runes made were in *V* for magic but body runes, which stay misc. 367
+in all. The chaos talisman and tiara went out with chaos rune crafting (Caleb, 2026-11-09), with their 2 buys: 366
+with the barbarian rod. The four essence pouches, held, never bought (OQ-40 (c); untradeable, so their sell and
+alchemy actions stay masked): 370.
+
+**Size (*V* = 279: the 156 accepted, 20 fletching inputs added by the same rule on 2026-10-31, 38 on 2026-11-06 and 65
 on 2026-11-07;
 selling as "all in the inventory"):**
 
@@ -642,11 +792,12 @@ selling as "all in the inventory"):**
 | Processing | 10 |
 | Combat | 30 |
 | Loot mode | 4 |
-| Inventory | 2 deposits + 10 processing withdrawals + 5 gathering-kit withdrawals + 1 take knife + 217 drops (216 + misc) + 1 reclaim gravestone + 3 gear + 4 food tiers + 1 any food + 1 for sale = 245 |
-| Alchemy | 434 (high and low, 217 each) |
-| Selling | 434 (GE and store, 217 each) |
-| Buying | 153 (116 at the GE, with the knife, 19 fletching inputs, the anti-dragon shield, 6 quest items, 2 antipoisons, 8 combat potions and antifire, and Ava's 2 devices; 37 at shops) |
-| **Total in sim v0** | **1,330** |
+| Inventory | 2 deposits + 10 processing withdrawals + 5 gathering-kit withdrawals + 1 take knife + 280 drops (279 + misc) + 1 reclaim gravestone + 3 gear + 4 food tiers + 1 any food + 1 for sale = 308 |
+| Alchemy | 560 (high and low, 280 each) |
+| Selling | 560 (GE and store, 280 each) |
+| Buying | 217 (180 at the GE, with the knife, 19 fletching inputs, the anti-dragon shield, 6 quest items, 2 antipoisons, 8 combat potions and antifire, Ava's 2 devices, 11 crossbows and 53 bolts; 37 at shops) |
+| **Total in sim v0** | **1,709** |
+| Sim v1 so far (v1.4) | Crafting's 4 skilling slots; Crafting's 25 GE buys (needle and chisel one each, the rest in lots of 1,000) and its 18 new *V* items' 90 actions: 1,828; Herblore's and Runecrafting's 4 skilling slots each; Herblore's 66 GE buys (the pestle and mortar one, the rest in lots of 1,000) and its 51 new *V* items' 255 actions: 2,157; Agility's 4 skilling slots: 2,161; Runecrafting's 21 GE buys (the essence in lots of 1,000, the talismans and plain tiaras in lots of 14, a rune's tiara one) and its 19 new *V* items' 95 actions: 2,277; the barbarian rod's buy and *V* item: 2,283; less chaos's 2 buys and 2 items (Caleb, 2026-11-09): 2,271; the four pouches' 20 actions: 2,291; the Gem Store's 2 buys (OQ-57): **2,293** |
 
 Each *V* item adds 7 observation features: its inventory and bank counts, and its 5 actions' mask entries (env
 contract §3).

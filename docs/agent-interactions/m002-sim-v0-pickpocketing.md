@@ -8,7 +8,7 @@
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS (the mining and fishing slice is committed; pickpocketing and the hitpoint rules are built and
   tested)
-- Commit: mining and fishing slice `ae0cb7e` (branch `sim-v0`); pickpocketing uncommitted
+- Commit: mining and fishing slice `ae0cb7e` (branch `sim-v0`); pickpocketing, and this record, `32f4ed3`
 
 ## Full Prompt
 

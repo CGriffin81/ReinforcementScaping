@@ -64,7 +64,13 @@ class BridgeClient:
         return self.request("ping")
 
     def set_tick_ms(self, ms: int) -> int:
-        return self.request("set_tick_ms", ms=ms)["tick_ms"]
+        """Set the world's tick length from the next tick on, and return the length it had, for setting it back.
+
+        (The bridge answers with the new length; the callers keep this as the old one, so it's read first.)
+        """
+        old = self.ping()["tick_ms"]
+        self.request("set_tick_ms", ms=ms)
+        return old
 
     def wait(self, ticks: int) -> int:
         """Block until ``ticks`` game ticks have passed; returns the tick it resumed on."""
@@ -134,20 +140,51 @@ class BridgeClient:
             fields["radius"] = radius
         return self.request("safespots", **fields)["tiles"]
 
+    def ranged_safespots(self, uid: int, name: str, ids: list[int] | None = None, radius: float | None = None,
+                         range: int | None = None, limit: int | None = None,
+                         at: tuple[int, int, int] | None = None) -> dict[str, Any]:
+        """Where to shoot a melee monster called ``name`` (of ``ids``, spawned within ``radius``) from that it can't
+        hit back from, as rangers safespot: ``tiles``, best first, each with the monsters it holds against
+        (``against``: index, spawn, where it gets stuck chasing, the chase's steps, the walk to its arrows, and the
+        aggressive monsters whose leash covers them). ``range`` is the attack style's (7, or 9 long-ranged); ``melee``
+        is false, with no tiles, for a monster that casts or shoots. ``at`` centres the search on a site's tile
+        instead of the character's (so it can ask from its safespot, not among the monsters)."""
+        fields: dict[str, Any] = {"uid": uid, "name": name}
+        for key, value in (("ids", ids), ("radius", radius), ("range", range), ("limit", limit)):
+            if value is not None:
+                fields[key] = value
+        if at is not None:
+            fields["at"] = {"x": at[0], "y": at[1], "z": at[2]}
+        return self.request("ranged_safespots", **fields)
+
+    def npcs(self, uid: int, name: str, ids: list[int] | None = None, radius: int | None = None,
+             range: int | None = None) -> list[dict[str, Any]]:
+        """The NPCs called ``name`` (of ``ids``, within ``radius``) the character sees, nearest first: index, id,
+        location, whether each is fighting (``attacking_me``: the character), and ``holds``: whether, shot from where
+        the character stands with ``range``, it would stay stuck in shot chasing it (as ranged_safespots has it)."""
+        fields: dict[str, Any] = {"uid": uid, "name": name, "object": False}
+        for key, value in (("ids", ids), ("radius", radius), ("range", range)):
+            if value is not None:
+                fields[key] = value
+        return self.request("npcs", **fields)["npcs"]
+
     def set_retaliate(self, uid: int, on: bool = True) -> bool:
         """Turn auto-retaliate on or off, as the options tab's button does; off, the character doesn't fight back when
         attacked."""
         return self.request("set_retaliate", uid=uid, on=on)["retaliate"]
 
     def interact(self, uid: int, name: str, option: str, is_object: bool = True, ids: list[int] | None = None,
-                 radius: int | None = None, index: int | None = None) -> dict[str, Any]:
+                 radius: int | None = None, index: int | None = None,
+                 at: tuple[int, int] | None = None) -> dict[str, Any]:
         """Use ``option`` on the scenery object (or NPC, with ``is_object=False``) called ``name`` (and, with ``ids``, of
         those ids) that the character can walk to soonest; raises BridgeError ("none reachable") if it can reach
         none within ``radius`` tiles (default the server's MAX_PATHFIND_DISTANCE). With ``index``, the NPC with that
-        index (e.g. one of ``state()["attackers"]``)."""
+        index (e.g. one of ``state()["attackers"]``); with ``at``, the one standing on that tile (x, y)."""
         fields: dict[str, Any] = {"uid": uid, "name": name, "option": option, "object": is_object}
         if index is not None:
             fields["index"] = index
+        if at is not None:
+            fields["at"] = list(at)
         if ids is not None:
             fields["ids"] = ids
         if radius is not None:
@@ -193,6 +230,19 @@ class BridgeClient:
         if radius is not None:
             fields["radius"] = radius
         return self.request("use_item_on", **fields)
+
+    def cast(self, uid: int, spell: int, name: str, ids: list[int] | None = None, index: int | None = None,
+             radius: int | None = None) -> dict[str, Any]:
+        """Cast the standard spellbook's spell at button ``spell`` (gamedata.server.combat_spells()[...].button) on
+        the NPC called ``name``: the one with ``index``, or else (of ``ids``) the one the character can walk to
+        soonest. Sent as a client's spell-on-NPC packet; the server refuses it silently within the last cast's
+        3-tick delay, walks into range and casts once (no autocast), so a fight casts again after each spell. The
+        reply's ``index`` is the NPC's."""
+        fields: dict[str, Any] = {"uid": uid, "spell": spell, "name": name, "object": False}
+        for key, value in (("ids", ids), ("index", index), ("radius", radius)):
+            if value is not None:
+                fields[key] = value
+        return self.request("cast", **fields)
 
     def dialogue_button(self, uid: int, interface: int, button: int) -> None:
         """Click a button of the open chatbox dialogue, e.g. a skill dialogue's "Make 1"."""

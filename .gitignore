@@ -17,3 +17,6 @@ Thumbs.db
 .vscode/
 .idea/
 /data/travel/places.npz
+
+# PyTorch's CUDA wheel (scripts/fetch_torch_wheel.py), installed from here by pyproject.toml's local index
+wheels/

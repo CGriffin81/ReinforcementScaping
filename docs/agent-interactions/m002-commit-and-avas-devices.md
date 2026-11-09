@@ -7,7 +7,7 @@
   transcript's message timestamps (UTC−06:00)
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: DONE for these prompts (committed and pushed; the devices and the arrow pickups are open questions for
+- Status: SUCCESS for these prompts (committed and pushed; the devices and the arrow pickups are open questions for
   Caleb)
 - Commit: the work so far is fork `d0a7af6` (branch `rl`) and main repo `bc7bfec` (branch `sim-v0`), both pushed. This
   record and its log entries are in the main repo commit after `bc7bfec` (pushed 2026-11-07 with `m002-pull-request`).

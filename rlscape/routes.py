@@ -45,6 +45,11 @@ CROSSINGS = {
     190: ("Gnome Stronghold gate", 2),  # GnomeStrongholdPlugin.openGates: (2461, 3382) <-> (2461, 3385)
     1967: ("Grand Tree door", 2),  # GnomeStrongholdPlugin: two tiles through, north or south
     1968: ("Grand Tree door", 2),
+    # The Crandor passage (Caleb, 2026-11-08, OQ-16 (a); Dragon Slayer complete): Karamja volcano's pot hole down,
+    # the dungeon, its secret wall (DragonSlayerPlugin, 2606: open with the quest done), the rope up onto Crandor; back
+    # by Crandor's hole. Underground, so one crossing from the rim to Crandor: its 89 steps across plus the climbs and
+    # the wall (timed on the server: 77 and 83 ticks, clicked, in two of three runs each way)
+    492: ("Crandor passage", 6),
 }
 # The Al Kharid toll gate, crossed paying (TollGateOptionPlugin, "pay-toll(10gp)"): only on the map for a walker that
 # pays (toll_surface); the sim's walks route through it themselves (rlscape.sim.movement)
@@ -189,6 +194,8 @@ def crossing_tiles(thing: dict[str, int | str]) -> list[tuple[tuple[int, int], t
             return [((x + i, y - 1), (x + i, y + 1)) for i in range(sx)]
         case 35549 | 35551:  # the toll gate's halves: their wall is on the tile's west side
             return [((x - 1, y), (x, y))]
+        case 492:  # the Crandor passage: the volcano's rim (KaramjaListeners.VOLCANO_RIM) and Crandor's landing
+            return [((2856, 3167), (2834, 3258))]
     return []
 
 
@@ -214,6 +221,33 @@ def surface() -> Map:
     """The exported surface map (data/travel)."""
     data = np.load(DATA / "collision.npz")
     return Map(data["flags"], tuple(int(v) for v in data["origin"]), _rows("doors.csv"), _rows("crossings.csv"))
+
+
+def beside(world: Map, tile: tuple[int, int], size: tuple[int, int]) -> list[int]:
+    """The nodes next to a footprint's sides (not its corners) that a character can stand on."""
+    (x, y), (sx, sy) = tile, size
+    around = ([(x - 1, y + j) for j in range(sy)] + [(x + sx, y + j) for j in range(sy)]
+              + [(x + i, y - 1) for i in range(sx)] + [(x + i, y + sy) for i in range(sx)])
+    return [n for n in map(world.node, around) if n is not None and world.standable[n]]
+
+
+def nearest_beside(world: Map, start: tuple[int, int], tile: tuple[int, int],
+                   size: tuple[int, int]) -> tuple[float, tuple[int, int, int] | None]:
+    """The planner's steps from a tile to beside a node, and the tile beside it the walk ends on."""
+    node = world.node(start)
+    targets = beside(world, tile, size)
+    if node is None or not targets:
+        return float("inf"), None
+    lengths = world.lengths(node)
+    end = min(targets, key=lambda n: lengths[n])
+    return float(lengths[end]), world.tile(end)
+
+
+@cache
+def abyss_map() -> Map:
+    """The Abyss's map (data/abyss, scripts/export_abyss.py): map region (47, 75), closed to the surface's."""
+    data = np.load(DATA.parent / "abyss" / "collision.npz")
+    return Map(data["flags"], tuple(int(v) for v in data["origin"]), [])
 
 
 class Places:

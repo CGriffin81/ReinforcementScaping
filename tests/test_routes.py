@@ -59,3 +59,17 @@ def test_the_exported_map_routes_lumbridge_to_draynor():
     world = surface()
     assert world.steps((3233, 3230, 0), (3092, 3245, 0)) == 144
     assert world.route((3233, 3230, 0), (2957, 3158, 0)) is None  # Karamja: a boat away
+
+
+@pytest.mark.skipif(not (DATA / "collision.npz").exists(), reason="no exported map")
+def test_the_crandor_passage_joins_karamjas_volcano_rim_to_crandor():
+    """Caleb, 2026-11-08, OQ-16 (a): with Dragon Slayer complete, Karamja volcano's pot hole, the dungeon's secret wall
+    and the rope up are one crossing from the rim to Crandor, both ways (its places had no way before)."""
+    from rlscape.routes import CROSSINGS
+    from rlscape.travel import has_a_way
+    world = surface()
+    rim, crandor = (2856, 3167, 0), (2834, 3258, 0)
+    assert 492 in CROSSINGS
+    assert world.crossing_between(rim, crandor) is not None and world.crossing_between(crandor, rim) is not None
+    assert 89 + CROSSINGS[492][1] <= world.steps(rim, crandor) <= 89 + CROSSINGS[492][1] + 2  # (and onto it)
+    assert has_a_way(crandor) and has_a_way((2835, 3262, 0))  # a Crandor place, by its lesser demons

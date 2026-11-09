@@ -7,7 +7,7 @@
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS (the woodcutting slice is committed; mining and fishing are built and tested)
-- Commit: woodcutting slice `f2baf2c` (branch `sim-v0`); mining and fishing uncommitted
+- Commit: woodcutting slice `f2baf2c` (branch `sim-v0`); mining and fishing, and this record, `ae0cb7e`
 
 ## Full Prompt
 

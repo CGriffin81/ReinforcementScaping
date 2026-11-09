@@ -124,3 +124,30 @@ def test_the_home_teleport_is_free_once_every_30_minutes():
     assert route(state, LUMBRIDGE).transports == ()  # it walks back
     assert route(state, LUMBRIDGE, elapsed=state.home_teleport_ready - 1).transports == ()
     assert [t.id for t in route(state, LUMBRIDGE, elapsed=state.home_teleport_ready).transports] == ["home"]
+
+
+@needs_server
+@needs_map
+def test_the_trollheim_teleport_asks_eadgars_ruses_own_requirement():
+    """Eadgar's Ruse isn't on the server, so its Trollheim teleport asks the quest's own requirement (Requirement.kt:
+    Druidic Ritual, Troll Stronghold, Herblore 31; Caleb, 2026-11-08: Trollheim by its teleport, and these teleports
+    open as the quests are flagged complete). From where it lands the mountain and thrower trolls can be walked to.
+    The Watchtower and Ape Atoll teleports ask theirs the same way: Watchtower's levels; Ape Atoll's two quests, both
+    complete from the start."""
+    trollheim = by_id("spell:trollheim")
+    assert trollheim.quests == ("DRUIDIC_RITUAL", "TROLL_STRONGHOLD") and trollheim.skills == (("herblore", 31),)
+    assert by_id("spell:watchtower").quests == () and by_id("spell:watchtower").skills == (
+        ("agility", 25), ("herblore", 14), ("magic", 14), ("mining", 40), ("thieving", 15))
+    ape = by_id("spell:ape_atoll")
+    assert ape.quests == ("THE_GRAND_TREE", "TREE_GNOME_VILLAGE") and ape.skills == ()
+    ape_state = at(LUMBRIDGE, {FIRE: 2, 555: 2, LAW: 2, 1963: 1}, magic=64,
+                   quests=frozenset({"THE_GRAND_TREE", "TREE_GNOME_VILLAGE"}))
+    assert can_use(ape_state, ape, LUMBRIDGE, 0)
+    quests = frozenset({"DRUIDIC_RITUAL", "TROLL_STRONGHOLD"})
+    state = at(LUMBRIDGE, {FIRE: 2, LAW: 2}, magic=61, quests=quests)
+    state.xp[SKILL_INDEX["herblore"]] = float(XP_FOR_LEVEL[30])
+    assert not can_use(state, trollheim, LUMBRIDGE, 0)
+    assert route(state, (2843, 3682, 0)) is None  # a mountain troll's site: no way there yet
+    state.xp[SKILL_INDEX["herblore"]] = float(XP_FOR_LEVEL[31])
+    assert can_use(state, trollheim, LUMBRIDGE, 0)
+    assert route(state, (2843, 3682, 0)) is not None and route(state, (2893, 3700, 0)) is not None  # a thrower troll

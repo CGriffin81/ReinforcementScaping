@@ -59,7 +59,12 @@ Whole options (`reset` / `step` in the env contract) are built in Python on top 
 
 ---
 
-## 2. Repository layout (proposed)
+## 2. Repository layout (as proposed; mostly built by 2026-11-09)
+
+*As built:* `rlscape/` also has `travel.py` and `routes.py` (walking routes on the server's collision map),
+`vocabulary.py`, `agents/` (`smdp.py`, `ppo.py`; RND to come), `eval/` (the harness), and `baselines/`
+(`policies.py`, `guide.py`). There's no `envs/ServerEnv` or Envelope Q (cut, OQ-17). `results/` is git-ignored, so
+the finishing plan's committed summaries need `results/summary/` un-ignored when the first one is written.
 
 ```
 ReinforcementScaping/
@@ -95,13 +100,17 @@ ReinforcementScaping/
 | **Skill reward normalization** | Raw XP grows exponentially per level, so high-level XP would dominate. Total level is the reported metric. | Reward fractional level gained (level + progress toward the next level) to match the reported metric. Wealth reward = Δnet worth / a fixed scale (e.g. 100k GP). |
 | **Valuation table** | Runs are only comparable if net worth is computed the same way every time. | **Done (Caleb's formula):** `data/prices_v2.csv` = max(high alchemy − nature rune, January 2009 GE price from the RuneScape Wiki), coins = 1. Fixed for the whole study. `prices_v1` (the 10-hour snapshot) is superseded but kept. |
 | **RND with masking** | Neither SB3 nor sb3-contrib includes RND. | v1: a VecEnv wrapper that adds a normalized, non-episodic intrinsic reward for MaskablePPO. v2, only if v1 results are ambiguous: dual value heads, using CleanRL's `ppo_rnd_envpool.py` as reference. |
-| **Masking in Envelope Q** | MORL-Baselines' Envelope Q-learning has no action-mask support out of the box. | Patch action selection and the target max to set invalid Q to −∞, and store the next-state mask in the replay buffer. |
+| **Masking in Envelope Q** | MORL-Baselines' Envelope Q-learning has no action-mask support out of the box. | Patch action selection and the target max to set invalid Q to −∞, and store the next-state mask in the replay buffer. *Cut (OQ-17 (a′), 2026-11-09): a weight-conditioned PPO replaces Envelope Q.* |
 | **Bot helpers cut corners** (found Oct 5) | `ScriptAPI.sellOnGE`/`sellAllOnGe` delete the items and pay nothing (`GrandExchange.addBotOffer`). `buyFromGE` never dispatches. `teleportToGE` and `withdraw` skip travel. And any GE offer from an artificial player becomes a bot offer. | **Done:** the agent's character is an `RLPlayer`, treated as a human by every game rule. The bridge trades through the human GE path (`ge_offer` / `ge_collect`, only at the GE). Gathering and combat logic can still be borrowed from the bundled scripts. |
 | **Python version** | This machine has Python 3.14, and RL libraries lag new Python releases. | Use a `uv` project pinned to Python 3.12. |
 | **Windows multiprocessing** | `SubprocVecEnv` uses spawn on Windows. | Put every entry point behind `if __name__ == "__main__":` and keep env construction picklable. |
 | **Reproducibility** | Every comparison needs ≥5 seeds with bootstrap CIs. | Seeded `numpy.random.Generator` in the sim; each run dir stores the config, config hash and git SHA. |
 
 ### Throughput estimates (to sanity-check, not commitments)
+
+*Superseded by measurement (2026-11-09, decision log):* one sim worker makes 70 to 80 decisions a second, a random
+episode about 385 decisions, and PPO training about 1M decisions an hour on this machine. OQ-7 (a) dropped the
+≥20k target. E6 is cut (OQ-17). The estimates below are kept for history.
 
 - **Sim:** target ≥20k decisions/s on 16 threads. A 20-game-hour episode has roughly 100–300 decisions, so a 5M-decision run should take roughly 15–30 min including PPO updates, and all of E2 (25 runs) fits overnight. Small-MLP PPO runs faster on CPU (Ryzen 7 5800X) than on the GPU. Save the RTX 3050 for Envelope Q and the stretch work.
 - **Real server:** at the default 600 ms tick, 1 game-hour takes 1 wall-hour. With a 10× tick and 8 RL-controlled `AIPlayer`s in one world, 1 wall-hour ≈ 80 game-hours. Then E6 (4 configs × 5 seeds × 20 game-hours = 400 game-hours) takes about 5 wall-hours. **Without the speedup it takes about 50 wall-hours**, which is why decision gate G1 matters. A fallback is to validate only the first 10 game-hours (checkpoints 2–10).
@@ -111,6 +120,8 @@ ReinforcementScaping/
 
 ## 4. Phased plan
 
+*From Nov 9, the unfinished items of weeks 3 to 5 are part of the finishing plan in weeks 6 to 8 (OQ-17).*
+
 ### Week 1 (Oct 5–11): Foundations and decision gate
 **Goal:** a go/no-go on the real server, an option catalog v0, and a Python skeleton.
 
@@ -119,7 +130,7 @@ ReinforcementScaping/
 - [x] Fork the server: [CGriffin81/2009scape-rl](https://github.com/CGriffin81/2009scape-rl) (private, full upstream history; `master` mirrors upstream, at `bea45a9e` until it was synced to `f279da8` on 2026-10-28; our work on `rl`). Linked here as the `server/` submodule.
 - [x] Build the server jar (`Server/target/server-1.0.0-jar-with-dependencies.jar`, ~3 min cold build).
 - [x] Run it against MariaDB (`infra/docker-compose.db.yml`, localhost-only; no longer needed, since auth and account persistence are off). The first launch took 418 s, mostly filling the GE price index in SQLite; built-in bots start ticking right away. The game port 43595 bound to **all interfaces**. *Fixed 2026-10-28: `server.bind_address`, which `rl.conf` sets to `127.0.0.1`.*
-- [ ] Install Singleplayer through the Saradomin launcher, for reference play and for watching bots. *Deferred to week 7 (Caleb, 2026-10-28). It's only needed there, to record a replay with the client attached.*
+- [ ] Install Singleplayer through the Saradomin launcher, for reference play and for watching bots. *Deferred to week 7 (Caleb, 2026-10-28). It's only needed there, to record a replay with the client attached.* *Not needed now: the finishing plan's demo replays checkpoints in the sim (OQ-17, 2026-11-09).*
 - [x] Read `core/game/bots/` (`AIPlayer`, `Script`, `ScriptAPI`, `GeneralBotCreator`) and the bundled-script economy helpers.
 - [x] **G1, tick and headless: PASS.** `server.tick_ms` is now configurable and changeable at runtime through the bridge. Measured with 100 ambient bots: 4.9× at 120 ms, 9.5× at 60 ms, 17.5× at 30 ms, 34× at 15 ms (about 2.6 ms of overhead per tick). The "in combat" wall-clock flag is still untested under speedup.
 - [x] **G2, state and actions: PASS.** `content/rl/RLBridge.kt` + `RLCommands.kt` in the fork, and `rlscape/bridge/client.py` here. Spawns a character exactly as it leaves Tutorial Island, reads its full state, and drives authentic interactions: 600 ticks of chopping gave 10 logs and 250 XP. Covered by `scripts/gate_check.py` and `tests/test_bridge_live.py`.
@@ -135,7 +146,7 @@ ReinforcementScaping/
 
 *Python track*
 - [x] `git init`, and a `uv` project pinned to Python 3.12 (`rlscape` package, pytest).
-- [ ] Add the RL stack when the sim needs it: gymnasium, torch, stable-baselines3, sb3-contrib, morl-baselines, mo-gymnasium, tensorboard, pandas, pyarrow, matplotlib.
+- [x] Add the RL stack when the sim needs it: gymnasium, torch, stable-baselines3, sb3-contrib, morl-baselines, mo-gymnasium, tensorboard, pandas, pyarrow, matplotlib. *Done 2026-11-08 for PPO:* torch 2.14.1 with CUDA 13.0 (Caleb), stable-baselines3 and sb3-contrib 2.9.2, tensorboard; torch comes from `wheels/` (`scripts/fetch_torch_wheel.py`). morl-baselines and mo-gymnasium wait for E4.
 - [x] `docs/env-contract.md` **v1.0, signed off by Caleb on 2026-10-28.** It adds the death rule: respawn and carry
   on, with a 2-minute gravestone outside the Wilderness.
 - [x] `docs/option-catalog.md` **v1.0, signed off by Caleb on 2026-10-28:** about 452 actions. Every question is
@@ -154,20 +165,43 @@ ReinforcementScaping/
 
 ### Week 2 (Oct 12–18): Surrogate sim v0, environment, baselines (E1)
 
-*Started 2026-10-27 (catching up):* `rlscape/gamedata` (server data loaders) and `rlscape/combat` (formulas ported from the server, plus the rate model), with tests. Then the cleaned NPC pool (cache definitions), inventory-aware gp/hr and the retreat-aware filter. *2026-10-28:* the access table (gated areas, quest-only NPCs, Slayer levels). Sim v0 started on branch `sim-v0`: the core (skills, character state, the step loop), then the gathering family (woodcutting, mining, fishing, pickpocketing, with hitpoint regeneration and eating) the processing family (smelting, smithing, cooking on fires or ranges, firemaking, burying bones), and the inventory, alchemy and selling options (bank, withdraw, drop, alch, sell at the GE or a general store; per-item actions wait for the vocabulary), ported from the server. Combat so far: melee fights, drops, death and gravestones, a fast candidate ranker (1.3 ms, identical to the reference), and *2026-10-29* the 30 combat-slot actions and 4 loot-mode actions, then ranged fights (arrows used and recovered) and magic fights (runes per cast), with the ranking capped by the ammunition held. The server's GE collection now follows Caleb's buying decisions (fork change). *2026-10-30:* buying (113 buy actions at the GE and shops, with shop stock tracked; gear and food withdrawals; `smith_mithril`; option catalog v1.2); run energy and weight (travel follows the server's energy rules; `bank_deposit_worn`; the bridge's `set_run`, fork change); the Gymnasium layer (`SimEnv` and the shared observation encoder). The item vocabulary *V* (156 items, accepted by Caleb; 974 actions). The random and greedy baselines, and the eval harness (a preliminary E1 run of 10 seeds took under 4 minutes). The scripted-guide baseline is drafted from the RuneScape Wiki's January 2009 guides and reviewed by Caleb; deposits keep the task's kit, and a withdraw-to-sell action exists. 15 pickpocket targets, 5 Ardougne stalls and the Shantay Pass are built, and a live test found no tick manipulation on 2009Scape. The guide's second draft covers all 13 sim v0 skills; Caleb signed it off as E1's scripted baseline. *2026-10-31:* skilling slots replace the fixed gathering actions (paths paired with their processing counterparts; env contract v1.6), and the guide follows the members' guides in stints to multiples of 5. Fletching brought forward from sim v1 (Caleb): chop-and-fletch paths, Fletching's own slots, stringing only where it adds value, and Lumbridge Castle's knife (env contract v1.7; 1,110 actions). Open questions moved to `docs/open-questions-log.md`. Prayer flicking, tested live: a prayer on only in the ticks that need it never drains, and protection and accuracy and damage prayers act at the swing. Fights now flick prayers automatically (Caleb; env contract v1.8). The week-2 property tests and the speed benchmark (804 decisions a second with 16 workers, against the contract's 20k: OQ-7). Calibration started: woodcutting at the site, within ±20% of the server at four bands after patching the measured overheads (willow again with auto-retaliate off: 0.89 to 1.07, every run finishing). Ambient bots are now off in `rl.conf`, as decided on 2026-10-28, and the server version is frozen (Caleb). The bridge's `interact` picks a reachable target and can walk with a client click (Caleb). Aggressive monsters at gathering sites follow Caleb's rule on both backends (env contract v1.9): a low-level woodcutter at the willows is within the gate (0.95). Mining is calibrated too (every case within ±20%), with iron at Al Kharid among the scorpions (Caleb) and the bridge's `safespots`. Fishing is calibrated (every case within ±20%). Draynor's Dark wizards kill a level-3 fisher there, so shrimp can be fished at Lumbridge Swamp too, and the guide fishes there until its combat level passes 14 (Caleb). Travel and banking started (Caleb): walking routes planned on the server's collision map and walked as clicks, and banking through the player's clicks. The sim now walks the planned routes with the measured overheads (every measured trip within 0.95 to 1.12 of the server, against 0.50 to 1.24 before). The transports are built on both backends (Caleb: every trip takes the fastest way the character can use; env contract v1.10): the home teleport, spells, jewellery at every charge, tablets, the seed pod, ships and charters, and the crossings (the Wilderness ditch, the Gnome Stronghold's gate, the Grand Tree's doors, the toll gate). Travel is validated: 27 trips on the server, every one within ±20% (13 fresh ones 0.94 to 1.15). Then (Caleb): the home teleport waits 30 minutes (a fork change, in game ticks); Ghosts Ahoy and the Ectophial are out (the server lacks the quest); a place with no way there is unreachable, and one the character can't get to now is masked for it (231 of 2,792 places cut, mostly behind quests outside the set; OQ-16 asks which missing ways to add). *2026-11-05:* combat calibrated for melee and ranged, drops left (`scripts/calibrate_combat.py`): two fork fixes (the bridge clicked dead monsters; "in combat" counted 10 wall-clock seconds, so a sped-up server locked fights twelve times too long: now 17 game ticks), and site capacity in the rates (kills wait for respawns where a site has few of the monster; the overhead between kills measured, 10 ticks melee, 8 ranged). XP/hr within ±20% on the 8 fit cases and on 8 of 9 cases it wasn't fitted on. Then (Caleb) the "in combat" fix approved; a pickup command (`ground_items`, `take`), with which the runner loots; Taverley dungeon's two eastern Black Knights are hazards, not targets. On the way, a fork fix: every bridge character had account uid 0, so their kills dropped nothing; each now has its own. With loot on (the ranker's top gp picks), XP/hr and kills/hr are within ±20% in all 8 cases (0.80 to 1.15), and so is the time to a full inventory (0.81 to 1.05). Loot per kill matches the sim's spread, but the mean gp/hr of a few short runs can't settle the gate where rare drops make up the loot (OQ-20). Still open: poison, ranged damage taken, magic, the willows' aggression rates, and monsters near a fight (OQ-19). *2026-11-06 (Caleb):* quests are out: every quest the server has (68 of the enum's 150) is complete from the start, as flags only (quest points and unlocks, no XP or items), on both backends; the observation loses its 64 quest features (env contract v1.12, option catalog v1.3). The level-3 start with the starter kit stays. The uid fix is approved. Calibration keeps the 50 ms tick, with a speed check at 600 ms in the gate (OQ-21); gp/hr is gated by its parts, with a drop-table probe of about 200 kills per monster (OQ-20); monsters near a fight are measured before they're modelled (OQ-19). Then (Caleb): the GE sells the anti-dragon shield, and fights against dragonfire monsters put a carried one on; the vocabulary is redrafted with every quest complete, adding 16 items; the buy list takes the dragon dagger and longsword and the Fremennik helms (OQ-24): *V* 198, 1,227 actions, 1,957 features; only Taverley's eastern pair of Black Knights are hazards. The gate's speed check passes (18 of 18 cases agree at 50 and 600 ms; OQ-21). The drop tables' shared sub-tables (rare drop table, gems, herbs, seeds) are ported, and with them *V* takes 5 more items (Caleb): 203, 1,252 actions, 1,992 features. A drop probe checks the tables item by item against the server (OQ-20). Poison (and antipoison), combat potions, antifire and a dragon's breath are modelled (Caleb; the 2009 wiki: antifire with the shield is complete immunity); fights flick on the server too (`flick`), and one server takes several agents at once. Calibration fights start with a combat inventory (no starter kit; Prayer at the band, flicked; food for the expected damage). Thieving calibrated at Lumbridge's men (0.98 and 1.00 after a fitted 0.44-tick overhead an attempt). Only the four-dose potions are in *V*, the lower doses still drunk and counted (Caleb, OQ-25): *V* 214, 1,318 actions, 2,102 features. The moss giants west of the Fishing Guild, which the server doesn't let a character attack, are hazards too, and the Yanille Agility Dungeon is out of the project (Caleb). The probe: Black Knights, unicorns, hobgoblins, women, green dragons (with antifire), moss giants and chaos druids fit. The server ran in dev mode, which makes champion scrolls and big fish common; it's off now (Caleb, OQ-26). *2026-11-07:* the overhead between kills refitted with the combat inventory (3 ticks, from 10 and 8: kills now take about one click), and a pickup time a looted drop (3 melee, 10 ranged): XP/hr within ±20% in all 24 cases (0.90 to 1.19); the time to a full inventory at Edgeville's chaos druids is 0.72 (the runner loots only while nothing attacks it). Then (Caleb): the runner loots between kills, attacked or not (every time to a full inventory within ±20%; ranged's arrow pickups are OQ-27), and the rate model's kill time counts the last hit's overkill (exact, matching the sim's kills within 0.8%). The bridge uses items on scenery (`use_item_on`), and the processing family is calibrated: every case within ±20% after fixes measured on the server (burying 3 ticks a bone; smithing's next item; firemaking's step-offs); the Edgeville furnace needs the Varrock Diary, so the sim no longer offers it. Next: the OQ-19 and OQ-20 runs, poison, ranged damage taken, magic and the willows, then thieving and the processing skills, with the speed check.
-- [ ] `sim/` v0: per option, check preconditions, sample outcomes, apply XP/item/GP deltas and update state. Formulas are ported from the server source; overheads start as placeholders. Decided 2026-10-28:
+*Started 2026-10-27 (catching up):* `rlscape/gamedata` (server data loaders) and `rlscape/combat` (formulas ported from the server, plus the rate model), with tests. Then the cleaned NPC pool (cache definitions), inventory-aware gp/hr and the retreat-aware filter. *2026-10-28:* the access table (gated areas, quest-only NPCs, Slayer levels). Sim v0 started on branch `sim-v0`: the core (skills, character state, the step loop), then the gathering family (woodcutting, mining, fishing, pickpocketing, with hitpoint regeneration and eating) the processing family (smelting, smithing, cooking on fires or ranges, firemaking, burying bones), and the inventory, alchemy and selling options (bank, withdraw, drop, alch, sell at the GE or a general store; per-item actions wait for the vocabulary), ported from the server. Combat so far: melee fights, drops, death and gravestones, a fast candidate ranker (1.3 ms, identical to the reference), and *2026-10-29* the 30 combat-slot actions and 4 loot-mode actions, then ranged fights (arrows used and recovered) and magic fights (runes per cast), with the ranking capped by the ammunition held. The server's GE collection now follows Caleb's buying decisions (fork change). *2026-10-30:* buying (113 buy actions at the GE and shops, with shop stock tracked; gear and food withdrawals; `smith_mithril`; option catalog v1.2); run energy and weight (travel follows the server's energy rules; `bank_deposit_worn`; the bridge's `set_run`, fork change); the Gymnasium layer (`SimEnv` and the shared observation encoder). The item vocabulary *V* (156 items, accepted by Caleb; 974 actions). The random and greedy baselines, and the eval harness (a preliminary E1 run of 10 seeds took under 4 minutes). The scripted-guide baseline is drafted from the RuneScape Wiki's January 2009 guides and reviewed by Caleb; deposits keep the task's kit, and a withdraw-to-sell action exists. 15 pickpocket targets, 5 Ardougne stalls and the Shantay Pass are built, and a live test found no tick manipulation on 2009Scape. The guide's second draft covers all 13 sim v0 skills; Caleb signed it off as E1's scripted baseline. *2026-10-31:* skilling slots replace the fixed gathering actions (paths paired with their processing counterparts; env contract v1.6), and the guide follows the members' guides in stints to multiples of 5. Fletching brought forward from sim v1 (Caleb): chop-and-fletch paths, Fletching's own slots, stringing only where it adds value, and Lumbridge Castle's knife (env contract v1.7; 1,110 actions). Open questions moved to `docs/open-questions-log.md`. Prayer flicking, tested live: a prayer on only in the ticks that need it never drains, and protection and accuracy and damage prayers act at the swing. Fights now flick prayers automatically (Caleb; env contract v1.8). The week-2 property tests and the speed benchmark (804 decisions a second with 16 workers, against the contract's 20k: OQ-7). Calibration started: woodcutting at the site, within ±20% of the server at four bands after patching the measured overheads (willow again with auto-retaliate off: 0.89 to 1.07, every run finishing). Ambient bots are now off in `rl.conf`, as decided on 2026-10-28, and the server version is frozen (Caleb). The bridge's `interact` picks a reachable target and can walk with a client click (Caleb). Aggressive monsters at gathering sites follow Caleb's rule on both backends (env contract v1.9): a low-level woodcutter at the willows is within the gate (0.95). Mining is calibrated too (every case within ±20%), with iron at Al Kharid among the scorpions (Caleb) and the bridge's `safespots`. Fishing is calibrated (every case within ±20%). Draynor's Dark wizards kill a level-3 fisher there, so shrimp can be fished at Lumbridge Swamp too, and the guide fishes there until its combat level passes 14 (Caleb). Travel and banking started (Caleb): walking routes planned on the server's collision map and walked as clicks, and banking through the player's clicks. The sim now walks the planned routes with the measured overheads (every measured trip within 0.95 to 1.12 of the server, against 0.50 to 1.24 before). The transports are built on both backends (Caleb: every trip takes the fastest way the character can use; env contract v1.10): the home teleport, spells, jewellery at every charge, tablets, the seed pod, ships and charters, and the crossings (the Wilderness ditch, the Gnome Stronghold's gate, the Grand Tree's doors, the toll gate). Travel is validated: 27 trips on the server, every one within ±20% (13 fresh ones 0.94 to 1.15). Then (Caleb): the home teleport waits 30 minutes (a fork change, in game ticks); Ghosts Ahoy and the Ectophial are out (the server lacks the quest); a place with no way there is unreachable, and one the character can't get to now is masked for it (231 of 2,792 places cut, mostly behind quests outside the set; OQ-16 asks which missing ways to add). *2026-11-05:* combat calibrated for melee and ranged, drops left (`scripts/calibrate_combat.py`): two fork fixes (the bridge clicked dead monsters; "in combat" counted 10 wall-clock seconds, so a sped-up server locked fights twelve times too long: now 17 game ticks), and site capacity in the rates (kills wait for respawns where a site has few of the monster; the overhead between kills measured, 10 ticks melee, 8 ranged). XP/hr within ±20% on the 8 fit cases and on 8 of 9 cases it wasn't fitted on. Then (Caleb) the "in combat" fix approved; a pickup command (`ground_items`, `take`), with which the runner loots; Taverley dungeon's two eastern Black Knights are hazards, not targets. On the way, a fork fix: every bridge character had account uid 0, so their kills dropped nothing; each now has its own. With loot on (the ranker's top gp picks), XP/hr and kills/hr are within ±20% in all 8 cases (0.80 to 1.15), and so is the time to a full inventory (0.81 to 1.05). Loot per kill matches the sim's spread, but the mean gp/hr of a few short runs can't settle the gate where rare drops make up the loot (OQ-20). Still open: poison, ranged damage taken, magic, the willows' aggression rates, and monsters near a fight (OQ-19). *2026-11-06 (Caleb):* quests are out: every quest the server has (68 of the enum's 150) is complete from the start, as flags only (quest points and unlocks, no XP or items), on both backends; the observation loses its 64 quest features (env contract v1.12, option catalog v1.3). The level-3 start with the starter kit stays. The uid fix is approved. Calibration keeps the 50 ms tick, with a speed check at 600 ms in the gate (OQ-21); gp/hr is gated by its parts, with a drop-table probe of about 200 kills per monster (OQ-20); monsters near a fight are measured before they're modelled (OQ-19). Then (Caleb): the GE sells the anti-dragon shield, and fights against dragonfire monsters put a carried one on; the vocabulary is redrafted with every quest complete, adding 16 items; the buy list takes the dragon dagger and longsword and the Fremennik helms (OQ-24): *V* 198, 1,227 actions, 1,957 features; only Taverley's eastern pair of Black Knights are hazards. The gate's speed check passes (18 of 18 cases agree at 50 and 600 ms; OQ-21). The drop tables' shared sub-tables (rare drop table, gems, herbs, seeds) are ported, and with them *V* takes 5 more items (Caleb): 203, 1,252 actions, 1,992 features. A drop probe checks the tables item by item against the server (OQ-20). Poison (and antipoison), combat potions, antifire and a dragon's breath are modelled (Caleb; the 2009 wiki: antifire with the shield is complete immunity); fights flick on the server too (`flick`), and one server takes several agents at once. Calibration fights start with a combat inventory (no starter kit; Prayer at the band, flicked; food for the expected damage). Thieving calibrated at Lumbridge's men (0.98 and 1.00 after a fitted 0.44-tick overhead an attempt). Only the four-dose potions are in *V*, the lower doses still drunk and counted (Caleb, OQ-25): *V* 214, 1,318 actions, 2,102 features. The moss giants west of the Fishing Guild, which the server doesn't let a character attack, are hazards too, and the Yanille Agility Dungeon is out of the project (Caleb). The probe: Black Knights, unicorns, hobgoblins, women, green dragons (with antifire), moss giants and chaos druids fit. The server ran in dev mode, which makes champion scrolls and big fish common; it's off now (Caleb, OQ-26). *2026-11-07:* the overhead between kills refitted with the combat inventory (3 ticks, from 10 and 8: kills now take about one click), and a pickup time a looted drop (3 melee, 10 ranged): XP/hr within ±20% in all 24 cases (0.90 to 1.19); the time to a full inventory at Edgeville's chaos druids is 0.72 (the runner loots only while nothing attacks it). Then (Caleb): the runner loots between kills, attacked or not (every time to a full inventory within ±20%; ranged's arrow pickups are OQ-27), and the rate model's kill time counts the last hit's overkill (exact, matching the sim's kills within 0.8%). The bridge uses items on scenery (`use_item_on`), and the processing family is calibrated: every case within ±20% after fixes measured on the server (burying 3 ticks a bone; smithing's next item; firemaking's step-offs); the Edgeville furnace needs the Varrock Diary, so the sim no longer offers it. Then (Caleb): Ava's devices on the GE and in the sim; ranged fights from safespots, found by the server's own chase, with their arrow piles (OQ-27 (d), OQ-29 to OQ-33); no Slayer level requirements; every crossbow and bolt in *V* (279; env contract v1.17, confirmed). The ranged check set is within ±20% on XP/hr (0.96 to 1.19). Magic calibrated by hand casts (the bridge's `cast`; the autocast rate checked live): XP/hr 0.95 to 1.07 where no other kind of monster engages the character; where one does (the animated spades' possessed pickaxe), 1.14 and 1.33 (OQ-19's first measurement). Then (Caleb): magic safespots as ranged does (OQ-34; the table re-exported at ranges 7, 9 and 10), and the aggressive monsters of other kinds near a fight engage between kills until aggression runs out, each fought in the fight's plan (OQ-35 (a); a rate measured on the server; both rankers and the fight; env contract v1.18). Magic's fit set 0.97 to 1.12 and check set 0.95 to 1.03, but for a magic safespot holding from 61% of the wandering (OQ-36); beside neighbours 0.99 to 1.28 (the poison spiders' 1.17 once the runner attacks back after eating). *2026-11-08 (Caleb):* a usable safespot holds from 80% of the wandering (OQ-36; the cases it changed 0.84 to 1.15, after the late pickup trips' guards were refitted to the server's); the observation shows the home teleport's cooldown (OQ-15, v1.19); the rate model is vectorised (OQ-7 (a): 110 decisions a second in one process, 817 with 16 workers, 2.6 times as fast); OQ-2 sets the four sim v1 skills' scope and OQ-16 (a) the missing ways. Then: OQ-2's draft (`docs/sim-v1-skills-draft.md`, for Caleb); OQ-16's unclear places checked on the server (none walkable, as the planner has it) and the Crandor passage built (219 places without a way, from 231). Then the Rellekka ferries (the Fremennik Isles; 210 places without a way); West Ardougne stays unreachable (Caleb, OQ-37 (b): its way in needs a quest item; `docs/post-project-gaps.md`), and Trollheim is reached by its teleport (Caleb: its climbs need climbing boots, left out). The Trollheim, Watchtower and Ape Atoll teleports ask what the server asks for quests it lacks, their own requirements (Caleb, env contract v1.20): Ape Atoll's open now, Trollheim's at Herblore 31, Watchtower's at its five levels. Then Caleb answered OQ-2's draft: Crafting without studded leather, snakeskin or jewellery; the Gnome, Barbarian and Wilderness courses, and Barbarian Fishing for Agility (its rod on the GE); the 21 potions with grinding; the Abyss and tiaras; inputs in *V*. The Barcrawl and Enter the Abyss are complete from the start as flags only (env contract v1.21), and the bridge finds NPCs by the form a player sees. OQ-38 decided (Caleb): picking flax paired with spinning, and essence mined and crafted by separate paths. OQ-39 to OQ-41 decided (Caleb): the death altar opens and the astral one stays out; the pouches as the server gives them (the small pouch at spawn, in the bank: env contract v1.22; the others drop from the Abyss's monsters); the barbarian rod on the GE at 1,000 gp (built). Building sim v1: Crafting built in the sim (gems, leather and dragonhide at a bank; tanning; spinning; flax; its slots: env contract v1.23; a dead RL character now respawns at the home location, fixed in the fork), and its inputs bought on the GE (*V* 297, 1,828 actions, 2,801 features: env contract v1.24). Hardening two flaky live tests found an RL character kept only its own map region active, so monsters across a boundary stood frozen; it now keeps the regions in a client's view active, as a human does (Caleb, a fork fix), and the combat calibration sets were re-checked. Crafting is calibrated on the server (`scripts/calibrate_crafting.py`: each batch's clicks fitted, every case 1.00 but flax, 0.92 to 1.00; the bridge leaves Crafting's interfaces open, a fork fix). The animated spades' stuck magic runs were a spade the server left alive at 0 hitpoints (its killer's character despawned); the Abandoned Mine's spades are hazards (Caleb, OQ-42) and the rest a documented gap (OQ-44 (a)). Herblore built in the sim (15 cleaning and 21 potion paths, with grinding; its slots: env contract v1.25). Herblore's inputs bought on the GE (V 348, 2,157 actions, 3,274 features: env contract v1.27; the bird's nest at Caleb's 1,765 gp). Herblore is calibrated on the server (`scripts/calibrate_herblore.py`: every case 1.00 after cleaning's first tick was fitted). Agility's courses built and calibrated (the Gnome Stronghold, the Barbarian Outpost and the Wilderness, `scripts/measure_agility.py`: XP/hr 1.00 to 1.03 but the Wilderness at Agility 52, 0.86; its slots: env contract v1.28); a rope swing's fail does nothing on this server, and the Wilderness log's spike pit has aggressive skeletons, which the sim's falls now meet, at their measured rate
+(Caleb, OQ-46 (a)). Barbarian Fishing built and calibrated (`barb_fish` in the Fishing and Agility slots, 1.00 to 1.03; the barbarian
+rod in V and on the GE: env contract v1.31). The skilling slots now price the aggressive monsters at a gathering site (the share of XP per tick the sim's own
+option keeps under them). Seven Agility shortcuts are in travel, each both ways, taken from their levels on both backends
+(OQ-16 (a); measured, and validated on the server at 0.90 to 1.03: env contract v1.32). Agility's
+calibrations pass the gate's 600 ms speed check (11 of 11, OQ-21), and the bridge client now sets a script's tick
+back as the scripts expected. Runecrafting is built and measured on the server: `rc_<rune>` at eight ruins (entering
+and inside within 0.84 to 1.01 of the server), the tiaras worn and made (env contract v1.29 and v1.30),
+and the Abyss's ten `abyss_rc_<rune>` paths (whole trips 0.94 to 1.00 for every rune: env contract v1.33; the skull is in the observation and the drained prayer a documented gap: Caleb, OQ-48 (a), env contract
+v1.34). Chaos rune crafting is out, an intentional gap (Caleb, env contract v1.35). The essence pouches are in as the
+server gives them, decay and the Dark Mage's repair included (OQ-40 (c)), and the travel model closes the Abyss, in
+by the mage's teleport and out by a teleport or its exit (validated: 0.95 in, 1.02 out), so the combat slots fight
+its monsters and they drop the pouches (env contract v1.36). A fight there also takes the outer ring's crowd,
+with no prayer (Caleb, OQ-49 (a); its rate fitted to the server's fights: env contract v1.37). Two of the three
+cases held out of the fit pass; the leeches' food (0.68 of the server's) is a documented gap (Caleb, OQ-51 (a)).
+Picked flax can be banked or spun (Caleb, OQ-52: env contract v1.38), which took greedy GP from about 144k
+to about 2M net worth at hour 20. The start has Druidic Ritual's 250 Herblore XP, so Herblore can be trained (Caleb,
+OQ-56, v1.39). The Gem Store's uncut gems stand for 2009's 87 members' worlds on one world (Caleb, OQ-57 (a), v1.41). Crafting gathers
+hides by killing cows, their bones buried (Caleb, v1.42). The scripted guide's fifth revision trains all 18 skills
+(Caleb, OQ-53, OQ-58 (a), OQ-59 (b)): total level 351, net worth 131k on E1's 30 seeds; Caleb signed it off and approved every contract version the same
+day, so sim v1 is frozen.
+OQ-17 is decided: (a′), with every research
+question answered and a simple peer review (Caleb, 2026-11-09). The plan from here is weeks 6 to 8 below. Caleb
+confirmed every env contract version (to v1.37) and option catalog v1.4 the same day.
+- [x] `sim/` v0: per option, check preconditions, sample outcomes, apply XP/item/GP deltas and update state. Formulas are ported from the server source; overheads start as placeholders. Decided 2026-10-28:
   - **event-level sampling**
   - **every family except the v1 skills** (four since Fletching moved into sim v0 on 2026-10-31), which come in sim v1 before E2. Quests are out (Caleb, 2026-11-06): every quest the server has is complete from the start
   - the item vocabulary list is drafted for Caleb to check (*done 2026-10-30:* 156 items, accepted)
 - [x] `envs/SimEnv`: Gymnasium API, `action_masks()`, `info["duration"]`, `info["reward_vec"]`, and reward weights. *2026-10-30:* the weights are a `reset` option, as env contract §2 has it, not a wrapper.
-- [ ] Baselines:
+- [x] Baselines:
   - random (masked) (*done 2026-10-30,* `rlscape/baselines`)
   - greedy XP/hr and greedy GP/hr (one-step lookahead on expected rates at the current state) (*done 2026-10-30:*
     E1 uses raw XP for XP/hr (Caleb) and net worth for GP/hr; `e1_baselines()`)
   - scripted guide routine: Claude drafts it from archived 2009 guides, cites them in `docs/resources.md`, and Caleb reviews it before E1 runs (*drafted 2026-10-30:* `docs/scripted-guide-draft.md`; signed off by Caleb on 2026-10-31 and in `e1_baselines()`)
 - [x] `eval/` harness: any policy × N seeds produces metrics at game-time checkpoints every 2 h (2, 4, …, 20), written to parquet with bootstrap 95% CIs. *2026-10-30:* `rlscape/eval/harness.py` and `scripts/evaluate.py`; metrics are total level, total XP and net worth, with paired differences between policies.
 - [x] Tests: masks are always respected, GP and item counts never go negative, the same seed gives the same trajectory, plus a sim speed benchmark. *Done 2026-10-31:* `tests/test_sim_properties.py` (whole random episodes; the same trajectory under other string-hash seeds) and `scripts/benchmark_sim.py` (804 decisions a second with 16 workers; the contract's target is 20k: OQ-7).
-- [ ] Server: `scripts/calibrate.py` runs each option K times through the bridge and logs duration, XP, item and GP distributions. *Started 2026-10-31:* woodcutting at the site (the activity alone, from the site's tile), within ±20% at four bands. Decided 2026-10-28 (env contract §7):
+- [x] Server: `scripts/calibrate.py` runs each option K times through the bridge and logs duration, XP, item and GP distributions. *Started 2026-10-31:* woodcutting at the site (the activity alone, from the site's tile), within ±20% at four bands. Decided 2026-10-28 (env contract §7):
   - ambient bots off
   - 11 bands of calibration characters, fresh to 99, buying their own gear with 100 gp × total level; every quest the server has is complete at every band (since 2026-11-06; graded quests before)
   - about 10 runs per option at each band where it's unlocked
@@ -177,13 +211,13 @@ ReinforcementScaping/
 **Exit:** E1 table on the sim with CIs, and calibration runs started.
 
 ### Week 3 (Oct 19–25): Masked PPO and the E2 sweep
-- [ ] SMDP rollout buffer, unit-tested against hand-computed returns.
+- [x] SMDP rollout buffer, unit-tested against hand-computed returns. *Done 2026-11-08:* `rlscape/agents/smdp.py` (GAE and PBRS with γ_hr^τ) and `rlscape/agents/ppo.py` (`SMDPMaskableRolloutBuffer`, `SMDPMaskablePPO`), with a short run on the sim.
 - [ ] `scripts/train.py`: config files, periodic checkpoints, TensorBoard, and a decision-logger callback.
 - [ ] Sanity ladder:
   1. PPO solves a 3-option toy catalog with a known optimum.
   2. PPO beats random on the full catalog.
   3. Small hyperparameter sweep at w = (0.5, 0.5).
-- [ ] Sim v1, before E2:
+- [x] Sim v1, before E2 (built and calibrated by 2026-11-09, the speed checks passed; the gaps in `docs/post-project-gaps.md`):
   - fold in the calibration data (real duration distributions, travel and bank overheads)
   - add the four new skills (Crafting, Agility, Herblore, Runecrafting; their options are open question OQ-2). Quests are out (2026-11-06)
   - pass the **±20% sim-to-server gate** on mean XP/hr, gp/hr and duration per calibrated option, with one patch round; residual gaps are reported
@@ -206,22 +240,79 @@ ReinforcementScaping/
 
 **Exit:** E4 Pareto figure.
 
-### Week 6 (Nov 9–15): Real-server validation (E6)
-- [ ] `envs/ServerEnv` over the bridge, using the same contract.
-- [ ] Replay the best checkpoint for each E2 weighting, plus the best baseline, on the server: ≥5 seeds, short horizon.
-- [ ] Measure the sim-to-real gap per metric and per option (residual table). Report whether policy rankings hold (rank correlation makes a good headline number), patch the biggest gaps into sim v2, and recheck.
+### Weeks 6–8 (Nov 9–30): the finishing plan (OQ-17 (a′), Caleb, 2026-11-09)
 
-**Exit:** E6 gap report.
+Every research question is answered (Caleb), all on sim v1, with 5 seeds per configuration. RQ5 is OQ-1.
 
-### Week 7 (Nov 16–22): Stretch experiment and behavior analysis
-- [ ] **One stretch only**, chosen at the week-5 midpoint. See [Appendix B](#9-appendix-b-stretch-options-e7) for the options.
-- [ ] Final figures: learning curves with CIs and annotated jumps, Pareto front, stacked-area time allocation, discovery timeline.
-- [ ] Replays of an early, a middle and a final checkpoint on the same fixed scenario. Record one on the real server with the client attached.
+**Branches** (Caleb, OQ-61):
+- each experiment runs on its own `experiment/<name>` branch from `main`, after the `sim-v1` tag (PR #8's merge);
+- shared tooling (the mask speed-up, `train.py`, `results/summary/`) goes into `main` first;
+- each experiment merges back by its own PR, its summary committed.
 
-### Week 8 (Nov 23–29): Write-up and demo
-- [ ] Report that answers RQ1–RQ4 (RQ5 if attempted) explicitly, with a verdict on each of H1–H3. Negative results get their supporting analysis.
-- [ ] Demo video, plus a reproducibility README with one command per experiment.
-- [ ] Note: Nov 26 is Thanksgiving. Treat this week as half capacity and buffer.
+**Cut:**
+- E4's Envelope Q, replaced by a weight-conditioned PPO;
+- `ServerEnv` and E6's replays, with the calibration gate's results per option as the sim-to-real evidence;
+- E5's option granularity, which no research question asks about;
+- E7 as planned.
+
+The old weeks 6 to 8 (E6 on the server, the stretch, a replay with the client) are superseded.
+
+*Nov 9–10: freeze and tooling*
+- [x] Freeze sim v1 (done 2026-11-09, a day early: Caleb approved every contract version and the guide). The Runecrafting work is all in: the Abyss's fights by OQ-49 (a) are built, with the
+  leeches a documented gap (OQ-51 (a)). The gate's 600 ms speed checks for Crafting, Herblore and Runecrafting
+  (OQ-21) pass, 43 of 43 (2026-11-09). Picked flax can be banked or spun (OQ-52, env contract v1.38). Caleb confirmed
+  every env contract version (to v1.42), option catalog v1.4 and the guide's fifth revision on 2026-11-09.
+- [ ] Speed up the action mask without changing its results, one day at most. It's 92% of a decision's time, and
+  training runs at about 1M decisions an hour.
+- [ ] `scripts/train.py`:
+  - one config file per experiment (`configs/`);
+  - periodic checkpoints and TensorBoard;
+  - the decision logger;
+  - each run's config, its hash and the git SHA.
+
+*Nov 11–12: does PPO learn?*
+- [ ] The sanity ladder:
+  1. the toy catalog;
+  2. PPO beats random on the full catalog;
+  3. a small hyperparameter sweep at (.5, .5).
+- [ ] E1 rerun on sim v1: random, greedy XP/hr, greedy GP/hr and the scripted guide.
+
+*Nov 13–18: the experiments* (the runs overlap the building)
+- [ ] **E2** (RQ1 to RQ3): (1,0), (.75,.25), (.5,.5), (.25,.75) and (0,1), 5 seeds each.
+- [ ] **E3** (RQ2, RQ4, H3): the RND wrapper, then PPO + RND at (.5,.5), 5 seeds, against E2's (.5,.5).
+- [ ] **E5** (RQ4), at (.5,.5) with 5 seeds each:
+  - two more γ_hr values (§3's set: 0.5, 0.9, 0.99);
+  - raw reward against PBRS. Φ is §3's candidate, the best GP/hr the current unlocks allow, confirmed when it's
+    built.
+- [ ] **The weight-conditioned PPO** (RQ3's second half): weights drawn each episode and given in the observation.
+  Pareto coverage, hypervolume and training cost against E2's agents.
+
+*Nov 19–21: analysis*
+- [ ] The figures:
+  - learning curves with CIs and changepoints;
+  - the Pareto front and hypervolume;
+  - time allocation as stacked areas;
+  - the discovery timeline;
+  - the sim-to-real table from the calibration gate;
+  - RQ5 (OQ-1).
+- [ ] Every figure and table is rebuilt by one script from small summaries committed to `results/summary/`.
+
+*Nov 22–25: the draft and the copy to review*
+- [ ] The report answers RQ1 to RQ4 (and RQ5, depending on OQ-1), with a verdict on each of H1 to H3. Negative results
+  get their supporting analysis.
+- [ ] The peer review kept simple (Caleb; the form is OQ-50): a reviewer's guide, and the reviewed version tagged.
+
+*Nov 26: peer review (Thanksgiving week runs at half capacity). Nov 27–30: revisions, and the demo (sim replays of an
+early, a middle and a final checkpoint). The report is due Mon Nov 30.*
+
+**If time runs short:** depth gives way, not a research question (from Caleb's answer):
+- fewer γ_hr values or weightings, or shorter runs;
+- fewer than 5 seeds goes last, since the proposal promises at least 5.
+
+Caleb picks the cut.
+
+**If PPO doesn't learn by Nov 12:** debug it on the ladder. If it still doesn't learn by about Nov 16, the report
+covers E1 and E2 with an analysis of why, which `Requirements.md` accepts.
 
 ---
 
@@ -230,16 +321,17 @@ ReinforcementScaping/
 - **Critical path:** env contract → sim v0 → MaskablePPO + SMDP buffer → E2. E3–E6 all reuse E2's agents or infrastructure.
 - **If G1 or G2 fails:** go sim-primary. Calibrate from source formulas plus manual timing in Singleplayer, and shrink E6 to a manual spot-check.
 - **If PPO hasn't beaten greedy by week 4:** that's an acceptable finding, but first check that the catalog actually contains delayed-payoff investments. If greedy is optimal by construction, H1 can't be tested. Add an investment structure (e.g. Smithing → better gear → better combat GP) before concluding.
-- **If behind at the week-5 midpoint:** drop E7 first, then cut E5 down to γ and PBRS.
+- **If behind at the week-5 midpoint:** drop E7 first, then cut E5 down to γ and PBRS. *Superseded (2026-11-09) by
+  the finishing plan's "If time runs short" (weeks 6–8).*
 
 ---
 
 ## 6. Weekly rhythm
 
 Trimmed by Caleb on 2026-10-28. The interaction records and the decision log already give a running account, so
-there are no Monday goal entries and no `wkN` tags.
+there are no Monday goal entries and no `wkN` tags. The Friday status entries went too (Caleb, 2026-11-09, OQ-55): the
+records, the decision log and the status line above keep the account.
 
-- Friday: a 5-line status entry in `docs/decision-log.md` (done, blocked, changed, next, risks).
 - Each results table goes into `results/summary/` with the exact config hash that produced it.
 
 ---
@@ -302,5 +394,8 @@ Only attempted after E1–E6 are solid. Pick at most one.
 | **Report value** | High: a vivid contrast in strategy (how the LLM's activity mix compares with PPO's). | Medium–high if it works; an algorithm-comparison result. | High if it works, but it probably won't fit the schedule. | Better polish on the core RQs. |
 
 **Closest prior work:** RuneBench (`docs/resources.md` [18]) benchmarks LLM coding agents on RuneScape skill-XP and gold tasks. rs-sdk [19] shows a tool (MCP) interface and wiki-knowledge setup that option A could follow.
+
+*Superseded (2026-11-09): OQ-17 (a′) leaves no time for a stretch, and OQ-1 now asks how RQ5 is answered (Claude
+recommends (C′), a bound).*
 
 **Recommendation: A (LLM planner).** It's the cheapest, the most likely to finish, and it adds a qualitatively different comparison to RQ1. It needs an Anthropic API key and a small budget (a cap of ~$25–50 is plenty). **B** is the pick if you'd rather keep the project pure-RL and are willing to set up WSL2 Ubuntu early. **C** is best kept as "future work" in the report.

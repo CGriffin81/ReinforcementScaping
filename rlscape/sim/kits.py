@@ -11,6 +11,12 @@ Kits:
 - `woodcutting` / `mining`: the best axe / pickaxe the level allows (SkillingTool's priority); woodcutting also
   keeps a tinderbox and a knife, which its chop-and-burn and chop-and-fletch paths use (rlscape.sim.skilling).
 - `fletching`: the knife and whatever fletching inputs are carried (logs, bows, bowstrings, shafts, feathers, tips).
+- `crafting`: the chisel, needle and thread, and whatever crafting inputs are carried (uncut gems, leathers).
+- `flax`: nothing. Picking flax needs no tool, and the flax is its product (Caleb, 2026-11-09, OQ-52: bank it or
+  spin it).
+- `herblore`: the pestle and mortar, and whatever herblore inputs are carried (herbs, vials of water, unfinished
+  potions, secondaries).
+- `runecrafting`: whatever essence and talismans are carried.
 - `fishing:<method>`: the method's tool and its bait or feathers.
 - `thieving`: food, since failed attempts hurt.
 - `processing:<activity>`: its tools and inputs (WITHDRAW_RECIPES); cooking also keeps logs and a tinderbox, for a
@@ -57,6 +63,22 @@ def kit(state: CharacterState, task: str | None) -> set[int]:
     if kind == "fletching":
         from rlscape.sim.fletching import inputs  # imported here: fletching imports economy, which imports this
         return inventory & ({gd.KNIFE} | inputs())
+    if kind == "crafting":
+        from rlscape.sim.crafting import inputs as craft_inputs  # imported here, as fletching's
+        return inventory & craft_inputs()
+    if kind == "flax":
+        return set()
+    if kind == "herblore":
+        from rlscape.sim.herblore import inputs as herb_inputs  # imported here, as fletching's
+        return inventory & herb_inputs()
+    if kind == "runecrafting":
+        from rlscape.sim.runecrafting import inputs as rc_inputs  # imported here, as fletching's
+        return inventory & rc_inputs()
+    if kind == "agility":  # food, for the falls (rlscape.sim.agility eats as thieving does)
+        return inventory & food
+    if kind == "barbfishing":  # the barbarian rod and the bait (rlscape.sim.barbfishing)
+        from rlscape.sim.barbfishing import BAITS, ROD  # imported here, as fletching's
+        return inventory & {ROD, *BAITS}
     if kind == "processing":
         return _processing_kit(state, detail)
     if kind == "combat":

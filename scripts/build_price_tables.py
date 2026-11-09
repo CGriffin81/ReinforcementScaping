@@ -24,6 +24,12 @@ historical list, so the frozen seller sells them and the frozen buyer buys them 
 them there (the alchemy spell refuses untradeable items). prices_v2's ge_price_2009 column is the frozen GE price:
 the 2009 one, or a set price (source ge_set).
 
+Decision (Caleb, 2026-11-08, OQ-41): the barbarian rod joins them at 1,000 gp, so barbarian fishing needn't wait on
+Otto's training.
+
+Decision (Caleb, 2026-11-08): the bird's nest joins them at 1,765 gp. Herblore's Saradomin brew grinds it into the
+crushed nest (1,865 gp at January 2009 prices), and it's untradeable on this server, as the rod is.
+
 Inputs:  data/item_definitions.csv (scripts/export_item_definitions.py),
          results/ge_history/sample/*.json (scripts/fetch_ge_history.py),
          data/grandexchange_warmup10h.db (scripts/ge_warmup.py).
@@ -52,8 +58,10 @@ FROZEN_DB = Path("data/grandexchange_2009_frozen.db")
 RL_CONF = Path("server/Server/worldprops/rl.conf")
 ITEM_CONFIGS = Path("server/Server/data/configs/item_configs.json")
 
-# GE prices Caleb set for items the 2009 GE never traded (2026-11-07)
-SET_PRICES = {10498: 2_500, 10499: 10_000}  # Ava's attractor, Ava's accumulator
+# GE prices Caleb set for items the 2009 GE never traded (2026-11-07; the rod and the bird's nest 2026-11-08)
+SET_PRICES = {10498: 2_500, 10499: 10_000,  # Ava's attractor, Ava's accumulator
+              11323: 1_000,  # the barbarian (heavy) fishing rod
+              5075: 1_765}  # the bird's nest (empty), which Herblore grinds into the crushed nest
 
 COINS = 995
 NATURE_RUNE = 561

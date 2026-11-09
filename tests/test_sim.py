@@ -47,9 +47,12 @@ def test_total_xp_counts_each_skill_up_to_level_99():
 @needs_server
 def test_fresh_character_leaves_tutorial_island():
     state = CharacterState.fresh()
-    assert state.total_level() == 33 and state.skill_measure() == pytest.approx(33.0)
+    # 33, and Herblore 3 from Druidic Ritual's 250 XP (Caleb, 2026-11-09, OQ-56): every recipe needs level 3
+    assert state.xp[SKILL_INDEX["herblore"]] == 250.0 and state.level("herblore") == 3
+    assert state.total_level() == 35 and state.skill_measure() == pytest.approx(35 + (250 - 174) / (276 - 174))
     assert state.free_slots() == 10  # 18 starter items, every stack in one slot
-    assert state.bank == {995: 25} and state.coins() == 25 and state.location == SPAWN
+    # 25 coins, and the small pouch from Enter the Abyss (OQ-40 (c))
+    assert state.bank == {995: 25, 5509: 1} and state.coins() == 25 and state.location == SPAWN
 
 
 @needs_server

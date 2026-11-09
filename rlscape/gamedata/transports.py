@@ -27,7 +27,9 @@ import re
 from dataclasses import dataclass
 from functools import cache
 
+from rlscape.gamedata import server as gd
 from rlscape.gamedata.server import SERVER_CONTENT
+from rlscape.gamedata.shortcuts import LINKS as SHORTCUT_LINKS, TRIP_TICKS as SHORTCUT_TRIP_TICKS
 
 LAW, AIR, FIRE, WATER, EARTH, BANANA = 563, 556, 554, 555, 557, 1963
 COINS = 995
@@ -36,7 +38,7 @@ COINS = 995
 @dataclass(frozen=True)
 class Transport:
     id: str
-    kind: str  # spell, home, jewellery, tablet, seed_pod, ship, charter
+    kind: str  # spell, home, jewellery, tablet, seed_pod, ship, charter, shortcut
     end: tuple[int, int, int]  # where it arrives (for a boat that lands on its deck: the deck)
     ticks: int  # from the first click to being able to walk on
     start: tuple[int, int, int] | None = None  # boats: where they're boarded; teleports work from anywhere
@@ -46,6 +48,7 @@ class Transport:
     consumed: bool = False  # the item is used up (tablets, the seed pod); jewellery uses a charge instead
     coins: int = 0  # the fare
     quests: tuple[str, ...] = ()  # Quests names that must be complete
+    skills: tuple[tuple[str, int], ...] = ()  # (skill, level) needed besides Magic, boosts counting
     xp: tuple[tuple[str, float], ...] = ()  # (skill, XP) it gives
     wilderness_limit: int = 20  # the deepest Wilderness level it can be used from (teleports)
     no_arms: bool = False  # Entrana: no weapons or armour carried or worn
@@ -126,11 +129,26 @@ def _tablet_quests(name: str) -> tuple[str, ...]:
     return ()
 
 
+def _spell_gate(quests: tuple[str, ...]) -> tuple[tuple[str, ...], tuple[tuple[str, int], ...]]:
+    """What a teleport spell's quest check asks: ModernListeners checks ContentAPI.hasRequirement, so a quest the
+    server has must be complete, and one it doesn't (Eadgar's Ruse, Watchtower, Monkey Madness) is met by its own
+    requirement (gd.quest_gate; Caleb, 2026-11-08: these teleports are open, as the quests are flagged complete)."""
+    needed: set[str] = set()
+    levels: dict[str, int] = {}
+    for quest in quests:
+        gate_quests, gate_skills = gd.quest_gate(quest)
+        needed |= gate_quests
+        for skill, level in gate_skills:
+            levels[skill] = max(levels.get(skill, 0), level)
+    return tuple(sorted(needed)), tuple(sorted(levels.items()))
+
+
 def _teleports() -> list[Transport]:
     out = [Transport("home", "home", HOME, HOME_TICKS, button=0)]
-    out += [Transport(f"spell:{name}", "spell", end, SPELL_TICKS, magic=magic, runes=runes, quests=quests,
-                      xp=(("magic", xp),), button=button)
-            for name, button, magic, runes, end, xp, quests in SPELLS]
+    for name, button, magic, runes, end, xp, quests in SPELLS:
+        gate_quests, gate_skills = _spell_gate(quests)
+        out.append(Transport(f"spell:{name}", "spell", end, SPELL_TICKS, magic=magic, runes=runes, quests=gate_quests,
+                             skills=gate_skills, xp=(("magic", xp),), button=button))
     for name, (options, tiles, crumbles, ids) in jewellery().items():
         if name == "RING_OF_LIFE":
             continue
@@ -164,6 +182,16 @@ SHIPS = (
     ("port_sarim-entrana", (3047, 3234, 0), "Monk of Entrana", (2834, 3331, 1), 15, 0, True, (2830, 3335, 0)),
     ("entrana-port_sarim", (2833, 3335, 0), "Monk of Entrana", (3048, 3234, 0), 15, 0, True, (3048, 3234, 0)),
 )
+# The Rellekka ferries (Caleb, 2026-11-08, OQ-16 (a); RellekkaListeners: the ferrymen's own option, with The
+# Fremennik Trials; free): (name, the tile beside the ferryman, who, where it lands, ticks from the click to standing
+# there, measured on the server 2026-11-08: 17 each way, 3 runs each, one at 14)
+RELLEKKA_FERRIES = (
+    ("rellekka-neitiznot", (2645, 3710, 0), "Maria Gunnars", (2310, 3782, 0), 17),
+    ("neitiznot-rellekka", (2311, 3782, 0), "Maria Gunnars", (2644, 3710, 0), 17),
+    ("rellekka-jatizso", (2644, 3708, 0), "Mord Gunnars", (2421, 3781, 0), 17),
+    ("jatizso-rellekka", (2422, 3782, 0), "Mord Gunnars", (2644, 3710, 0), 17),
+)
+FERRY_QUESTS = ("THE_FREMENNIK_TRIALS",)
 # ShipCharter.Destination.getCost's table order, and the destinations' own checkTravel quests
 CHARTER_ORDER = ("BRIMHAVEN", "CATHERBY", "KARAMJA", "MOS_LE_HARMLESS", "PORT_KHAZARD", "PORT_PHASMATYS", "PORT_SARIM",
                  "SHIPYARD", "PORT_TYRAS", "OO_GLOG")
@@ -190,6 +218,8 @@ def _boats() -> list[Transport]:
                      start=start, coins=fare,
                      no_arms=no_arms, npc=npc, land=land)
            for name, start, npc, end, delay, fare, no_arms, land in SHIPS]
+    out += [Transport(f"ship:{name}", "ship", end, ticks, start=start, npc=npc, land=end, quests=FERRY_QUESTS)
+            for name, start, npc, end, ticks in RELLEKKA_FERRIES]
     ports = charter_ports()
     for origin, (_, _, fares, base) in ports.items():
         if base is None:
@@ -207,9 +237,49 @@ def _boats() -> list[Transport]:
     return out
 
 
+def _shortcuts() -> list[Transport]:
+    """The Agility shortcuts (rlscape.gamedata.shortcuts), as the boats are: taken from where they're clicked to where
+    they land, at their Agility level, in their measured ticks and what one costs a trip, for any XP they give."""
+    return [Transport(f"shortcut:{s.key}", "shortcut", s.end, s.ticks + SHORTCUT_TRIP_TICKS, start=s.start,
+                      skills=(("agility", s.level),), xp=(("agility", s.xp),) if s.xp else (), land=s.end)
+            for s in SHORTCUT_LINKS]
+
+
+# --- the Abyss --------------------------------------------------------------------------------------------------------
+# The Abyss (AbyssPlugin.kt; rlscape.sim.abyss, rlscape.bridge.abyss) is closed: no walk joins it to anywhere else
+# (rlscape.travel). The way in is the Mage of Zamorak's teleport, which skulls the character for ABYSS_SKULL_TICKS
+# (rlscape.sim.transport.use) and drains its prayer (a documented gap, OQ-48 (a)); it's a link, as a boat is, from
+# beside the mage. The way out is a teleport, or ABYSS_EXIT: through the passage, which always lets a character in, to
+# the inner ring; the body rift; and the body altar's portal, out by the body ruins, south of Edgeville. The exit is
+# taken only from inside the Abyss (rlscape.sim.movement), so it isn't among the teleports.
+# x0, y0, x1, y1: map regions (47, 75), where the teleport lands, both rings, and (47, 76) north of it, a second copy
+# no way the model knows reaches (half the abyssal monsters spawn there; the Abyss's map, data/abyss, is (47, 75)'s
+# alone, so walks to it find none)
+ABYSS_BOX = (3008, 4800, 3071, 4927)
+MAGE_TILE = (3105, 3554, 0)  # the Mage of Zamorak's spawn, Wilderness level 5 (npc_spawns.json)
+ABYSS_LANDING = (3039, 4832, 0)  # the Abyss's centre (AbyssLoc.origin): the anchor of the teleport's landings
+ABYSS_OUTER_RADIUS = 25.1  # AbyssLoc.outerRadius: a landing is drawn in from it until its tile is free
+ABYSS_SKULL_TICKS = 2000  # AbyssPlugin.teleport: spawnTimer<Skulled>(2000)
+ABYSS_TELEPORT_TICKS = 3  # beside the mage, its Teleport, to landing (measured; scripts/measure_abyss.py)
+# The exit's ticks from a point of the outer ring, estimated from its measured parts (scripts/measure_abyss.py): the
+# walk to beside the passage (33 steps on average over the export's landings and places), the passage (5), the walk to
+# the body rift (19 steps on average from the inner landings), the rift (6), and the portal out (5 steps and 5 ticks):
+# 54 in all. The outer ring's monsters attack on the way (left out of the transport).
+ABYSS_EXIT_TICKS = 54
+BODY_RUINS = (3051, 3443, 0)  # MysteriousRuins.BODY's base: where the body altar's portal leaves the character
+ABYSS_LINK = Transport("abyss:mage", "abyss", ABYSS_LANDING, ABYSS_TELEPORT_TICKS, start=MAGE_TILE,
+                       npc="Mage of Zamorak")
+ABYSS_EXIT = Transport("abyss:exit", "abyss_exit", BODY_RUINS, ABYSS_EXIT_TICKS)
+
+
+def in_abyss(tile: tuple[int, int, int]) -> bool:
+    x0, y0, x1, y1 = ABYSS_BOX
+    return tile[2] == 0 and x0 <= tile[0] <= x1 and y0 <= tile[1] <= y1
+
+
 @cache
 def transports() -> tuple[Transport, ...]:
-    return tuple(_teleports() + _boats())
+    return tuple(_teleports() + _boats() + _shortcuts() + [ABYSS_LINK])
 
 
 def wilderness_level(tile: tuple[int, int, int]) -> int:

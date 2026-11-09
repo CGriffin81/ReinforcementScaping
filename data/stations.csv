@@ -12,3 +12,18 @@ general_store,Lumbridge,3212,3246,0,,,estimate; verify
 general_store,Varrock,3217,3415,0,,,estimate; verify
 general_store,Falador,2955,3388,0,,,estimate; verify
 general_store,Al Kharid,3315,3180,0,,,estimate; verify
+tanner,Al Kharid (Ellis),3275,3193,0,,,"from the server: Ellis (2824)'s spawn; EllisDialogue opens the tanning interface (TanningProduct)"
+tanner,Canifis (Sbott),3490,3500,0,,,"from the server: Sbott (1041)'s spawn; SbottDialogue opens the tanning interface"
+tanner,Ranging Guild (Leatherworker),2679,3432,0,,level:ranged:40,"from the server: the Leatherworker (680)'s spawn; RangingGuildPlugin's dialogue opens the tanning interface; the guild's door (2514) needs Ranged 40"
+tanner,Crafting Guild (Tanner),2934,3285,1,,never,"from the server: Tanner (804)'s spawn; CraftingGuildListeners: the guild's door (2647) needs Crafting 40 and a brown apron worn, which no option gets"
+spinning_wheel,Lumbridge Castle,3209,3212,1,36970,,"found on the server (debug_nearby, 2026-11-08)"
+spinning_wheel,Seers' Village,2710,3471,1,25824,,"found on the server (debug_nearby, 2026-11-08); a house's first floor, by the flax field"
+spinning_wheel,Barbarian Village,3081,3430,0,2644,,"found on the server (debug_nearby, 2026-11-08)"
+spinning_wheel,south of Falador,2981,3314,0,2644,,"found on the server (debug_nearby, 2026-11-08)"
+spinning_wheel,Witchaven,2731,3278,0,8748,,"found on the server (debug_nearby, 2026-11-08)"
+spinning_wheel,Gnome Stronghold,2475,3398,1,2644,,"found on the server (debug_nearby, 2026-11-08); two more beside it, at (2487, 3401, 1) and (2488, 3410, 1)"
+spinning_wheel,Rellekka,2617,3659,0,4309,,"found on the server (debug_nearby, 2026-11-08)"
+spinning_wheel,Neitiznot,2352,3794,0,21304,,"found on the server (debug_nearby, 2026-11-08)"
+spinning_wheel,Lletya,2323,3180,0,8748,,"found on the server (debug_nearby, 2026-11-08)"
+spinning_wheel,Sophanem,3316,2790,0,20365,,"found on the server (debug_nearby, 2026-11-08)"
+spinning_wheel,Crafting Guild,2936,3287,1,2644,never,"found on the server (debug_nearby, 2026-11-08); the guild's door needs Crafting 40 and a brown apron worn"

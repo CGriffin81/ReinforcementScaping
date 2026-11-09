@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 
 from rlscape.combat.access import Progress, relevant, start_progress
+from rlscape.combat.neighbours import TOLERANCE_TICKS  # noqa: F401 (Region.TOLERANCE_TICKS, in game ticks)
 from rlscape.gamedata import server as gd
 from rlscape.sim.skills import SKILL_INDEX, SKILLS, XP_FOR_LEVEL, capped_total_xp, level_for_xp, skill_measure
 
@@ -16,6 +17,10 @@ INVENTORY_SLOTS = 28
 COINS = 995
 SPAWN = (3233, 3230, 0)  # where the bridge's `spawn` places a character leaving Tutorial Island
 FRESH_HITPOINTS_LEVEL = 10
+# Druidic Ritual's reward (DruidicRitual.finish: rewardXP(HERBLORE, 250.0)), the one quest XP the start has (Caleb,
+# 2026-11-09, OQ-56): every Herblore recipe needs level 3, so without it no policy could train Herblore. Quests are
+# otherwise flags only (2026-11-06).
+DRUIDIC_RITUAL_XP = 250.0
 
 
 @dataclass
@@ -46,13 +51,21 @@ class CharacterState:
     poison_immune_until: int = 0  # the tick an antipoison's immunity runs out (rlscape.sim.health)
     boosts: dict[str, int] = field(default_factory=dict)  # skill -> a potion's boost, still on (rlscape.sim.potions)
     antifire_until: int = 0  # the tick an antifire potion's immunity runs out (rlscape.sim.potions)
+    # items left on the current reel of thread (LeatherCrafting.decayThread's saved "threadCharges"; rlscape.sim.crafting)
+    thread_charges: int = 5
+    skulled_until: int = 0  # the tick the skull the Abyss's teleport gives runs out (rlscape.sim.abyss; 2,000 ticks)
+    # essence pouch kind -> (its capacity now, the essence left before its next decay), for the kinds not as new; and
+    # the essence a trip has put in them, (essence item, amount) (rlscape.sim.pouches)
+    pouches: dict[int, tuple[int, int]] = field(default_factory=dict)
+    pouch_essence: dict[int, tuple[int, int]] = field(default_factory=dict)
 
     @classmethod
     def fresh(cls) -> CharacterState:
         """A level-3 character exactly as it leaves Tutorial Island, with every quest the server has complete (env
-        contract §1)."""
+        contract §1), and Druidic Ritual's Herblore XP."""
         xp = [0.0] * len(SKILLS)
         xp[SKILL_INDEX["hitpoints"]] = float(XP_FOR_LEVEL[FRESH_HITPOINTS_LEVEL])
+        xp[SKILL_INDEX["herblore"]] = DRUIDIC_RITUAL_XP
         inventory, bank = gd.starter_kit()
         state = cls(tick=0, xp=xp, hp=FRESH_HITPOINTS_LEVEL, inventory={}, bank=dict(bank))
         for item, amount in inventory:
