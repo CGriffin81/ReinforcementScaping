@@ -6626,5 +6626,9 @@ than exp." `m002-oq61`.
   first_seed, hours, activity_minutes, workers, out); one on the command line overrides the file, and an unknown key is
   refused. `config.json` records the command line, outside the hashed config: the hash names what was run, not how
   it was asked for. PyYAML (6.0.3) is a new dependency.
-- **Results:** unchanged. The harness's tables and hash are the same; `save` only takes an optional `extra` for
-  provenance.
+- **Provenance from the run's start:** `evaluate.py` takes the git SHAs and the dirty flag when the run begins and
+  `save` records those (`started`). Taken at the save, as before, a run started on a dirty tree that was committed
+  before the run ended would have been recorded clean, under a SHA that didn't run. Found while E1 ran, whose tree
+  stayed untouched and clean throughout, so E1's record holds.
+- **Results:** unchanged. The harness's tables and hash are the same; `save` only takes optional `extra` and
+  `started` provenance.

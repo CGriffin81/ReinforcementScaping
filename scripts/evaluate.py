@@ -24,7 +24,7 @@ from pathlib import Path
 import yaml
 
 from rlscape.envs.sim_env import DEFAULT_REWARD_WEIGHTS
-from rlscape.eval.harness import POLICIES, REPO, run, save, summarize
+from rlscape.eval.harness import POLICIES, REPO, provenance, run, save, summarize
 from rlscape.sim.engine import ACTIVITY_TICKS, TICKS_PER_HOUR
 
 
@@ -62,10 +62,11 @@ def main() -> None:
               "reward_weights": list(DEFAULT_REWARD_WEIGHTS)}
     out = args.out or REPO / "results" / "eval" / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
-    started = time.perf_counter()
+    started, at_start = time.perf_counter(), provenance()  # the tree the run starts from, not the one it ends in
     checkpoints, episodes = run(args.policies, seeds, env_kwargs, args.workers)
     summary = summarize(checkpoints)
-    save(out, config, checkpoints, episodes, summary, extra={"script": "scripts/evaluate.py", "argv": sys.argv[1:]})
+    save(out, config, checkpoints, episodes, summary, extra={"script": "scripts/evaluate.py", "argv": sys.argv[1:]},
+         started=at_start)
     print(f"{len(episodes)} episodes in {time.perf_counter() - started:.0f}s -> {out}", file=sys.stderr)
 
     last = summary[summary.hour == summary.hour.max()]

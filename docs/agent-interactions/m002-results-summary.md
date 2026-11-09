@@ -7,7 +7,8 @@
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS (the first tooling PR: committed summaries and experiment configs, opened for Caleb to merge)
-- Commit: the main repo commit on branch `tooling/results-summary` (from `main` at `2edac10`) that adds this record
+- Commit: `c875431` on branch `tooling/results-summary` (from `main` at `2edac10`), and the commit after it with the
+  provenance fix and OQ-62
 
 ## Full Prompt
 
@@ -36,21 +37,30 @@ own record (`m002-e1-baselines`).
     avoided it, but would have changed what Caleb approved.
   - **The command line isn't hashed:** the hash names what was run. The same run from the file or from the flags
     gets the same hash.
+- **A second commit on the PR, while E1 ran:** the run's provenance is taken when it starts (`save(..., started=)`).
+  Taken at the save, a run started on a dirty tree and committed before it ended would be recorded clean, under a
+  SHA that never ran. E1 isn't affected: nothing in the tree changed while it ran. The PR also logs OQ-62, Caleb's
+  mid-turn suggestion to give the experiment branches descriptive names (record `m002-e1-baselines`).
 
 ## Documentation Changes
 
 - `CLAUDE.md` (Environment): an experiment's run, `evaluate.py --config` then `publish_summary.py`.
 - `ROADMAP.md`: §2's layout (`configs/`, `results/summary/` committed) and the finishing plan's tooling item, ticked.
-- `docs/decision-log.md`: "Built: committed results summaries and experiment configs (the first tooling PR, OQ-61)".
+- `docs/decision-log.md`: "Built: committed results summaries and experiment configs (the first tooling PR, OQ-61)",
+  with the provenance from the run's start.
+- `docs/open-questions-log.md`: OQ-62, the experiment branches' names.
 - This record.
 
 ## Code Changes
 
 - `.gitignore`: `/results/*` and `!/results/summary/`, in place of `/results/`.
 - `rlscape/eval/publish.py` (new): `publish` and `readme`.
-- `rlscape/eval/harness.py`: `save` takes an optional `extra`, provenance kept outside the hashed config.
+- `rlscape/eval/harness.py`: `save` takes an optional `extra`, provenance kept outside the hashed config, and
+  `started`, the provenance taken when the run began.
 - `scripts/publish_summary.py` (new).
-- `scripts/evaluate.py`: `--config` and `parse_args`; the command line recorded in `config.json`.
+- `scripts/evaluate.py`: `--config` and `parse_args`; the command line recorded in `config.json`; `provenance()`
+  taken before the run.
+- `tests/test_eval_harness.py`: `save` records the `started` provenance it's given.
 - `pyproject.toml`, `uv.lock`: `pyyaml>=6.0.3` (`uv add pyyaml`).
 - `tests/test_publish_summary.py` (new, 4 tests): the tables round-trip and the README holds the provenance and the
   last checkpoint's table; a dirty run and an existing summary are refused, and `allow_dirty` says so in the README;

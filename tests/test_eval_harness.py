@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from rlscape.eval.harness import METRICS, bootstrap_ci, paired_difference, run, save, summarize
+from rlscape.eval.harness import METRICS, bootstrap_ci, paired_difference, provenance, run, save, summarize
 from rlscape.gamedata import server as gd
 
 pytestmark = pytest.mark.skipif(not gd.SERVER_CONFIGS.exists(), reason="server submodule missing")
@@ -69,6 +69,12 @@ def test_save_writes_parquet_and_provenance(tables, tmp_path):
     pd.testing.assert_frame_equal(pd.read_parquet(out / "checkpoints.parquet"), checkpoints)
     meta = json.loads((out / "config.json").read_text(encoding="utf-8"))
     assert len(meta["config_hash"]) == 12 and len(meta["git_sha"]) == 40 and len(meta["server_sha"]) == 40
+    # provenance taken when a run started is what's recorded, not the tree at the save
+    started = {**provenance(), "git_sha": "0" * 40, "git_dirty": True}
+    out = save(tmp_path / "started", {"policies": ["random"]}, checkpoints, episodes, summarize(checkpoints),
+               started=started)
+    meta = json.loads((out / "config.json").read_text(encoding="utf-8"))
+    assert meta["git_sha"] == "0" * 40 and meta["git_dirty"] is True
 
 
 def test_unknown_policies_are_refused():
