@@ -24,7 +24,7 @@
 - **"Create a PR":** PR #8 (`sim-v0` → `main`) is still open. GitHub opens one PR per branch and base, so no second
   PR can come from `sim-v0`. As on 2026-11-09 (`m002-commit-rl-stack-and-pr`), PR #8's title and description were
   brought up to date to cover the whole branch:
-  - main repo: 29 commits, `8229e12` to this one;
+  - main repo: 28 commits, `8229e12` to `067a744` (this record's count fix makes 29);
   - fork: `5e531bb` → `cad974344`, 14 commits.
 
 ## Documentation Changes
