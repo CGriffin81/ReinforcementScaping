@@ -6608,3 +6608,93 @@ than exp." `m002-oq61`.
     trajectories on E1's 30 seeds.
   - **Merging:** each experiment merges into `main` by its own PR once its run is checked. To run it again, check out
     its merge commit and run its one command.
+
+### Built: committed results summaries and experiment configs (the first tooling PR, OQ-61)
+
+- **Why:** OQ-61's branches each commit a small summary and run from one config, and OQ-17 (a′) wants a reviewer to
+  read every result without running anything.
+- **`results/summary/` is committed;** the rest of `results/` stays git-ignored (`.gitignore`: `/results/*`, then
+  `!/results/summary/`).
+- **`scripts/publish_summary.py <run dir> <name>`** (`rlscape/eval/publish.py`) writes `results/summary/<name>/`:
+  - `config.json` as the run wrote it (the config, its hash, the git and fork SHAs, the dirty flag, the command);
+  - the summary, checkpoints and episodes tables as CSV, which diff and open anywhere (the run's parquet stays in
+    `results/eval/`);
+  - a README with the provenance and the last checkpoint's means and CIs.
+  It refuses a run from a tree with uncommitted changes (its SHA wouldn't reproduce it) unless `--allow-dirty`, which
+  the README then states, and never overwrites a summary unless `--force`.
+- **`scripts/evaluate.py --config configs/<name>.yaml`:** the YAML's keys are the script's options (policies, seeds,
+  first_seed, hours, activity_minutes, workers, out); one on the command line overrides the file, and an unknown key is
+  refused. `config.json` records the command line, outside the hashed config: the hash names what was run, not how
+  it was asked for. PyYAML (6.0.3) is a new dependency.
+- **Provenance from the run's start:** `evaluate.py` takes the git SHAs and the dirty flag when the run begins and
+  `save` records those (`started`). Taken at the save, as before, a run started on a dirty tree that was committed
+  before the run ended would have been recorded clean, under a SHA that didn't run. Found while E1 ran, whose tree
+  stayed untouched and clean throughout, so E1's record holds.
+- **Results:** unchanged. The harness's tables and hash are the same; `save` only takes optional `extra` and
+  `started` provenance.
+
+### Decided: OQ-62 (a), the experiment branches named by number and what they do (Caleb)
+- **Raised:** 2026-11-09, by Caleb, mid-turn while E1 ran: "It may be smart to give a short description in the name
+  of the experiment branches." OQ-61 had named them `experiment/e1-baselines`, `experiment/ladder`,
+  `experiment/e2-weights`, `experiment/e3-rnd`, `experiment/e5-gamma`, `experiment/e5-pbrs` and
+  `experiment/rq3-conditioned`.
+- **Options:**
+  - **(a) Recommended:** the proposal's experiment number and a short description. The branches sort in the report's
+    order and a reviewer matches each to the proposal's table. The weight-conditioned PPO takes E4's number, as it
+    fills E4's place.
+  - **(b):** OQ-61's names, as they were.
+- **Caleb, 2026-11-09: "OQ-62 Option a".** Each name is `experiment/<name>`, and the config and the summary take the
+  same name (`configs/<name>.yaml`, `results/summary/<name>/`):
+
+  | Experiment | Branch, config and summary name |
+  |---|---|
+  | the sanity ladder | `e0-ppo-sanity-ladder` |
+  | E1, the baselines | `e1-baselines` |
+  | E2, the reward-weight sweep | `e2-reward-weight-sweep` |
+  | E3, PPO + RND | `e3-rnd-exploration` |
+  | the weight-conditioned PPO (in E4's place) | `e4-weight-conditioned-ppo` |
+  | E5's γ_hr sweep | `e5a-discount-sweep` |
+  | E5's PBRS | `e5b-pbrs-shaping` |
+
+- **E1 keeps its name.** Its branch, config and summary were already `e1-baselines`. OQ-61's other rules stand.
+  Records `m002-e1-baselines` and `m002-oq62`.
+
+### Decided: OQ-63, the experiments renumbered, the sanity ladder after E1 (Caleb)
+- **Raised and decided:** 2026-11-09, by Caleb: "Let's renumber the experiments so that E0, which requires E1 to
+  complete is numbered after E1." The ladder's second rung, PPO beating random, is judged against E1's random
+  baseline, so it comes after E1. Record `m002-oq63`.
+- **Options** (asked in chat):
+  - **(a) Recommended:** `e1b-ppo-sanity-ladder`, and E2 to E5 keep the proposal's numbers, so the report needs no
+    mapping.
+  - **(b) Shift everything after E1:** the ladder is E2 and each later experiment moves up one. The numbers run
+    straight through, but no longer match the proposal's, so the report maps them.
+  - **(c)** The ladder unnumbered (`ladder-ppo-sanity`), sorting after the numbered ones.
+- **Caleb: (b).** The experiments, their branches (`experiment/<name>`), configs and summaries:
+
+  | Experiment | Branch, config and summary name |
+  |---|---|
+  | E1, the baselines | `e1-baselines` |
+  | E2, the sanity ladder | `e2-ppo-sanity-ladder` |
+  | E3, the reward-weight sweep | `e3-reward-weight-sweep` |
+  | E4, PPO + RND | `e4-rnd-exploration` |
+  | E5, the weight-conditioned PPO | `e5-weight-conditioned-ppo` |
+  | E6a, the γ_hr sweep | `e6a-discount-sweep` |
+  | E6b, PBRS | `e6b-pbrs-shaping` |
+
+- **The proposal's numbers,** which every document and record before this one uses (the env contract, the option
+  catalog, the resources, ROADMAP's weeks 1 to 5, this log), map to these:
+
+  | The proposal's | Now (OQ-63) |
+  |---|---|
+  | E1, baselines | E1 |
+  | (none: the sanity ladder) | E2 |
+  | E2, the reward-weight sweep | E3 |
+  | E3, exploration (RND) | E4 |
+  | E4, the preference-conditioned agent (Envelope Q, now a weight-conditioned PPO) | E5 |
+  | E5, ablations (γ_hr, PBRS; granularity cut) | E6a, E6b |
+  | E6, real-server validation (cut; the calibration gate instead) | none |
+  | E7, the stretch (cut; RQ5 is OQ-1) | none |
+
+- **Written into:** CLAUDE.md, ROADMAP's finishing plan (with this mapping) and OQ-1's live text. The approved
+  documents and the records keep the proposal's numbers. The report gives the mapping.
+- **E1 is unchanged** (PR #10). Nothing else has run.

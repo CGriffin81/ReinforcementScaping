@@ -11,7 +11,10 @@ parquet with bootstrap 95% confidence intervals.
 - `paired_difference(checkpoints, a, b, metric)`: per hour, policy a minus policy b on the same seeds. Episodes with
   the same seed start the same way, so the difference is paired; its CI is a bootstrap over seeds too.
 - `save(out_dir, ...)` writes the tables as parquet, plus `config.json`: the run's config, its hash, the git SHAs of
-  this repo and the server submodule (and whether the tree had uncommitted changes), and package versions.
+  this repo and the server submodule (and whether the tree had uncommitted changes), package versions, and any
+  `extra` provenance (scripts/evaluate.py adds its command line). `extra` isn't hashed: the hash names what was run,
+  not how it was asked for. `started` is `provenance()` taken when the run began (evaluate.py takes it), so a tree
+  changed or committed during a long run doesn't change what's recorded; without it, it's taken at the save.
 
 An episode's result depends only on its policy and seed, never on the number of workers.
 """
@@ -157,12 +160,12 @@ def config_hash(config: dict) -> str:
 
 
 def save(out_dir: Path, config: dict, checkpoints: pd.DataFrame, episodes: pd.DataFrame,
-         summary: pd.DataFrame) -> Path:
+         summary: pd.DataFrame, extra: dict | None = None, started: dict | None = None) -> Path:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     checkpoints.to_parquet(out_dir / "checkpoints.parquet", index=False)
     episodes.to_parquet(out_dir / "episodes.parquet", index=False)
     summary.to_parquet(out_dir / "summary.parquet", index=False)
-    meta = {"config": config, "config_hash": config_hash(config), **provenance()}
+    meta = {"config": config, "config_hash": config_hash(config), **(started or provenance()), **(extra or {})}
     (out_dir / "config.json").write_text(json.dumps(meta, indent=2, default=str), encoding="utf-8")
     return out_dir

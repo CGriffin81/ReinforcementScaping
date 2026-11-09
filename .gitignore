@@ -5,8 +5,9 @@ __pycache__/
 .pytest_cache/
 *.egg-info/
 
-# Experiment outputs
-/results/
+# Experiment outputs. results/summary/ is committed: each experiment's small summary (scripts/publish_summary.py)
+/results/*
+!/results/summary/
 /runs/
 *.ckpt
 *.zip
