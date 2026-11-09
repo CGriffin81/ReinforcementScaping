@@ -3,11 +3,12 @@
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
 from functools import cache
 
-from rlscape.gamedata.server import SERVER_CONTENT, rune_ids
+from rlscape.gamedata.server import REPO, SERVER_CONTENT, rune_ids
 
 RUNECRAFTING = SERVER_CONTENT / "global" / "skill" / "runecrafting"
 RUNE_ESSENCE, PURE_ESSENCE = 1436, 7936
@@ -89,3 +90,34 @@ def tiaras() -> dict[str, tuple[int, float]]:
     body = text[text.index("enum class Tiara"):text.index("enum class Talisman")]
     return {name.lower(): (_item_const(item), float(xp)) for name, item, xp in re.findall(
         r"^\s*([A-Z]+)\(Item\(Items\.([A-Z_]+_TIARA_\d+)\),\s*([\d.]+)\)", body, re.M) if name != "OMNI"}
+
+
+ABYSS = REPO / "data" / "abyss"  # scripts/export_abyss.py's
+
+
+@dataclass(frozen=True)
+class Abyss:
+    """The Abyss as scripts/export_abyss.py measured it on the server (docs/sim-v1-skills-draft.md §5).
+
+    `places` are the twelve obstacles' scenery ids (7142-7153). For each of the teleport's twelve segments (varbit 625,
+    AbyssLoc.getSegment), `layouts[segment][i]` is the kind places[i] shows ("blocked" by the landing) and
+    `outer_steps[segment][i]` the mean steps from the segment's landings to beside it. `inner_steps[i][rune]` are the
+    steps from the inner ring's landing past places[i] to beside the rune's rift."""
+
+    places: tuple[int, ...]
+    layouts: tuple[tuple[str, ...], ...]
+    outer_steps: tuple[tuple[float, ...], ...]
+    inner_steps: tuple[dict[str, float], ...]
+    inner_tiles: tuple[tuple[int, int], ...]
+
+
+@cache
+def abyss() -> Abyss:
+    raw = json.loads((ABYSS / "abyss.json").read_text(encoding="utf-8"))
+    places = tuple(sorted(int(i) for i in raw["places"]))
+    return Abyss(
+        places,
+        tuple(tuple(raw["layouts"][str(v)][str(i)] for i in places) for v in range(12)),
+        tuple(tuple(float(raw["outer_steps"][str(v)][str(i)]) for i in places) for v in range(12)),
+        tuple({rune: float(s) for rune, s in raw["inner_steps"][str(i)].items()} for i in places),
+        tuple(tuple(raw["inner_tiles"][str(i)]) for i in places))

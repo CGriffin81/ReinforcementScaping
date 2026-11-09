@@ -5723,3 +5723,120 @@ at 1,000 gp, OQ-41). `m002-barbfishing`.
     caller expects. No script changes.
   - Earlier results stand: each script set its own tick before measuring.
   - **Test:** `tests/test_bridge_client_live.py`.
+
+### Built and measured (sim v1, Runecrafting part 4): the Abyss's crossing and `abyss_rc_<rune>`, inside the gate on the server
+2026-11-08, building `docs/sim-v1-skills-draft.md` §5 (Caleb, OQ-2's Choice H: the Abyss is in). `m002-runecrafting-abyss`.
+- **Read from the server** (`AbyssPlugin.kt`, `MysteriousRuinListener.checkReq`, `DeathTask`, `GraveController`):
+  - **The teleport:** the mage's Teleport lands the character on the outer ring at a random angle, drains its prayer
+    and skulls it for 2,000 ticks.
+  - **The obstacles:** varbit 625, set to the landing's segment, turns the twelve obstacles (scenery 7142–7153), so
+    the place by the landing is blocked.
+  - **A try:** passes at (level + 1) / 100 and locks the character 8 ticks; a fail unlocks it on the third. The
+    passage always lets it through.
+  - **The rifts:** each lands the character where entering its ruins does, and chaos's beside its altar, past the
+    maze.
+  - **The rifts' checks:** law asks Entrana's rule, death Mourning's End Part II's own requirement (OQ-39 (b)) and
+    cosmic Lost City (complete).
+  - **The skull:** a skulled death keeps nothing and makes no gravestone (env contract §1 already says so), and the
+    skull clears on death.
+- **Exported** (`scripts/export_abyss.py` → `data/abyss/`):
+  - the Abyss's collision (map region 47, 75), and the tiles of its obstacles and rifts;
+  - the twelve layouts, from 104 teleports: every segment seen 3 to 17 times, never two layouts for one;
+  - the planner's steps, from a segment's landings to beside each obstacle (their mean) and from each inner-ring
+    landing to beside each rift.
+
+  The layouts:
+  - In segments 0 to 5, the rocks stand beside the landing on both sides, then the tendrils, boils, eyes and gaps, and
+    the passage opposite.
+  - Segments 6 to 11 put the gaps beside it and the rocks five places round, each with small variants.
+- **Built:**
+  - **The crossing** (`rlscape/sim/abyss.py`):
+    - the segment is drawn; the character takes the obstacle that reaches the rift soonest on average, from those it
+      can use;
+    - the tries are drawn from the chance, and the walks are timed as the travel model's (run energy and the walker's
+      overhead).
+  - **The outer ring's monsters:** they attack at a fitted rate.
+    - The three kinds share it by their spawns over their attack speeds, each kind only if its level allows (a
+      character at most twice its combat level).
+    - Each attack rolls `npc_offence` with no prayer.
+    - Under twice the hardest hit, the character eats the food it carries (the line Caleb's gathering rule uses).
+  - **`abyss_rc_<rune>`** (`AbyssRunecraft`, eleven: the nine ruins' runes, cosmic and death). A trip:
+    1. At Edgeville's bank: bank everything but the essence.
+    2. Eat banked food, wasting none, up to the crossing's need (its expected damage and twice the hardest hit,
+       within the maximum), or stop with `out_of_food`.
+    3. Take the best-healing food for the rest of the need, and essence in the other slots (a rift needs no talisman,
+       so up to 28).
+    4. The mage, the crossing, the altar.
+    5. Leave by the portal or by a teleport, whichever reaches Edgeville's bank sooner.
+
+    Cosmic's and death's portals lead where the travel model doesn't go (Zanaris, the Temple of Light), so those trips
+    leave by teleport, and one starts only when a teleport will be ready. Law's banks the worn arms, as `rc_law`'s
+    does.
+  - **The skull** on the state (`skulled_until`); `die()` keeps nothing while skulled, makes no gravestone and clears
+    the skull.
+  - **Chaos's way out:** a second portal on the altar's own floor, 15 steps from beside it. `rc_chaos`'s leg to the
+    portal goes from the estimate (30 steps and 3 floors) to that.
+  - **The slots' rate:** the way back leaves out the home teleport (ready once every 30 minutes, as bank trips have
+    it), so cosmic and death rate 0 without another teleport. The outer ring's risk isn't in the rate.
+- **Measured on the server** (`scripts/measure_abyss.py`, instance 6, 50 ms):
+  - **Teleport:** 3 ticks from beside the mage (0.94 of the server).
+  - **Outer ring:** 30 trips, walking to beside an obstacle as the travel walker does, then clicking it. Fitted:
+    `PASS_TICKS` 14 and `PASSAGE_TICKS` 5 (the residual over the walk's timing and the lock: 6.1, spread 1.2).
+  - **Fails:** 7 ticks between tries, every time.
+  - **Rifts:** 132 walks, from the twelve inner landings to the eleven rifts. Fitted: `RIFT_TICKS` 6 (3.6 over the
+    walk's timing, spread 0.74; 1.02).
+  - **Damage:**
+    - Standing on the ring, the sim's damage a swing is the server's: 634 hitpoints against the sim's 636 over 678
+      swings.
+    - `ATTACKS_PER_TICK` 0.43 is fitted on the hitpoints the trips lost at Defence 99 (0.40 a tick). A count of
+      swings missed every one while the walker had the character moving.
+    - The check set: Defence 40, 0.99; Defence 20, 1.23 (a small, noisy sample); both together 1.10.
+    - A Defence-40 character loses about 0.8 hitpoints a tick on the outer ring, as on the server, so weak characters
+      die there.
+  - **Whole trips:** 33, three for each rune, from the teleport's click to the runes, with the obstacle the sim takes:
+    0.94 to 1.00 for each rune and 0.97 over all (the sim's expectation for the segment, 0.98).
+- **Claude's choices (reversible):**
+  - only a worn pickaxe or axe is used, never one carried, nor a tinderbox (each would take an essence's slot);
+  - the food rule and the need;
+  - the bank is Edgeville's;
+  - the rate leaves the risk out (the agent sees it in the outcomes).
+- **Tests:**
+  - `tests/test_sim_abyss.py` (12): the export's layouts, the tries, the tools, the crossing's choice, the skull and
+    its death, the monsters' levels and damage, eating, the paths' rules, a run and its rate;
+  - live: `tests/test_abyss_live.py` (2): the landing's layout is the export's, and a rift lands inside its ruins;
+  - counts: `test_sim_runecrafting`, `test_sim_skilling` (Runecrafting's paths 18 → 29).
+  - The offline suite: 401 passed.
+- **The env contract:** v1.33 (to confirm). No actions or features change.
+- **Open:** OQ-48 (the drained prayer, and the skull in the observation).
+- **Next:**
+  - the pouches (OQ-40 (c)) and the fight option in the Abyss;
+  - chaos's maze, the way in for `rc_chaos`;
+  - the gate's 600 ms speed check for Runecrafting's calibrations (OQ-21).
+
+### Decided: OQ-48 (a), the skull in the observation and the Abyss's prayer drain a documented gap (Caleb); built
+Caleb, 2026-11-09: "OQ 48 - Option A." `m002-oq48`.
+- **The question** (raised 2026-11-08, building the Abyss): the Mage of Zamorak's teleport drains the character's
+  prayer points to 0 and skulls it for 2,000 ticks.
+  - The sim has no prayer points: fights flick prayers for free, so the drain changes nothing in the sim.
+  - The skull was on the state (`skulled_until`, which `die()` follows), but not in the observation.
+- **The options:**
+  - (a) recommended: the skull's ticks left in the observation (one feature), and the drain as a documented gap;
+  - (b) both: the skull in the observation, and prayer points in the state, drained by the Abyss, restored at an altar
+    or by a prayer potion, and read by the fights' flicking;
+  - (c) neither: both documented gaps.
+
+  **Caleb: (a).**
+- **Built:**
+  - **The observation:** a `skull` part (one feature, `skull_ticks`: the ticks left over the Abyss's 2,000, 0 without
+    one), after the home teleport's (`rlscape/envs/encoding.py`). 3,463 features: env contract v1.34.
+  - **The bridge** reports `skull_ticks`, the `Skulled` timer's ticks left (fork, `RLCommands.snapshot`), for
+    `ServerEnv`'s state, as it reports the home teleport's.
+  - **The gap:** "The Abyss's prayer drain isn't in the sim" in `docs/post-project-gaps.md`: what it costs (a fight
+    soon after an Abyss trip is easier in the sim), and how to close it (prayer points on the state, restored by a
+    potion or at an altar, read by the flicking).
+- **Tests:**
+  - `test_the_observation_shows_the_skulls_ticks_left` (`tests/test_sim_abyss.py`): 0, half, after a crossing, after
+    a death;
+  - live: `tests/test_abyss_live.py` checks `skull_ticks` (0 before the teleport, about 2,000 after);
+  - the size count: `test_vocabulary`, 3,463.
+  - On instance 6 with the fork's build: the Abyss's live tests (2) and the bridge's (7) passed.

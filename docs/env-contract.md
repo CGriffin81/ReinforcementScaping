@@ -1,6 +1,15 @@
-# Environment Contract (v1.32, Signed off)
+# Environment Contract (v1.34, Signed off)
 
-**Status:** v1.32, 2026-11-08. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
+**Status:** v1.34, 2026-11-09. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
+- **v1.34** (2026-11-09, Caleb, OQ-48 (a)) shows the skull in the observation (§3): one feature, the ticks it has
+  left over the Abyss's 2,000, from the state on both backends (the bridge's `skull_ticks`). The Abyss's prayer drain
+  isn't modelled (the sim has no prayer points): a documented gap (`docs/post-project-gaps.md`). 2,283 actions, 3,463
+  features.
+- **v1.33** (2026-11-08, building sim v1's Runecrafting per OQ-2's Choice H; to confirm) adds the Abyss: eleven
+  `abyss_rc_<rune>` paths among Runecrafting's skilling candidates (§3; 29 paths), and the skull the Mage of Zamorak's
+  teleport gives for 2,000 ticks, which §1's death rule reads (a skulled death keeps nothing and leaves no
+  gravestone). The skull isn't in the observation (OQ-48). No actions or features change: 2,283 actions, 3,462
+  features.
 - **v1.32** (2026-11-08, building sim v1's Agility in travel per OQ-16 (a); to confirm) adds seven Agility shortcuts
   to travel (§7), each both ways, taken from their levels on both backends. No actions or features change: 2,283
   actions, 3,462 features.
@@ -159,6 +168,7 @@ roughly [0, 1].
 | Hitpoints, prayer | 2 | current / max |
 | Run energy, weight | 2 | energy / 100; weight in kg / 100, clipped to [0, 1] (option catalog §8) |
 | Home teleport | 1 | the ticks until the home teleport is ready again / its 30-minute cooldown; 0 when ready (v1.19, OQ-15) |
+| Skull | 1 | the ticks the skull has left / the Abyss's 2,000; 0 without one (v1.34, OQ-48 (a)): a skulled death keeps nothing |
 | Wealth | 2 | log1p(coins) / log1p(10M); log1p(net worth) / log1p(10M) |
 | Inventory | V + 1 | log1p(count) / log1p(28) per vocabulary item; free slots / 28 |
 | Bank | V | log1p(count) / log1p(10k) per vocabulary item |
@@ -179,11 +189,11 @@ option catalog.
 **As built** (`rlscape/envs/encoding.py`, 2026-10-30): E = 12 roles (weapons for melee, ranged and magic,
 ammunition, head, body, legs, shield, axe, pickaxe, fishing gear), R = 12 (the catalog's 11 regions and
 "elsewhere"), C = 18 slots (6 per combat class). The encoder's docstring lists how each part is scaled. With the
-catalog as built (2,283 actions, *V* = 368) the vector has 3,462 features (v1.12 dropped the quest part's 64; v1.13
+catalog as built (2,283 actions, *V* = 368) the vector has 3,463 features (v1.12 dropped the quest part's 64; v1.13
 added 7 buys and 27 items; v1.14 11 buys, 11 items and the potions part's 22; v1.16 2 buys, 2 items and the cape role;
 v1.17 64 buys and 63 items; v1.19 the home teleport's wait; v1.23 Crafting's slots and task; v1.24 25 buys and 18
 items; v1.25 Herblore's slots and task; v1.26 Runecrafting's; v1.27 66
-buys and 51 items; v1.28 Agility's slots and task; v1.29 11 buys and 9 items; v1.30 10 buys and 10 items; v1.31 the rod's buy and item, and a task).
+buys and 51 items; v1.28 Agility's slots and task; v1.29 11 buys and 9 items; v1.30 10 buys and 10 items; v1.31 the rod's buy and item, and a task; v1.34 the skull).
 
 **Left out on purpose:** GE prices. They're frozen, so a price snapshot would be a constant.
 
@@ -320,7 +330,7 @@ from `drop_tables.json`, and spawns from `npc_spawns.json`.
 | gp/hr | expected value (`prices_v2`) of the drops the loot mode keeps × kills/hr. **Not yet subtracted:** consumables used (food, arrows, runes) and entry fees (Brimhaven, Waterbirth). |
 | Risk | expected damage per kill, poison included (the server's Poison timer; prayer doesn't stop it) and a dragon's breath behind the shield (one swing in three, 0 to 5), less the shares the antipoison and antifire carried cover, and the monster's max hit, against HP above the retreat point and the food held (the retreat-aware filter). The fighter's levels are as its carried potions boost them at the fight's start |
 | Inventory and travel | kills continue until the looted drops fill the free slots, then a bank trip; the walk to the monster is taken out of the duration (*D* = 15 game-minutes = 1,500 ticks) |
-| Prayer | fights flick prayers (option catalog §4): a style the Prayer level can protect against deals nothing, defence prayers count otherwise, and the character's swings get its accuracy and damage prayers except those next to a monster swing. Prayer points never drain. |
+| Prayer | fights flick prayers (option catalog §4): a style the Prayer level can protect against deals nothing, defence prayers count otherwise, and the character's swings get its accuracy and damage prayers except those next to a monster swing. Prayer points never drain, the Abyss's drain included (a documented gap: OQ-48 (a), `docs/post-project-gaps.md`). |
 | Ranged and magic safespots | a ranged or magic target needs a safespot unless its damage is trivial: the fight needs no food, its expected damage over the option less the hitpoints regenerated meanwhile fitting in those above the retreat point (OQ-30 (b)), and unless the gear guards against its special damage (a bow takes no shield). The safespots are the server's, by its own chase (the bridge's `ranged_safespots`, exported to `data/ranged_safespots.csv`): a tile the monster, chasing, gets stuck short of attacking from, with it in shot (range 7, long-ranged 9, magic 10: OQ-34), holding from at least 80% of its wandering (OQ-36 (a)), with no aggressive monster reaching it. From one the monster deals nothing, and the site's supply is the monsters it holds against. Casting leaves no piles. Arrows land where the monster stands: a pile per 100 ticks of shooting, picked up between kills with the drops, a pickup each, plus the walk from the safespot and back; when aggressive monsters guard them and aggression hasn't run out, the simulator's fight leaves them until the oldest would go (200 ticks). `rlscape.combat.safespots` |
 | Monsters near a fight | away from a safespot, a site's aggressive monsters of other kinds (spawned within 10 tiles) whose level would pick the character engage it between kills (the overhead to the next monster, the pickups, a wait for a respawn: when nothing attacks it, as `AggressiveBehavior` needs outside multi-combat areas), each spawn at 0.045 a tick (measured at the animated spades' possessed pickaxe), until the region's tolerance runs out (1,000 ticks after arriving). Each engagement is a kill of that monster in the fight's plan, its time, damage, XP and drops, before the next target (single combat). The rankers count the expected fights per target kill; a site where one can't be hurt by the plan or fails the danger filter is no site while aggression lasts (OQ-35 (a)). `rlscape.combat.neighbours` |
 | Ammunition | fighting stops when the arrows or runes run out. Arrows that land and are picked back up stretch the arrows held, and so do Ava's devices: worn, a device sends 80% of shots back to the quiver, and the accumulator also gathers the shots it misses that would land (`equipment.shot_outcomes`, from `RangeSwingHandler`). The server's metal chest pieces stop the catch (`data/ava_interference.csv`), and a ranger wearing a device leaves them off. Melee and crystal bows are unlimited. |

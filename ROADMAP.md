@@ -160,8 +160,12 @@ rod in V and on the GE: env contract v1.31, to confirm). The skilling slots now 
 option keeps under them). Seven Agility shortcuts are in travel, each both ways, taken from their levels on both backends
 (OQ-16 (a); measured, and validated on the server at 0.90 to 1.03: env contract v1.32, to confirm). Agility's
 calibrations pass the gate's 600 ms speed check (11 of 11, OQ-21), and the bridge client now sets a script's tick
-back as the scripts expected. Next:
-Runecrafting (in another session) and OQ-17's scope review (today).
+back as the scripts expected. Runecrafting is built and measured on the server: `rc_<rune>` at nine ruins (entering
+and inside within 0.84 to 1.01 of the server), the tiaras worn and made (env contract v1.29 and v1.30, to confirm),
+and the Abyss's eleven `abyss_rc_<rune>` paths (whole trips 0.94 to 1.00 for every rune: env contract v1.33, to
+confirm; the skull is in the observation and the drained prayer a documented gap: Caleb, OQ-48 (a), env contract
+v1.34). Next: Runecrafting's pouches and the fight
+option in the Abyss (in another session), and OQ-17's scope review (today).
 - [ ] `sim/` v0: per option, check preconditions, sample outcomes, apply XP/item/GP deltas and update state. Formulas are ported from the server source; overheads start as placeholders. Decided 2026-10-28:
   - **event-level sampling**
   - **every family except the v1 skills** (four since Fletching moved into sim v0 on 2026-10-31), which come in sim v1 before E2. Quests are out (Caleb, 2026-11-06): every quest the server has is complete from the start

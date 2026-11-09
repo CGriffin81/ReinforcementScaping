@@ -7,11 +7,12 @@
 - Agent: Claude Code (desktop app, Code tab), the Runecrafting session (a fork of the roadmap session), working beside
   the Herblore and Agility sessions in the same checkout
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: IN PROGRESS (committed and pushed; then Runecrafting part 3, the tiaras, and the bridge's scenery fix)
+- Status: COMPLETE (committed and pushed twice; Runecrafting part 3, the tiaras, and the bridge's scenery fix)
 - Commit: the whole-tree commit `9ee593e` (branch `sim-v0`), pushed: the Runecrafting, Herblore and Agility sessions'
   work, the fork and the submodule pointer left as they were. The work after it went in when Caleb asked again (the
-  next turn), staged by hunk so the other sessions' uncommitted work stayed out: fork `2a2e49e` (the scenery fix) and
-  the main repo commit after `aa26e99` (the tiaras, the counts, env contract v1.30, the submodule pointer), pushed
+  same prompt, 2026-11-08 22:04:00 CST, from the transcript), staged by hunk so the other sessions' uncommitted work
+  stayed out: fork `2a2e49e` (the scenery fix) and main `30cf121` (the tiaras, the counts, env contract v1.30, the
+  submodule pointer), both pushed. That turn's implementation is `m002-runecrafting-abyss`
 
 ## Full Prompt
 

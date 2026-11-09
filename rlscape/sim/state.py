@@ -49,6 +49,7 @@ class CharacterState:
     antifire_until: int = 0  # the tick an antifire potion's immunity runs out (rlscape.sim.potions)
     # items left on the current reel of thread (LeatherCrafting.decayThread's saved "threadCharges"; rlscape.sim.crafting)
     thread_charges: int = 5
+    skulled_until: int = 0  # the tick the skull the Abyss's teleport gives runs out (rlscape.sim.abyss; 2,000 ticks)
 
     @classmethod
     def fresh(cls) -> CharacterState:

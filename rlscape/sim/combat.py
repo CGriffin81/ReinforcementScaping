@@ -236,12 +236,14 @@ class Gravestone:
 
 
 def die(state: CharacterState, now: int) -> None:
-    """DeathTask: keep the 3 most valuable items by high-alchemy value; the rest go into a gravestone (or are lost in
-    the Wilderness); respawn at full HP at the home location."""
+    """DeathTask: keep the 3 most valuable items by high-alchemy value (none while skulled: getContainers); the rest
+    go into a gravestone (none in the Wilderness or skulled, GraveController.allowGenerate: lost); respawn at full HP
+    at the home location."""
     alch = gd.alchemy_values()
+    skulled = now < state.skulled_until
     units = [item for item, amount in state.inventory.items() for _ in range(amount if amount < 100 else 1)]
     units += list(state.equipment.values())  # a worn stack (quiver, thrown weapon) counts as one unit
-    kept = sorted(units, key=lambda item: alch.get(item, (0, 0))[0], reverse=True)[:KEPT_ON_DEATH]
+    kept = sorted(units, key=lambda item: alch.get(item, (0, 0))[0], reverse=True)[:0 if skulled else KEPT_ON_DEATH]
     everything: dict[int, int] = {}
     for container in (state.inventory, {item: state.worn(slot) for slot, item in state.equipment.items()}):
         for item, amount in container.items():
@@ -249,14 +251,15 @@ def die(state: CharacterState, now: int) -> None:
     for item in kept:
         everything[item] -= 1
     lost = {item: amount for item, amount in everything.items() if amount > 0}
-    state.gravestone = None if in_wilderness(state.location) or not lost else Gravestone(state.location, lost,
-                                                                                         now + GRAVESTONE_TICKS)
+    state.gravestone = None if in_wilderness(state.location) or skulled or not lost else Gravestone(
+        state.location, lost, now + GRAVESTONE_TICKS)
     state.inventory, state.equipment, state.worn_amounts = {}, {}, {}
     for item in kept:
         state.add(item)
     state.hp, state.location, state.run_energy = state.max_hp(), RESPAWN, MAX_ENERGY  # Player.finalizeDeath
     state.poison_severity = state.poison_clock = state.poison_immune_until = 0  # both timers clear on death
     state.boosts, state.antifire_until = {}, 0  # the stats are restored; the immunity clears
+    state.skulled_until = 0  # the skull clears on death (Player.finalizeDeath; Skulled's ClearOnDeath)
     state.region_since = now  # respawned into Lumbridge's region
 
 

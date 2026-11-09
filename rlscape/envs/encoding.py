@@ -9,9 +9,10 @@ Parts, in order (sizes for vocabulary V, A access rules, N actions):
 | time | 2 | elapsed / horizon; remaining / horizon |
 | skills | 2 × 20 | level / 99 and progress to the next level, for the 19 trainable skills and Slayer |
 | total_level | 1 | total level / 2376 |
-| hitpoints_prayer | 2 | current / max (prayer isn't drained in the sim, so it reads 1) |
+| hitpoints_prayer | 2 | current / max (prayer isn't drained in the sim, so it reads 1; the Abyss's drain is a documented gap, OQ-48 (a)) |
 | run_energy_weight | 2 | energy / 100; kg / 100, clipped |
 | home_teleport | 1 | the ticks until the home teleport is ready again / its 30-minute cooldown (0 when ready; OQ-15) |
+| skull | 1 | the ticks the skull has left / the Abyss's 2,000 (0 without one; OQ-48 (a)): a skulled death keeps nothing |
 | wealth | 2 | log1p(coins) and log1p(net worth), over log1p(10M) |
 | inventory | V + 1 | log1p(count) / log1p(28) per V item; free slots / 28 |
 | bank | V | log1p(count) / log1p(10k) per V item |
@@ -54,6 +55,7 @@ from rlscape.combat.access import access_rules, unlocked_rules
 from rlscape.combat.candidates import COMBAT_CLASSES, LOOT_MODES
 from rlscape.gamedata import server as gd
 from rlscape.gamedata.transports import HOME_COOLDOWN_TICKS
+from rlscape.sim.abyss import SKULL_TICKS
 from rlscape.sim.energy import MAX_ENERGY, weight
 from rlscape.sim.equipment import AVAS_DEVICES
 from rlscape.sim.health import food_healing_held, poison_cover
@@ -225,6 +227,7 @@ class ObsEncoder:
             Part("hitpoints_prayer", ("hitpoints", "prayer")),
             Part("run_energy_weight", ("run_energy", "weight")),
             Part("home_teleport", ("home_teleport_wait",)),
+            Part("skull", ("skull_ticks",)),
             Part("wealth", ("coins", "net_worth")),
             Part("inventory", (*(f"inv_{item_name(i)}" for i in self.vocabulary), "free_slots")),
             Part("bank", tuple(f"bank_{item_name(i)}" for i in self.vocabulary)),
@@ -260,6 +263,9 @@ class ObsEncoder:
         obs[p["run_energy_weight"]] = (state.run_energy / MAX_ENERGY, min(max(weight(state), 0.0) / MAX_WEIGHT, 1.0))
         # the time until the home teleport can be cast again, over its 30-minute cooldown (Caleb, 2026-11-08, OQ-15)
         obs[p["home_teleport"]] = min(max(state.home_teleport_ready - state.tick, 0) / HOME_COOLDOWN_TICKS, 1.0)
+        # the ticks the skull has left, over the Abyss's 2,000: a skulled death keeps nothing (Caleb, 2026-11-09,
+        # OQ-48 (a))
+        obs[p["skull"]] = min(max(state.skulled_until - state.tick, 0) / SKULL_TICKS, 1.0)
         obs[p["wealth"]] = (min(log1p(state.coins()) / WEALTH_SCALE, 1.0),
                             min(log1p(max(state.net_worth(), 0.0)) / WEALTH_SCALE, 1.0))
         inventory, bank = p["inventory"], p["bank"]

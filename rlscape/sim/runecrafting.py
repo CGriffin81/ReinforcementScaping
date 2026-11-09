@@ -27,7 +27,19 @@ The ruins:
   measured on the server (scripts/calibrate_runecrafting.py, 2026-11-08), as is a tiara's making. Chaos's maze is an
   estimate, to measure.
 
-The Abyss and its pouches come next (the draft's §5).
+The Abyss (Caleb, Choice H; rlscape.sim.abyss):
+- `abyss_rc_<rune>` (AbyssRunecraft), for the eleven altars the Abyss's rifts reach (ABYSS_RUNES: the nine, cosmic,
+  and death, which opens at Ranged 60 and Thieving 50, Mourning's End Part II's own requirement, OQ-39 (b)): at
+  Edgeville's bank, the bank nearest the mage, bank everything but the essence; eat banked food (none wasted, but
+  enough for a crossing's `need`, its expected damage and twice the hardest hit there, as far as the maximum allows),
+  or stop; take out the best-healing banked food the rest of the need asks for, and a load of essence in the other
+  slots (a rift needs no talisman: up to 28); walk to the Mage of Zamorak; cross the Abyss to the rune's rift (rlscape.sim.abyss.cross); walk to the altar and craft; leave
+  the faster way to Edgeville's bank: the portal and on from the ruins, or a teleport from inside (the travel model's,
+  for what the character holds). Cosmic's and death's portals lead where the travel model doesn't go (Zanaris, the
+  Temple of Light), so those trips leave by teleport, and a trip only starts when one will be ready. Law's rift asks
+  Entrana's rule (MysteriousRuinListener.checkReq), so its path banks the worn arms as rc_law's does.
+- Its own pickaxe or axe is the one worn, if any (rlscape.sim.abyss.usable); death on the outer ring is skulled:
+  nothing is kept. Pouches come next (OQ-40 (c)).
 """
 
 from __future__ import annotations
@@ -36,13 +48,17 @@ from copy import copy
 from functools import cache
 from math import inf, isfinite
 
+import numpy as np
+
 from rlscape.gamedata import runecrafting as rcd
 from rlscape.gamedata import server as gd
+from rlscape.sim import abyss
 from rlscape.sim.crafting import AtStation
 from rlscape.sim.economy import bank_notes, banked_or_noted, nearest_bank
 from rlscape.sim.energy import RUN_TILES, walk_plan
-from rlscape.sim.movement import reachable, route_ticks
-from rlscape.sim.options import COMPLETED, INPUTS_EXHAUSTED, OptionResult
+from rlscape.sim.health import EAT_TICKS
+from rlscape.sim.movement import reachable, route, route_ticks, walk
+from rlscape.sim.options import COMPLETED, DIED, INPUTS_EXHAUSTED, OUT_OF_FOOD, OptionResult
 from rlscape.sim.skills import MAX_XP, SKILL_INDEX
 from rlscape.sim.state import COINS, INVENTORY_SLOTS, CharacterState
 from rlscape.travel import BANKING_TICKS, LEVEL_CHANGE_TICKS, travel_ticks
@@ -51,10 +67,12 @@ TICKS_PER_HOUR = 6000
 RC_RUNES = ("air", "mind", "water", "earth", "fire", "body", "chaos", "nature", "law")
 # (steps from the landing to the altar, changes of plane; steps from beside the altar to the portal, changes): the
 # pathfinder's on the server (debug_nearby, 2026-11-08). Chaos's altar is at the foot of a maze three floors down from
-# the landing (2275, 4847, 3): an estimate, to measure.
+# the landing (2275, 4847, 3): an estimate, to measure. Its way out is a second portal on the altar's own floor,
+# (2282, 4837, 0), 15 steps from beside it (measured from the Abyss's chaos landing: 12 ticks from the click to
+# outside, the sim's 12.5).
 INSIDE = {"air": ((4, 0), (4, 0)), "mind": ((12, 0), (12, 0)), "water": ((2, 0), (16, 0)),
           "earth": ((10, 0), (11, 0)), "fire": ((15, 0), (9, 0)), "body": ((5, 0), (5, 0)),
-          "chaos": ((30, 3), (30, 3)), "nature": ((5, 0), (5, 0)), "law": ((12, 0), (13, 0))}
+          "chaos": ((30, 3), (15, 0)), "nature": ((5, 0), (5, 0)), "law": ((12, 0), (13, 0))}
 # Measured on the server (scripts/calibrate_runecrafting.py, 2026-11-08; 8 ruins, 2 runs each, run on):
 ENTER_TICKS = 1  # beyond the walk to the ruins (whose timing has a start overhead): the talisman's 3-tick script
 CRAFT_TICKS = 3  # the altar clicked, beside it, to the runes (RuneCraftPulse's first pulse)
@@ -353,5 +371,244 @@ class MakeTiaraAtRuins(RunecraftAtRuins):
         return per_hour * rcd.tiaras()[self.rune.name][1], 0.0, per_hour * gain, travel
 
 
+ABYSS_RUNES = ("air", "mind", "water", "earth", "fire", "body", "cosmic", "chaos", "nature", "law", "death")
+# The walk to the altar from where a rift lands the character, where it isn't the ruins' (INSIDE): (steps, changes of
+# plane), the pathfinder's on the server (debug_nearby, 2026-11-08). Chaos's rift lands beside its altar, past the maze
+# (abyss.CHAOS_LANDING: crafted 2 ticks after the click, measured).
+RIFT_INSIDE = {"cosmic": (19, 0), "death": (6, 0), "chaos": (1, 0)}
+# Altars whose portals lead where the travel model doesn't go (Zanaris; death's ruins in the Temple of Light): left by
+# teleport
+TELEPORT_OUT = ("cosmic", "death")
+DEATH_RIFT = {"ranged": 60, "thieving": 50}  # Mourning's End Part II's own requirement (hasRequirement; OQ-39 (b))
+
+
+@cache
+def edgeville_bank() -> gd.Bank:
+    """The bank nearest the Mage of Zamorak, where an Abyss path banks."""
+    return next(b for b in gd.banks() if b.name == "Edgeville")
+
+
+def _banked_food(state: CharacterState) -> list[tuple[int, int]]:
+    """(heal, item) for the food in the bank, healing least first."""
+    heals = gd.food_healing()
+    return sorted((heals[i], i) for i in state.bank if i in heals and state.bank[i] > 0)
+
+
+def _eat_banked(state: CharacterState, need: float) -> int:
+    """At the booth: eat banked food, healing least first, while a piece heals without waste, then one more while
+    the hitpoints are under `need`; the pieces eaten."""
+    eaten = 0
+    while (food := _banked_food(state)) and (state.hp + food[0][0] <= state.max_hp() or state.hp < need):
+        heal, item = food[0]
+        state.take(item, 1, state.bank)
+        state.hp = min(state.max_hp(), state.hp + heal)
+        eaten += 1
+    return eaten
+
+
+class AbyssRunecraft(RunecraftAtRuins):
+    """abyss_rc_<rune>: banked or carried essence crafted at the rune's altar by the Abyss's rift, a load at a time,
+    from Edgeville's bank."""
+
+    prefix = "abyss_rc"
+
+    def __init__(self, rune: str):
+        super().__init__(rune)
+        self.station_kind = "abyss"
+
+    def allowed(self, state: CharacterState) -> bool:
+        if state.level("runecrafting") < self.rune.level:
+            return False
+        return self.rune.name != "death" or all(state.level(s) >= lv for s, lv in DEATH_RIFT.items())
+
+    def fare(self) -> int:
+        return 0
+
+    def held_units(self, state: CharacterState) -> int:
+        """Essence the altar takes, carried, banked or noted: a rift needs no talisman."""
+        return sum(state.inventory.get(e, 0) + banked_or_noted(state, e) for e in essence_kinds(self.rune))
+
+    def _keep(self) -> set[int]:
+        return set(essence_kinds(self.rune))
+
+    def _probe(self, state: CharacterState) -> CharacterState:
+        """The character as the path takes it: for law, without the worn arms it banks."""
+        return _unarmed_copy(state) if self.rune.name == "law" else state
+
+    def _altar_tile(self) -> tuple[int, int, int]:
+        return abyss.CHAOS_LANDING if self.rune.name == "chaos" else self.ruins.end
+
+    def _teleport_out(self, state: CharacterState, elapsed: int = 0, home: bool = True) -> float:
+        """The ticks a teleport takes it from beside the altar to Edgeville's bank, `elapsed` ticks into the option
+        (without the home teleport, if not `home`); infinite if none will. Only a transport counts: off the map, the
+        travel model's walk is a straight-line estimate, and the altars' insides are closed."""
+        bank = edgeville_bank()
+        probe = copy(self._probe(state))
+        probe.location, probe.tick = self._altar_tile(), state.tick + elapsed
+        if not home:
+            probe.home_teleport_ready = probe.tick + 10 ** 9
+        planned = route(probe, (bank.x, bank.y, bank.plane))
+        if planned is None or not planned.transports:
+            return inf
+        return route_ticks(probe, (bank.x, bank.y, bank.plane))
+
+    def _way_out(self, state: CharacterState, elapsed: int = 0) -> bool:
+        """Whether a teleport will take it from the altar to Edgeville's bank `elapsed` ticks into the option."""
+        return isfinite(self._teleport_out(state, elapsed))
+
+    def station(self, state: CharacterState) -> gd.Station | None:
+        """The mage, if the character can get there from Edgeville's bank as the path goes (law: without its arms),
+        and, for an altar left by teleport, back."""
+        bank, probe = edgeville_bank(), copy(self._probe(state))
+        probe.location = (bank.x, bank.y, bank.plane)
+        if not isfinite(route_ticks(probe, abyss.MAGE_TILE)):
+            return None
+        if self.rune.name in TELEPORT_OUT and not self._way_out(state):
+            return None
+        return gd.Station(self.station_kind, "Mage of Zamorak", abyss.MAGE_TILE, None, "")
+
+    def available(self, state: CharacterState) -> bool:
+        if not (self.allowed(state) and self.held_units(state) > 0):
+            return False  # the cheap checks first: most states hold no essence
+        bank = edgeville_bank()
+        return reachable(state, (bank.x, bank.y, bank.plane)) and self.station(state) is not None
+
+    def _restock(self, state: CharacterState) -> None:
+        """At the booth, after `_prepare` and the food: a load of one kind of essence in the free slots."""
+        kinds = essence_kinds(self.rune)
+        kind = next((e for e in kinds if state.inventory.get(e, 0) + state.bank.get(e, 0) > 0), kinds[0])
+        for other in kinds:
+            if other != kind:
+                _bank(state, other)
+        _withdraw(state, kind, state.free_slots())
+
+    def _loaded(self, state: CharacterState) -> bool:
+        return any(state.inventory.get(e, 0) > 0 for e in essence_kinds(self.rune))
+
+    def need(self, state: CharacterState) -> float:
+        """The hitpoints a crossing asks for: its expected damage and twice the hardest hit of the monsters that
+        attack the character (Caleb's gathering rule keeps twice the attacker's max hit)."""
+        damage, max_hit = abyss.crossing_damage(state, self.rune.name)
+        return damage + 2 * max_hit
+
+    def _take_food(self, state: CharacterState, need: float) -> None:
+        """At the booth: the best-healing banked food, enough to cover what the hitpoints leave of the need."""
+        short = need - state.hp
+        while short > 0 and (food := _banked_food(state)):
+            heal, item = food[-1]
+            state.take(item, 1, state.bank)
+            state.add(item)
+            short -= heal
+
+    def _leave(self, state: CharacterState, budget: int, elapsed: int) -> int | None:
+        """From beside the altar: the portal and on from the ruins, or a teleport, whichever reaches Edgeville's bank
+        sooner (the walk there is the loop's next). The portal's ticks, or 0 for a teleport (state.location stays
+        inside); None if the budget runs out on the way."""
+        if self.rune.name in TELEPORT_OUT:
+            return 0
+        bank = edgeville_bank()
+        goal = (bank.x, bank.y, bank.plane)
+        here = self._teleport_out(state, elapsed)
+        out = copy(state)
+        out.location = self.ruins.base
+        to_portal = INSIDE[self.rune.name][1]
+        by_portal = walk_plan(state, [to_portal])[0] + PORTAL_TICKS + route_ticks(out, goal)
+        if here <= by_portal:
+            return 0
+        ticks = _walk_inside(state, to_portal) + PORTAL_TICKS
+        if elapsed + ticks > budget:
+            return None
+        state.location = self.ruins.base
+        return ticks
+
+    def _craft(self, state: CharacterState) -> None:
+        r = self.rune
+        essence = next(e for e in essence_kinds(r) if state.inventory.get(e, 0) > 0)
+        amount = state.inventory[essence]
+        state.take(essence, amount)
+        state.add(r.item, amount * r.per_essence(state.level("runecrafting")))
+        crafting = SKILL_INDEX["runecrafting"]
+        state.xp[crafting] = min(state.xp[crafting] + amount * r.experience, MAX_XP)
+
+    def _to_altar(self) -> tuple[int, int]:
+        r = self.rune.name
+        return RIFT_INSIDE[r] if r in RIFT_INSIDE else INSIDE[r][0]
+
+    def _trip_ticks(self, state: CharacterState) -> float:
+        """A crossing and the altar, expected: for the budget check before the teleport."""
+        return abyss.expected_crossing_ticks(state, self.rune.name) + walk_plan(state, [self._to_altar()])[0] + CRAFT_TICKS
+
+    def run(self, state: CharacterState, rng: np.random.Generator, budget: int) -> OptionResult:
+        elapsed, detail = 0, {"path": self.id, "trips": 0, "crossings": {}}
+        bank = edgeville_bank()
+        goal = (bank.x, bank.y, bank.plane)
+        while True:
+            walked = walk(state, goal, budget - elapsed, elapsed)
+            if walked is None or elapsed + walked + BANKING_TICKS > budget:
+                return OptionResult(budget, COMPLETED, detail=detail)
+            elapsed += walked + BANKING_TICKS
+            self._prepare(state)
+            need = self.need(state)
+            elapsed += EAT_TICKS * _eat_banked(state, min(need, state.max_hp()))
+            if state.hp < min(need, state.max_hp()):
+                return OptionResult(min(max(elapsed, 1), budget), OUT_OF_FOOD, detail=detail)
+            self._take_food(state, need)
+            self._restock(state)
+            if not self._loaded(state):
+                return OptionResult(min(max(elapsed, 1), budget), INPUTS_EXHAUSTED, detail=detail)
+            walked = walk(state, abyss.MAGE_TILE, budget - elapsed, elapsed)
+            if walked is None:
+                return OptionResult(budget, COMPLETED, detail=detail)
+            elapsed += walked
+            trip_ticks = self._trip_ticks(state)
+            if elapsed + trip_ticks > budget or (self.rune.name in TELEPORT_OUT
+                                                 and not self._way_out(state, round(elapsed + trip_ticks))):
+                return OptionResult(budget, COMPLETED, detail=detail)
+            trip = abyss.cross(state, rng, self.rune.name, elapsed)
+            detail["trips"] += 1
+            detail["crossings"][trip.kind] = detail["crossings"].get(trip.kind, 0) + 1
+            if trip.died:
+                return OptionResult(min(elapsed + trip.ticks, budget), DIED, detail=detail)
+            elapsed += trip.ticks
+            elapsed += _walk_inside(state, self._to_altar()) + CRAFT_TICKS
+            self._craft(state)
+            left = self._leave(state, budget, elapsed)
+            if left is None:
+                return OptionResult(budget, COMPLETED, detail=detail)
+            elapsed += left
+            if elapsed >= budget:
+                return OptionResult(budget, COMPLETED, detail=detail)
+
+    def _cycle(self, state: CharacterState) -> float:
+        """A load's expected ticks: banking, the walk to the mage, the crossing and the altar, and back to the bank.
+        The way back by teleport leaves the home teleport out: a load repeats, and it's ready once every 30 minutes
+        (as travel_ticks has it for bank trips)."""
+        bank = edgeville_bank()
+        goal = (bank.x, bank.y, bank.plane)
+        back = self._teleport_out(state, home=False)  # by the teleports it holds
+        if self.rune.name not in TELEPORT_OUT:
+            to_portal = INSIDE[self.rune.name][1]
+            back = min(back, walk_plan(state, [to_portal])[0] + PORTAL_TICKS + travel_ticks(self.ruins.base, goal))
+        return (BANKING_TICKS + travel_ticks(goal, abyss.MAGE_TILE) + self._trip_ticks(self._probe(state)) + back)
+
+    def rate(self, state: CharacterState, duration_ticks: int) -> tuple[float, float, float, float]:
+        """(Runecrafting XP/hr, 0, gp/hr, travel) for the skilling slots: loads between Edgeville's bank and the
+        altar by the Abyss, as many as the essence held makes, after the walk to the bank. Its gp is the runes over
+        the essence. The outer ring's risk isn't in it."""
+        held, values, r = self.held_units(state), gd.item_values(), self.rune
+        load = max(min(held, INVENTORY_SLOTS), 1)
+        bank = edgeville_bank()
+        travel = route_ticks(state, (bank.x, bank.y, bank.plane)) + BANKING_TICKS
+        cycle = self._cycle(state)
+        loads = (min(held / load, max(duration_ticks - travel, 0.0) / cycle)
+                 if isfinite(cycle) and isfinite(travel) else 0.0)
+        per_hour = loads * load * TICKS_PER_HOUR / duration_ticks
+        essence = next((e for e in essence_kinds(r) if state.inventory.get(e, 0) + banked_or_noted(state, e) > 0),
+                       essence_kinds(r)[0])
+        gain = r.per_essence(state.level("runecrafting")) * values.get(r.item, 0) - values.get(essence, 0)
+        return per_hour * r.experience, 0.0, per_hour * gain, travel if isfinite(travel) else 0.0
+
+
 def runecrafting_paths() -> list[RunecraftAtRuins]:
-    return [*(RunecraftAtRuins(rune) for rune in RC_RUNES), *(MakeTiaraAtRuins(rune) for rune in RC_RUNES)]
+    return [*(RunecraftAtRuins(rune) for rune in RC_RUNES), *(MakeTiaraAtRuins(rune) for rune in RC_RUNES),
+            *(AbyssRunecraft(rune) for rune in ABYSS_RUNES)]

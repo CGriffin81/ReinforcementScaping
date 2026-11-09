@@ -104,7 +104,7 @@ def test_law_banks_the_arms_entranas_monks_refuse_and_nature_carries_its_fares()
 
 @needs_server
 def test_runecrafting_has_its_slots_kit_and_rates():
-    assert "runecrafting" in SKILLS and len(runecrafting_paths()) == 2 * len(RC_RUNES) == 18
+    assert "runecrafting" in SKILLS and len(runecrafting_paths()) == 2 * len(RC_RUNES) + 11 == 29  # with abyss_rc_
     ids = {p.id for p in path_options()}
     assert {"rc_air", "rc_law"} <= ids and "rc_cosmic" not in ids and "mine_essence" not in ids  # OQ-45 (a): the
     # cosmic altar only by the Abyss; essence isn't mined (Caleb)

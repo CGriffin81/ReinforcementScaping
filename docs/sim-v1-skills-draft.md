@@ -336,6 +336,21 @@ it's bought.
   chances, the monsters' damage, and eating are modelled as the fights' are. The teleport skulls the character for
   2,000 ticks, so a death in the Abyss keeps no items (`DeathTask`: none when skulled, one with Protect Item).
 
+**As built** (2026-11-08; `rlscape/sim/abyss.py`, `data/abyss/` from `scripts/export_abyss.py`): the eleven
+`abyss_rc_<rune>` paths.
+- **The layouts:** each of the teleport's twelve segments shows its own, measured. Segments 0 to 5 have rocks beside
+  the landing, and 6 to 11 a gap; the passage is always opposite.
+- **The tools:** a trip carries essence and food only, so it uses the pickaxe or axe worn, never a tinderbox.
+- **The monsters:** they attack at a rate fitted on the server, with their own hit chances and no prayer. The
+  character eats under twice the hardest hit.
+- **Times:** measured on the server (`scripts/measure_abyss.py`). Whole trips are 0.94 to 1.00 of the server's for
+  every rune.
+- **Chaos:** its rift lands beside the altar, and a portal on the altar's floor leads out.
+- **Cosmic and death:** they leave by teleport.
+- **The skull and the prayer** (Caleb, OQ-48 (a)): the skull's ticks left are in the observation; the drained
+  prayer isn't modelled (the sim has no prayer points), a documented gap (`docs/post-project-gaps.md`).
+- **Not built yet:** the pouches and the fight option below.
+
 **Pouches** (Caleb, 2026-11-08, OQ-40 (c): as the server gives them; `PouchManager`, `AbyssalNPC`, `DarkMageDialogue`):
 
 | Pouch | Holds | Fill at Runecrafting | Essence before its first decay | Comes from |

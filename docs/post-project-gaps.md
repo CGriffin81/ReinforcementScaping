@@ -70,3 +70,31 @@ the same once it exists. The unowned drops aren't flagged.
   a live test can pin it (one character deals a spade more than half its hitpoints and is despawned; a second kills
   it).
 - Or, for RL characters only, a despawned character's uid leaves every monster's impact log (`RLPlayer.clear`).
+
+## The Abyss's prayer drain isn't in the sim (OQ-48 (a), 2026-11-09)
+
+**What's missing.** On the server, the Mage of Zamorak's teleport into the Abyss drains the character's prayer points
+to 0 (`AbyssPlugin.teleport`). They stay at 0 until the character restores them, at an altar or with a prayer
+potion, so until then it can flick no prayer: no protection, accuracy or damage prayers in a fight, and no Protect
+Item. The sim has no prayer points at all. A fight flicks the prayers its levels give whenever it likes (flicking
+costs nothing, as measured live), and the observation's prayer feature always reads 1. After an Abyss trip, the
+server's character fights unprotected; the sim's flicks as before.
+
+**Why.** Caleb chose (a) for OQ-48: the skull the same teleport gives is in the observation (one feature,
+`skull_ticks`), and the drain is this gap. An Abyss runner seldom fights between trips. Prayer points would need
+their own state, ways to restore them (an altar in the travel model, prayer potions), and every fight's flicking to
+read them.
+
+**What it costs.** A fight soon after an Abyss trip is easier in the sim than on the server, by as much as its
+flicked prayers are worth. That's most for a fight its protection prayer covers, where the sim's character takes no
+damage from that style. The fight option in the Abyss itself (the pouches' monsters, still to build) is all after the
+drain, so in the sim it would fight with prayers the server's character doesn't have. It bears on the sim-to-server
+gap for any policy that mixes Abyss trips and fights (E6), not on calibration, which never mixes them.
+
+**How to close it.**
+- `CharacterState.prayer_points` (a float, the Prayer level when full), drained to 0 by `rlscape.sim.abyss.cross`.
+- Restored by a prayer potion (in *V*: four doses) or at an altar. An altar would be a station in the travel model
+  (Edgeville's monastery, next to the Abyss's bank, is the nearest), for a "recharge prayer" step an option could take
+  on its way.
+- The fights' flicking (`rlscape.combat.prayers`, the fighter's `flicks`) gives no prayer while the points are 0.
+- The observation's prayer feature reads the points over the level (it's already there, reading 1).

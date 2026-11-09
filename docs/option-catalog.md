@@ -122,14 +122,23 @@ and leaves by the portal. An essence makes as many runes as the rune's multiple 
 Karamja boat's 60 gp. The times inside the ruins are the server's. Essence isn't mined (Caleb: it's cheap, and mining
 it wastes the time); the agent buys it (§9). A path wears the rune's tiara when the character has one, in place of the
 talisman, and carries 28 essence. `make_tiara_<rune>` (nine) uses pairs of a plain tiara and the talisman on the altar,
-14 a trip, for the tiaras' XP (the talisman used up; a loss in gold, as the GE sells the tiaras for less). The cosmic
-altar waits for the Abyss's rift (OQ-45 (a)), as does the death altar.
+14 a trip, for the tiaras' XP (the talisman used up; a loss in gold, as the GE sells the tiaras for less).
+`abyss_rc_<rune>` (eleven: the nine, cosmic, and death, open at Ranged 60 and Thieving 50, OQ-39 (b)) goes by the
+Abyss (Choice H; `rlscape/sim/abyss.py`):
+- from Edgeville's bank, with 28 essence (a rift needs no talisman) and the food the crossing needs;
+- the Mage of Zamorak's teleport, which skulls the character for 2,000 ticks;
+- the outer ring, through the obstacle that reaches the rift soonest that the character can use (rocks with a worn
+  pickaxe, tendrils with a worn axe, eyes with Thieving, a gap with Agility, or the passage), while the abyssal
+  monsters attack;
+- the rune's rift, the altar, and back by the portal or a teleport.
+
+Cosmic and death are left by teleport. The cosmic altar is reached only by its rift (OQ-45 (a)).
 
 A path that gives no XP (tanning, picking flax) fills only a gp slot: the XP slots take the best paths that give XP
 (v1.4).
 
 That's 83 paths in sim v0: woodcutting 12, fishing 8, mining 7, thieving 20, fletching 36; and in sim v1 crafting's
-39, herblore's 36, runecrafting's 18 and agility's 3. Mining's include iron at the Al
+39, herblore's 36, runecrafting's 29 and agility's 3. Mining's include iron at the Al
 Kharid mine (Caleb, 2026-10-31), kept or smelted, beside Varrock's: scorpions roam it, so it costs a low-level miner
 hitpoints (below). Fishing's include shrimp at Lumbridge Swamp (Caleb, 2026-11-01), kept or cooked, beside
 Draynor's: Draynor's spots are next to the bank, but its Dark wizards make them dangerous for a character of combat
