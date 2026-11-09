@@ -7,7 +7,11 @@ The route's transports are taken in order, with walks between them (rlscape.brid
 - a ship: "Pay-fare" on its NPC, which before Pirate's Treasure opens its conversation: the answers a player gives
   (SHIP_ANSWERS); a charter: "Charter" on a crewmember, the destination's button on the charter interface (95), then
   "Ok" (the bridge clicks through the fare's message); off a ship's deck, "Cross" the gangplank;
-- an Agility shortcut (rlscape.gamedata.shortcuts): its option on the nearest of its scenery, from its near side.
+- an Agility shortcut (rlscape.gamedata.shortcuts): its option on the nearest of its scenery, from its near side;
+- into the Abyss: the Mage of Zamorak's Teleport; out of it by its exit: the walk round the outer ring to beside the
+  passage (where the obstacles' varbit, which the client draws them by, puts it: the bridge's `abyss_obstacles`, and
+  the export's layouts), Go-through, the walk to the body rift and Exit-through, then the body altar's Portal. Walks
+  inside the Abyss go by its own map (data/abyss).
 Each step waits for its effect, a tick at a time, and the trip's ticks are the game's own.
 """
 
@@ -16,11 +20,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
+from rlscape.bridge.abyss import INNER_RADIUS, nearest_beside, polar
 from rlscape.bridge.client import BridgeClient
 from rlscape.bridge.walker import chebyshev, walk_route
+from rlscape.gamedata import runecrafting as rcd
 from rlscape.gamedata.shortcuts import LINKS
-from rlscape.gamedata.transports import CHARTER_IFACE, SPELLBOOK, Transport
-from rlscape.routes import Map, surface, toll_surface
+from rlscape.gamedata.transports import CHARTER_IFACE, SPELLBOOK, Transport, in_abyss
+from rlscape.routes import Map, abyss_map, surface, toll_surface
 
 ARRIVED = 3  # tiles from where a transport lands that count as having arrived
 STEP_TICKS = 60  # the longest any one step may take
@@ -138,7 +144,42 @@ def perform(client: BridgeClient, uid: int, transport: Transport) -> int:
         _tick(client, uid, {"cmd": "interact", **uid_, "name": link.name, "option": link.option, "object": True,
                             "ids": list(link.ids), "packet": True})
         return 1 + _until(client, uid, _over(link.end), transport.id)
+    if kind == "abyss":
+        ticks = _click_npc(client, uid, transport.npc, "Teleport")
+        return ticks + _until(client, uid, lambda s: in_abyss(_here(s)), transport.id)
+    if kind == "abyss_exit":
+        return _abyss_exit(client, uid)
     raise ValueError(f"no way to take {transport.id}")
+
+
+def _abyss_exit(client: BridgeClient, uid: int) -> int:
+    """Out of the Abyss from the outer ring: to beside the passage the obstacles' varbit shows, through it, to the body
+    rift and through it, then the body altar's portal; the ticks."""
+    a, world, uid_ = rcd.abyss(), abyss_map(), {"uid": uid}
+    state = client.state(uid)
+    place = a.layouts[state["abyss_obstacles"] % 12].index("passage")
+    _, goal = nearest_beside(world, _here(state)[:2], a.place_tiles[place], a.place_sizes[place])
+    ticks = walk_route(client, uid, world, goal).ticks
+    # the bridge's own walk up to it: the client's packet from beside it can find no path ("I can't reach that")
+    _tick(client, uid, {"cmd": "interact", **uid_, "name": "Passage", "option": "Go-through", "object": True,
+                        "ids": [a.places[place]]})
+    ticks += 1 + _until(client, uid, lambda s: polar(*_here(s)[:2])[0] < INNER_RADIUS, "the passage")
+    rift, tile, size = a.rifts["body"]
+    _, goal = nearest_beside(world, _here(client.state(uid))[:2], tile, size)
+    ticks += walk_route(client, uid, world, goal).ticks
+    _tick(client, uid, {"cmd": "interact", **uid_, "name": "Body rift", "option": "Exit-through", "object": True,
+                        "ids": [rift]})
+    ticks += 1 + _until(client, uid, lambda s: not in_abyss(_here(s)), "the body rift")
+    click = {"cmd": "interact", **uid_, "name": "Portal", "option": "Use", "object": True, "packet": True}
+    state, since = _tick(client, uid, click), 0
+    for _ in range(STEP_TICKS):  # the portal, clicked again once the character stands idle (the landing holds it)
+        ticks, since = ticks + 1, since + 1
+        if _here(state)[1] < 4000:
+            return ticks
+        idle = not (state["busy"] or state["moving"] or state["script"] is not None)
+        state = _tick(client, uid, click) if idle and since >= 2 else _tick(client, uid)
+        since = 0 if idle and since >= 2 else since
+    raise Stuck("the body altar's portal")
 
 
 def _over(tile: tuple[int, int, int]) -> Callable[[dict[str, Any]], bool]:
@@ -162,6 +203,8 @@ def go(client: BridgeClient, uid: int, transports: tuple[Transport, ...], destin
             ticks = perform(client, uid, transport)
             trip.steps.append((transport.id, ticks))
             trip.ticks += ticks
+        if in_abyss(destination):  # the Abyss's own map: it's closed to the surface's
+            world = abyss_map()
         walked = walk_route(client, uid, world, _standable(world, destination))  # the sim's anchor
         trip.steps.append(("walk", walked.ticks))
         trip.ticks += walked.ticks

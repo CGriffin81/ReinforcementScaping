@@ -5875,3 +5875,302 @@ Caleb, 2026-11-09: "OQ 48 - Option A." `m002-oq48`.
   - live: `tests/test_abyss_live.py` checks `skull_ticks` (0 before the teleport, about 2,000 after);
   - the size count: `test_vocabulary`, 3,463.
   - On instance 6 with the fork's build: the Abyss's live tests (2) and the bridge's (7) passed.
+
+### Decided: chaos rune crafting is out, an intentional gap (Caleb); built
+Caleb, 2026-11-09: "Carry on with the pouches and abyss fight option and remove Chaos Rune crafting, documenting it
+as an intentional gap." `m002-runecrafting-pouches`.
+- **Why it came up:** the chaos altar is at the foot of a ladder maze, three floors down from the ruins' landing. The
+  sim's way down was only an estimate (30 steps and three floors), and the server runner doesn't climb the maze. The
+  Abyss's chaos rift, which skips the maze, was measured (Runecrafting part 4).
+- **Built:**
+  - `rc_chaos`, `make_tiara_chaos` and `abyss_rc_chaos` are gone: `RC_RUNES` has eight runes and `ABYSS_RUNES` ten, so
+    Runecrafting has 26 paths.
+  - The chaos talisman (1452) and the chaos tiara (5543) left *V* (366) with their GE buys, since only those paths
+    used them.
+  - `CHAOS_LANDING` and chaos's `INSIDE` and `RIFT_INSIDE` entries are gone. The Abyss's export and the bridge's
+    `RIFTS` keep the server's eleven rifts, chaos's among them.
+  - The gap, with what it costs and how to close it: `docs/post-project-gaps.md`, "Chaos runes aren't crafted".
+  - Chaos runes themselves stay in *V* (bought, dropped, cast).
+- **The env contract:** v1.35 (Caleb): 2,271 actions and 3,447 features (12 actions and 16 features fewer).
+- **Tests:**
+  - the counts: `test_vocabulary` (*V* 366, 2,271, 3,447), `test_sim_buying` (328 buys, 291 on the GE),
+    `test_sim_skilling` (26), `test_sim_runecrafting` (26 paths, 19 inputs, no chaos);
+  - `test_sim_abyss` (ten Abyss paths).
+
+### Measured: sim v1's training throughput, for OQ-17's reassessment
+2026-11-09, `m002-viability-reassessment`. Measured at main repo `dc92982` (in a separate worktree, since another
+session's edits were in the working tree), with another session working on the machine at the same time.
+- **The sim, one worker, masked random actions:** about 70 to 80 decisions a second once its caches warm up, which
+  takes about two minutes (sim v0 made 110 after OQ-7 (a)). In a 45-second run, warm-up included, it was 49 on one
+  worker and 228 on 16 (`scripts/benchmark_sim.py`).
+  - **Where the time goes** (cProfile): 92% is the action mask. It ranks the skilling and combat slots for every
+    decision, and their rates plan routes (`movement.route`, `travel.path`, `economy.nearest_bank`).
+  - **A random episode** (20 game-hours) takes about 385 decisions (299 to 493, 65 episodes).
+- **Training,** `SMDPMaskablePPO` on the GPU (`n_steps` 128, batch 256, 4 epochs):
+  - **one run, 16 workers:** about 200 decisions a second (125 to 250 a rollout). The workers step in lockstep, so
+    each step waits for the slowest. That's 2.7 times one worker on 16.
+  - **four runs at once, 4 workers each:** 60 to 80 each, about 280 in all (240 including warm-up).
+  - **The PPO update** costs 0.2 to 0.6 seconds a rollout, a few percent of the time.
+- **So:** about 1M training decisions an hour, or 24M a day with the machine doing nothing else. E2's 25 runs take
+  about a day at 1M decisions a run, or two days at 2M.
+
+### Built and measured (sim v1, Runecrafting part 5): the essence pouches (OQ-40 (c)), the Abyss closed in the travel model, and its fight option
+2026-11-09, building `docs/sim-v1-skills-draft.md` §5 (Caleb, OQ-40 (c): the pouches as the server gives them; "Carry
+on with the pouches and abyss fight option"). `m002-runecrafting-pouches`.
+- **Found: the travel model walked into the Abyss.** Off the planner's map every tile counts as walkable by a
+  straight line, so the Abyss looked about 1,770 steps from Edgeville (about 1,330 ticks). Its monsters were fight
+  candidates by that impossible walk.
+  - Half of them spawn in map region (47, 76), north of the ring the teleport lands in: a second copy of the Abyss
+    that nothing reaches.
+- **Built: the Abyss is closed** (`rlscape/gamedata/transports.py`, `rlscape/travel.py`, `rlscape/sim/movement.py`):
+  - **No walk** joins it (both regions) to anywhere else.
+  - **In:** the Mage of Zamorak's teleport is a link from beside him, as a boat is. It skulls the character
+    (`sim.transport.use`).
+  - **Out:** a teleport, or the Abyss's exit, taken only from inside it: the passage, the body rift, and the body
+    altar's portal out by the body ruins. 54 ticks, estimated from its measured parts.
+  - **Walks inside** go by the Abyss's own map (`routes.abyss_map`). From the teleport's anchor, the walk is the mean
+    over its landings, one a degree round the ring. The northern copy isn't on that map, so its sites are unreachable.
+  - **The static estimates** (`travel_ticks`, the ranker's `Destinations`, `travel_ticks_from_many`) count the link
+    and the exit.
+  - **The server walker** (`rlscape/bridge/travel.py`) takes both:
+    - the mage's Teleport;
+    - for the exit, a walk to beside the passage where the obstacles' varbit puts it (the bridge's new
+      `abyss_obstacles`, the export's layouts), Go-through, the body rift, the portal;
+    - walks inside on the Abyss's map.
+  - **Validated** (`scripts/validate_travel.py --set abyss`, instance 6), 8 trips:
+    - in from Edgeville's bank to each quarter of the ring, 0.90 to 1.05 (mean 0.95);
+    - out by the exit, 0.88 to 1.21 (mean 1.02);
+    - 7 of the 8 within ±20%. The 1.21 starts beside the passage.
+    - The trips' characters are sturdy: a fresh one dies there, and travel doesn't model the monsters.
+- **Built: the pouches** (`rlscape/sim/pouches.py`, from `PouchManager.kt` and `RunePouchPlugin.kt`):
+  - small 3, medium 6, large 9 and giant 12 essence, from Runecrafting 1, 25, 50 and 75;
+  - one state for each kind on `CharacterState` (its capacity and the essence left before its next decay);
+  - decay as the server's: 264, 186 and 140 essence before the first, then 9 × the new capacity; gone at 0;
+  - Fill takes the kind the inventory holds more of; Empty gives back as much as the free slots take;
+  - the Dark Mage repairs them all.
+  - **In the paths** (`rc_<rune>` and `abyss_rc_<rune>`):
+    1. the pouches the character can fill come out of the bank (a slot each) with the load;
+    2. they're filled in rounds, the slots topped up after each, until full;
+    3. inside, after the first craft, the altar's lock, then the empties and a craft, in rounds while the slots
+       allow.
+
+    All four carry 30 more essence: 53 a trip, not 28. An Abyss trip with a decayed pouch goes by the Dark Mage on
+    the inner ring (the planner's steps by him to the rift).
+  - **The drop:** a kill of an abyssal leech, guardian or walker has a 12-in-750 chance of the next pouch the character
+    lacks (`combat.fight`'s kill), picked up. The rng is drawn only for those three, so other fights' seeded streams
+    don't change.
+  - ***V*** gains the four pouches, held (370); their sell and alchemy actions stay masked, untradeable. The
+    observation gains each one's capacity now over new (4 features).
+  - **The bridge's state** reports each kind's capacity, charges and contents (`pouches`), for `ServerEnv`, which
+    will map a decayed pouch's item (the next id) to the pouch.
+- **Measured on the server** (`scripts/measure_abyss.py --pouches`, instance 6):
+  - a Fill or an Empty: 1 tick each;
+  - the altar locks the character 2 ticks after a craft: clicks 1 and 2 ticks after the runes were dropped, the third
+    taken;
+  - a second Craft-rune beside it: 2 ticks to its runes;
+  - the medium pouch's decay: on the 44th fill, capacity 5, 45 charges, 5 put in, its item 5511, as the sim has it;
+  - the Dark Mage's Repair-pouches: 5 ticks from a click 11 tiles off, about all of it the walk, and the pouch back to
+    6 and 264.
+- **The fight option:** the combat slots' abyssal sites are reachable now, by the link (from Edgeville, 82 ticks to the
+  guardians' site); a fight there is skulled. Checked on the server (`scripts/calibrate_combat.py --cases-from
+  results/calibration/abyss-fight-cases.json`: 3 runs each against 200 of the sim's, set down at the site):
+  - melee at the guardians, band 61: XP/hr 1.00 (32,057 on the server, 32,171 in the sim), kills/hr 120 against 121;
+  - at the walkers, band 91: 1.07 (48,787 against 52,237).
+  - **Found: food.** The server's band-61 runs ate 2.9 food an hour, and one of the three ran out of it; the sim ate
+    none. So the sim underestimates the damage the Abyss's crowd of aggressive monsters does around a fight: OQ-35's
+    neighbours' engagement rate is the one measured elsewhere, and the Abyss is multi-combat in practice (2 to 4
+    attack at once on the ring). Raised as OQ-49.
+- **Claude's choices (reversible):**
+  - pouches always go on a trip when the level allows;
+  - a repair whenever one has decayed;
+  - the exit by the body rift (its ruins are nearest Edgeville);
+  - the travel model's exit leaves out the outer ring's monsters;
+  - the rate leaves the repairs' detours out (one every 12 to 44 trips).
+- **Not modelled:** the prayer drain (OQ-48 (a)'s gap), so fights in the Abyss flick prayers the server's character
+  wouldn't have.
+- **Tests:**
+  - `tests/test_sim_pouches.py` (8): the table, the 44th fill's decay, a pouch worn to nothing, the fill's rules, the
+    drop, a ruins trip's 53 essence and ticks, the Dark Mage's repair, the observation;
+  - `test_sim_abyss` (the closed Abyss);
+  - live: `tests/test_abyss_live.py` (the pouches' state and a fill, the walker in and out);
+  - counts: `test_vocabulary` (370, 2,291, 3,479).
+- **Speed:** unchanged. `scripts/benchmark_sim.py --seconds 120 --workers 1`, the CPU otherwise idle: 65 decisions a
+  second at `dc92982` (a temporary worktree) and 65 with these changes. The checks on the common path are a tile-in-box
+  comparison; a path search runs only when an end is in the Abyss, and is cached.
+- **The env contract:** v1.36 (to confirm).
+
+### Decided: OQ-17, the finishing scope is (a′) with every research question answered, and a simple peer review (Caleb)
+Caleb, 2026-11-09: "OQ 17 - Let's pair things down a bit to option a'. I still want to answer all of the research
+questions we initially identified. However, I want to make sure that the peer review is as simple as it can be."
+`m002-oq17-scope`.
+- **The question** (Caleb raised it on 2026-11-05, `m000-feasibility-review`, and Claude reassessed it on 2026-11-09,
+  `m002-viability-reassessment`): something must go to peer review about Nov 26, and the report is due Nov 30. What
+  scope does the project finish with? Sim v1 is built, and training runs at about 1M decisions an hour (the entry
+  above).
+- **The options** (Claude's estimates):
+  - **(a′) recommended:**
+    - freeze the sim on Nov 10;
+    - spend at most a day speeding up the action mask;
+    - build `train.py` and run the sanity ladder;
+    - rerun E1;
+    - run E2 (5 × 5, or 5 × 3);
+    - RQ4 by E3 (RND) alone, with the γ_hr sweep only if compute allows;
+    - a weight-conditioned PPO for RQ3's second half (the first part to cut);
+    - the calibration gate in place of E6;
+    - cut E4 as planned, `ServerEnv` and E6's replays, PBRS and E5's granularity, and E7;
+    - a draft by Nov 25.
+
+    About 13 days of building.
+  - **(b):** E1 and E2 alone (RQ1, RQ2, RQ3's first half). About 10 days.
+  - **(c):** the full scope, about 25 days of building and 3 to 6 of compute. It doesn't fit.
+- **Caleb: (a′), with every research question answered.** That changes (a′) in two places:
+  - **RQ4 is answered in full.** It asks whether "an exploration bonus, the discount factor, and potential-based
+    shaping" change which strategies are found and how fast. So E5's γ_hr sweep and PBRS are in, and they're no longer
+    optional. Only E5's option granularity stays cut, since no research question asks about it.
+  - **RQ3's second half stays.** The weight-conditioned PPO is no longer the first part to cut.
+
+  So if time runs short, depth gives way, not a research question: fewer γ_hr values or weightings, or shorter runs.
+  Fewer than 5 seeds goes last, since the proposal promises "at least 5 seeds" for every comparison. Caleb picks the
+  cut when it comes to that.
+
+  **RQ5** ("exploratory, time permitting" in the proposal) is still open, in OQ-1. It needs learned micro-options,
+  and (a′) has no room for the tick-level environment they need.
+- **The plan:** each research question and its experiment, all on sim v1, with 5 seeds per configuration, at
+  (.5, .5) unless the experiment varies the weights.
+  - **RQ1:** E1, rerun on sim v1, and E2's agents: total level and net worth at the checkpoints.
+  - **RQ2:** E2's and E3's decision logs. They give the order activities are found in, early investment (H1), and
+    whether learning is sudden or gradual (changepoints in the learning curves).
+  - **RQ3:**
+    - E2's five weightings, for H2 and the frontier with its hypervolume;
+    - a weight-conditioned PPO against E2's separate agents, for Pareto coverage and training cost. It replaces E4's
+      Envelope Q, and the report says so.
+  - **RQ4:**
+    - E3, PPO + RND (H3);
+    - E5's γ_hr sweep: two values beyond the default (ROADMAP §3's set: 0.5, 0.9, 0.99);
+    - E5's PBRS: Φ is ROADMAP §3's candidate, the best GP/hr the current unlocks allow. It's confirmed when built.
+  - **Validity:** the calibration gate's results per option replace E6.
+  - **Compute:** about 60 to 70 runs:
+
+    | Part | Runs |
+    |---|---|
+    | E2 | 25 |
+    | E3 | 5 |
+    | E5 | 15 |
+    | The weight-conditioned agent, counted in ordinary runs | 10 to 15 |
+    | The ladder | 5 to 10 |
+
+    That's 2.5 to 6 days of the machine at 1M to 2M decisions a run, inside the 10 days from Nov 12 to 21.
+  - **Building:** about 14 days. PBRS's potential adds half a day to (a′), and the γ_hr sweep is only configs.
+- **The peer review kept simple (Caleb):** OQ-50 asks what the reviewer gets. Whatever the answer, Claude builds the
+  rest in a way that suits it (as ROADMAP week 8 and §6 already planned):
+  - each experiment is one config file and one command;
+  - each figure and table in the report comes from one script reading small result summaries committed to
+    `results/summary/`, so a reviewer never has to train anything.
+- **Unchanged from (a′):**
+  - Cut: E4's Envelope Q, `ServerEnv` and E6's replays, E5's granularity, and E7 as planned (RQ5 is OQ-1).
+  - The fallback: if PPO doesn't learn, the report covers E1 and E2 with an analysis of why. `Requirements.md`
+    accepts negative results.
+
+### Confirmed: every env contract version to v1.37, and option catalog v1.4 (Caleb)
+Caleb, 2026-11-09: "I confirm all versions of the env contract and the option catalog." `m002-confirm-contract`.
+- **What it covers:**
+  - **The env contract:** every version marked "to confirm": v1.11, v1.14 to v1.16, v1.18, v1.22 to v1.33, v1.36
+    and v1.37. This includes the Claude's choices they hold, such as v1.37's no prayer in the Abyss's fights and its
+    rate fitted to the server's fights.
+  - **The option catalog:** v1.4 (sim v1's four skills, Barbarian Fishing, the shortcuts, the pouches and the
+    Abyss's crowd). This includes its Claude's choices: which seven Agility shortcuts, and no prayer flicking in the
+    Abyss.
+- **Marked:** each version's "to confirm" now reads "confirmed by Caleb on 2026-11-09".
+  - `docs/env-contract.md`'s status says every version to v1.37 is confirmed.
+  - `docs/option-catalog.md` is "v1.4, Signed off".
+  - ROADMAP's status line no longer says "to confirm".
+  - The entries above that say "to confirm" are left as they were written.
+- **So:** sim v1's contract is signed off for tomorrow's freeze. A later change (say, v1.37's text changing after the
+  Runecrafting session's server check) is a new version and needs Caleb again.
+- **Not covered:** the two GAE choices in `m002-smdp-ppo` (λ once a decision; an option's reward at its start). They
+  belong to the agent, not the contract.
+
+### Decided: OQ-49 (a), the outer ring's crowd attacks fights in the Abyss (Caleb); built, fitted and checked on the server
+Caleb, 2026-11-09: "OQ 49 - Option A." `m002-oq49`.
+- **The question** (raised 2026-11-09, checking the Abyss's fight option: Runecrafting part 5, above):
+  - The server's band-61 runs at the guardians ate 2.9 food an hour, and one in three ran out; the sim's ate none.
+  - The Abyss is multi-combat (`MultiwayCombatZone` registers its region, 12107), and 2 to 4 of its monsters attack
+    at once on the ring.
+  - The sim's fights let other kinds engage only between kills, as in single combat (OQ-35 (a)).
+- **The options:**
+  - (a) recommended: fights in the Abyss also take the outer ring's attacks, as the crossing does (its fitted rate,
+    the three kinds by their spawns over their attack speeds), less the target's own. Eaten for, and checked against
+    the server's food an hour;
+  - (b) a documented gap;
+  - (c) drop the fight option, and sell the pouches on the GE at set prices.
+
+  **Caleb: (a).**
+- **Found, building it: the check had flicked prayers.**
+  - The server's runs were set down at the site with full prayer, and the bridge flicked Protect from Melee. That
+    blocks all three kinds, which fight in melee.
+  - With several attackers, swings fall on ticks in a row, and a prayer on two ticks running drains (`Prayer.tick`).
+    That's the likeliest source of the one run's damage.
+  - An agent can't fight that way: the mage's teleport, the only way in, drains the prayer to 0 (OQ-48 (a)'s gap),
+    and nothing in the Abyss restores it.
+- **Built:**
+  - **`rlscape.sim.abyss.Ring`:**
+    - the crossing's mix of kinds: those the character's combat level draws, shared by their spawns over their
+      attack speeds;
+    - their hits with no prayer, drawn from the mix in one draw;
+    - until the region's tolerance runs out (1,000 ticks), as AggressiveBehavior picks no new target then, and as
+      OQ-35's neighbours stop.
+  - **`combat.fight` at an Abyss site:**
+    - during a kill, the ring's attacks at the rest of its rate (less 1 over the fought monster's attack speed), in
+      time order with that monster's swings and the bites;
+    - all of it between kills and while it waits for a respawn, eaten for as the fight eats (or `out_of_food`);
+    - the neighbours engage as before: each is the character fighting one back, as the XP/hr check matched.
+  - **No prayer in a fight in the Abyss** (Claude's choice, confirmed by Caleb with v1.37): nothing is flicked, against
+    the crowd or the monster fought. This closes OQ-48 (a)'s gap for fights in the Abyss itself; it stays for fights
+    after leaving it (`docs/post-project-gaps.md`).
+  - **Fights elsewhere are unchanged:** they draw nothing new from the rng. 24 of the fight check's cases outside the
+    Abyss, 30 seeds each, give the same results as `dc92982` (a temporary worktree).
+  - **The check** (`scripts/calibrate_combat.py`): its Abyss cases don't flick on the server, and their food covers
+    the crowd too, at most 15 lobsters.
+- **Checked on the server: the crossing's rate fails.** 5 runs a case on instance 6 at 50 ms, against 200 of the
+  sim's, both sides with the same food:
+
+  | Case | Food/hr: server | sim | sim / server | XP/hr, sim / server |
+  |---|---|---|---|---|
+  | Melee at the guardians, band 61 | 157 | 72 | 0.46 | 0.93 |
+  | Melee at the walkers, band 91 | 62 | 35 | 0.57 | 0.97 |
+
+  - Every band-61 run on the server ran out of its 15 lobsters, in 480 to 700 ticks.
+  - At band 91, four of five ran out of their 12. The one that didn't slowed down after 1,000 ticks, as the tolerance
+    rule has it.
+- **Fitted: the crowd around a fight, 0.8 attacks a tick** (`FIGHT_ATTACKS_PER_TICK`; Claude's choice, confirmed by
+  Caleb with v1.37):
+  - fitted to those 10 runs by the sim, sweeping the rate at the server's food: food/hr 0.86 and 1.06 of the
+    server's, and the time to run out of food 1.16 and 1.02;
+  - a crossing keeps its 0.43. More gather around a character that stays: 1.13 a tick was measured standing at
+    combat level 50, not fighting back.
+- **Checked on cases it wasn't fitted on:** three new cases (`results/calibration/abyss-fight-check-cases.json`), 5
+  server runs each against 200 of the sim's:
+
+  | Case | Food/hr: server | sim | sim / server | Time to out of food | XP/hr |
+  |---|---|---|---|---|---|
+  | Melee at the guardians, band 91 | 52.6 | 59.9 | 1.14 | 0.99 | 0.97 |
+  | Ranged at the walkers, band 91 | 148.8 | 175.2 | 1.18 | 0.85 | 0.90 |
+  | Melee at the leeches, band 61 | 197.5 | 133.5 | **0.68** | **1.48** | 0.94 |
+
+  - Two of the three are inside the ±20% gate.
+  - **The leeches fail.** Their site does more damage a tick on the server (0.47) than the guardians' (0.37), though a
+    leech barely hits. Most likely, killing leeches never thins the guardians and walkers that gather round, and they
+    do the damage; the sim's crowd has the same mix whatever the character kills. Raised as OQ-51: recommended, a
+    documented gap, as the sim freezes on Nov 10.
+- **What it costs an agent:** the Abyss's fights eat. In the sim, at the fit's cases, 136 lobsters an hour at the
+  guardians (band 61) and 65 at the walkers (band 91): about 31,000 and 15,000 gp an hour of food at 228 gp a lobster.
+  Without prayer, the XP/hr is lower too: 28,500 at the guardians against 32,000 flicking.
+- **Not modelled:**
+  - the crowd during the walk to the site from the teleport's landing (travel's walks take no attacks, as the exit's
+    don't);
+  - the crowd during a retreat: only the fought monster's escape swings.
+- **Tests:**
+  - `test_the_rings_attacks_on_a_fight_are_the_crossings_less_the_monster_fought`;
+  - `test_a_fight_in_the_abyss_takes_the_rings_attacks_with_no_prayer`: inside the Abyss, with the tolerance run out,
+    and outside it.
+- **The env contract:** v1.37 (§8's Prayer row, and a row for the Abyss's crowd), confirmed by Caleb.

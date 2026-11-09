@@ -17,8 +17,10 @@ A trip through it, from beside the Mage of Zamorak (north of Edgeville, Wilderne
   prayer (rlscape.combat.rates.npc_offence). When its hitpoints fall under twice the hardest hit there, it eats the
   food it carries (Caleb's gathering rule's line), EAT_TICKS each, the attacks going on. Hitpoints at 0 kill it,
   skulled: nothing is kept (DeathTask.getContainers) and no gravestone is made (GraveController.allowGenerate);
-- the rift (RIFT_TICKS) lands it inside the rune's ruins, as entering them does (Altar.enterRift); chaos's rift lands
-  it beside the altar, past the maze (AbyssPlugin's exit-through).
+- with a pouch decayed, it goes by the Dark Mage in the centre on the way to the rift, who repairs every pouch
+  (REPAIR_TICKS beyond the walks; rlscape.sim.pouches);
+- the rift (RIFT_TICKS) lands it inside the rune's ruins, as entering them does (Altar.enterRift). Chaos's rift,
+  which lands it beside the altar past the maze, isn't taken: chaos rune crafting is out (Caleb, 2026-11-09).
 Walks are the planner's steps, timed as the travel model times walks (rlscape.sim.movement.timed: running with run
 energy, and the travel walker's measured overhead for its clicks along a route), as a long walk round the ring takes
 a person several minimap clicks.
@@ -34,22 +36,24 @@ import numpy as np
 from rlscape.combat.rates import NO_FLICKS, npc_offence
 from rlscape.gamedata import runecrafting as rcd
 from rlscape.gamedata import server as gd
+# the skull's 2,000 ticks, the teleport's 3 (measured: 0.94) and the mage's tile, the travel model's too
+from rlscape.gamedata.transports import ABYSS_SKULL_TICKS as SKULL_TICKS  # noqa: F401
+from rlscape.gamedata.transports import ABYSS_TELEPORT_TICKS as TELEPORT_TICKS, MAGE_TILE  # noqa: F401
 from rlscape.sim.aggression import GATHERING_STANCE
 from rlscape.sim.combat import die
 from rlscape.sim.energy import RUN_TILES
 from rlscape.sim.equipment import fighter_for
 from rlscape.sim.health import EAT_TICKS, eat_one
+from rlscape.routes import abyss_map, nearest_beside
+from rlscape.sim import pouches
 from rlscape.sim.mining import best_pickaxe
 from rlscape.sim.movement import timed
 from rlscape.sim.state import CharacterState
 from rlscape.sim.woodcutting import best_hatchet
 from rlscape.travel import overhead
 
-MAGE_TILE = (3105, 3554, 0)  # the Mage of Zamorak's spawn (npc_spawns.json)
 SEGMENTS = 12
-SKULL_TICKS = 2000  # AbyssPlugin.teleport: spawnTimer<Skulled>(2000)
 # Measured on the server (scripts/measure_abyss.py, 2026-11-08, 30 trips at 50 ms; results/calibration/abyss-*):
-TELEPORT_TICKS = 3  # beside the mage, its Teleport clicked, to landing (the 3-tick lock, the 2-tick pulse; 0.94)
 PASS_TICKS = 14  # walked to beside an obstacle, a try that passes to standing on the inner ring: the click, the
 # 8-tick lock and the move on its seventh tick (fitted: 6.1 over the walk's timing and the lock)
 FAIL_TICKS = 7  # a try that fails, to the next clicked as its fail shows (7 between tries, every time)
@@ -62,8 +66,15 @@ RIFT_TICKS = 6  # walked to beside a rift, its Exit-through to landing inside th
 # 1.13 swings a tick over 150 ticks standing, as more gather). Shared by the kinds as their spawns over their attack
 # speeds (counted standing: leeches 54%, guardians 26%, walkers 20%; the rule's 54, 22, 24)
 ATTACKS_PER_TICK = 0.43
+# Around a fight, standing (OQ-49 (a)): fitted to the damage of 10 server runs without prayer (scripts/calibrate_combat.py
+# --cases-from results/calibration/abyss-fight-cases.json, 2026-11-09: melee at the guardians, band 61, and the walkers,
+# band 91): food/hr 0.86 and 1.06 of the server's at 0.8, against 0.46 and 0.57 at the crossing's 0.43; more gather
+# around a character that stays (1.13 standing, not fighting back, at combat level 50)
+FIGHT_ATTACKS_PER_TICK = 0.8
 ABYSSAL = (2263, 2264, 2265)  # AbyssalNPC: leech, guardian, walker
-CHAOS_LANDING = (2269, 4840, 0)  # AbyssPlugin's chaos exit-through: beside the altar, past the maze
+DARK_MAGE = (3039, 4834)  # the Dark Mage's spawn (2262), the Abyss's centre
+REPAIR_TICKS = 1  # beside him, Repair-pouches to the repair, beyond the walk (measured: 5 ticks from the click from
+# the inner landing nearest him, 11 tiles off, about all of it the walk; DarkMageDialogue repairs as it opens)
 # kind -> the skill its tries roll (None: always passes)
 KIND_SKILL = {"rocks": "mining", "tendrils": "woodcutting", "boil": "firemaking", "eyes": "thieving",
               "gap": "agility", "passage": None}
@@ -172,6 +183,55 @@ def mean_damage(state: CharacterState) -> float:
     return sum(share * chance * max_hit / 2 for _, share, chance, max_hit in _drawn(state))
 
 
+@dataclass(frozen=True)
+class Ring:
+    """The outer ring's attacks on a fight in the Abyss (Caleb, 2026-11-09, OQ-49 (a)): the crossing's mix of kinds, the
+    kinds the character's combat level draws, with no prayer (every way into the Abyss is the mage's teleport, which
+    drains it), at FIGHT_ATTACKS_PER_TICK shared by them, until the region's tolerance runs out (`until`, ticks into the
+    option: AggressiveBehavior.canSelectTarget). While a monster fights the character, the fight models its own
+    swings, so the ring adds the rest (`beside`). An attack's damage is drawn from the mix in one draw: `cdf` over
+    0..the hardest hit."""
+
+    rate: float  # attacks a tick, all the drawn kinds together
+    cdf: np.ndarray  # P(an attack's damage <= d), d = 0..hardest
+    until: float
+
+    @classmethod
+    def at(cls, state: CharacterState, until: float) -> Ring | None:
+        """The ring for a fight with the character as it is now; None if no kind is drawn."""
+        drawn = _drawn(state)
+        if not drawn:
+            return None
+        shares = sum(share for _, share, _, _ in drawn)
+        pmf = np.zeros(max(m for *_, m in drawn) + 1)
+        for _, share, chance, max_hit in drawn:
+            weight = share / shares
+            pmf[0] += weight * (1 - chance)
+            pmf[:max_hit + 1] += weight * chance / (max_hit + 1)
+        return cls(FIGHT_ATTACKS_PER_TICK * shares, np.cumsum(pmf), until)
+
+    def beside(self, attack_speed: int) -> float:
+        """The ring's attacks a tick while a monster of that attack speed also fights the character: the rest of the
+        rate, less its own swings."""
+        return max(self.rate - 1 / attack_speed, 0.0)
+
+    def damage(self, rng: np.random.Generator, n: int = 1) -> np.ndarray:
+        """`n` attacks' damage."""
+        return np.minimum(np.searchsorted(self.cdf, rng.random(n), side="right"), len(self.cdf) - 1)
+
+    def mean(self) -> float:
+        """An attack's mean damage."""
+        return float(np.sum(1 - self.cdf[:-1]))
+
+    def attacks(self, rng: np.random.Generator, start: float, length: float) -> np.ndarray:
+        """The damage of the attacks in a stretch of `length` ticks from `start` ticks into the option, with nothing
+        else attacking, in order: as many as the rate gives up to `until`."""
+        exposed = min(start + length, self.until) - start
+        if exposed <= 0:
+            return np.zeros(0, dtype=int)
+        return self.damage(rng, int(rng.poisson(self.rate * exposed)))
+
+
 def _attacked(state: CharacterState, rng: np.random.Generator, ticks: float, now: int) -> tuple[bool, int]:
     """The outer ring's attacks over `ticks` from `now`, in time order: each monster kind the character's combat
     level draws attacks at its share of ATTACKS_PER_TICK, with no prayer. Under twice the hardest hit, it eats what it
@@ -197,6 +257,19 @@ def _attacked(state: CharacterState, rng: np.random.Generator, ticks: float, now
             eating += EAT_TICKS
 
 
+@cache
+def _detour_steps(place: int, rune: str) -> float:
+    """From the inner landing past places[place] to beside the Dark Mage, then on to beside the rune's rift: the
+    planner's steps on the Abyss's map."""
+    a, world = rcd.abyss(), abyss_map()
+    to_mage, tile = nearest_beside(world, a.inner_tiles[place], DARK_MAGE, (1, 1))
+    if tile is None:
+        return float("inf")
+    _, rift_tile, size = a.rifts[rune]
+    on, _ = nearest_beside(world, tile[:2], rift_tile, size)
+    return to_mage + on
+
+
 def _walk(state: CharacterState, steps: float) -> int:
     """Walk the steps as walks are timed (movement.timed); the ticks taken."""
     ticks, energy = timed(state, [(steps, 0)])
@@ -216,9 +289,9 @@ class Trip:
     segment: int
 
 
-def cross(state: CharacterState, rng: np.random.Generator, rune: str, at: int = 0) -> Trip:
+def cross(state: CharacterState, rng: np.random.Generator, rune: str, at: int = 0, repair: bool = False) -> Trip:
     """From beside the mage, `at` ticks into the option, to landing inside the rune's ruins (state.location: the
-    ruins' landing, or chaos's beside its altar), or to a death on the outer ring (state.location: the respawn)."""
+    ruins' landing), or to a death on the outer ring (state.location: the respawn). With `repair`, by the Dark Mage."""
     now = state.tick + at
     elapsed = TELEPORT_TICKS
     state.skulled_until = now + elapsed + SKULL_TICKS
@@ -236,6 +309,10 @@ def cross(state: CharacterState, rng: np.random.Generator, rune: str, at: int = 
     outer += eating
     if died:
         return Trip(elapsed + outer, True, crossing.kind, tries, segment)
-    elapsed += outer + _walk(state, crossing.inner_steps) + RIFT_TICKS
-    state.location = CHAOS_LANDING if rune == "chaos" else rcd.ruins()[rune].end
+    if repair:
+        elapsed += outer + _walk(state, _detour_steps(crossing.place, rune)) + REPAIR_TICKS + RIFT_TICKS
+        pouches.repair(state)
+    else:
+        elapsed += outer + _walk(state, crossing.inner_steps) + RIFT_TICKS
+    state.location = rcd.ruins()[rune].end
     return Trip(elapsed, False, crossing.kind, tries, segment)

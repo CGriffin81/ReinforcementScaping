@@ -77,12 +77,12 @@ def test_an_rc_path_crafts_its_essence_a_load_at_a_time_with_the_talisman():
 
 @needs_server
 def test_a_normal_rune_takes_rune_essence_first_and_the_others_only_pure():
-    air, chaos = RunecraftAtRuins("air"), RunecraftAtRuins("chaos")
+    air, nature = RunecraftAtRuins("air"), RunecraftAtRuins("nature")
     state = character({}, {rcd.RUNE_ESSENCE: 10, rcd.PURE_ESSENCE: 10, rcd.talismans()["air"]: 1}, runecrafting=11)
     air._restock(state)
     assert state.inventory.get(rcd.RUNE_ESSENCE) == 10 and rcd.PURE_ESSENCE not in state.inventory  # one kind a load
-    only_rune = character({}, {rcd.RUNE_ESSENCE: 50, rcd.talismans()["chaos"]: 1}, runecrafting=35)
-    assert chaos.held_units(only_rune) == 0 and not chaos.available(only_rune)
+    only_rune = character({}, {rcd.RUNE_ESSENCE: 50, rcd.talismans()["nature"]: 1, 995: 60}, runecrafting=44)
+    assert nature.held_units(only_rune) == 0 and not nature.available(only_rune)
 
 
 @needs_server
@@ -104,7 +104,8 @@ def test_law_banks_the_arms_entranas_monks_refuse_and_nature_carries_its_fares()
 
 @needs_server
 def test_runecrafting_has_its_slots_kit_and_rates():
-    assert "runecrafting" in SKILLS and len(runecrafting_paths()) == 2 * len(RC_RUNES) + 11 == 29  # with abyss_rc_
+    assert "runecrafting" in SKILLS and len(runecrafting_paths()) == 2 * len(RC_RUNES) + 10 == 26  # with abyss_rc_
+    assert "chaos" not in RC_RUNES and not any("chaos" in p.id for p in runecrafting_paths())  # Caleb, 2026-11-09
     ids = {p.id for p in path_options()}
     assert {"rc_air", "rc_law"} <= ids and "rc_cosmic" not in ids and "mine_essence" not in ids  # OQ-45 (a): the
     # cosmic altar only by the Abyss; essence isn't mined (Caleb)
@@ -123,7 +124,7 @@ def test_a_paths_essence_and_talisman_are_bought_on_the_ge():
     while held."""
     from rlscape.sim.buying import RUNECRAFTING_INPUTS, BuyGE
     from rlscape.vocabulary import vocabulary
-    assert set(RUNECRAFTING_INPUTS) <= set(vocabulary()) and len(RUNECRAFTING_INPUTS) == 21
+    assert set(RUNECRAFTING_INPUTS) <= set(vocabulary()) and len(RUNECRAFTING_INPUTS) == 19
     state, rng = character({COINS: 1_000_000}, runecrafting=1), np.random.default_rng(0)
     path, talisman = RunecraftAtRuins("air"), rcd.talismans()["air"]
     assert not path.available(state)

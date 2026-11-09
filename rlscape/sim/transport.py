@@ -14,7 +14,8 @@ from __future__ import annotations
 from functools import cache
 
 from rlscape.gamedata import server as gd
-from rlscape.gamedata.transports import HOME_COOLDOWN_TICKS, Transport, jewellery, transports, wilderness_level
+from rlscape.gamedata.transports import (ABYSS_SKULL_TICKS, HOME_COOLDOWN_TICKS, Transport, jewellery, transports,
+                                         wilderness_level)
 from rlscape.sim.equipment import WEAPON
 from rlscape.sim.skills import MAX_XP, SKILL_INDEX
 from rlscape.sim.state import COINS, CharacterState
@@ -126,6 +127,8 @@ def use(state: CharacterState, transport: Transport, at: int) -> None:
     home teleport's cooldown (from the teleport); its XP."""
     if transport.kind == "home":
         state.home_teleport_ready = at + transport.ticks + HOME_COOLDOWN_TICKS
+    if transport.kind == "abyss":  # the Mage of Zamorak's teleport skulls (AbyssPlugin.teleport; the prayer drain: OQ-48)
+        state.skulled_until = at + transport.ticks + ABYSS_SKULL_TICKS
     for rune, n in _runes_needed(state, transport.runes).items():
         for _ in range(n):
             _take(state, rune)

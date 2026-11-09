@@ -16,6 +16,12 @@ rlscape.bridge.abyss):
 - `--fails N`: as --pass, at level 1 (a 2% pass): the ticks between tries, a try clicked again as its fail shows.
 - `--rifts`: from each of the twelve inner-ring landings (data/abyss), each rift walked to and clicked, as above: the
   ticks to its altar's landing, against the planner's steps timed as walks are and RIFT_TICKS.
+- `--pouches`: the essence pouches (PouchManager.kt), a character with all four and Runecrafting 99:
+  - Fill and Empty, clicked as each takes (the bridge's `pouches` state shows each one's essence): the ticks a click;
+  - at the air altar (set down inside the ruins), with the pouches full and the inventory's essence: Craft-rune, each
+    pouch's Empty, Craft-rune again: the ticks from the first runes to the second;
+  - the medium pouch's decay: filled and emptied until 264 essence have gone in, its capacity 6 then 5 (charges 45);
+  - the Dark Mage's Repair-pouches from beside the inner ring's landing nearest him: the ticks to the repair.
 - `--trips N`: for each rune, N whole crossings as abyss_rc_<rune> makes them: a character with Agility 60, Thieving
   50, Mining 61 and a rune pickaxe worn, and 27 pure essence; the teleport; the obstacle the sim takes for the
   landing's segment (rlscape.sim.abyss.best_crossing), walked to and tried until it passes; the rift; the altar's
@@ -33,22 +39,23 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
-from rlscape.bridge.abyss import (INNER_RADIUS, KINDS, MAGE_TILE, RIFTS, in_abyss, landing_place, places, polar,
-                                  segment, teleport, tick, xy)
+from rlscape.bridge.abyss import (INNER_RADIUS, KINDS, MAGE_TILE, RIFTS, in_abyss, landing_place, nearest_beside,
+                                  places, polar, segment, teleport, tick, xy)
 from rlscape.bridge.client import BridgeClient, BridgeError, run_suffix
 from rlscape.bridge.walker import walk_route
 from rlscape.gamedata import runecrafting as rcd
-from rlscape.routes import Map
+from rlscape.routes import Map, abyss_map
 from rlscape.sim.abyss import (ATTACKS_PER_TICK, FAIL_TICKS, PASS_TICKS, PASSAGE_TICKS, RIFT_TICKS, TELEPORT_TICKS,
                                best_crossing, mean_damage, walk_ticks)
 from rlscape.sim.energy import RUN_TILES
-from rlscape.sim.runecrafting import CRAFT_TICKS, INSIDE, RIFT_INSIDE
+from rlscape.sim.runecrafting import ABYSS_RUNES, CRAFT_TICKS, INSIDE, RIFT_INSIDE
 from rlscape.sim.skills import SKILL_INDEX, XP_FOR_LEVEL
 from rlscape.sim.state import CharacterState
 
@@ -61,28 +68,6 @@ TOOLS = {"rocks": 1275, "tendrils": 1359, "boil": 590}  # rune pickaxe, rune axe
 TRIP_LEVELS = {"hitpoints": 99, "defence": 99, "runecrafting": 99, "ranged": 60, "thieving": 50}
 
 
-def abyss_map() -> Map:
-    data = np.load(rcd.ABYSS / "collision.npz")
-    return Map(data["flags"], tuple(int(v) for v in data["origin"]), [])
-
-
-def beside(world: Map, tile: tuple[int, int], size: tuple[int, int]) -> list[int]:
-    (x, y), (sx, sy) = tile, size
-    around = ([(x - 1, y + j) for j in range(sy)] + [(x + sx, y + j) for j in range(sy)]
-              + [(x + i, y - 1) for i in range(sx)] + [(x + i, y + sy) for i in range(sx)])
-    return [n for n in map(world.node, around) if n is not None and world.standable[n]]
-
-
-def nearest_beside(world: Map, start: tuple[int, int], tile: tuple[int, int],
-                   size: tuple[int, int]) -> tuple[float, tuple[int, int, int] | None]:
-    """The planner's steps from a tile to beside a node, and the tile beside it the walk ends on."""
-    node = world.node(start)
-    targets = beside(world, tile, size)
-    if node is None or not targets:
-        return float("inf"), None
-    lengths = world.lengths(node)
-    end = min(targets, key=lambda n: lengths[n])
-    return float(lengths[end]), world.tile(end)
 
 
 def walk_and_click(c: BridgeClient, uid: int, world: Map, goal: tuple[int, int, int] | None, name: str,
@@ -179,6 +164,126 @@ def rift_run(c: BridgeClient, world: Map, start: tuple[int, int], rune: str, bud
         return {"rune": rune, "start": start, "error": "no exit"}
     finally:
         c.despawn(uid)
+
+
+POUCHES = (5509, 5510, 5512, 5514)  # small, medium, large, giant (PouchManager.kt)
+
+
+def pouch(s: dict[str, Any], item: int) -> dict[str, Any]:
+    return next(p for p in s["pouches"] if p["id"] == item)
+
+
+def held(s: dict[str, Any], item: int) -> int:
+    return sum(i["amount"] for i in s["inventory"] if i["id"] == item)
+
+
+def pouch_item(c: BridgeClient, uid: int, base: int) -> int:
+    """The pouch's item as held: decayed, the medium, large and giant become the next id."""
+    carried = {i["id"] for i in c.state(uid)["inventory"]}
+    return base if base in carried else base + 1
+
+
+def click_each(c: BridgeClient, uid: int, option: str, done=None, budget: int = 40) -> list[int]:
+    """Click `option` on each pouch in turn, the next once the last has taken (its essence changed); the ticks each
+    click took, from the click to the state showing it."""
+    out = []
+    for item in POUCHES:
+        before = pouch(tick(c, uid)[1], item)["amount"]
+        c.item_option(uid, pouch_item(c, uid, item), option)
+        for t in range(1, budget):
+            _, s = tick(c, uid)
+            if pouch(s, item)["amount"] != before:
+                out.append(t)
+                break
+        else:
+            out.append(None)
+    return out
+
+
+def pouch_runs(c: BridgeClient) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    uid = spawn_trip(c, {"runecrafting": 99, "hitpoints": 99, "defence": 99},
+                     [*((item, 1) for item in POUCHES), (rcd.PURE_ESSENCE, 24)])
+    try:
+        out["fill"] = click_each(c, uid, "Fill", lambda s, i: pouch(s, i)["amount"] > 0)
+        out["after_fill"] = {p["id"]: (p["capacity"], p["charges"], p["amount"]) for p in tick(c, uid)[1]["pouches"]}
+        out["empty"] = click_each(c, uid, "Empty", lambda s, i: pouch(s, i)["amount"] == 0)
+        # at the air altar: craft, empty each, craft again. 23 essence in the pouches, so that once the inventory's
+        # 10 are crafted (the runes a stack) every pouch empties into the free slots
+        for item in {i["id"] for i in tick(c, uid)[1]["inventory"]} - set(POUCHES):
+            c.item_option(uid, item, "Drop")
+        c.wait(2)
+        c.debug_give(uid, rcd.PURE_ESSENCE, 23)
+        click_each(c, uid, "Fill", lambda s, i: pouch(s, i)["amount"] > 0)
+        c.debug_give(uid, rcd.PURE_ESSENCE, 10)
+        c.debug_teleport(uid, *rcd.ruins()["air"].end)
+        c.wait(3)
+        c.interact(uid, "Altar", "Craft-rune")
+        first = None
+        for _ in range(40):
+            t, s = tick(c, uid)
+            if held(s, 556):
+                first = t
+                break
+        runes = held(s, 556)
+        c.wait(2)  # the altar's lock
+        empties = click_each(c, uid, "Empty", lambda s, i: pouch(s, i)["amount"] == 0)
+        c.interact(uid, "Altar", "Craft-rune")
+        second = None
+        for _ in range(40):
+            t, s = tick(c, uid)
+            if held(s, 556) > runes:
+                second = t
+                break
+        out["craft_again"] = {"first_runes_at": first, "second_runes_at": second, "between": (second - first)
+                              if first and second else None, "empties": empties, "runes": held(s, 556)}
+    finally:
+        c.despawn(uid)
+    # the medium pouch's decay: 264 essence in, 6 a fill, then capacity 5
+    uid = spawn_trip(c, {"runecrafting": 99}, [(5510, 1), (rcd.PURE_ESSENCE, 27)])
+    try:
+        seen = []
+        for n in range(50):
+            c.item_option(uid, pouch_item(c, uid, 5510), "Fill")
+            c.wait(1)
+            s = tick(c, uid)[1]
+            p_ = pouch(s, 5510)
+            seen.append((n + 1, p_["capacity"], p_["charges"], p_["amount"]))
+            c.item_option(uid, pouch_item(c, uid, 5510), "Empty")
+            c.wait(1)
+            if p_["capacity"] < 6:
+                break
+        out["decay"] = {"fills": seen[-3:], "item_now": [i["id"] for i in tick(c, uid)[1]["inventory"] if i["id"] in
+                                                         (5510, 5511)]}
+    finally:
+        c.despawn(uid)
+    # the Dark Mage's repair, from the inner ring
+    uid = spawn_trip(c, {"runecrafting": 99, "hitpoints": 99, "defence": 99}, [(5510, 1), (rcd.PURE_ESSENCE, 27)])
+    try:
+        for _ in range(46):  # decay it first: 264 essence
+            c.item_option(uid, pouch_item(c, uid, 5510), "Fill")
+            c.wait(1)
+            c.item_option(uid, pouch_item(c, uid, 5510), "Empty")
+            c.wait(1)
+        before = pouch(tick(c, uid)[1], 5510)
+        a = rcd.abyss()
+        start = min(a.inner_tiles, key=lambda tile: math.dist(tile, (3039, 4834)))
+        c.debug_teleport(uid, *start)
+        c.wait(3)
+        c.interact(uid, "Dark mage", "Repair-pouches", is_object=False)
+        t0 = tick(c, uid)[0]
+        repaired = None
+        for _ in range(60):
+            t, s = tick(c, uid)
+            if pouch(s, 5510)["capacity"] == 6:
+                repaired = t - t0
+                break
+        out["repair"] = {"from": start, "before": (before["capacity"], before["charges"]), "ticks": repaired,
+                         "after": (pouch(s, 5510)["capacity"], pouch(s, 5510)["charges"]), "chatbox": s["chatbox"],
+                         "message": s["messages"][-1:]}
+    finally:
+        c.despawn(uid)
+    return out
 
 
 TRIP_SKILLS = {"agility": 60, "mining": 61}  # with TRIP_LEVELS (Thieving 50): every kind but the boil is usable
@@ -301,7 +406,8 @@ def main() -> None:
     parser.add_argument("--fails", type=int, default=0)
     parser.add_argument("--rifts", action="store_true")
     parser.add_argument("--trips", type=int, default=0)
-    parser.add_argument("--runes", nargs="*", default=list(RIFTS))
+    parser.add_argument("--pouches", action="store_true")
+    parser.add_argument("--runes", nargs="*", default=list(ABYSS_RUNES))
     parser.add_argument("--defence", type=int, default=TRIP_LEVELS["defence"],
                         help="the trips' Defence (the damage's check set: hitpoints stay 99)")
     parser.add_argument("--tick-ms", type=int, default=50)
@@ -336,6 +442,9 @@ def main() -> None:
                         rows["rifts"].append(row)
                         print("rift", obstacle, rune, row.get("ticks"), row.get("sim"), row.get("steps"),
                               row.get("error", ""), flush=True)
+            if args.pouches:
+                rows["pouches"] = pouch_runs(c)
+                print("pouches", json.dumps(rows["pouches"], default=str), flush=True)
             if args.trips:
                 rows["trips"] = []
                 for rune in args.runes:

@@ -245,9 +245,41 @@ def _shortcuts() -> list[Transport]:
             for s in SHORTCUT_LINKS]
 
 
+# --- the Abyss --------------------------------------------------------------------------------------------------------
+# The Abyss (AbyssPlugin.kt; rlscape.sim.abyss, rlscape.bridge.abyss) is closed: no walk joins it to anywhere else
+# (rlscape.travel). The way in is the Mage of Zamorak's teleport, which skulls the character for ABYSS_SKULL_TICKS
+# (rlscape.sim.transport.use) and drains its prayer (a documented gap, OQ-48 (a)); it's a link, as a boat is, from
+# beside the mage. The way out is a teleport, or ABYSS_EXIT: through the passage, which always lets a character in, to
+# the inner ring; the body rift; and the body altar's portal, out by the body ruins, south of Edgeville. The exit is
+# taken only from inside the Abyss (rlscape.sim.movement), so it isn't among the teleports.
+# x0, y0, x1, y1: map regions (47, 75), where the teleport lands, both rings, and (47, 76) north of it, a second copy
+# no way the model knows reaches (half the abyssal monsters spawn there; the Abyss's map, data/abyss, is (47, 75)'s
+# alone, so walks to it find none)
+ABYSS_BOX = (3008, 4800, 3071, 4927)
+MAGE_TILE = (3105, 3554, 0)  # the Mage of Zamorak's spawn, Wilderness level 5 (npc_spawns.json)
+ABYSS_LANDING = (3039, 4832, 0)  # the Abyss's centre (AbyssLoc.origin): the anchor of the teleport's landings
+ABYSS_OUTER_RADIUS = 25.1  # AbyssLoc.outerRadius: a landing is drawn in from it until its tile is free
+ABYSS_SKULL_TICKS = 2000  # AbyssPlugin.teleport: spawnTimer<Skulled>(2000)
+ABYSS_TELEPORT_TICKS = 3  # beside the mage, its Teleport, to landing (measured; scripts/measure_abyss.py)
+# The exit's ticks from a point of the outer ring, estimated from its measured parts (scripts/measure_abyss.py): the
+# walk to beside the passage (33 steps on average over the export's landings and places), the passage (5), the walk to
+# the body rift (19 steps on average from the inner landings), the rift (6), and the portal out (5 steps and 5 ticks):
+# 54 in all. The outer ring's monsters attack on the way (left out of the transport).
+ABYSS_EXIT_TICKS = 54
+BODY_RUINS = (3051, 3443, 0)  # MysteriousRuins.BODY's base: where the body altar's portal leaves the character
+ABYSS_LINK = Transport("abyss:mage", "abyss", ABYSS_LANDING, ABYSS_TELEPORT_TICKS, start=MAGE_TILE,
+                       npc="Mage of Zamorak")
+ABYSS_EXIT = Transport("abyss:exit", "abyss_exit", BODY_RUINS, ABYSS_EXIT_TICKS)
+
+
+def in_abyss(tile: tuple[int, int, int]) -> bool:
+    x0, y0, x1, y1 = ABYSS_BOX
+    return tile[2] == 0 and x0 <= tile[0] <= x1 and y0 <= tile[1] <= y1
+
+
 @cache
 def transports() -> tuple[Transport, ...]:
-    return tuple(_teleports() + _boats() + _shortcuts())
+    return tuple(_teleports() + _boats() + _shortcuts() + [ABYSS_LINK])
 
 
 def wilderness_level(tile: tuple[int, int, int]) -> int:

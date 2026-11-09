@@ -70,3 +70,32 @@ def test_a_rift_from_the_inner_ring_lands_inside_its_altars_ruins(client, uid):
         if not in_abyss(s):
             break
     assert (s["location"]["x"], s["location"]["y"], s["location"]["z"]) == rcd.ruins()["nature"].end
+
+
+def test_the_bridge_shows_each_pouchs_state_and_a_fill_counts_against_its_charges(client, uid):
+    """The bridge's `pouches` (PouchManager's state, one a kind) and what Fill does to it, as rlscape.sim.pouches
+    has it: the medium pouch takes 6 of the inventory's pure essence and has 258 of its 264 left."""
+    client.debug_set_levels(uid, {"runecrafting": 99})
+    client.debug_give(uid, 5510, 1)
+    client.debug_give(uid, rcd.PURE_ESSENCE, 10)
+    medium = lambda: next(p for p in client.state(uid)["pouches"] if p["id"] == 5510)  # noqa: E731
+    assert (medium()["capacity"], medium()["charges"], medium()["amount"]) == (6, 264, 0)
+    client.item_option(uid, 5510, "Fill")
+    client.wait(2)
+    assert (medium()["capacity"], medium()["charges"], medium()["amount"], medium()["essence"]) == (
+        6, 258, 6, rcd.PURE_ESSENCE)
+
+
+def test_the_walker_goes_into_the_abyss_by_the_mage_and_out_by_its_exit(client, uid):
+    """rlscape.bridge.travel: the mage's Teleport into the Abyss (a walk to a ring tile on its own map after it); its
+    exit out, by the passage the obstacles' varbit shows, the body rift and the body altar's portal."""
+    from rlscape.bridge.travel import go
+    from rlscape.gamedata.transports import ABYSS_EXIT, ABYSS_LINK, BODY_RUINS
+    client.debug_set_levels(uid, {"hitpoints": 99, "defence": 99})  # its monsters attack on the way
+    client.set_run(uid, True)
+    client.debug_teleport(uid, 3094, 3493)
+    client.wait(2)
+    inside = go(client, uid, (ABYSS_LINK,), (3039, 4856, 0))
+    assert inside.arrived and client.state(uid)["skull_ticks"] > 0
+    out = go(client, uid, (ABYSS_EXIT,), BODY_RUINS)
+    assert out.arrived and not in_abyss(client.state(uid))

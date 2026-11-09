@@ -2,7 +2,7 @@
 as scripts/calibrate_crafting.py does Crafting's.
 
 The cases:
-- rc_<rune>, for each of the sim's runes but chaos (its maze needs ladders the runner doesn't climb yet): a character
+- rc_<rune>, for each of the sim's runes (chaos is out: Caleb, 2026-11-09): a character
   with the talisman and 27 essence (rune essence where the altar takes it), three tiles south of the ruins (setup
   only). As a person does it: the talisman used on the ruins; once inside, the altar's Craft-rune; once the crafting's
   lock is over, the portal's Use. Measured: the ticks from the talisman's click to landing inside ("enter"), and from
@@ -146,7 +146,7 @@ def ratio(server: float, sim: float) -> dict[str, Any]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--runes", nargs="*", default=[r for r in RC_RUNES if r != "chaos"])
+    parser.add_argument("--runes", nargs="*", default=list(RC_RUNES))
     parser.add_argument("--runs", type=int, default=3)
     parser.add_argument("--tick-ms", type=int, default=50)
     parser.add_argument("--tiaras", action="store_true", help="also time making air tiaras at the altar")

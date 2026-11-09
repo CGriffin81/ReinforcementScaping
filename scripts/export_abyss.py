@@ -32,22 +32,14 @@ from pathlib import Path
 
 import numpy as np
 
-from rlscape.bridge.abyss import (MAGE_TILE, OBSTACLES, ORIGIN, OUTER_RADIUS, INNER_STEPS, RIFTS, landing_place,
-                                  places, polar, segment, teleport, xy)
+from rlscape.bridge.abyss import (MAGE_TILE, OBSTACLES, ORIGIN, OUTER_RADIUS, INNER_STEPS, RIFTS, beside,
+                                  landing_place, places, polar, segment, teleport, xy)
 from rlscape.bridge.client import BridgeClient
 from rlscape.routes import Map
 
 REPO = Path(__file__).resolve().parents[1]
 OUT = REPO / "data" / "abyss"
 BOX = (3008, 4800, 3071, 4863)  # map region (47, 75): the outer ring is 22 to 26 tiles from (3039, 4832)
-
-
-def beside(world: Map, tile: tuple[int, int], size: tuple[int, int]) -> list[int]:
-    """The nodes next to a footprint's sides (not its corners) that a character can stand on."""
-    (x, y), (sx, sy) = tile, size
-    around = ([(x - 1, y + j) for j in range(sy)] + [(x + sx, y + j) for j in range(sy)]
-              + [(x + i, y - 1) for i in range(sx)] + [(x + i, y + sy) for i in range(sx)])
-    return [n for n in map(world.node, around) if n is not None and world.standable[n]]
 
 
 def drawn_in(world: Map, radius: float, angle: float) -> int:

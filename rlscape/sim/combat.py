@@ -28,7 +28,11 @@ until the time budget, a full inventory, running out of food, or death:
   ranged does, at range 10, without piles (Caleb, OQ-34);
 - away from a safespot, the site's aggressive monsters of other kinds engage the character between kills, until the
   region's tolerance runs out (FightNeighbours, rlscape.combat.neighbours; Caleb, OQ-35 (a)): each is killed, in
-  the fight's plan, before the next target (`kill`, the same as a target's, its drops by the loot mode).
+  the fight's plan, before the next target (`kill`, the same as a target's, its drops by the loot mode);
+- in the Abyss (Caleb, OQ-49 (a)), the outer ring's crowd attacks it too (rlscape.sim.abyss.Ring, the crossing's mix
+  of kinds at a rate fitted to fights on the server): the rest of that rate while a monster fights it, all of it
+  between kills and while it waits, until the region's tolerance runs out. Its prayer is drained there (the mage's teleport is the only way in), so nothing is flicked, against the
+  crowd or the monster it fights.
 
 Death (DeathTask, GraveController, GraveType): the character respawns at rl.conf's home_location with full run energy
 (Player.finalizeDeath); the 3 most valuable items by high-alchemy value are kept (no skull in training; Protect Item
@@ -42,7 +46,7 @@ actions that start fights are in rlscape.sim.slots.
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from math import ceil, inf
 
 import numpy as np
@@ -50,15 +54,17 @@ import numpy as np
 from rlscape.combat import neighbours as nb
 from rlscape.combat import safespots as ss
 from rlscape.combat.candidates import PoolEntry, Site, has_special_damage_protection, special_damage_shields
-from rlscape.combat.prayers import boosted_swings
+from rlscape.combat.prayers import NO_FLICKS, boosted_swings
 from rlscape.combat.rates import (BREATH_CHANCE, DRAGONFIRE_MAX, DRAGONFIRE_NPCS, ESCAPE_ATTACKS, OVERHEAD_TICKS_PER_KILL,
                                   PICKUP_TICKS, POISON_CHANCE, Plan, breath_max, combat_rates, npc_offence,
                                   player_offence)
 from rlscape.gamedata import server as gd
+from rlscape.gamedata.transports import in_abyss
 from rlscape.sim.energy import MAX_ENERGY
 from rlscape.sim.equipment import SHIELD, WEAPON, fighter_for, land_chance, ranged_ready, shot_outcomes, wield_best
 from rlscape.sim.health import advance_poison, apply_poison, eat_one, regenerate, retreat_hp
 from rlscape.sim.movement import route_ticks, walk
+from rlscape.sim import pouches
 from rlscape.sim.potions import drink_antifire, drink_boosts
 from rlscape.sim.options import COMPLETED, DIED, INVENTORY_FULL, OUT_OF_AMMO, OUT_OF_FOOD, Option, OptionResult
 from rlscape.sim.skills import MAX_XP, SKILL_INDEX
@@ -260,6 +266,7 @@ def die(state: CharacterState, now: int) -> None:
     state.poison_severity = state.poison_clock = state.poison_immune_until = 0  # both timers clear on death
     state.boosts, state.antifire_until = {}, 0  # the stats are restored; the immunity clears
     state.skulled_until = 0  # the skull clears on death (Player.finalizeDeath; Skulled's ClearOnDeath)
+    state.pouch_essence = {}  # the essence in its pouches went with it (their kinds' wear stays: rlscape.sim.pouches)
     state.region_since = now  # respawned into Lumbridge's region
 
 
@@ -375,13 +382,38 @@ def fight(state: CharacterState, rng: np.random.Generator, budget: int, entry: P
     waiting, waiting_since = 0, inf  # drops left with them, and since when
     neighbours = FightNeighbours.at(state, npc, site, spot)  # other kinds that engage it (OQ-35)
     tables = gd.drop_tables()
+    prayerless = in_abyss(site.spawn)  # the mage's teleport drained its prayer (OQ-49 (a))
+    ring = None
+    if prayerless:  # the outer ring's crowd (OQ-49 (a)); imported here, as rlscape.sim.abyss imports this module
+        from rlscape.sim.abyss import Ring
+        ring = Ring.at(state, state.region_since + nb.TOLERANCE_TICKS - state.tick)
+
+    def armed():
+        """The fighter as equipped, without its prayers in the Abyss."""
+        fighter = fighter_for(state)
+        return replace(fighter, flicks=NO_FLICKS) if prayerless else fighter
+
+    def crowded(start: float, length: float) -> OptionResult | None:
+        """The ring's attacks in a stretch of `length` ticks from `start` with nothing else fighting the character,
+        eating as the fight does (a bite between kills costs no time): the option's end, if they end it. Nothing
+        outside the Abyss, and no rng drawn."""
+        if ring is None:
+            return None
+        for hit in ring.attacks(rng, start, length):
+            state.hp -= int(hit)
+            if state.hp <= 0:
+                die(state, state.tick + elapsed)
+                return done(max(elapsed, 1), DIED)
+            if state.hp <= retreat_hp(state) and not eat_one(state):
+                return done(max(elapsed, 1), OUT_OF_FOOD)
+        return None
 
     def kill(target: gd.Npc, drops: gd.DropTable | None, here: int | None) -> tuple[OptionResult | None, float]:
         """One kill of `target` (the fight's monster `here`, or a neighbour with None), its drops and the pickups
         after it: the option's end if it ends in it, and the ticks after it with nothing attacking the character
         (the overhead to the next monster and the pickups), when a neighbour can engage."""
         nonlocal elapsed, kills, neighbour_kills, piles, waiting, waiting_since
-        fighter = fighter_for(state)
+        fighter = armed()
         chance, max_hit, speed, _, xp_per_damage = player_offence(fighter, plan, target)
         boosted_chance, boosted_max, _, _, _ = player_offence(fighter, plan, target, boosted=True)
         npc_chance, npc_max, _, _ = npc_offence(fighter, plan, target)
@@ -408,12 +440,27 @@ def fight(state: CharacterState, rng: np.random.Generator, budget: int, entry: P
             fire = breath_max(state.tick + elapsed < state.antifire_until)
             hits = np.where(rng.random(swings) < BREATH_CHANCE, rng.integers(0, fire + 1, swings), hits)
         ended, eating, poisoned_to = None, 0, 0  # poisoned_to: ticks into the kill the poison has been advanced to
-        for j, hit in enumerate(hits):
-            swing_at = (j + 1) * target.attack_speed + eating
+        # in the Abyss, the ring's other attackers too, in time order with the monster's swings (OQ-49 (a)): a
+        # memoryless stream at the rest of the ring's rate, until the region's tolerance runs out
+        crowd = ring.beside(target.attack_speed) if ring is not None else 0.0
+        crowd_until = ring.until - elapsed if crowd else 0.0
+        crowd_at = rng.exponential(1 / crowd) if crowd else inf
+        j = 0
+        while True:
+            own_at = (j + 1) * target.attack_speed + eating if j < swings else inf
+            if crowd_at < min(own_at, ticks + eating, crowd_until):
+                swing_at, hit, own = crowd_at, int(ring.damage(rng)[0]), False
+                crowd_at += rng.exponential(1 / crowd)
+            elif j < swings:
+                swing_at, hit, own = own_at, int(hits[j]), True
+                j += 1
+            else:
+                break
+            bitten = eating  # before this swing's bites
             advance_poison(state, swing_at - poisoned_to, state.tick + elapsed + poisoned_to)
             poisoned_to = swing_at
-            state.hp -= int(hit)
-            if target.poisonous and rng.random() < POISON_CHANCE:
+            state.hp -= hit
+            if own and target.poisonous and rng.random() < POISON_CHANCE:
                 eating += apply_poison(state, target.poison_amount, state.tick + elapsed + swing_at)  # a dose drunk
             if state.hp > 0 and state.hp <= retreat_hp(state):
                 if eat_one(state):
@@ -426,7 +473,7 @@ def fight(state: CharacterState, rng: np.random.Generator, budget: int, entry: P
                 ended = DIED
             if ended:
                 # the fight stops at this monster swing: charge the time and the damage dealt so far
-                fought = min((j + 1) * target.attack_speed + eating, ticks, budget - elapsed)
+                fought = min(swing_at + eating - bitten, ticks, budget - elapsed)
                 charge(min(int(fought // speed), possible))
                 elapsed += fought
                 regenerate(state, fought, poison=False)
@@ -463,6 +510,9 @@ def fight(state: CharacterState, rng: np.random.Generator, budget: int, entry: P
         if (dead := poisoned_to_death(elapsed)) is not None:
             return dead, 0.0  # after the kill, before the loot
         picked = sum(1 for item, amount in roll_drops(drops, rng) if loot(item) and state.add(item, amount))
+        pouch = pouches.drop(state, target.id, rng)  # an abyssal monster's pouch (AbyssalNPC), always picked up
+        if pouch is not None and state.add(pouch):
+            picked += 1
         if landed(possible):  # this kill's arrows, a pile per PILE_PRIVATE_TICKS of shooting
             piles += [elapsed - step] * ss.piles_per_kill(ticks)
         if picked:
@@ -490,6 +540,8 @@ def fight(state: CharacterState, rng: np.random.Generator, budget: int, entry: P
                 return dead, 0.0
             if elapsed >= budget:
                 return done(budget, COMPLETED), 0.0
+        if (ended := crowded(elapsed - between, between)) is not None:  # the overhead and the pickups, in the Abyss
+            return ended, 0.0
         if state.free_slots() == 0 and any(loot(i) and i not in stackable for i, _ in (entry.drops.expected_items()
                                                                                        .items() if entry.drops else ())):
             return done(elapsed, INVENTORY_FULL), 0.0
@@ -525,16 +577,21 @@ def fight(state: CharacterState, rng: np.random.Generator, budget: int, entry: P
                 elapsed += int(engaged[0])
                 if (dead := poisoned_to_death(elapsed)) is not None:
                     return dead
+                if (ended := crowded(elapsed - int(engaged[0]), int(engaged[0]))) is not None:
+                    return ended
                 if (ended := fight_back(engaged)) is not None:
                     return ended
                 continue
             if ready[here] >= budget:
                 regenerate(state, budget - elapsed)
-                return poisoned_to_death(budget) or done(budget, COMPLETED)
+                start, elapsed = elapsed, budget
+                return poisoned_to_death(budget) or crowded(start, budget - start) or done(budget, COMPLETED)
             regenerate(state, ready[here] - elapsed)
-            elapsed = ready[here]
+            start, elapsed = elapsed, ready[here]
             if (dead := poisoned_to_death(elapsed)) is not None:
                 return dead
+            if (ended := crowded(start, elapsed - start)) is not None:  # in the Abyss, the ring while it waits
+                return ended
             continue  # eat, if the poison brought HP to the retreat point
         ended, between = kill(npc, entry.drops, here)
         if ended is not None:

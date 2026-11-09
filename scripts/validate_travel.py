@@ -8,7 +8,10 @@ times the whole trip a tick at a time. Two sets:
 those times came from: other walks, spells, tablets, jewellery, a charter and a ship. Entrana isn't checked yet (its
 monks' conversation). "shortcuts" crosses each Agility shortcut one way with walks either side (their times were
 measured alone, by scripts/measure_shortcuts.py, and what one costs a trip was fitted on these), and
-"shortcuts_check" the other way.
+"shortcuts_check" the other way. "abyss" goes into the Abyss from Edgeville's bank by the Mage of Zamorak's teleport,
+to each quarter of the outer ring (the landing is random: the sim walks from the Abyss's centre), and out from each
+quarter by the Abyss's exit (its ticks estimated from scripts/measure_abyss.py's parts; a character set down there
+sees the obstacles turned as segment 0 shows them).
 
 Usage, with the server running (worldprops/rl.conf):
     uv run python scripts/validate_travel.py [--trips name ...]
@@ -125,7 +128,16 @@ SHORTCUTS_CHECK = (
     Trip("the lumberyard's fence north", (3240, 3321, 0), (3240, 3345, 0), levels=(("agility", 13),),
          expect=("shortcut:lumberyard_fence_north",)),
 )
-SETS = {"fit": TRIPS, "check": CHECK, "shortcuts": SHORTCUTS, "shortcuts_check": SHORTCUTS_CHECK}
+# Into the Abyss and out (rlscape.gamedata.transports: ABYSS_LINK, ABYSS_EXIT), at each quarter of the outer ring.
+# Its monsters attack on the way and travel doesn't model them, so the trips' characters are sturdy (a fresh one dies).
+EDGEVILLE_BANK = (3094, 3493, 0)
+RING = {"north": (3039, 4856, 0), "east": (3063, 4832, 0), "south": (3039, 4808, 0), "west": (3015, 4832, 0)}
+STURDY = (("hitpoints", 99), ("defence", 99))
+ABYSS = (*(Trip(f"into the Abyss, its {side}", EDGEVILLE_BANK, tile, levels=STURDY, expect=("abyss:mage",))
+           for side, tile in RING.items()),
+         *(Trip(f"out of the Abyss from its {side}", tile, EDGEVILLE_BANK, levels=STURDY, expect=("abyss:exit",))
+           for side, tile in RING.items()))
+SETS = {"fit": TRIPS, "check": CHECK, "shortcuts": SHORTCUTS, "shortcuts_check": SHORTCUTS_CHECK, "abyss": ABYSS}
 
 
 def sim_character(trip: Trip) -> CharacterState:

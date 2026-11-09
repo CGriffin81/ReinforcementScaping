@@ -20,6 +20,7 @@ import math
 from typing import Any
 
 from rlscape.bridge.client import BridgeClient
+from rlscape.routes import beside, nearest_beside  # noqa: F401 (the scripts' and the walker's)
 
 ORIGIN = (3039, 4832)  # AbyssLoc.origin
 OUTER_RADIUS = 25.1  # AbyssLoc.outerRadius
@@ -37,7 +38,8 @@ KINDS = {
     "gap": ("Gap", "Squeeze-through", "agility"),
     "passage": ("Passage", "Go-through", None),
 }
-# Altar's rifts (RunecraftingData.kt), by rune; blood's never opens (OQ-39) and soul's has no altar on the server
+# Altar's rifts (RunecraftingData.kt), by rune; blood's never opens (OQ-39) and soul's has no altar on the server.
+# Chaos's is the server's, exported and measured, though the sim crafts no chaos runes (Caleb, 2026-11-09)
 RIFTS = {"air": 7139, "mind": 7140, "water": 7137, "earth": 7130, "fire": 7129, "body": 7131, "cosmic": 7132,
          "law": 7135, "nature": 7133, "chaos": 7134, "death": 7136}
 

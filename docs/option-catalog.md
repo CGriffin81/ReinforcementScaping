@@ -1,7 +1,7 @@
-# Option Catalog (v1.3, Signed off; v1.4 being built)
+# Option Catalog (v1.4, Signed off)
 
-**v1.4** (2026-11-08, building sim v1 per OQ-2 and `docs/sim-v1-skills-draft.md`; to confirm when the four skills
-are built): Crafting's skilling slots and paths (§2), and XP slots hold only paths that give XP; Crafting's inputs in
+**v1.4** (2026-11-08, building sim v1 per OQ-2 and `docs/sim-v1-skills-draft.md`; confirmed by Caleb on 2026-11-09,
+the four skills built): Crafting's skilling slots and paths (§2), and XP slots hold only paths that give XP; Crafting's inputs in
 *V* and the GE buys (§8, §9); Herblore's skilling slots and paths (§2); Agility's skilling slots and laps (§2);
 Runecrafting's skilling slots and paths (§2), and its essence and talismans in *V* and the GE buys (§8, §9);
 Barbarian Fishing (§2) and the barbarian rod in *V* and the GE buys (§8, §9); seven Agility shortcuts in travel
@@ -113,17 +113,18 @@ Wilderness log's pit is attacked by its skeletons (OQ-46 (a)). **Barbarian Fishi
 for Fishing, Agility and Strength XP; it ranks in the Fishing and the Agility slots by its XP in each. Agility
 levels open seven of the server's shortcuts in travel (§4).
 
-**Runecrafting** (sim v1, v1.4; Caleb, 2026-11-08, OQ-2; `rlscape/sim/runecrafting.py`) has `rc_<rune>` for the nine
-runes whose ruins the travel model reaches: air, mind, water, earth, fire, body, chaos, nature and law. A path works
+**Runecrafting** (sim v1, v1.4; Caleb, 2026-11-08, OQ-2; `rlscape/sim/runecrafting.py`) has `rc_<rune>` for the eight
+runes whose ruins the travel model reaches: air, mind, water, earth, fire, body, nature and law. Chaos rune crafting is
+out (Caleb, 2026-11-09: an intentional gap, `docs/post-project-gaps.md`; its altar is past a ladder maze). A path works
 between the nearest bank and the ruins, as tanning does: it takes out the talisman and a load of one kind of essence
 (rune essence first for air to body; pure only for the rest), enters the ruins, crafts every essence at the altar,
 and leaves by the portal. An essence makes as many runes as the rune's multiple levels the character has reached
 (rl.conf's formula revision 530). Law's path banks the weapons and armour Entrana's monks refuse; nature's carries the
 Karamja boat's 60 gp. The times inside the ruins are the server's. Essence isn't mined (Caleb: it's cheap, and mining
 it wastes the time); the agent buys it (§9). A path wears the rune's tiara when the character has one, in place of the
-talisman, and carries 28 essence. `make_tiara_<rune>` (nine) uses pairs of a plain tiara and the talisman on the altar,
+talisman, and carries 28 essence. `make_tiara_<rune>` (eight) uses pairs of a plain tiara and the talisman on the altar,
 14 a trip, for the tiaras' XP (the talisman used up; a loss in gold, as the GE sells the tiaras for less).
-`abyss_rc_<rune>` (eleven: the nine, cosmic, and death, open at Ranged 60 and Thieving 50, OQ-39 (b)) goes by the
+`abyss_rc_<rune>` (ten: the eight, cosmic, and death, open at Ranged 60 and Thieving 50, OQ-39 (b)) goes by the
 Abyss (Choice H; `rlscape/sim/abyss.py`):
 - from Edgeville's bank, with 28 essence (a rift needs no talisman) and the food the crossing needs;
 - the Mage of Zamorak's teleport, which skulls the character for 2,000 ticks;
@@ -134,11 +135,20 @@ Abyss (Choice H; `rlscape/sim/abyss.py`):
 
 Cosmic and death are left by teleport. The cosmic altar is reached only by its rift (OQ-45 (a)).
 
+Both kinds of path use the essence pouches the character can fill (Caleb, OQ-40 (c); `rlscape/sim/pouches.py`):
+- out of the bank with the load, a slot each, and filled from it, in rounds until full;
+- inside, after the first craft, emptied and crafted again, in rounds while the slots allow (all four carry 30 more
+  essence, 53 a trip);
+- they decay with use, and an Abyss trip with a decayed one goes by the Dark Mage, who repairs them.
+
+The small pouch is in the bank from the start. The others drop from the Abyss's monsters, which the combat slots can
+now fight: the travel model reaches the Abyss by the mage's teleport (§4).
+
 A path that gives no XP (tanning, picking flax) fills only a gp slot: the XP slots take the best paths that give XP
 (v1.4).
 
 That's 83 paths in sim v0: woodcutting 12, fishing 8, mining 7, thieving 20, fletching 36; and in sim v1 crafting's
-39, herblore's 36, runecrafting's 29 and agility's 3. Mining's include iron at the Al
+39, herblore's 36, runecrafting's 26 and agility's 3. Mining's include iron at the Al
 Kharid mine (Caleb, 2026-10-31), kept or smelted, beside Varrock's: scorpions roam it, so it costs a low-level miner
 hitpoints (below). Fishing's include shrimp at Lumbridge Swamp (Caleb, 2026-11-01), kept or cooked, beside
 Draynor's: Draynor's spots are next to the bank, but its Dark wizards make them dangerous for a character of combat
@@ -287,8 +297,15 @@ the current stats, gear, food and ammunition.
   aggression runs out. In single combat it must kill one before the next target, so each engagement is a kill of
   that monster in the fight's plan, its time, damage, XP and drops counted. The slots count the expected fights; a
   site where one can't be hurt by the plan, or fails the danger filter below, is left out while aggression lasts.
-  From a usable safespot none reaches the character. Not modelled: multi-combat areas, where they attack at once,
-  and the ammunition the neighbour fights use (the slots' cap counts the target's only; the fight pays it).
+  From a usable safespot none reaches the character. Not modelled: multi-combat areas, where they attack at once
+  (except the Abyss, below), and the ammunition the neighbour fights use (the slots' cap counts the target's only; the
+  fight pays it).
+- **The Abyss's crowd (2026-11-09, OQ-49 (a), Caleb).** The Abyss is multi-combat, and 2 to 4 of its monsters attack at
+  once. A fight there also takes the outer ring's attacks, the crossing's mix of kinds at 0.8 a tick shared by the
+  kinds the character's level draws (fitted to fights on the server; a crossing takes 0.43, as more gather around a
+  character that stays), less the swings of the monster it fights, all of it between kills and while it waits, until
+  the region's tolerance runs out. The fight flicks no prayer there (Claude's choice, confirmed by Caleb on 2026-11-09), since the
+  mage's teleport, the only way in, drains it.
 
 ### B. Retreat-aware danger filter with a special-damage gear check (decided)
 
@@ -444,7 +461,7 @@ the 2,792 places the sim travels to, mostly quest areas no way the model knows r
 can't get to now (an island without the fare or a teleport) is unreachable for it until it can: its options are
 masked, and the combat slots skip it. Ways the model doesn't know yet (some items, quest steps) are OQ-16.
 
-**Agility shortcuts (OQ-16 (a), 2026-11-08; built; which seven is Claude's choice, to confirm).** Seven of the
+**Agility shortcuts (OQ-16 (a), 2026-11-08; built; which seven is Claude's choice, confirmed by Caleb on 2026-11-09).** Seven of the
 server's shortcuts, each both ways, are transports in travel, taken from their Agility levels like any other way
 (`rlscape/gamedata/shortcuts.py`): Falador's west wall (5), the lumberyard's fence (13), the coal trucks' log balance
 (20), the River Lum's stepping stone (31), Ardougne's log balance (33), the Al Kharid pit (38) and Rellekka's log
@@ -739,7 +756,7 @@ Karil's, so a shield goes with them, and 53 bolts with their poisoned, gem-tippe
 aren't modelled (they rank by ranged strength); mithril bolts were in already. Broad bolts are Destroy-only, so their
 drop stays masked. 279 in all.
 
-Sim v1 (v1.4, to confirm; OQ-2's Choice I (a), Caleb): the inputs the agent buys or holds join *V*, and the products
+Sim v1 (v1.4; OQ-2's Choice I (a), Caleb): the inputs the agent buys or holds join *V*, and the products
 only where something else uses them. Crafting's (2026-11-08): the uncut gems, the soft, hard and dragon leathers, the
 hides tanned, wool, flax, thread, a needle and a chisel, 25 in all, which the GE sells (§8, Choice A (a)); 18 weren't
 in *V* (cowhide, the green and blue dragonhides and four uncut gems were). The cut gems, the armour, and balls of wool
@@ -751,7 +768,9 @@ made potions stay misc (three doses; OQ-25 keeps four-dose potions alone in *V*)
 (2026-11-08): rune and pure essence, which isn't mined (Caleb), in lots of 1,000; the nine runes' talismans and plain
 tiaras, in lots of 14 (a tiara load); and the nine runes' tiaras, one each; 21 in all, which the GE sells. 19 weren't
 in *V* (the mind and earth talismans were). The runes made were in *V* for magic but body runes, which stay misc. 367
-in all.
+in all. The chaos talisman and tiara went out with chaos rune crafting (Caleb, 2026-11-09), with their 2 buys: 366
+with the barbarian rod. The four essence pouches, held, never bought (OQ-40 (c); untradeable, so their sell and
+alchemy actions stay masked): 370.
 
 **Size (*V* = 279: the 156 accepted, 20 fletching inputs added by the same rule on 2026-10-31, 38 on 2026-11-06 and 65
 on 2026-11-07;
@@ -768,7 +787,7 @@ selling as "all in the inventory"):**
 | Selling | 560 (GE and store, 280 each) |
 | Buying | 217 (180 at the GE, with the knife, 19 fletching inputs, the anti-dragon shield, 6 quest items, 2 antipoisons, 8 combat potions and antifire, Ava's 2 devices, 11 crossbows and 53 bolts; 37 at shops) |
 | **Total in sim v0** | **1,709** |
-| Sim v1 so far (v1.4) | Crafting's 4 skilling slots; Crafting's 25 GE buys (needle and chisel one each, the rest in lots of 1,000) and its 18 new *V* items' 90 actions: 1,828; Herblore's and Runecrafting's 4 skilling slots each; Herblore's 66 GE buys (the pestle and mortar one, the rest in lots of 1,000) and its 51 new *V* items' 255 actions: 2,157; Agility's 4 skilling slots: 2,161; Runecrafting's 21 GE buys (the essence in lots of 1,000, the talismans and plain tiaras in lots of 14, a rune's tiara one) and its 19 new *V* items' 95 actions: **2,277** |
+| Sim v1 so far (v1.4) | Crafting's 4 skilling slots; Crafting's 25 GE buys (needle and chisel one each, the rest in lots of 1,000) and its 18 new *V* items' 90 actions: 1,828; Herblore's and Runecrafting's 4 skilling slots each; Herblore's 66 GE buys (the pestle and mortar one, the rest in lots of 1,000) and its 51 new *V* items' 255 actions: 2,157; Agility's 4 skilling slots: 2,161; Runecrafting's 21 GE buys (the essence in lots of 1,000, the talismans and plain tiaras in lots of 14, a rune's tiara one) and its 19 new *V* items' 95 actions: 2,277; the barbarian rod's buy and *V* item: 2,283; less chaos's 2 buys and 2 items (Caleb, 2026-11-09): 2,271; the four pouches' 20 actions: **2,291** |
 
 Each *V* item adds 7 observation features: its inventory and bank counts, and its 5 actions' mask entries (env
 contract §3).

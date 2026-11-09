@@ -50,6 +50,10 @@ class CharacterState:
     # items left on the current reel of thread (LeatherCrafting.decayThread's saved "threadCharges"; rlscape.sim.crafting)
     thread_charges: int = 5
     skulled_until: int = 0  # the tick the skull the Abyss's teleport gives runs out (rlscape.sim.abyss; 2,000 ticks)
+    # essence pouch kind -> (its capacity now, the essence left before its next decay), for the kinds not as new; and
+    # the essence a trip has put in them, (essence item, amount) (rlscape.sim.pouches)
+    pouches: dict[int, tuple[int, int]] = field(default_factory=dict)
+    pouch_essence: dict[int, tuple[int, int]] = field(default_factory=dict)
 
     @classmethod
     def fresh(cls) -> CharacterState:

@@ -21,8 +21,10 @@ from math import inf, isfinite
 import numpy as np
 from scipy.sparse.csgraph import connected_components, dijkstra
 
-from rlscape.gamedata.transports import GATE_NORTH, GATE_SOUTH, HOME, HOME_TICKS, Transport, transports, wilderness_level
-from rlscape.routes import UNDERGROUND_Y_OFFSET, places, planned_steps, surface
+from rlscape.gamedata.transports import (ABYSS_EXIT, ABYSS_LANDING, ABYSS_LINK, ABYSS_OUTER_RADIUS, GATE_NORTH,
+                                         GATE_SOUTH, HOME, HOME_TICKS, MAGE_TILE, Transport, in_abyss, transports,
+                                         wilderness_level)
+from rlscape.routes import UNDERGROUND_Y_OFFSET, abyss_map, places, planned_steps, surface
 
 RUN_TILES_PER_TICK = 1.5  # average speed for estimates: running, with run energy running out now and then
 PATH_DETOUR = 1.3  # off the planner's map: walking paths are longer than straight lines
@@ -185,7 +187,42 @@ def on_foot(a: tuple[int, int, int], b: tuple[int, int, int]) -> bool:
 
 
 @cache
+def _abyss_landings() -> np.ndarray:
+    """The nodes of the Abyss's map the mage's teleport lands on, one for each degree round the outer ring
+    (AbyssLoc.randomLoc's angle is uniform; the radius is drawn in from 25.1 until the tile can be stood on, as
+    AbyssLoc.isValid has it)."""
+    world, (cx, cy, _), out = abyss_map(), ABYSS_LANDING, []
+    for degree in range(360):
+        angle, radius = np.radians(degree + 0.5), ABYSS_OUTER_RADIUS
+        while radius > 0:
+            node = world.node((cx + int(radius * np.cos(angle)), cy + int(radius * np.sin(angle))))
+            if node is not None and world.standable[node]:
+                out.append(node)
+                break
+            radius -= 1
+    return np.array(out)
+
+
+@cache
+def _abyss_steps(a: tuple[int, int, int], b: tuple[int, int, int]) -> float:
+    """A walk inside the Abyss on its own map (data/abyss), in steps; from the teleport's anchor (ABYSS_LANDING), the
+    mean over its landings. The map's walks are taken as the same both ways, as the places' table takes them."""
+    world = abyss_map()
+    target = world.anchor(b)
+    if target is None:
+        return inf
+    lengths = world.lengths(target)
+    if a == ABYSS_LANDING:
+        return float(lengths[_abyss_landings()].mean())
+    source = world.anchor(a)
+    return float(lengths[source]) if source is not None else inf
+
+
+@cache
 def _path(a: tuple[int, int, int], b: tuple[int, int, int]) -> tuple[float, int, bool]:
+    if in_abyss(a) and in_abyss(b):  # the Abyss's own map, closed to the surface's
+        steps = _abyss_steps(a, b)
+        return steps, 0, isfinite(steps)
     steps = planned_steps(a, b)
     walkable = steps is None or isfinite(steps)
     if steps is None or not isfinite(steps):
@@ -196,7 +233,10 @@ def _path(a: tuple[int, int, int], b: tuple[int, int, int]) -> tuple[float, int,
 
 
 def _unwalked(a: tuple[int, int, int], b: tuple[int, int, int]) -> float:
-    """The steps estimated where the planner has no walk: the straight line if some way joins the two, else none."""
+    """The steps estimated where the planner has no walk: the straight line if some way joins the two, else none. No
+    walk crosses the Abyss's boundary: it's closed (rlscape.gamedata.transports)."""
+    if in_abyss(a) != in_abyss(b):
+        return inf
     return _straight(a, b) if has_a_way(a) and has_a_way(b) else inf
 
 
@@ -206,6 +246,13 @@ def overhead(tiles: float) -> float:
 
 
 def _walk_ticks(a: tuple[int, int, int], b: tuple[int, int, int]) -> float:
+    """The walk's ticks at the average speed; across the Abyss's boundary, which no walk crosses, the way any character
+    has: in by the Mage of Zamorak's teleport (the walk to him, the link, the walk on from the Abyss's centre), out by
+    the Abyss's exit (rlscape.gamedata.transports)."""
+    if in_abyss(a) != in_abyss(b):
+        if in_abyss(b):
+            return _walk_ticks(a, MAGE_TILE) + ABYSS_LINK.ticks + _walk_ticks(ABYSS_LANDING, b)
+        return ABYSS_EXIT.ticks + _walk_ticks(ABYSS_EXIT.end, b)
     tiles, changes = path(a, b)
     return tiles / RUN_TILES_PER_TICK + overhead(tiles) + changes * LEVEL_CHANGE_TICKS
 
@@ -230,6 +277,9 @@ def travel_ticks_from_many(sources: list[tuple[int, int, int]], target: tuple[in
     lengths = world.lengths(node) if node is not None else None
     out = np.empty(len(sources))
     for i, source in enumerate(sources):
+        if in_abyss(source) != in_abyss(target):  # the Abyss's link or exit, as travel_ticks has them
+            out[i] = _walk_ticks(source, target)
+            continue
         n = world.anchor(source)
         steps = float(lengths[n]) if lengths is not None and n is not None else inf
         if not isfinite(steps):

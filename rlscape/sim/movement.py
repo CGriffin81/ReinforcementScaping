@@ -29,7 +29,7 @@ from math import ceil, inf
 
 import numpy as np
 
-from rlscape.gamedata.transports import GATE_NORTH, GATE_SOUTH, Transport, wilderness_level
+from rlscape.gamedata.transports import ABYSS_EXIT, GATE_NORTH, GATE_SOUTH, Transport, in_abyss, wilderness_level
 from rlscape.sim.energy import MAX_ENERGY, rest, restore_per_tick, walk_plan
 from rlscape.sim.state import COINS, CharacterState
 from rlscape.sim.transport import boats, can_use, home_ready, usable_teleports, use
@@ -162,6 +162,8 @@ def _by_transport(state: CharacterState, a: tuple[int, int, int], destination: t
     dx, dy = _surface_xy(destination)
     depth = wilderness_level(a)
     usable = [t for t in usable_teleports(state) if depth <= t.wilderness_limit and (home or t.kind != "home")]
+    if in_abyss(a):  # out of the Abyss: its exit, as a teleport from there (rlscape.gamedata.transports)
+        usable.append(ABYSS_EXIT)
     starts = [(Route([]), a)] + [(Route([], transports=(t,)), t.end) for t in usable if t.ticks < best]
     for tele in usable:
         ex, ey = _surface_xy(tele.end)

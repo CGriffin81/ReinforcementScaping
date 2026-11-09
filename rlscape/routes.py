@@ -223,6 +223,33 @@ def surface() -> Map:
     return Map(data["flags"], tuple(int(v) for v in data["origin"]), _rows("doors.csv"), _rows("crossings.csv"))
 
 
+def beside(world: Map, tile: tuple[int, int], size: tuple[int, int]) -> list[int]:
+    """The nodes next to a footprint's sides (not its corners) that a character can stand on."""
+    (x, y), (sx, sy) = tile, size
+    around = ([(x - 1, y + j) for j in range(sy)] + [(x + sx, y + j) for j in range(sy)]
+              + [(x + i, y - 1) for i in range(sx)] + [(x + i, y + sy) for i in range(sx)])
+    return [n for n in map(world.node, around) if n is not None and world.standable[n]]
+
+
+def nearest_beside(world: Map, start: tuple[int, int], tile: tuple[int, int],
+                   size: tuple[int, int]) -> tuple[float, tuple[int, int, int] | None]:
+    """The planner's steps from a tile to beside a node, and the tile beside it the walk ends on."""
+    node = world.node(start)
+    targets = beside(world, tile, size)
+    if node is None or not targets:
+        return float("inf"), None
+    lengths = world.lengths(node)
+    end = min(targets, key=lambda n: lengths[n])
+    return float(lengths[end]), world.tile(end)
+
+
+@cache
+def abyss_map() -> Map:
+    """The Abyss's map (data/abyss, scripts/export_abyss.py): map region (47, 75), closed to the surface's."""
+    data = np.load(DATA.parent / "abyss" / "collision.npz")
+    return Map(data["flags"], tuple(int(v) for v in data["origin"]), [])
+
+
 class Places:
     """Planned walk lengths between anchors: the places' table, and searches from other tiles as they come."""
 

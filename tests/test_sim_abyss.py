@@ -47,7 +47,7 @@ def test_the_export_has_a_layout_for_each_segment_with_the_landings_place_blocke
         steps = [s for s, kind in zip(a.outer_steps[v], layout) if kind != "blocked"]
         assert 5 < min(steps) < 15 and 60 < a.outer_steps[v][layout.index("passage")] < 70  # beside it; half round
     assert all(0 < s < 40 for i in range(12) for s in a.inner_steps[i].values())
-    assert set(a.inner_steps[0]) == set(ABYSS_RUNES)
+    assert set(a.inner_steps[0]) == set(ABYSS_RUNES) | {"chaos"}  # the server's eleven rifts; the sim takes ten
 
 
 def test_a_try_passes_at_its_level_plus_one_in_a_hundred_and_the_passage_always():
@@ -93,14 +93,13 @@ def test_a_crossing_takes_the_obstacle_that_reaches_the_rift_soonest():
 
 @needs_server
 def test_a_crossing_skulls_the_character_and_lands_it_inside_the_ruins():
-    """The teleport skulls it for 2,000 ticks; the rift lands it where entering the ruins does (Altar.enterRift),
-    chaos's beside the altar, past the maze."""
-    for rune in ("nature", "chaos"):
+    """The teleport skulls it for 2,000 ticks; the rift lands it where entering the ruins does (Altar.enterRift)."""
+    for rune in ("nature", "cosmic"):
         state = character(hitpoints=99, defence=99, agility=99)
         state.tick = 500
         trip = abyss.cross(state, np.random.default_rng(1), rune, at=100)
         assert not trip.died and state.skulled_until == 600 + abyss.TELEPORT_TICKS + abyss.SKULL_TICKS
-        assert state.location == (abyss.CHAOS_LANDING if rune == "chaos" else rcd.ruins()[rune].end)
+        assert state.location == rcd.ruins()[rune].end
         assert 25 < trip.ticks < 90
 
 
@@ -149,8 +148,9 @@ def test_a_weak_crossing_eats_the_food_it_carries_and_can_die_skulled():
 @needs_server
 def test_abyss_rc_paths_are_one_for_each_altar_the_rifts_reach():
     """OQ-39 (b): death opens at Ranged 60 and Thieving 50; cosmic only by the Abyss (OQ-45 (a)); blood and astral
-    never. Nine ruins paths, nine tiaras', eleven Abyss paths."""
-    assert len(runecrafting_paths()) == 2 * len(RC_RUNES) + len(ABYSS_RUNES) == 29
+    never; chaos out (Caleb, 2026-11-09). Eight ruins paths, eight tiaras', ten Abyss paths."""
+    assert len(runecrafting_paths()) == 2 * len(RC_RUNES) + len(ABYSS_RUNES) == 26
+    assert "abyss_rc_chaos" not in {p.id for p in runecrafting_paths()}
     ids = {p.id for p in path_options()}
     assert {f"abyss_rc_{r}" for r in ABYSS_RUNES} <= ids and "abyss_rc_blood" not in ids
     death = AbyssRunecraft("death")
@@ -227,3 +227,71 @@ def test_the_observation_shows_the_skulls_ticks_left():
     state.hp = 0
     die(state, state.tick)
     assert reading() == 0.0
+
+
+@needs_server
+def test_the_abyss_is_closed_in_by_the_mages_teleport_and_out_by_a_teleport_or_its_exit():
+    """No walk joins the Abyss to anywhere else; the way in is the mage's teleport, which skulls, and the way out a
+    teleport or the Abyss's exit (the passage, the body rift and its altar's portal: rlscape.gamedata.transports)."""
+    from rlscape.gamedata.transports import ABYSS_EXIT, BODY_RUINS, in_abyss
+    from rlscape.sim.movement import route, walk
+    from rlscape.travel import on_foot, travel_ticks
+    edgeville, site = (3094, 3493, 0), (3039, 4856, 0)
+    assert in_abyss(site) and not in_abyss(edgeville) and not on_foot(edgeville, site)
+    state = character()
+    state.location = edgeville
+    into = route(state, site)
+    assert [t.id for t in into.transports] == ["abyss:mage"]
+    walked = walk(state, site, 10_000)
+    assert walked < travel_ticks(edgeville, site) + 30 and state.location == site
+    # skulled from the teleport, which comes after the walk to the mage
+    assert state.tick + abyss.SKULL_TICKS < state.skulled_until <= state.tick + walked + abyss.SKULL_TICKS
+    state.home_teleport_ready = state.tick + 10 ** 9  # no home teleport: the exit
+    out = route(state, edgeville)
+    assert [t.id for t in out.transports] == ["abyss:exit"] and ABYSS_EXIT.end == BODY_RUINS
+    state.home_teleport_ready = 0  # the home teleport is ready: faster than the exit's walk from the body ruins?
+    home = route(state, (3222, 3218, 0))
+    assert [t.id for t in home.transports] == ["home"]
+
+
+@needs_server
+def test_the_rings_attacks_on_a_fight_are_the_crossings_less_the_monster_fought():
+    """OQ-49 (a): a fight's ring has the crossing's damage mix at the fight's rate (rate x mean =
+    FIGHT_ATTACKS_PER_TICK x mean_damage); beside a monster fighting the character, the rest of the rate; none past the
+    region's tolerance."""
+    state = character(attack=61, strength=61, defence=61, hitpoints=61)
+    ring = abyss.Ring.at(state, 1000.0)
+    assert ring.rate * ring.mean() == pytest.approx(abyss.FIGHT_ATTACKS_PER_TICK * abyss.mean_damage(state))
+    assert ring.beside(6) == pytest.approx(ring.rate - 1 / 6) and ring.beside(1) == 0.0
+    rng = np.random.default_rng(0)
+    assert len(ring.attacks(rng, 1000.0, 500.0)) == 0
+    hits = ring.attacks(rng, 0.0, 10_000.0)  # up to the tolerance's 1,000 ticks
+    assert len(hits) == pytest.approx(ring.rate * 1000, rel=0.1) and hits.max() <= len(ring.cdf) - 1
+    assert ring.damage(rng, 50_000).mean() == pytest.approx(ring.mean(), rel=0.05)
+
+
+@needs_server
+def test_a_fight_in_the_abyss_takes_the_rings_attacks_with_no_prayer(monkeypatch):
+    """OQ-49 (a): at the guardians, a band-61 melee fighter eats for the ring's crowd and the guardians' unprotected
+    swings; with the region's tolerance run out, for the guardians' alone; out of the Abyss (prayers flicked, no
+    ring), nothing. 1,000 ticks, with food to spare."""
+    from rlscape.combat.candidates import enemy_pool
+    from rlscape.combat.rates import Plan
+    from rlscape.sim import combat
+    entry = next(e for e in enemy_pool() if e.npc.id == 2264)
+    site = next(s for s in entry.sites if s.spawn == (3017, 4821, 0))
+    rune = {1333: 1, 1163: 1, 1113: 1, 1079: 1, 1201: 1}  # scimitar, full helm, chainbody, platelegs, kiteshield
+
+    def eaten(seed: int, tolerated: bool = False) -> int:
+        state = character({**rune, LOBSTER: 23}, attack=61, strength=61, defence=61, hitpoints=61, prayer=61)
+        state.location = site.spawn
+        state.region_since = -1000 if tolerated else 0
+        combat.fight(state, np.random.default_rng(seed), 1000, entry, Plan("melee", "accurate"), site,
+                     lambda _: False)
+        return 23 - state.inventory.get(LOBSTER, 0)
+
+    inside = np.mean([eaten(seed) for seed in range(20)])
+    tolerated = np.mean([eaten(seed, tolerated=True) for seed in range(20)])
+    assert tolerated > 3 and inside > tolerated + 4
+    monkeypatch.setattr(combat, "in_abyss", lambda tile: False)
+    assert sum(eaten(seed) for seed in range(20)) == 0

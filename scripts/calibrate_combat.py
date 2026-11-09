@@ -10,7 +10,8 @@ the band's standard gear (given at setup, as the tools are; at band 1 the starte
 arrows), no starter kit, and only the food the fight needs (food_for: the sim's expected damage over the run, less
 the hitpoints above the retreat point, plus FOOD_MARGIN). Both sides flick protection prayers when the Prayer level
 allows: the sim's fights do (rlscape.combat.prayers), and the server's bridge does (`flick`), so a monster with one
-style the prayer covers deals nothing. Both sides fight in the accurate style (the server's default), auto-retaliate
+style the prayer covers deals nothing; except in the Abyss, where neither does, as the mage's teleport drains the
+prayer (Caleb, OQ-49 (a)), and the food covers the outer ring's crowd too (rlscape.sim.abyss.Ring). Both sides fight in the accurate style (the server's default), auto-retaliate
 on, and loot with the case's mode (`--loot`, option catalog §4.D; the default, none, leaves every drop, as the fit set
 was measured).
 
@@ -64,7 +65,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import datetime
 from math import ceil
 from pathlib import Path
@@ -77,7 +78,10 @@ from rlscape.combat.candidates import (ANTI_DRAGON_SHIELD, LOOT_MODES, SITE_RADI
                                        special_damage_shields)
 from rlscape.combat.safespots import GROUND_TICKS, style_range, trip_ticks
 from rlscape.combat.rates import HP_XP_PER_DAMAGE, Plan, combat_rates
+from rlscape.combat.prayers import NO_FLICKS
 from rlscape.gamedata import server as gd
+from rlscape.gamedata.transports import in_abyss
+from rlscape.sim.abyss import Ring
 from rlscape.sim.combat import fight, safespot_for
 from rlscape.sim.equipment import fighter_for, wield_best
 from rlscape.sim.health import retreat_hp
@@ -194,16 +198,22 @@ def case_safespot(case: "Case", budget: int) -> gd.RangedSafespot | None:
 
 def food_for(case: "Case", budget: int) -> int:
     """The food a fight of `budget` ticks needs: the sim's expected damage over it (prayers flicked as the fight
-    flicks them, so none from a monster whose one style they cover; none from a safespot), less the hitpoints above
-    the retreat point, in the band's food, plus FOOD_MARGIN; at most MAX_FOOD."""
+    flicks them, so none from a monster whose one style they cover; none from a safespot; in the Abyss, no prayer and
+    the ring's other attackers up to the tolerance), less the hitpoints above the retreat point, in the band's food,
+    plus FOOD_MARGIN; at most MAX_FOOD."""
     state = character(case.combat_class, case.band, food=0)
     wield_best(state, case.combat_class)
     npc = gd.npcs()[case.npc]
-    rates = combat_rates(fighter_for(state), case.plan, npc, 0.0)
+    abyss = in_abyss(case.site)
+    fighter = fighter_for(state)
+    rates = combat_rates(replace(fighter, flicks=NO_FLICKS) if abyss else fighter, case.plan, npc, 0.0)
     if rates is None:
         return MAX_FOOD
     taken = 0.0 if case_safespot(case, budget) is not None else rates.damage_taken_per_hour
     damage = taken * budget / TICKS_PER_HOUR - (state.hp - retreat_hp(state))
+    ring = Ring.at(state, TOLERANCE_TICKS) if abyss else None
+    if ring is not None:
+        damage += ring.beside(npc.attack_speed) * ring.mean() * min(budget, ring.until)
     heal = gd.food_healing()[food_item(case.band)]
     return min(max(ceil(damage / heal), 0) + FOOD_MARGIN, MAX_FOOD)
 
@@ -329,7 +339,8 @@ def _prepare(client: BridgeClient, uid: int, case: Case, budget: int) -> dict | 
     # off for rangers safespotting (retaliating walks them off the tile) and for casters: a hand cast stops the
     # combat pulse, and retaliating then would swing the staff in melee
     client.set_retaliate(uid, spot is None and case.combat_class != "magic")
-    client.flick(uid)  # protection prayers, as the sim's fights flick them (none below their levels)
+    if not in_abyss(case.site):  # in the Abyss the mage's teleport would have drained them (OQ-49 (a))
+        client.flick(uid)  # protection prayers, as the sim's fights flick them (none below their levels)
     if spot is None:
         client.debug_teleport(uid, *case.site)
         client.wait(3)

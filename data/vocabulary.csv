@@ -353,7 +353,6 @@ item_id,name,groups
 1444,Water talisman,bought;drop
 1442,Fire talisman,bought;drop
 1446,Body talisman,bought;drop
-1452,Chaos talisman,bought;drop
 1462,Nature talisman,bought;drop
 1458,Law talisman,bought;drop
 5525,Tiara,bought;consumed
@@ -363,7 +362,10 @@ item_id,name,groups
 5535,Earth tiara,bought;made
 5537,Fire tiara,bought;made
 5533,Body tiara,bought;made
-5543,Chaos tiara,bought;made
 5541,Nature tiara,bought;made
 5545,Law tiara,bought;made
+5509,Small pouch,held
+5510,Medium pouch,held;drop
+5512,Large pouch,held;drop
+5514,Giant pouch,held;drop
 11323,Barbarian rod,bought

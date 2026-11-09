@@ -87,9 +87,9 @@ read them.
 
 **What it costs.** A fight soon after an Abyss trip is easier in the sim than on the server, by as much as its
 flicked prayers are worth. That's most for a fight its protection prayer covers, where the sim's character takes no
-damage from that style. The fight option in the Abyss itself (the pouches' monsters, still to build) is all after the
-drain, so in the sim it would fight with prayers the server's character doesn't have. It bears on the sim-to-server
-gap for any policy that mixes Abyss trips and fights (E6), not on calibration, which never mixes them.
+damage from that style. Fights in the Abyss itself aren't part of the gap: the teleport is the only way in, so they
+flick nothing in the sim either (OQ-49 (a), 2026-11-09). It bears on the sim-to-server gap for any policy that
+fights soon after leaving the Abyss (E6), not on calibration, which never mixes them.
 
 **How to close it.**
 - `CharacterState.prayer_points` (a float, the Prayer level when full), drained to 0 by `rlscape.sim.abyss.cross`.
@@ -98,3 +98,35 @@ gap for any policy that mixes Abyss trips and fights (E6), not on calibration, w
   on its way.
 - The fights' flicking (`rlscape.combat.prayers`, the fighter's `flicks`) gives no prayer while the points are 0.
 - The observation's prayer feature reads the points over the level (it's already there, reading 1).
+
+## Chaos runes aren't crafted (Caleb, 2026-11-09)
+
+**What's missing.** No option crafts chaos runes: `rc_chaos` (the ruins), `abyss_rc_chaos` (the Abyss's rift) and
+`make_tiara_chaos` are gone, with the chaos talisman and the chaos tiara, which only they used, from *V* and the GE's
+buys (*V* 366). Chaos runes are still bought, dropped and cast with.
+
+**Why.** Caleb took chaos rune crafting out, as an intentional gap. Its altar is at the foot of a ladder maze, three
+floors down from where entering the ruins lands the character (2275, 4847, 3). The sim had only an estimate of the
+way down (30 steps and three floors), and the server runner doesn't climb the maze's ladders. The Abyss's chaos
+rift, which lands the character beside the altar past the maze, was measured (a craft 2 ticks after the click from
+its landing at (2269, 4840, 0); the altar's own portal, 15 steps away, 12 ticks to outside), but went with the rest.
+
+**What it costs.**
+- Chaos runes come at Runecrafting 35 (8.5 XP an essence, pure essence only), between cosmic (27, 8 XP, by the Abyss
+  only) and nature (44, 9 XP).
+- In gold they're worth little: 136 gp a rune against 137 for the pure essence it takes (`data/prices_v2.csv`), so a
+  load loses gold until Runecrafting 74 makes two a time.
+- So an agent at 35 to 43 trains on cosmic, body or below instead: a little less XP an essence, and slower trips than
+  the Abyss's chaos rift.
+- E6's policies can't craft chaos runes on the server either, so the two backends agree.
+
+**How to close it.**
+- Measure the maze: the ladders' order from the ruins' landing down to the altar's floor. A runner that climbs ladders
+  (`interact` on each ladder, "Climb-down" or "Climb-up") would time it as `scripts/calibrate_runecrafting.py` times
+  the other ruins.
+- Put chaos back:
+  - in `RC_RUNES` and `ABYSS_RUNES` (`rlscape/sim/runecrafting.py`), with its `INSIDE` walks (the maze, then the
+    15 steps to the portal);
+  - the rift's landing beside the altar (`abyss.CHAOS_LANDING`, one step from it);
+  - the chaos talisman (1452) and tiara (5543) in `data/vocabulary.csv`. Their buys come back with `RC_RUNES`.
+- The decision log's Runecrafting part 4 entry has the Abyss's chaos measurements.

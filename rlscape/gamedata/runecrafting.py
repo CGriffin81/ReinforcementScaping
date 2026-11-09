@@ -102,13 +102,17 @@ class Abyss:
     `places` are the twelve obstacles' scenery ids (7142-7153). For each of the teleport's twelve segments (varbit 625,
     AbyssLoc.getSegment), `layouts[segment][i]` is the kind places[i] shows ("blocked" by the landing) and
     `outer_steps[segment][i]` the mean steps from the segment's landings to beside it. `inner_steps[i][rune]` are the
-    steps from the inner ring's landing past places[i] to beside the rune's rift."""
+    steps from the inner ring's landing past places[i] to beside the rune's rift. `place_tiles` and `place_sizes` are
+    the obstacles' footprints; `rifts[rune]` each rift's (scenery id, tile, size)."""
 
     places: tuple[int, ...]
     layouts: tuple[tuple[str, ...], ...]
     outer_steps: tuple[tuple[float, ...], ...]
     inner_steps: tuple[dict[str, float], ...]
     inner_tiles: tuple[tuple[int, int], ...]
+    place_tiles: tuple[tuple[int, int], ...] = ()
+    place_sizes: tuple[tuple[int, int], ...] = ()
+    rifts: dict[str, tuple[int, tuple[int, int], tuple[int, int]]] | None = None
 
 
 @cache
@@ -120,4 +124,35 @@ def abyss() -> Abyss:
         tuple(tuple(raw["layouts"][str(v)][str(i)] for i in places) for v in range(12)),
         tuple(tuple(float(raw["outer_steps"][str(v)][str(i)]) for i in places) for v in range(12)),
         tuple({rune: float(s) for rune, s in raw["inner_steps"][str(i)].items()} for i in places),
-        tuple(tuple(raw["inner_tiles"][str(i)]) for i in places))
+        tuple(tuple(raw["inner_tiles"][str(i)]) for i in places),
+        tuple(tuple(raw["places"][str(i)]["tile"]) for i in places),
+        tuple(tuple(raw["places"][str(i)]["size"]) for i in places),
+        {rune: (int(r["id"]), tuple(r["tile"]), tuple(r["size"])) for rune, r in raw["rifts"].items()})
+
+
+@dataclass(frozen=True)
+class Pouch:
+    """An essence pouch (PouchManager.kt's RCPouch): it holds `capacity` essence, fillable from Runecrafting `level`;
+    every `charges` essence put in, it decays: its capacity falls by `decay` (the small pouch's never does), the next
+    decay comes 9 x the new capacity later, and at 0 it disappears. Decayed, its item is `decayed`."""
+
+    item: int
+    capacity: int
+    charges: int
+    level: int
+    decay: int
+    decayed: int | None
+
+
+@cache
+def pouches() -> dict[int, Pouch]:
+    """The four pouches, small to giant, by item id."""
+    text = (RUNECRAFTING / "PouchManager.kt").read_text(encoding="utf-8")
+    steps = {int(i): int(n) for i, n in re.findall(r"Items\.[A-Z_]+_POUCH_(\d+)\s*->\s*(\d+)", text)}
+    out = {}
+    for item, capacity, charges, level in re.findall(
+            r"Items\.[A-Z_]+_POUCH_(\d+)\s+to RCPouch\((\d+),\s*(\d+),\s*(\d+)\)", text):
+        item = int(item)
+        out[item] = Pouch(item, int(capacity), int(charges), int(level), steps.get(item, 0),
+                          item + 1 if steps.get(item, 0) else None)
+    return dict(sorted(out.items()))

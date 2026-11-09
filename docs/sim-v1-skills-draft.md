@@ -279,9 +279,10 @@ only. An agent that wants both mines with one option and crafts with the next.
 
 **As built** (2026-11-08): essence isn't mined after all (Caleb: "Rune essence is very cheap and mining it yourself
 will almost always be seen as a time waste"), so there's no `mine_essence`: essence is bought on the GE or dropped.
-`rc_<rune>` is built for air, mind, water, earth, fire, body, chaos, nature and law; cosmic waits for the Abyss's rift
-(OQ-45 (a)). Its times at the ruins are measured on the server (`scripts/calibrate_runecrafting.py`), chaos's maze
-still to be.
+`rc_<rune>` is built for air, mind, water, earth, fire, body, nature and law; cosmic waits for the Abyss's rift
+(OQ-45 (a)). Its times at the ruins are measured on the server (`scripts/calibrate_runecrafting.py`). Chaos rune
+crafting is out, by the ruins and by the Abyss (Caleb, 2026-11-09: an intentional gap, `docs/post-project-gaps.md`):
+its altar is past a ladder maze, only estimated.
 
 **Choice H, tiaras and pouches:** (a) *recommended*: talismans only (the GE sells them; a tiara needs a silver bar
 crafted with the talisman, which isn't in OQ-2's list); essence pouches (the Abyss) and the Abyss's shortcut out;
@@ -336,8 +337,8 @@ it's bought.
   chances, the monsters' damage, and eating are modelled as the fights' are. The teleport skulls the character for
   2,000 ticks, so a death in the Abyss keeps no items (`DeathTask`: none when skulled, one with Protect Item).
 
-**As built** (2026-11-08; `rlscape/sim/abyss.py`, `data/abyss/` from `scripts/export_abyss.py`): the eleven
-`abyss_rc_<rune>` paths.
+**As built** (2026-11-08; `rlscape/sim/abyss.py`, `data/abyss/` from `scripts/export_abyss.py`): the
+`abyss_rc_<rune>` paths, ten since chaos went out (Caleb, 2026-11-09).
 - **The layouts:** each of the teleport's twelve segments shows its own, measured. Segments 0 to 5 have rocks beside
   the landing, and 6 to 11 a gap; the passage is always opposite.
 - **The tools:** a trip carries essence and food only, so it uses the pickaxe or axe worn, never a tinderbox.
@@ -349,7 +350,9 @@ it's bought.
 - **Cosmic and death:** they leave by teleport.
 - **The skull and the prayer** (Caleb, OQ-48 (a)): the skull's ticks left are in the observation; the drained
   prayer isn't modelled (the sim has no prayer points), a documented gap (`docs/post-project-gaps.md`).
-- **Not built yet:** the pouches and the fight option below.
+- **Built since** (2026-11-09): the pouches below and the fight option. The travel model reaches the Abyss by the
+  mage's teleport and leaves it by a teleport or its exit (the passage, the body rift, the body altar's portal).
+  A fight there also takes the outer ring's crowd, and flicks no prayer (Caleb, OQ-49 (a); `rlscape.sim.abyss.Ring`).
 
 **Pouches** (Caleb, 2026-11-08, OQ-40 (c): as the server gives them; `PouchManager`, `AbyssalNPC`, `DarkMageDialogue`):
 

@@ -14,9 +14,10 @@ The ruins:
   rune essence first; the rest take pure only.
 - Law's ruins are on Entrana, whose monks refuse weapons and armour (the travel model's boat rule), so its path banks
   the worn ones too (a tiara isn't either).
-- The runes: the nine whose ruins the travel model reaches (RC_RUNES). Cosmic's ruins are in Zanaris, which it doesn't:
-  the cosmic altar is reached only by the Abyss's rift (Caleb, OQ-45 (a)). Death's altar is the Abyss's too, and astral
-  and blood stay out (OQ-39).
+- The runes: the eight whose ruins the travel model reaches (RC_RUNES). Cosmic's ruins are in Zanaris, which it
+  doesn't: the cosmic altar is reached only by the Abyss's rift (Caleb, OQ-45 (a)). Death's altar is the Abyss's too,
+  and astral and blood stay out (OQ-39). Chaos is out altogether, by the ruins and by the Abyss (Caleb, 2026-11-09: an
+  intentional gap, docs/post-project-gaps.md): its altar is at the foot of a ladder maze.
 - `make_tiara_<rune>` (MakeTiaraAtRuins): a plain tiara and the rune's talisman, used on its altar, make the rune's
   tiara for Runecrafting XP (TalismanEnchantingListener), one at a time, the talisman used up. A load is 14 pairs.
   The GE sells the tiaras themselves for 45 gp or so in January 2009 (water's 3,204), well under a talisman and a
@@ -24,22 +25,28 @@ The ruins:
 - Inside the ruins, the walk from the landing to the altar and from the altar to the portal is the pathfinder's steps
   on the server (debug_nearby, 2026-11-08), run as a step every half tick with run energy (walk_plan), with none of the
   start-of-walk overhead walks outside have: the clicks inside follow each other. Entering, crafting and leaving are
-  measured on the server (scripts/calibrate_runecrafting.py, 2026-11-08), as is a tiara's making. Chaos's maze is an
-  estimate, to measure.
+  measured on the server (scripts/calibrate_runecrafting.py, 2026-11-08), as is a tiara's making.
 
 The Abyss (Caleb, Choice H; rlscape.sim.abyss):
-- `abyss_rc_<rune>` (AbyssRunecraft), for the eleven altars the Abyss's rifts reach (ABYSS_RUNES: the nine, cosmic,
-  and death, which opens at Ranged 60 and Thieving 50, Mourning's End Part II's own requirement, OQ-39 (b)): at
+- `abyss_rc_<rune>` (AbyssRunecraft), for ten of the altars the Abyss's rifts reach (ABYSS_RUNES: the eight, cosmic,
+  and death, which opens at Ranged 60 and Thieving 50, Mourning's End Part II's own requirement, OQ-39 (b); not
+  chaos's, which is out): at
   Edgeville's bank, the bank nearest the mage, bank everything but the essence; eat banked food (none wasted, but
   enough for a crossing's `need`, its expected damage and twice the hardest hit there, as far as the maximum allows),
   or stop; take out the best-healing banked food the rest of the need asks for, and a load of essence in the other
-  slots (a rift needs no talisman: up to 28); walk to the Mage of Zamorak; cross the Abyss to the rune's rift (rlscape.sim.abyss.cross); walk to the altar and craft; leave
+  slots (a rift needs no talisman: up to 28); walk to the Mage of Zamorak; cross the Abyss to the rune's rift
+  (rlscape.sim.abyss.cross); walk to the altar and craft; leave
   the faster way to Edgeville's bank: the portal and on from the ruins, or a teleport from inside (the travel model's,
   for what the character holds). Cosmic's and death's portals lead where the travel model doesn't go (Zanaris, the
   Temple of Light), so those trips leave by teleport, and a trip only starts when one will be ready. Law's rift asks
   Entrana's rule (MysteriousRuinListener.checkReq), so its path banks the worn arms as rc_law's does.
 - Its own pickaxe or axe is the one worn, if any (rlscape.sim.abyss.usable); death on the outer ring is skulled:
-  nothing is kept. Pouches come next (OQ-40 (c)).
+  nothing is kept.
+
+Pouches (Caleb, OQ-40 (c); rlscape.sim.pouches): both kinds of path take out the pouches the character can fill (a
+slot each), take out the load, fill each pouch from it and take out essence again for the slots they emptied; inside,
+once the first craft's runes are made, the altar's lock, then each pouch emptied and the essence crafted again. An
+Abyss trip whose pouches have decayed goes by the Dark Mage on the inner ring, who repairs them (rlscape.sim.abyss).
 """
 
 from __future__ import annotations
@@ -52,7 +59,7 @@ import numpy as np
 
 from rlscape.gamedata import runecrafting as rcd
 from rlscape.gamedata import server as gd
-from rlscape.sim import abyss
+from rlscape.sim import abyss, pouches
 from rlscape.sim.crafting import AtStation
 from rlscape.sim.economy import bank_notes, banked_or_noted, nearest_bank
 from rlscape.sim.energy import RUN_TILES, walk_plan
@@ -64,15 +71,12 @@ from rlscape.sim.state import COINS, INVENTORY_SLOTS, CharacterState
 from rlscape.travel import BANKING_TICKS, LEVEL_CHANGE_TICKS, travel_ticks
 
 TICKS_PER_HOUR = 6000
-RC_RUNES = ("air", "mind", "water", "earth", "fire", "body", "chaos", "nature", "law")
+RC_RUNES = ("air", "mind", "water", "earth", "fire", "body", "nature", "law")  # chaos out (Caleb, 2026-11-09)
 # (steps from the landing to the altar, changes of plane; steps from beside the altar to the portal, changes): the
-# pathfinder's on the server (debug_nearby, 2026-11-08). Chaos's altar is at the foot of a maze three floors down from
-# the landing (2275, 4847, 3): an estimate, to measure. Its way out is a second portal on the altar's own floor,
-# (2282, 4837, 0), 15 steps from beside it (measured from the Abyss's chaos landing: 12 ticks from the click to
-# outside, the sim's 12.5).
+# pathfinder's on the server (debug_nearby, 2026-11-08)
 INSIDE = {"air": ((4, 0), (4, 0)), "mind": ((12, 0), (12, 0)), "water": ((2, 0), (16, 0)),
           "earth": ((10, 0), (11, 0)), "fire": ((15, 0), (9, 0)), "body": ((5, 0), (5, 0)),
-          "chaos": ((30, 3), (15, 0)), "nature": ((5, 0), (5, 0)), "law": ((12, 0), (13, 0))}
+          "nature": ((5, 0), (5, 0)), "law": ((12, 0), (13, 0))}
 # Measured on the server (scripts/calibrate_runecrafting.py, 2026-11-08; 8 ruins, 2 runs each, run on):
 ENTER_TICKS = 1  # beyond the walk to the ruins (whose timing has a start overhead): the talisman's 3-tick script
 CRAFT_TICKS = 3  # the altar clicked, beside it, to the runes (RuneCraftPulse's first pulse)
@@ -163,6 +167,24 @@ def _withdraw(state: CharacterState, item: int, amount: int) -> None:
         state.add(item, take)
 
 
+def _pouched(state: CharacterState) -> tuple[int, int]:
+    """(The pouches it can fill, the essence they hold now.)"""
+    items = pouches.fillable(state)
+    return len(items), sum(pouches.capacity(state, i) for i in items)
+
+
+def _pouch_ticks(n: int, held: int = 0, slots: int = INVENTORY_SLOTS) -> int:
+    """A trip's ticks for n pouches holding `held` essence, with `slots` free for essence once they're out: each
+    filled at the booth and the essence taken out again, a second round when the first load didn't fill them;
+    inside, the altar's lock, each emptied, and the second craft."""
+    if not n:
+        return 0
+    again = held > slots  # a second round: one more fill and take-out at the booth; one more empty and craft inside
+    inside = pouches.LOCK_TICKS + pouches.CRAFT_AGAIN_TICKS
+    return (n * (pouches.FILL_TICKS + pouches.EMPTY_TICKS) + pouches.REWITHDRAW_TICKS + inside
+            + again * (pouches.FILL_TICKS + pouches.REWITHDRAW_TICKS + pouches.EMPTY_TICKS + inside))
+
+
 class RunecraftAtRuins(AtStation):
     """rc_<rune>: banked or carried essence crafted at the rune's altar, a load at a time, with its tiara worn or its
     talisman."""
@@ -210,7 +232,8 @@ class RunecraftAtRuins(AtStation):
         return reachable(state, (bank.x, bank.y, bank.plane)) and self.station(state) is not None
 
     def _keep(self) -> set[int]:
-        return {*essence_kinds(self.rune), self.talisman, self.tiara, *((COINS,) if self.fare() else ())}
+        return {*essence_kinds(self.rune), self.talisman, self.tiara, *rcd.pouches(),
+                *((COINS,) if self.fare() else ())}
 
     def _prepare(self, state: CharacterState) -> None:
         """At the booth: bank everything the path doesn't use (law: the worn arms too) and take out the fares."""
@@ -253,12 +276,60 @@ class RunecraftAtRuins(AtStation):
             _withdraw(state, self.talisman, 1)
         else:
             _bank(state, self.talisman, state.inventory[self.talisman] - 1)
+        self._load(state)
+
+    def _load(self, state: CharacterState) -> None:
+        """At the booth: the pouches it can fill out (a slot each), a load of one kind of essence, the first the altar
+        takes that's held, into the free slots; each pouch filled from it, and essence taken out again for the slots
+        they emptied."""
+        for item in pouches.fillable(state):
+            if not state.inventory.get(item, 0) and state.bank.get(item, 0):
+                _withdraw(state, item, 1)
         kinds = essence_kinds(self.rune)
         kind = next((e for e in kinds if state.inventory.get(e, 0) + state.bank.get(e, 0) > 0), kinds[0])
         for other in kinds:  # one kind a load: the other goes back
             if other != kind:
                 _bank(state, other)
         _withdraw(state, kind, state.free_slots())
+        self._fill_clicks = 0
+        for _ in range(len(rcd.pouches())):  # a round: each pouch not yet full filled, the slots they emptied refilled
+            filled = [i for i in pouches.fillable(state) if state.inventory.get(i, 0) and pouches.fill(state, i)]
+            if not filled:
+                break
+            self._fill_clicks += len(filled) * pouches.FILL_TICKS + pouches.REWITHDRAW_TICKS
+            _withdraw(state, kind, state.free_slots())
+
+    _fill_clicks = 0  # the last `_load`'s ticks of filling and taking out again (the run is one trip at a time)
+
+    def _fill_ticks(self, state: CharacterState) -> int:
+        """The booth's ticks for the pouches the last load filled."""
+        ticks, self._fill_clicks = self._fill_clicks, 0
+        return ticks
+
+    def _craft(self, state: CharacterState) -> None:
+        """Craft-rune: every essence carried of the first kind the altar takes (getEssenceItem), into runes and XP."""
+        r = self.rune
+        essence = next((e for e in essence_kinds(r) if state.inventory.get(e, 0) > 0), None)
+        if essence is None:
+            return
+        amount = state.inventory[essence]
+        state.take(essence, amount)
+        state.add(r.item, amount * r.per_essence(state.level("runecrafting")))
+        crafting = SKILL_INDEX["runecrafting"]
+        state.xp[crafting] = min(state.xp[crafting] + amount * r.experience, MAX_XP)
+
+    def _craft_pouches(self, state: CharacterState) -> int:
+        """Beside the altar, its first runes made: its lock, each pouch emptied as far as the free slots take, the
+        essence crafted again; again while a pouch holds essence (four hold more than the slots a craft frees). The
+        ticks (none without pouches)."""
+        ticks = 0
+        for _ in range(len(rcd.pouches())):
+            emptied = [i for i in list(state.pouch_essence) if pouches.empty(state, i)]
+            if not emptied:
+                break
+            self._craft(state)
+            ticks += pouches.LOCK_TICKS + len(emptied) * pouches.EMPTY_TICKS + pouches.CRAFT_AGAIN_TICKS
+        return ticks
 
     def _entering(self, state: CharacterState) -> bool:
         return state.equipment.get(HAT) == self.tiara or state.inventory.get(self.talisman, 0) > 0
@@ -268,17 +339,12 @@ class RunecraftAtRuins(AtStation):
 
     def _work(self, state: CharacterState, budget: int) -> OptionResult:
         """Enter, walk to the altar, craft the essence carried (one kind: getEssenceItem), walk to the portal, leave."""
-        r, (to_altar, to_portal) = self.rune, INSIDE[self.rune.name]
-        elapsed = ENTER_TICKS + _walk_inside(state, to_altar) + CRAFT_TICKS
+        to_altar, to_portal = INSIDE[self.rune.name]
+        elapsed = self._fill_ticks(state) + ENTER_TICKS + _walk_inside(state, to_altar) + CRAFT_TICKS
         if elapsed > budget:
             return OptionResult(budget, COMPLETED)
-        essence = next(e for e in essence_kinds(r) if state.inventory.get(e, 0) > 0)
-        amount = state.inventory[essence]
-        state.take(essence, amount)
-        state.add(r.item, amount * r.per_essence(state.level("runecrafting")))
-        crafting = SKILL_INDEX["runecrafting"]
-        state.xp[crafting] = min(state.xp[crafting] + amount * r.experience, MAX_XP)
-        elapsed += _walk_inside(state, to_portal) + PORTAL_TICKS
+        self._craft(state)
+        elapsed += self._craft_pouches(state) + _walk_inside(state, to_portal) + PORTAL_TICKS
         state.location = self.ruins.base
         return OptionResult(min(elapsed, budget), INPUTS_EXHAUSTED)
 
@@ -290,11 +356,12 @@ class RunecraftAtRuins(AtStation):
         them, as many as the essence held makes, after the walk to the nearest bank. Its gp is the runes over the
         essence."""
         held, values, r = self.held_units(state), gd.item_values(), self.rune
-        room = INVENTORY_SLOTS - (0 if _held(state, self.tiara) else 1)
+        n, pouched = _pouched(state)
+        room = INVENTORY_SLOTS - (0 if _held(state, self.tiara) else 1) - n + pouched
         load = max(min(held, room), 1)
         bank = nearest_bank(state)
         travel = travel_ticks(state.location, (bank.x, bank.y, bank.plane)) + BANKING_TICKS
-        cycle = self._cycle(load)
+        cycle = self._cycle(load) + _pouch_ticks(n, pouched, INVENTORY_SLOTS - n - 1)
         loads = min(held / load, max(duration_ticks - travel, 0.0) / cycle) if isfinite(cycle) else 0.0
         per_hour = loads * load * TICKS_PER_HOUR / duration_ticks
         essence = next((e for e in essence_kinds(r) if state.inventory.get(e, 0) + banked_or_noted(state, e) > 0),
@@ -371,11 +438,10 @@ class MakeTiaraAtRuins(RunecraftAtRuins):
         return per_hour * rcd.tiaras()[self.rune.name][1], 0.0, per_hour * gain, travel
 
 
-ABYSS_RUNES = ("air", "mind", "water", "earth", "fire", "body", "cosmic", "chaos", "nature", "law", "death")
+ABYSS_RUNES = ("air", "mind", "water", "earth", "fire", "body", "cosmic", "nature", "law", "death")  # not chaos
 # The walk to the altar from where a rift lands the character, where it isn't the ruins' (INSIDE): (steps, changes of
-# plane), the pathfinder's on the server (debug_nearby, 2026-11-08). Chaos's rift lands beside its altar, past the maze
-# (abyss.CHAOS_LANDING: crafted 2 ticks after the click, measured).
-RIFT_INSIDE = {"cosmic": (19, 0), "death": (6, 0), "chaos": (1, 0)}
+# plane), the pathfinder's on the server (debug_nearby, 2026-11-08)
+RIFT_INSIDE = {"cosmic": (19, 0), "death": (6, 0)}
 # Altars whose portals lead where the travel model doesn't go (Zanaris; death's ruins in the Temple of Light): left by
 # teleport
 TELEPORT_OUT = ("cosmic", "death")
@@ -429,14 +495,14 @@ class AbyssRunecraft(RunecraftAtRuins):
         return sum(state.inventory.get(e, 0) + banked_or_noted(state, e) for e in essence_kinds(self.rune))
 
     def _keep(self) -> set[int]:
-        return set(essence_kinds(self.rune))
+        return {*essence_kinds(self.rune), *rcd.pouches()}
 
     def _probe(self, state: CharacterState) -> CharacterState:
         """The character as the path takes it: for law, without the worn arms it banks."""
         return _unarmed_copy(state) if self.rune.name == "law" else state
 
     def _altar_tile(self) -> tuple[int, int, int]:
-        return abyss.CHAOS_LANDING if self.rune.name == "chaos" else self.ruins.end
+        return self.ruins.end
 
     def _teleport_out(self, state: CharacterState, elapsed: int = 0, home: bool = True) -> float:
         """The ticks a teleport takes it from beside the altar to Edgeville's bank, `elapsed` ticks into the option
@@ -474,13 +540,8 @@ class AbyssRunecraft(RunecraftAtRuins):
         return reachable(state, (bank.x, bank.y, bank.plane)) and self.station(state) is not None
 
     def _restock(self, state: CharacterState) -> None:
-        """At the booth, after `_prepare` and the food: a load of one kind of essence in the free slots."""
-        kinds = essence_kinds(self.rune)
-        kind = next((e for e in kinds if state.inventory.get(e, 0) + state.bank.get(e, 0) > 0), kinds[0])
-        for other in kinds:
-            if other != kind:
-                _bank(state, other)
-        _withdraw(state, kind, state.free_slots())
+        """At the booth, after `_prepare` and the food: the pouches and a load of one kind of essence (`_load`)."""
+        self._load(state)
 
     def _loaded(self, state: CharacterState) -> bool:
         return any(state.inventory.get(e, 0) > 0 for e in essence_kinds(self.rune))
@@ -521,15 +582,6 @@ class AbyssRunecraft(RunecraftAtRuins):
         state.location = self.ruins.base
         return ticks
 
-    def _craft(self, state: CharacterState) -> None:
-        r = self.rune
-        essence = next(e for e in essence_kinds(r) if state.inventory.get(e, 0) > 0)
-        amount = state.inventory[essence]
-        state.take(essence, amount)
-        state.add(r.item, amount * r.per_essence(state.level("runecrafting")))
-        crafting = SKILL_INDEX["runecrafting"]
-        state.xp[crafting] = min(state.xp[crafting] + amount * r.experience, MAX_XP)
-
     def _to_altar(self) -> tuple[int, int]:
         r = self.rune.name
         return RIFT_INSIDE[r] if r in RIFT_INSIDE else INSIDE[r][0]
@@ -556,6 +608,7 @@ class AbyssRunecraft(RunecraftAtRuins):
             self._restock(state)
             if not self._loaded(state):
                 return OptionResult(min(max(elapsed, 1), budget), INPUTS_EXHAUSTED, detail=detail)
+            elapsed += self._fill_ticks(state)
             walked = walk(state, abyss.MAGE_TILE, budget - elapsed, elapsed)
             if walked is None:
                 return OptionResult(budget, COMPLETED, detail=detail)
@@ -564,7 +617,7 @@ class AbyssRunecraft(RunecraftAtRuins):
             if elapsed + trip_ticks > budget or (self.rune.name in TELEPORT_OUT
                                                  and not self._way_out(state, round(elapsed + trip_ticks))):
                 return OptionResult(budget, COMPLETED, detail=detail)
-            trip = abyss.cross(state, rng, self.rune.name, elapsed)
+            trip = abyss.cross(state, rng, self.rune.name, elapsed, repair=pouches.decayed(state))
             detail["trips"] += 1
             detail["crossings"][trip.kind] = detail["crossings"].get(trip.kind, 0) + 1
             if trip.died:
@@ -572,6 +625,7 @@ class AbyssRunecraft(RunecraftAtRuins):
             elapsed += trip.ticks
             elapsed += _walk_inside(state, self._to_altar()) + CRAFT_TICKS
             self._craft(state)
+            elapsed += self._craft_pouches(state)
             left = self._leave(state, budget, elapsed)
             if left is None:
                 return OptionResult(budget, COMPLETED, detail=detail)
@@ -589,14 +643,17 @@ class AbyssRunecraft(RunecraftAtRuins):
         if self.rune.name not in TELEPORT_OUT:
             to_portal = INSIDE[self.rune.name][1]
             back = min(back, walk_plan(state, [to_portal])[0] + PORTAL_TICKS + travel_ticks(self.ruins.base, goal))
-        return (BANKING_TICKS + travel_ticks(goal, abyss.MAGE_TILE) + self._trip_ticks(self._probe(state)) + back)
+        n, pouched = _pouched(state)
+        return (BANKING_TICKS + travel_ticks(goal, abyss.MAGE_TILE) + self._trip_ticks(self._probe(state)) + back
+                + _pouch_ticks(n, pouched, INVENTORY_SLOTS - n))
 
     def rate(self, state: CharacterState, duration_ticks: int) -> tuple[float, float, float, float]:
         """(Runecrafting XP/hr, 0, gp/hr, travel) for the skilling slots: loads between Edgeville's bank and the
         altar by the Abyss, as many as the essence held makes, after the walk to the bank. Its gp is the runes over
         the essence. The outer ring's risk isn't in it."""
         held, values, r = self.held_units(state), gd.item_values(), self.rune
-        load = max(min(held, INVENTORY_SLOTS), 1)
+        n, pouched = _pouched(state)
+        load = max(min(held, INVENTORY_SLOTS - n + pouched), 1)
         bank = edgeville_bank()
         travel = route_ticks(state, (bank.x, bank.y, bank.plane)) + BANKING_TICKS
         cycle = self._cycle(state)
