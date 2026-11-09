@@ -3,8 +3,9 @@ gems"; studded leather, snakeskin and jewellery left out). The spec is docs/sim-
 
 This module has the crafts made at a bank (rlscape.gamedata.server.crafting_recipes): gems cut with a chisel, and
 leather and dragonhide armour sewn with a needle and thread. Each runs as its pulse does: the first unit
-`first_ticks` after it starts, then one every `stage_ticks` (a gem a tick; a piece of armour every 5 ticks). Like
-fletching's, the pulses are cleared by any walk or new action, so crafting is an activity of its own.
+`first_ticks` after it starts, then one every `stage_ticks` (a gem a tick; a piece of armour every 5 ticks), after the
+clicks that start it (`start_ticks`, measured on the server; `craft_ticks` has the whole time). Like fletching's, the
+pulses are cleared by any walk or new action, so crafting is an activity of its own.
 
 Thread (LeatherCrafting.decayThread): every sewn item uses a charge of the reel, and when the charges run out a thread
 is taken from the inventory and the reel starts again at 5. The charges are saved on the character
@@ -47,8 +48,15 @@ from rlscape.sim.state import COINS, INVENTORY_SLOTS, CharacterState
 from rlscape.travel import BANKING_TICKS, travel_ticks
 
 THREAD_CHARGES = 5  # LeatherCrafting.decayThread: a reel of thread every 5 items
-TAN_TICKS = 2  # the tanner's Trade option and the tanning interface's Tan All; to measure
+TAN_TICKS = 5  # beside the tanner: Trade, then the tanning interface's Tan All, to the leather (measured, 2026-11-08)
 SPIN_FIRST = SPIN_TICKS = 4  # SpinningPulse: a product at every 4th pulse
+# The clicks before a batch's first stage, measured on the server (scripts/calibrate_crafting.py, 2026-11-08, every
+# case exact): the tool used on the input (or the wheel's Spin) and the how-many's button. 3 ticks with a skill dialogue
+# or an interface (gems, soft leather, spinning); 4 with LeatherCraftDialogue (hard leather and dragonhide), whose
+# dragonhide how-many has no All: "Make 10", clicked again every DRAGON_BATCH items, for the same again.
+MAKE_START_TICKS = 3
+LEATHER_DIALOGUE_START_TICKS = 4
+DRAGON_BATCH = 10
 PICK_TICKS = 2  # FieldPickingPlugin: "delay:picking" is 2 ticks for flax (3 for other plants)
 FLAX_RESPAWN = 30  # PickingPlant.FLAX's respawn, in ticks
 FLAX_CHARGE_ROLL = (2, 8)  # handleFlaxPick: the plant goes once its picks pass 1 + RandomFunction.random(2, 8)
@@ -63,6 +71,26 @@ def inputs() -> frozenset[int]:
     return frozenset({item for r in recipes for item, _ in r.inputs} | {r.tool for r in recipes} | {gd.THREAD}
                      | {r.hide for r in gd.tanning_recipes().values()}
                      | {r.need for r in gd.spinning_recipes().values()})
+
+
+def start_ticks(recipe: gd.CraftRecipe) -> int:
+    hard = recipe.kind == "dragonhide" or recipe.inputs[0][0] == gd.HARD_LEATHER
+    return LEATHER_DIALOGUE_START_TICKS if hard else MAKE_START_TICKS
+
+
+def craft_ticks(recipe: gd.CraftRecipe, units: int) -> int:
+    """Ticks from the first click to the `units`-th item, as the server takes them: the start, the first stage, a stage
+    an item after it, and for dragonhide the start and a first stage again every DRAGON_BATCH items."""
+    if units <= 0:
+        return 0
+    batches = -(-units // DRAGON_BATCH) if recipe.kind == "dragonhide" else 1
+    return (batches * start_ticks(recipe) + recipe.first_ticks + (units - 1) * recipe.stage_ticks
+            + (batches - 1) * (recipe.first_ticks - recipe.stage_ticks))
+
+
+def spin_ticks(units: int) -> int:
+    """Ticks from the wheel's Spin to the `units`-th product (the start, then SpinningPulse's every 4th pulse)."""
+    return MAKE_START_TICKS + SPIN_FIRST + (units - 1) * SPIN_TICKS if units > 0 else 0
 
 
 def thread_capacity(threads: int, charges: int) -> int:
@@ -94,9 +122,9 @@ class Craft(Option):
         return self.allowed(state) and state.inventory.get(self.recipe.tool, 0) > 0 and self.units(state) > 0
 
     def run(self, state: CharacterState, rng: np.random.Generator, budget: int) -> OptionResult:
-        r, crafting, elapsed = self.recipe, SKILL_INDEX["crafting"], self.recipe.first_ticks
+        r, crafting, made = self.recipe, SKILL_INDEX["crafting"], 0
         while self.units(state) > 0:
-            if elapsed > budget:
+            if craft_ticks(r, made + 1) > budget:
                 return OptionResult(budget, COMPLETED)
             for item, amount in r.inputs:
                 state.take(item, amount)
@@ -107,8 +135,8 @@ class Craft(Option):
                 if state.thread_charges <= 0 and state.inventory.get(gd.THREAD, 0) > 0:
                     state.take(gd.THREAD)
                     state.thread_charges = THREAD_CHARGES
-            elapsed += r.stage_ticks
-        return OptionResult(min(elapsed - r.stage_ticks, budget), INPUTS_EXHAUSTED)
+            made += 1
+        return OptionResult(max(craft_ticks(r, made), 1), INPUTS_EXHAUSTED)
 
 
 class CraftAtBank(Option):
@@ -323,15 +351,15 @@ class Spin(Option):
         return self.allowed(state) and state.inventory.get(self.recipe.need, 0) > 0
 
     def run(self, state: CharacterState, rng: np.random.Generator, budget: int) -> OptionResult:
-        r, crafting, elapsed = self.recipe, SKILL_INDEX["crafting"], SPIN_FIRST
+        r, crafting, made = self.recipe, SKILL_INDEX["crafting"], 0
         while state.inventory.get(r.need, 0) > 0:
-            if elapsed > budget:
+            if spin_ticks(made + 1) > budget:
                 return OptionResult(budget, COMPLETED)
             state.take(r.need)
             state.add(r.product)
             state.xp[crafting] = min(state.xp[crafting] + r.experience, MAX_XP)
-            elapsed += SPIN_TICKS
-        return OptionResult(min(elapsed - SPIN_TICKS, budget), INPUTS_EXHAUSTED)
+            made += 1
+        return OptionResult(max(spin_ticks(made), 1), INPUTS_EXHAUSTED)
 
 
 class SpinAtWheel(AtStation):

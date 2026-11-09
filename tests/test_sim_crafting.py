@@ -6,7 +6,8 @@ import numpy as np
 import pytest
 
 from rlscape.gamedata import server as gd
-from rlscape.sim.crafting import THREAD_CHARGES, Craft, CraftAtBank, thread_capacity
+from rlscape.sim.crafting import (DRAGON_BATCH, MAKE_START_TICKS, THREAD_CHARGES, Craft, CraftAtBank, craft_ticks,
+                                  thread_capacity)
 from rlscape.sim.kits import kit
 from rlscape.sim.skilling import SKILLS, SkillingSlots, path_options, path_rate
 from rlscape.sim.skills import SKILL_INDEX, XP_FOR_LEVEL
@@ -53,7 +54,7 @@ def test_a_reel_of_thread_sews_five_items():
 def test_a_gem_is_cut_every_tick():
     state = character({CHISEL: 1, UNCUT_SAPPHIRE: 10}, crafting=20)
     result = Craft(gd.crafting_recipes()["sapphire"]).run(state, np.random.default_rng(0), 1_000)
-    assert result.ticks == 1 + 9 * 1 and result.termination == "inputs_exhausted"
+    assert result.ticks == MAKE_START_TICKS + 1 + 9 * 1 and result.termination == "inputs_exhausted"
     assert state.inventory == {CHISEL: 1, SAPPHIRE: 10}
     assert state.xp[SKILL_INDEX["crafting"]] == XP_FOR_LEVEL[20] + 10 * 50.0
 
@@ -62,7 +63,7 @@ def test_a_gem_is_cut_every_tick():
 def test_leather_is_sewn_every_5_ticks_and_uses_a_thread_every_5_items():
     state = character({NEEDLE: 1, THREAD: 2, SOFT: 12})
     result = Craft(gd.crafting_recipes()["leather_gloves"]).run(state, np.random.default_rng(0), 1_000)
-    assert result.ticks == 5 + 9 * 5  # 10 pairs: the two threads' charges, then no thread
+    assert result.ticks == MAKE_START_TICKS + 5 + 9 * 5  # 10 pairs: the two threads' charges, then no thread
     assert state.inventory == {NEEDLE: 1, SOFT: 2, GLOVES: 10} and state.thread_charges == THREAD_CHARGES
 
 
@@ -74,6 +75,17 @@ def test_a_dragonhide_body_takes_three_leathers_and_its_level():
     state = character({NEEDLE: 1, THREAD: 1, GREEN_LEATHER: 7}, crafting=63)
     craft.run(state, np.random.default_rng(0), 1_000)
     assert state.inventory == {NEEDLE: 1, THREAD: 1, GREEN_LEATHER: 1, GREEN_BODY: 2} and state.thread_charges == 3
+
+
+@needs_server
+def test_the_servers_measured_times_a_batch_starts_with_its_clicks():
+    """scripts/calibrate_crafting.py (2026-11-08), every case exact: a gem load of 27 takes 30 ticks, 26 leather gloves
+    133, a hard leather body load 134, 13 green dragonhide chaps 73 (two "Make 10" batches) and 8 black bodies 44."""
+    r = gd.crafting_recipes()
+    assert craft_ticks(r["opal"], 27) == 30 and craft_ticks(r["leather_gloves"], 26) == 133
+    assert craft_ticks(r["hardleather_body"], 26) == 134
+    assert craft_ticks(r["green_d_hide_chaps"], 13) == 73 and craft_ticks(r["black_d_hide_body"], 8) == 44
+    assert craft_ticks(r["green_d_hide_chaps"], DRAGON_BATCH + 1) - craft_ticks(r["green_d_hide_chaps"], DRAGON_BATCH) == 9
 
 
 @needs_server
@@ -181,7 +193,7 @@ def test_a_spinning_path_spins_a_flax_every_4_ticks_from_level_10():
     assert path.id == "spin_flax" and not path.available(character({}, {FLAX: 10}, crafting=9))
     state = character({FLAX: 10}, crafting=10)
     result = Spin(gd.spinning_recipes()["flax"]).run(state, np.random.default_rng(0), 1_000)
-    assert result.ticks == 4 + 9 * SPIN_TICKS and state.inventory == {BOWSTRING: 10}
+    assert result.ticks == MAKE_START_TICKS + 4 + 9 * SPIN_TICKS and state.inventory == {BOWSTRING: 10}
     state = character({}, {FLAX: 60}, crafting=10)
     path.run(state, np.random.default_rng(0), 9_000)
     assert state.inventory.get(BOWSTRING, 0) + state.bank.get(BOWSTRING, 0) == 60

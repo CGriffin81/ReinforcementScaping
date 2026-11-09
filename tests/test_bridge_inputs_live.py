@@ -111,6 +111,41 @@ def test_a_bar_on_an_anvil_and_raw_fish_on_a_range_open_their_interfaces_and_the
     assert client.state(uid)["chatbox_id"] == 307
 
 
+def test_craftings_interfaces_and_dialogues_stay_open_for_the_next_click(client, uid):
+    """The bridge leaves open what Crafting's clicks open (2026-11-08): a needle on soft leather opens the leather
+    interface (154), and on hard leather the how-many (chatbox 309, LeatherCraftDialogue, not a skill dialogue); the
+    spinning wheel's Spin opens 459, Ellis's Trade the tanning interface (324). Before, the bridge closed them."""
+    needle, thread, soft, hard, wool, cowhide = 1733, 1734, 1741, 1743, 1737, 1739
+    for item in {i["id"] for i in client.state(uid)["inventory"]}:  # the starter kit, for room
+        client.item_option(uid, item, "Drop")
+    client.wait(2)
+    for item, amount in ((needle, 1), (thread, 5), (soft, 2), (hard, 2), (wool, 2), (cowhide, 2), (995, 1_000)):
+        client.debug_give(uid, item, amount)
+    client.debug_set_levels(uid, {"crafting": 30})
+    client.wait(1)
+
+    def stays(key: str, opened: int) -> None:
+        for _ in range(6):
+            if client.state(uid)[key] == opened:
+                break
+            client.wait(1)
+        client.wait(3)
+        assert client.state(uid)[key] == opened
+
+    client.request("use_item", uid=uid, item=needle, **{"with": soft}, packet=True)
+    stays("interface_id", 154)
+    client.request("use_item", uid=uid, item=needle, **{"with": hard}, packet=True)
+    stays("chatbox_id", 309)
+    client.debug_teleport(uid, 3209, 3213, 1)  # beside Lumbridge Castle's wheel
+    client.wait(2)
+    client.interact(uid, "Spinning wheel", "Spin")
+    stays("interface_id", 459)
+    client.debug_teleport(uid, 3274, 3192, 0)  # beside Ellis, Al Kharid's tanner
+    client.wait(2)
+    client.request("interact", uid=uid, name="Ellis", option="Trade", object=False, packet=True)
+    stays("interface_id", 324)
+
+
 def test_herb_on_tar_answers_its_dialogue_the_next_tick(client, uid):
     """UseWithHandler opens the tar dialogue in a 1-tick pulse, and the bridge leaves a skill dialogue open."""
     for item, amount in ((CLEAN_GUAM, 1), (SWAMP_TAR, 15), (PESTLE_AND_MORTAR, 1)):

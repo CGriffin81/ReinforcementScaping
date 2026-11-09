@@ -5076,3 +5076,36 @@ fork (Recommended)". `m002-flaky-tests-and-regions`.
 - **Test:** `test_a_crafting_paths_inputs_are_bought_on_the_ge` (a fresh character buys a needle, thread and leather,
   and the glove path opens). The counts in `test_vocabulary` and `test_sim_buying`. Speed: 96 decisions a second in
   one process, as before.
+
+### Measured (sim v1, Crafting): the server's times, fitted; the bridge leaves Crafting's interfaces open
+2026-11-08, `docs/sim-v1-skills-draft.md` §7. `m002-crafting-times`.
+- **The runner** (`scripts/calibrate_crafting.py`, as `calibrate_processing.py` does the processing options): from a
+  full inventory, the clicks a person makes, against the sim's own option from the same state. A chisel or needle on
+  the input, then the how-many's All. Dragonhide's how-many has no All, so "Make 10" until the leather runs out (Claude's
+  choice; typing X needs an input the bridge doesn't send). Spinning is the wheel's Spin, then All. Tanning is Ellis's
+  Trade, then the interface's All. Flax is "Pick" on the nearest plant, a pick a click. 14 cases at the bands their
+  levels allow, 3 runs each (`results/calibration/crafting-20261108-1942-i5.json`). The server's runs were identical.
+- **Fixed on the way (fork, the bridge):** it closed what Crafting's clicks open. It closes interfaces it doesn't
+  list as used and chatboxes that aren't skill dialogues, so a needle on leather opened the leather interface (154)
+  and the next tick it was gone. Now the soft leather (154), spinning wheel (459) and tanning (324) interfaces are
+  used ones, and the hard leather and dragonhide how-many (`LeatherCraftDialogue` opens 309 and 304 itself) are make
+  chatboxes, as the furnace's and cooking's are (2026-11-07). New live test:
+  `test_craftings_interfaces_and_dialogues_stay_open_for_the_next_click`.
+- **Found:** the server takes a few ticks before a batch's first stage: the tool on the input and the how-many's
+  button. 3 ticks with a skill dialogue or an interface (gems, soft leather, spinning), 4 with
+  `LeatherCraftDialogue` (hard leather, dragonhide), and dragonhide pays it again at each "Make 10". Tanning takes 5
+  ticks beside the tanner (the sim had assumed 2).
+  - Before the fit, sim over server XP/hr: gems 1.11, soft leather 1.02, hard leather 1.03, dragonhide 1.10 to 1.12,
+    spinning 1.03; tanning's time 0.40; flax 0.91 to 1.00.
+- **Fitted** (`crafting.MAKE_START_TICKS`, `LEATHER_DIALOGUE_START_TICKS`, `DRAGON_BATCH`, `TAN_TICKS`;
+  `craft_ticks` and `spin_ticks`, which the options and the skilling slots' rate model both use): every case 1.00
+  (`results/calibration/crafting-20261108-1946-i5.json`). Picking flax wasn't fitted: 0.92 to 1.00, with the plants'
+  random depletion.
+- **A run against another session's server:** the server Claude started couldn't take the bridge's port. Another server,
+  started a few minutes earlier for the animated spades task, held 127.0.0.1:43610, and the first two cases ran
+  against it. That run set the tick to 50 ms, spawned and despawned two characters near Lumbridge, and set the tick
+  back. Its results file was deleted, and the rest ran on an instance of its own (5, port 43614). The fork change was
+  built in a separate worktree, so the jar that server may be running wasn't touched. The main checkout was rebuilt
+  with it once that server had stopped.
+- **Test:** `test_the_servers_measured_times_a_batch_starts_with_its_clicks`; the timing tests take the start. The
+  full suite on instance 5: 409 passed.

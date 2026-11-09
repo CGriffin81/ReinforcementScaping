@@ -42,9 +42,9 @@ from rlscape.gamedata import server as gd
 from rlscape.sim.engine import ACTIVITY_TICKS
 from rlscape.sim.fishing import AFTER_CATCH_TICKS, FIRST_ATTEMPT_TICKS
 from rlscape.sim.fishing import ATTEMPT_TICKS as FISH_TICKS
-from rlscape.sim.crafting import (FLAX, FLAX_RESPAWN, PICK_TICKS, SPIN_FIRST, SPIN_TICKS, TAN_TICKS, THREAD_CHARGES,
-                                   AtStation, CraftAtBank, PickFlax, SpinAtWheel, SpinFlaxAtWheel, TanAtTanner,
-                                   crafting_paths, mean_flax_picks, station_paths, usable_station)
+from rlscape.sim.crafting import (FLAX, FLAX_RESPAWN, PICK_TICKS, TAN_TICKS, THREAD_CHARGES, AtStation, CraftAtBank,
+                                   PickFlax, SpinAtWheel, SpinFlaxAtWheel, TanAtTanner, craft_ticks, crafting_paths,
+                                   mean_flax_picks, spin_ticks, station_paths, usable_station)
 from rlscape.sim.economy import nearest_bank
 from rlscape.sim.fishing import Fishing, fishing_options
 from rlscape.sim.fletching import FIRST_TICK as FLETCH_FIRST
@@ -293,7 +293,7 @@ def _process(path: Path, state: CharacterState, unit: _Unit, units: float) -> tu
     if isinstance(path.process, SpinFlaxAtWheel):
         r = path.process.spin.recipe
         to_wheel = travel_ticks(site, usable_station(state, "spinning_wheel", site).tile)
-        return (2 * to_wheel + SPIN_FIRST + (units - 1) * SPIN_TICKS, units * r.experience,
+        return (2 * to_wheel + spin_ticks(units), units * r.experience,
                 units * values.get(r.product, 0), 1.0)
     if isinstance(path.process, Cook):
         fish, weights, _ = path.gather.catch_odds(state)
@@ -336,7 +336,7 @@ def _craft_rate(path: CraftAtBank, state: CharacterState, duration_ticks: int) -
     r, values = path.recipe, gd.item_values()
     held = path.held_units(state)
     load = max(min(held, path.load_size()), 1)
-    load_ticks = r.first_ticks + (load - 1) * r.stage_ticks + BANKING_TICKS
+    load_ticks = craft_ticks(r, load) + BANKING_TICKS
     bank = nearest_bank(state)
     travel = travel_ticks(state.location, (bank.x, bank.y, bank.plane), home_ready(state)) + BANKING_TICKS
     loads = min(held / load, max(duration_ticks - travel, 0.0) / load_ticks)
@@ -365,7 +365,7 @@ def _station_rate(path: AtStation, state: CharacterState, duration_ticks: int) -
         work = None
     load = max(min(held, load), 1)
     if work is None:
-        work = SPIN_FIRST + (load - 1) * SPIN_TICKS
+        work = spin_ticks(load)
     load_ticks = work + 2 * _nearest_bank_ticks(station.tile) + BANKING_TICKS
     bank = nearest_bank(state)
     travel = travel_ticks(state.location, (bank.x, bank.y, bank.plane), home_ready(state)) + BANKING_TICKS

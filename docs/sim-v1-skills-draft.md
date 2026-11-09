@@ -372,7 +372,8 @@ the bridge already sends; the courses and the Abyss are new. The bridge now find
 2026-11-08.
 
 Each path's time per unit is measured on the server and fitted where it differs, as the processing paths were
-(2026-11-07), and gated at ±20%.
+(2026-11-07), and gated at ±20%. Crafting's are (2026-11-08, `scripts/calibrate_crafting.py`): a few ticks of clicks
+before each batch, fitted, and every case within 1.00 of the server but picking flax (0.92 to 1.00).
 
 **Rough cost** (Claude's estimate): Crafting a day, Herblore half a day, Runecrafting a day, the Abyss another and
 its fights and pouches half a day more, Agility with Barbarian Fishing a day, and their calibration a day or two. Six
