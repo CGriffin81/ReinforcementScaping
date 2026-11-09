@@ -2,7 +2,8 @@
 
 **v1.4** (2026-11-08, building sim v1 per OQ-2 and `docs/sim-v1-skills-draft.md`; to confirm when the four skills
 are built): Crafting's skilling slots and paths (§2), and XP slots hold only paths that give XP; Crafting's inputs in
-*V* and the GE buys (§8, §9); Herblore's skilling slots and paths (§2).
+*V* and the GE buys (§8, §9); Herblore's skilling slots and paths (§2); Agility's skilling slots and laps (§2);
+Runecrafting's skilling slots and paths (§2), and its essence and talismans in *V* and the GE buys (§8, §9).
 
 **Status:** v1.3, 2026-11-06: quests are out, and every quest the server has is complete from the start (Caleb;
 §10); the anti-dragon shield, the dragon dagger and longsword and the Fremennik helms are bought on the GE (§4.B,
@@ -55,8 +56,8 @@ each target's spawn area.
 
 **Skilling slots** (Caleb, 2026-10-30/31; `rlscape/sim/skilling.py`). Like the combat slots (§4), each gathering
 skill offers its best **paths** by XP/hr and by gp/hr at the current levels, gear and position, as actions, and
-agents choose a path, not a fixed method. Seven skills (Woodcutting, Fishing, Mining, Thieving, Fletching, Crafting,
-Herblore) × 2 slots by XP/hr + 2 by gp/hr = 28 actions, `skill_<skill>_xp1/xp2/gp1/gp2`. They replace the 31 fixed gathering and thieving
+agents choose a path, not a fixed method. Nine skills (Woodcutting, Fishing, Mining, Thieving, Fletching, Crafting,
+Herblore, Runecrafting, Agility) × 2 slots by XP/hr + 2 by gp/hr = 36 actions, `skill_<skill>_xp1/xp2/gp1/gp2`. They replace the 31 fixed gathering and thieving
 actions.
 A path in an XP slot doesn't also fill a gp slot (the next best takes its place, as in combat), and slots are
 recomputed every decision. The observation carries each slot's rates (env contract §3).
@@ -96,10 +97,29 @@ its XP too); and the secondary, or its whole ingredient ground first, with a pes
 stages are the server's (`HerblorePulse`, `GrindItemPlugin`): the unfinished potions one a tick, the finished ones
 one every 3 ticks, grinding one every 2, each batch after its clicks. The product has three doses.
 
+**Agility** (sim v1, v1.4; Caleb, 2026-11-08, OQ-2 Choice D; `rlscape/sim/agility.py`) has course laps:
+`agility_gnome` (Agility 1), `agility_barbarian` (35, entered by the outpost's pipe) and `agility_wilderness` (52,
+by the door and ridge). A path walks to the course and runs laps until the option's time is up, at the server's
+times: each obstacle's XP, the lap bonus at the lap's last flag, and on the two courses that can fail, each failing
+obstacle rolled at the character's Agility (`AgilityHandler.hasFailed`), a fall's hit and its measured recovery. It
+eats as thieving does, and stops when it's out of food then. No gp: a lap path fills only XP slots. Barbarian Fishing
+and the shortcuts come next.
+
+**Runecrafting** (sim v1, v1.4; Caleb, 2026-11-08, OQ-2; `rlscape/sim/runecrafting.py`) has `rc_<rune>` for the nine
+runes whose ruins the travel model reaches: air, mind, water, earth, fire, body, chaos, nature and law. A path works
+between the nearest bank and the ruins, as tanning does: it takes out the talisman and a load of one kind of essence
+(rune essence first for air to body; pure only for the rest), enters the ruins, crafts every essence at the altar,
+and leaves by the portal. An essence makes as many runes as the rune's multiple levels the character has reached
+(rl.conf's formula revision 530). Law's path banks the weapons and armour Entrana's monks refuse; nature's carries the
+Karamja boat's 60 gp. The times inside the ruins are the server's. Essence isn't mined (Caleb: it's cheap, and mining
+it wastes the time); the agent buys it (§9). The cosmic altar waits for the Abyss's rift (OQ-45 (a)), as do the death
+altar and the tiaras.
+
 A path that gives no XP (tanning, picking flax) fills only a gp slot: the XP slots take the best paths that give XP
 (v1.4).
 
-That's 83 paths: woodcutting 12, fishing 8, mining 7, thieving 20, fletching 36; and crafting's 39 and herblore's 36 (sim v1). Mining's include iron at the Al
+That's 83 paths in sim v0: woodcutting 12, fishing 8, mining 7, thieving 20, fletching 36; and in sim v1 crafting's
+39, herblore's 36, runecrafting's 9 and agility's 3. Mining's include iron at the Al
 Kharid mine (Caleb, 2026-10-31), kept or smelted, beside Varrock's: scorpions roam it, so it costs a low-level miner
 hitpoints (below). Fishing's include shrimp at Lumbridge Swamp (Caleb, 2026-11-01), kept or cooked, beside
 Draynor's: Draynor's spots are next to the bank, but its Dark wizards make them dangerous for a character of combat
@@ -193,7 +213,7 @@ inputs, a fixed duration *D*, server formulas, and calibration. The likely shape
 | Crafting | tan hides into leather, make leather armour, spin flax, cut gems | processing; uses cowhides from combat |
 | Agility | course laps (Gnome Stronghold, Draynor, …) | a gathering-like activity with no product; levels open the access table's shortcuts |
 | Herblore | clean herbs, make potions | needs Druidic Ritual; herbs come from drops (vocabulary) |
-| Runecrafting | craft runes at an altar from essence | needs Rune Mysteries; essence from mining |
+| Runecrafting | craft runes at an altar from essence | needs Rune Mysteries; essence bought (not mined: Caleb, 2026-11-08) |
 
 These add roughly 15–25 actions and some vocabulary items; §9 is updated when they're specified.
 
@@ -701,7 +721,10 @@ stay misc; bowstrings were in *V* already. 297 in all. Herblore's (2026-11-08): 
 unfinished potions the 21 potions use, the 15 secondaries and the 5 whole ingredients ground into them, vials of water
 and a pestle and mortar, 66 in all, which the GE sells (§8, Choice A (a)); the bird's nest at Caleb's 1,765 gp, as it's
 untradeable on this server and had no 2009 price, and the alchemy spell and stores refuse it. 51 weren't in *V*. The
-made potions stay misc (three doses; OQ-25 keeps four-dose potions alone in *V*). 348 in all.
+made potions stay misc (three doses; OQ-25 keeps four-dose potions alone in *V*). 348 in all. Runecrafting's
+(2026-11-08): rune and pure essence, which isn't mined (Caleb), in lots of 1,000, and the nine runes' talismans, one
+each, 11 in all, which the GE sells; 9 weren't in *V* (the mind and earth talismans were). The runes made were in *V*
+for magic but body runes, which stay misc. 357 in all.
 
 **Size (*V* = 279: the 156 accepted, 20 fletching inputs added by the same rule on 2026-10-31, 38 on 2026-11-06 and 65
 on 2026-11-07;
@@ -718,7 +741,7 @@ selling as "all in the inventory"):**
 | Selling | 560 (GE and store, 280 each) |
 | Buying | 217 (180 at the GE, with the knife, 19 fletching inputs, the anti-dragon shield, 6 quest items, 2 antipoisons, 8 combat potions and antifire, Ava's 2 devices, 11 crossbows and 53 bolts; 37 at shops) |
 | **Total in sim v0** | **1,709** |
-| Sim v1 so far (v1.4) | Crafting's 4 skilling slots; Crafting's 25 GE buys (needle and chisel one each, the rest in lots of 1,000) and its 18 new *V* items' 90 actions: 1,828; Herblore's and Runecrafting's 4 skilling slots each; Herblore's 66 GE buys (the pestle and mortar one, the rest in lots of 1,000) and its 51 new *V* items' 255 actions: **2,157** |
+| Sim v1 so far (v1.4) | Crafting's 4 skilling slots; Crafting's 25 GE buys (needle and chisel one each, the rest in lots of 1,000) and its 18 new *V* items' 90 actions: 1,828; Herblore's and Runecrafting's 4 skilling slots each; Herblore's 66 GE buys (the pestle and mortar one, the rest in lots of 1,000) and its 51 new *V* items' 255 actions: 2,157; Agility's 4 skilling slots: 2,161; Runecrafting's 11 GE buys (the talismans one each, the essence in lots of 1,000) and its 9 new *V* items' 45 actions: **2,217** |
 
 Each *V* item adds 7 observation features: its inventory and bank counts, and its 5 actions' mask entries (env
 contract §3).

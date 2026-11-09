@@ -1,6 +1,5 @@
 """Runecrafting's data from the server (sim v1; docs/sim-v1-skills-draft.md §5): content/global/skill/runecrafting
-(Rune.java, RunecraftingData.kt) and the essence mine (content/global/travel/EssenceTeleport.kt,
-content/global/skill/gather/mining/MiningListener.kt)."""
+(Rune.java, RunecraftingData.kt). The essence mine is left out: essence isn't mined (Caleb, 2026-11-08)."""
 
 from __future__ import annotations
 
@@ -11,12 +10,8 @@ from functools import cache
 from rlscape.gamedata.server import SERVER_CONTENT, rune_ids
 
 RUNECRAFTING = SERVER_CONTENT / "global" / "skill" / "runecrafting"
-ESSENCE_TELEPORT = SERVER_CONTENT / "global" / "travel" / "EssenceTeleport.kt"
-MINING_LISTENER = SERVER_CONTENT / "global" / "skill" / "gather" / "mining" / "MiningListener.kt"
 RUNE_ESSENCE, PURE_ESSENCE = 1436, 7936
 PLAIN_TIARA = 5525
-PURE_ESSENCE_MINING = 30  # MiningListener.calculateReward: pure essence instead from this Mining level
-ESSENCE_XP = 5.0  # MiningNode.RUNE_ESSENCE's Mining XP an essence
 
 
 def _item_const(text: str) -> int:
@@ -94,31 +89,3 @@ def tiaras() -> dict[str, tuple[int, float]]:
     body = text[text.index("enum class Tiara"):text.index("enum class Talisman")]
     return {name.lower(): (_item_const(item), float(xp)) for name, item, xp in re.findall(
         r"^\s*([A-Z]+)\(Item\(Items\.([A-Z_]+_TIARA_\d+)\),\s*([\d.]+)\)", body, re.M) if name != "OMNI"}
-
-
-@cache
-def essence_wizards() -> dict[str, tuple[tuple[int, int, int], int]]:
-    """EssenceTeleport.Wizard: name -> (where the mine's portal returns a character, the wizard's NPC id). Each
-    teleports a character to the essence mine (Rune Mysteries is complete from the start)."""
-    text = ESSENCE_TELEPORT.read_text(encoding="utf-8")
-    return {name.lower(): ((int(x), int(y), int(z)), int(npc)) for name, npc, x, y, z in re.findall(
-        r"^\s*([A-Z]+)\((\d+),\s*0x[0-9a-fA-F]+,\s*Location(?:\.create)?\((\d+),\s*(\d+),\s*(\d+)\)\)", text, re.M)}
-
-
-@cache
-def essence_landings() -> tuple[tuple[int, int, int], ...]:
-    """EssenceTeleport.LOCATIONS: where the teleport lands a character in the mine, one at random."""
-    text = ESSENCE_TELEPORT.read_text(encoding="utf-8")
-    body = text[text.index("val LOCATIONS"):text.index(")\n\n")]
-    return tuple((int(x), int(y), int(z)) for x, y, z in
-                 re.findall(r"Location\.create\((\d+),\s*(\d+),\s*(\d+)\)", body))
-
-
-@cache
-def essence_delays() -> dict[str, int]:
-    """MiningListener.getDelay for rune essence: the pickaxe's name -> ticks between essence (its script waits a tick
-    longer: rlscape.sim.mining's ATTEMPT_TICKS note)."""
-    text = MINING_LISTENER.read_text(encoding="utf-8")
-    body = text[text.index("resource == MiningNode.RUNE_ESSENCE) {  // Essence mining"):]
-    body = body[:body.index("else ->")]
-    return {name: int(ticks) for name, ticks in re.findall(r"SkillingTool\.([A-Z_]+_PICKAXE) -> (\d+)", body)}

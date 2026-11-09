@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from rlscape.gamedata import server as gd
-from rlscape.sim.herblore import (CLEAN_TICKS, START_TICKS, CleanAtBank, PotionAtBank, finished_ticks, grind_ticks,
+from rlscape.sim.herblore import (START_TICKS, clean_ticks, CleanAtBank, PotionAtBank, finished_ticks, grind_ticks,
                                   unfinished_ticks)
 from rlscape.sim.kits import kit
 from rlscape.sim.skilling import SKILLS, SkillingSlots, path_options, path_rate
@@ -55,6 +55,9 @@ def test_the_pulses_timing():
     assert unfinished_ticks(1) == 4 and finished_ticks(1) == 4
     assert unfinished_ticks(9) == START_TICKS + 1 + 8 and finished_ticks(9) == START_TICKS + 4 + 8 * 3
     assert grind_ticks(9) == START_TICKS + 2 + 8 * 2
+    # measured on the server (scripts/calibrate_herblore.py, 2026-11-08): 28 herbs cleaned in 29 ticks, 14 unfinished
+    # potions in 17, 14 finished in 46, 27 unicorn horns ground in 57
+    assert (clean_ticks(28), unfinished_ticks(14), finished_ticks(14), grind_ticks(27)) == (29, 17, 46, 57)
 
 
 @needs_server
@@ -125,7 +128,7 @@ def test_herblore_has_its_slots_kit_and_a_rate():
     assert kit(state, "herblore") == {PESTLE, GRIMY_GUAM, VIAL}
     banked = character({}, {VIAL: 270, GRIMY_GUAM: 270, EYE_OF_NEWT: 270}, herblore=3)
     rate = path_rate(PotionAtBank(gd.herblore_potions()["attack"]), banked, 3_000)
-    load_ticks = CLEAN_TICKS * 9 + unfinished_ticks(9) + finished_ticks(9) + BANKING_TICKS
+    load_ticks = clean_ticks(9) + unfinished_ticks(9) + finished_ticks(9) + BANKING_TICKS
     loads = min(270 / 9, (3_000 - rate.travel) / load_ticks)  # a load of 9, from grimy herbs
     assert rate.xp == pytest.approx(loads * 9 * (25 + 2.5) * 6_000 / 3_000)
     assert SkillingSlots().candidate(banked, "herblore", 0).path.id == "potion_attack"

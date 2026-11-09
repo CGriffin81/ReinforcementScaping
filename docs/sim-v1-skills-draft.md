@@ -107,6 +107,21 @@ implemented here (Ape Atoll, Werewolf, Penguin).
 obstacle's animation and walk, measured), with the failure chances and damage `AgilityHandler` gives (eating as the
 fights do).
 
+**As built** (2026-11-08; `rlscape/gamedata/agility.py`, `rlscape/sim/agility.py`, `scripts/measure_agility.py`):
+- **XP a lap:** Gnome Stronghold 86.5 (no falls); Barbarian Outpost 152.2 (the obstacles' 106 and the 46.2 bonus; the
+  third low wall gives its XP but its flag is past the course's size); Wilderness 571.5 (72.5 and the 499 bonus).
+- **The entries:** the Barbarian Outpost's pipe (Agility 35) gives no XP on this server (`AgilityShortcut` never awards
+  a shortcut's), and the Wilderness's door and ridge (Agility 52) give 15 and can fail into the wolf pit. The
+  Wilderness's pipe needs 49.
+- **Falls, as the server has them:** a rope swing's fail does nothing (`AgilityHandler.fail` plays out only with an
+  animation, and the swings pass none), so it's a click again; the Barbarian log's into the water, swum out; the
+  Barbarian ledge's to the ground west of the net, which can't be climbed from there, so the lap goes on at the walls
+  without its bonus; the Wilderness stepping stones' into the lava (26% of the hitpoints left), its log's onto the
+  spikes below.
+- **Times:** measured on the server, each obstacle's click to the next click as laps run, each fall's click to the next
+  click, and the entries'. The Gnome Stronghold's lap is 74 ticks; the Barbarian Outpost's 71 without falls.
+- Eating is thieving's rule (the retreat point, or the largest fall hit if that's higher), not the fights'.
+
 **Choice D, the courses:** (a) *recommended*: Gnome Stronghold, Barbarian Outpost and Wilderness, and the Pyramid
 with its top handed to Simon Templeton for coins as the server pays; (b) the same without the Pyramid. The Brimhaven
 arena is out in both. **Caleb: the Pyramid and Brimhaven are left out**, so the courses are the Gnome Stronghold, the
@@ -254,6 +269,12 @@ ruins are near the mine (air, mind, water, earth, fire, body): mine a load, craf
 its processing counterpart, §2); (b) only the separate paths. **Caleb: (b)** (OQ-38): `mine_essence` and `rc_<rune>`
 only. An agent that wants both mines with one option and crafts with the next.
 
+**As built** (2026-11-08): essence isn't mined after all (Caleb: "Rune essence is very cheap and mining it yourself
+will almost always be seen as a time waste"), so there's no `mine_essence`: essence is bought on the GE or dropped.
+`rc_<rune>` is built for air, mind, water, earth, fire, body, chaos, nature and law; cosmic waits for the Abyss's rift
+(OQ-45 (a)). Its times at the ruins are measured on the server (`scripts/calibrate_runecrafting.py`), chaos's maze
+still to be.
+
 **Choice H, tiaras and pouches:** (a) *recommended*: talismans only (the GE sells them; a tiara needs a silver bar
 crafted with the talisman, which isn't in OQ-2's list); essence pouches (the Abyss) and the Abyss's shortcut out;
 (b) tiaras as well. **Caleb: the Abyss and tiaras are both in,** and the pouches as the server gives them (OQ-40
@@ -378,7 +399,8 @@ the bridge already sends; the courses and the Abyss are new. The bridge now find
 
 Each path's time per unit is measured on the server and fitted where it differs, as the processing paths were
 (2026-11-07), and gated at ±20%. Crafting's are (2026-11-08, `scripts/calibrate_crafting.py`): a few ticks of clicks
-before each batch, fitted, and every case within 1.00 of the server but picking flax (0.92 to 1.00).
+before each batch, fitted, and every case within 1.00 of the server but picking flax (0.92 to 1.00). Herblore's
+too (`scripts/calibrate_herblore.py`): cleaning's first tick fitted, every stage and load 1.00.
 
 **Rough cost** (Claude's estimate): Crafting a day, Herblore half a day, Runecrafting a day, the Abyss another and
 its fights and pouches half a day more, Agility with Barbarian Fishing a day, and their calibration a day or two. Six

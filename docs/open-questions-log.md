@@ -40,37 +40,23 @@ Started 2026-10-31 (Caleb), from a review of the documentation.
 - **Since:** Caleb cut quests on 2026-11-06 (every quest the server has is complete from the start), so sim v1 is
   the four skills only. The level-3 start stays.
 
-### OQ-43. The caster held "under attack" in the middle of a fight: fight the holder back at once?
-- **Raised:** 2026-11-08, `m002-spade-zero-hitpoints`, from the spade traces. When a possessed pickaxe engaged the
-  character in the middle of a spade fight, the casts on the spade were refused ("You're already under attack!",
-  `MapZone.checkMulti`). The runner's magic loop keeps recasting until `STUCK_TICKS` (30 ticks without XP) walks it
-  back, and only then fights the other monster. That cost 50 to 124 ticks a run (3% to 8%) in the three good spade
-  runs. In the sim, such an engagement is a kill in the fight's plan with no wait (`FightNeighbours`).
+### OQ-46. The Wilderness course's spike pit has aggressive skeletons: should the sim's laps count them?
+- **Raised:** 2026-11-08, measuring the agility courses on the server (`m002-agility`). A fall off the Wilderness
+  course's log drops the character onto the spikes in a pit below (2998, 10345), where aggressive skeletons spawn
+  (level 25, several; they pick a character of combat level 50 or under). Climbing out and walking back takes about
+  100 ticks a fall. A measurement character (Agility 52, Hitpoints 99, its other combat skills 1: combat level about 26)
+  died there after three log falls in one lap. The sim's laps don't count the pit's monsters, so for a character of
+  combat level 50 or under they're safer in the sim than on the server. (The Barbarian course's pit below the rope
+  swing is never reached: the swings' fails do nothing.)
 - **Options:**
-  - **(a) Recommended:** the runner does as a person who reads the message does: when a cast on its target is
-    refused and a monster of another kind is attacking it, it casts on that monster at once, and takes up its
-    target again after. Also, `STUCK_TICKS` waits for damage (hitpoints XP), not any XP, so a target that takes no
-    damage is left (a 0-damage swing still gives base Magic XP).
-  - (b) Keep the runner as it is and give the sim the same wait, measured (a sim model change).
-  - (c) Keep both as they are, and report the bias at sites with neighbours.
-- **Decides:** Caleb (it changes what the server side measures).
-- **Blocks:** no gate case since the spades became hazards (OQ-42): no other magic case in the fit or check sets
-  meets a monster of another kind. It matters for server runs at sites with neighbours (E6's spot checks).
-
-### OQ-45. Should the cosmic altar also be reached through Zanaris?
-- **Raised:** 2026-11-08, building Runecrafting (sim v1, `rlscape/sim/runecrafting.py`). Record
-  `m002-runecrafting`.
-- **The problem:** the cosmic ruins are in Zanaris (2406, 4375). A character enters Zanaris by the shed in Lumbridge
-  Swamp with a dramen staff wielded (`LostCityListeners`; Lost City is complete from the start). The travel model has
-  no map of Zanaris: it's off the surface map, where route planning only has a straight-line estimate. So `rc_cosmic`
-  isn't built; the other nine runes' ruins are. The dramen staff has no January 2009 GE price in
-  `data/prices_v2.csv`; a character would cut one from the dramen tree on Entrana.
-- **Options:**
-  - **(a) Recommended:** the cosmic altar only by the Abyss's cosmic rift, once the Abyss is built (the draft's §5).
-    No Zanaris route. Cosmic runes then need the Abyss's skull, its monsters and an obstacle.
-  - (b) Zanaris too: check the shed on the server, export Zanaris's collision map, add the shed as a travel link,
-    and give the dramen staff a way in (a set GE price, as the barbarian rod's, or the Entrana tree). About a day.
-  - (c) Leave cosmic runes out entirely.
-- **Decides:** Caleb (scope).
-- **Blocks:** `rc_cosmic` only.
+  - **(a) Recommended:** count them as a gathering site's aggressors are counted (`rlscape.sim.aggression`): while
+    the character climbs out of the pit, the skeletons that would pick it attack at a rate measured on the server, each
+    attack rolled with their hit chance and max hit; the laps' eating rule covers it, and with no food left the path
+    stops. About half a day, with the measurement.
+  - (b) Offer the Wilderness laps only to a character the skeletons won't pick (combat level over 50). Simple, but the
+    server lets anyone with Agility 52 run them.
+  - (c) Leave them out, and document that the sim is optimistic there for low-combat characters.
+- **Decides:** Caleb (what the sim models).
+- **Blocks:** nothing now; the Wilderness course's gate (0.86 over 45 laps at Agility 52) was measured with hitpoints
+  set back each lap.
 - **Status:** open.

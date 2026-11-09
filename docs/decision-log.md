@@ -5326,3 +5326,150 @@ OQ-19's site), left unexplained in the region fix's re-check above. `m002-spade-
 - **Sizes** (env contract v1.27, to confirm): 2,157 actions and 3,274 features. That's with Runecrafting's slots
   (v1.26): 66 buys, and 5 actions and 2 features for each new item.
 - **Test:** `test_a_potion_paths_inputs_are_bought_on_the_ge`; the counts in `test_vocabulary` and `test_sim_buying`.
+
+### Measured (sim v1, Herblore): the server's times; cleaning's first tick fitted, every case 1.00
+2026-11-08, `docs/sim-v1-skills-draft.md` §7. `m002-herblore-times`.
+- **The runner** (`scripts/calibrate_herblore.py`, as Crafting's): from a full inventory, a person's clicks, against
+  the sim's times.
+  - A stage at a time: cleaning (the grimy herb's Clean, a click a tick); the unfinished potions (a vial of water on
+    the clean herb, then the how-many's All); the finished ones (the unfinished potion on the secondary, then All);
+    grinding (the pestle and mortar on the whole ingredient, then All).
+  - Two whole loads, as `PotionAtBank.mix` makes them: attack potions from grimy guam, and super antipoison grinding
+    its unicorn horns.
+  - 9 cases at bands 31 to 91, 3 runs each, on instance 7 (`results/calibration/herblore-20261108-2048-i7.json`). The
+    server's runs were identical.
+  - The jar was the main checkout's build, `df2b8a6` with the Agility session's uncommitted 4-line `at` filter in
+    `RLCommands.candidates`, which does nothing unless a request sends `at`.
+- **Found:** the times from the server's source hold, and so does the 3-tick start of a how-many batch, assumed from
+  Crafting's. 14 unfinished potions take 17 ticks, 14 finished 46, 27 horns ground 57, all 1.00. Cleaning is a tick
+  slower than the sim had it: 28 herbs in 29 ticks, the first a tick after the first click. The loads were 1.01 and
+  1.02.
+- **Fitted:** `herblore.CLEAN_FIRST` (1 tick a batch of cleaning; `clean_ticks`, which the paths and the rate model
+  use). Every case 1.00 (`results/calibration/herblore-20261108-2049-i7.json`). The bridge needed no change: the
+  how-many is a skill dialogue, which it leaves open.
+- **Test:** the measured times in `test_the_pulses_timing`.
+
+### Decided: OQ-43 (a), the magic runner fights back at once when held "under attack"; OQ-45 (a), the cosmic altar only by the Abyss (Caleb)
+2026-11-08, Caleb: "OQ 43 - Option a / OQ 45 - Option a". `m002-oq43-oq45`.
+- **OQ-43, the caster held "under attack" in the middle of a fight** (raised by the spades session, from its traces: a
+  possessed pickaxe engaging the character mid-fight got the casts on the spade refused, "You're already under
+  attack!", and the runner's magic loop recast until `STUCK_TICKS`, 30 ticks without XP, walked it back; 3% to 8% of
+  a run, where the sim has no wait).
+  - The options: (a) recommended, the runner does as a person who reads the message does: when a cast on its target
+    is refused and a monster of another kind is attacking it, cast on that monster at once, and take up the target
+    again after; and `STUCK_TICKS` waits for damage (hitpoints XP), not any XP, since a 0-damage swing still gives
+    base Magic XP. (b) Keep the runner and give the sim the same wait, measured. (c) Keep both, and report the bias at
+    sites with neighbours.
+  - **Caleb: (a).** Built in `scripts/calibrate_combat.py` (next entry).
+- **OQ-45, the cosmic altar through Zanaris** (raised by the Runecrafting session: the cosmic ruins are in Zanaris,
+  which the travel model has no map of, entered by the shed in Lumbridge Swamp with a dramen staff, which has no 2009
+  GE price).
+  - The options: (a) recommended, the cosmic altar only by the Abyss's cosmic rift, once the Abyss is built; no
+    Zanaris route. (b) Zanaris too: the shed checked on the server, Zanaris's collision map, the shed as a travel link,
+    and a way to the dramen staff (about a day). (c) Leave cosmic runes out.
+  - **Caleb: (a).** `rc_cosmic` waits for the Abyss (the Runecrafting session's).
+
+### Decided: no essence mining (Caleb); measured: the times at the ruins, fitted; OQ-45 (a) applied
+2026-11-08, Caleb: "Ignore rune essence mining. Rune essence is very cheap and mining it yourself will almost always
+be seen as a time waste." `m002-runecrafting`.
+- **Built that way:** `mine_essence` is gone, with the essence mine's data (the wizards, the landings, the pickaxe
+  delays). A character gets essence from the GE (the inputs in *V*, next) or from drops. A fresh character's Mining
+  slots are as before Runecrafting.
+- **OQ-45 (a)** (Caleb, decided in the Herblore session's log): no `rc_cosmic`; the cosmic altar waits for the
+  Abyss's rift.
+- **Measured** (`scripts/calibrate_runecrafting.py`; `results/calibration/runecrafting-20261108-2104-i6.json`; 8
+  ruins, 3 runs each, run on, on instance 6):
+  - A character 3 tiles from the ruins, with the talisman and 27 essence, uses the talisman on them, clicks the altar
+    once inside, and the portal once the crafting's lock is over.
+  - The portal's first click always landed in that lock: the bridge's `busy` shows pulses, not locks. So the runner
+    clicks again the next tick, which times the earliest click the server takes.
+  - Every run took the same ticks: entering 5 or 6; from landing to standing outside, air 13, mind 21, water 18, earth
+    19, fire 20, body 13, nature 13, law 21.
+- **Found:** inside a ruin, the walks are plain running, a step each half tick, with none of the start-of-walk
+  overhead walks outside have (2.3 ticks each in the model). Water's portal is 16 steps from its altar, not the 12
+  straight-line tiles. The estimates had put every trip 23% to 53% too slow.
+- **Fitted** (`rlscape/sim/runecrafting.py`):
+  - inside, the walks run at 2 tiles a tick with run energy (`walk_plan`, no overhead), over the pathfinder's steps
+    from beside each altar to its portal (`debug_nearby`);
+  - `CRAFT_TICKS` 3 (the altar's click, beside it, to the runes), `PORTAL_TICKS` 5 (the runes to standing outside,
+    beyond the walk), `ENTER_TICKS` 1 (beyond the walk to the ruins, which has its start overhead).
+  - **Result, sim over server:** entering 0.84 to 1.01, inside 0.92 to 1.00, every rune within ±20%. Chaos's maze is
+    still an estimate: its ladders aren't climbed by the runner yet.
+- **Found (the bridge):** the ruins are a multi-object (2452 at the air ruins) whose own definition is named "null";
+  a player sees "Mysterious ruins". The bridge matches scenery by its own name, so the runner names the ruins "null"
+  by id. The fix is in `RLCommands.shown`, resolving scenery to the form a player sees (`Scenery.getChild`), as it does
+  NPCs. The Agility session, which has another hunk in that file, agreed. Not made yet: it changes every scenery
+  lookup by name, so it wants a build and the live suite first.
+- **Tests:** `test_the_times_inside_the_ruins_are_the_servers`; the essence-mining test and assertions are gone.
+
+### Built (sim v1, Runecrafting part 2): the essence and talismans in *V* and on the GE
+2026-11-08, OQ-2's Choices A (a) and I (a) (Caleb), now that essence isn't mined. `m002-runecrafting`.
+- **The buys** (`buying.RUNECRAFTING_INPUTS`, from `runecrafting.inputs()`): rune essence (44 gp in January 2009) and
+  pure essence (137 gp), in lots of 1,000, and the talismans of the nine runes the paths craft (158 to 3,287 gp), one a
+  buy and not again while held (`ROLES` "unique"). The cosmic and death talismans aren't bought: the Abyss's rifts need
+  none.
+- **Into *V*:** the 9 it lacked (the essences, and the air, water, fire, body, chaos, nature and law talismans; mind's
+  and earth's were in). The runes made were in *V* already for magic, but body runes, which nothing else uses: they stay
+  misc. *V* is 357.
+- **Sizes** (env contract v1.29, to confirm): 2,217 actions and 3,373 features with Herblore's and Agility's.
+- **Test:** `test_a_paths_essence_and_talisman_are_bought_on_the_ge`; the counts in `test_vocabulary` and
+  `test_sim_buying`.
+
+### Built and measured (sim v1, Agility): the three courses' laps, Agility's slots
+2026-11-08, Caleb: "Work on agility." OQ-2's Choice D: the Gnome Stronghold, the Barbarian Outpost, the Wilderness.
+`m002-agility`.
+- **The courses** (`rlscape/gamedata/agility.py`, from the handlers in `content/global/skill/agility`; the ids and
+  tiles checked on the server): each obstacle in lap order, its XP, the lap's flags and bonus, whether and how it fails
+  (`AgilityHandler.hasFailed`: it fails when (1 + Agility - level) / 100 times one uniform draw is at most failChance
+  times another, so 1 - a/(2c) or c/(2a); never 70 levels above). XP a lap: Gnome Stronghold 86.5, Barbarian Outpost
+  152.2, Wilderness 571.5.
+- **Found on the server:**
+  - **A rope swing's fail does nothing.** `AgilityHandler.fail` plays out only with an animation, and both courses'
+    swings pass none: no fall, no hit, the character clicks again. The pits below them are never reached.
+  - **A fall off the Barbarian ledge lands west of the net,** which can't be climbed from that side, so the lap goes on
+    at the walls without the ledge's flag, and without the bonus.
+  - **The Barbarian Outpost's pipe** (the way onto the course, Agility 35) gives no XP: `AgilityShortcut` never awards
+    a shortcut's. The Wilderness course's pipe needs Agility 49.
+  - **The Barbarian course's three low walls share an id,** and the bridge's `interact` took the nearest, often the
+    one behind, which refuses. A fork change: `candidates` takes an optional tile (`at`), as a player clicks the one
+    they see.
+  - **The Wilderness log's spike pit has aggressive skeletons** (level 25), which killed a measurement character of
+    combat level about 26 after three falls in one lap. New question: OQ-46.
+- **The measurement** (`scripts/measure_agility.py`): a calibration character teleported onto the course (setup
+  only), laps as a person runs them, falls and all, hitpoints set back to 99 between laps. Per obstacle: its click to
+  the next obstacle's click; per fall, its click to the next click and any XP on the way; the entries from their
+  approach tiles. 147 laps in all, at Agility 1 (Gnome), 15, 35 and 75 (Barbarian; 15 to sample its falls) and 52 and
+  99 (Wilderness).
+- **The sim** (`rlscape/sim/agility.py`, `agility_<course>`): walk to the course, cross its entry (the pipe; the door
+  and ridge, which can fail into the wolf pit), then laps until the option's time is up at the measured times. Each
+  failing obstacle is rolled at the Agility as it stands; a fall's hit and its measured recovery; a success right after
+  a fall pays its measured walk back. It eats as thieving does (the retreat point, or the largest fall hit if higher)
+  and stops out of food. A lap path has no gp, so it fills only XP slots. Agility's 4 skilling slots and an agility task
+  (env contract v1.28, to confirm: 2,161 actions and 3,299 features then); an agility kit keeps food.
+- **The gate** (sim over server XP/hr, over whole laps, against the expected lap at the run's middle level): Gnome
+  Stronghold 1.00 (9 laps); Barbarian Outpost 1.00 at Agility 75 without falls, 1.03 over 39 laps at 35; Wilderness 1.00
+  at 99, 0.86 over 45 laps at 52. Fed the observed fall rates, the lap model gives the server's XP/hr at 52 (1.01): the
+  stepping stones fell 20% of the time against the formula's 29% (1.5 standard errors), the log 43% against 48%.
+- **Rough:** the Wilderness ridge's fall into the wolf pit, about 40 ticks from one run of three falls (two other runs
+  didn't find the way out); a once-an-option cost.
+- **Tests:** `tests/test_sim_agility.py` (the fall chance against the server's two draws, the courses against their
+  handlers, the Gnome laps, the lap loop against the expected rate on every course); the counts in
+  `test_sim_skilling`, `test_sim_gathering` and `test_vocabulary`.
+
+### Built: OQ-43 (a) in the combat runner's magic loop
+2026-11-08, Caleb's OQ-43 (a). `m002-oq43-oq45`.
+- **Built** (`scripts/calibrate_combat.py`):
+  - A cast refused with "You're already under attack!" (a new game message since the last reading) while a monster of
+    another kind attacks the character: it casts on that one at once, and takes up the case's monster again after,
+    through the loop's fight-back step (attackers first, the case's kind first). Counted as `held_switches`.
+  - A caster's `STUCK_TICKS` counts from its last damage (hitpoints XP), not any XP, since a spell that does no damage
+    still gives its base Magic XP. Melee and ranged keep any XP.
+- **Checked on the server** (instance 7):
+  - The band-31 poison spiders, OQ-35's magic case with neighbours, 4 runs
+    (`results/calibration/combat-20261108-2104-i7.json`): the switch fired in two runs. Walk-backs fell from about one
+    a run (the stored runs) to none in three of four. XP/hr was 35,262 against 36,120 stored (the runs are short: the
+    food runs out in about 300 ticks). That case was outside the gate before, and is now 1.31 against 1.28.
+  - The band-91 spiders, 3 runs: no other kind engaged; the runs match the stored ones (24 to 27 kills, about 500
+    recasts, 90,770 XP/hr against 92,560).
+  - The magic fit and check sets, as the ranker picks them now, were still running when the tree was committed. Their
+    results follow.

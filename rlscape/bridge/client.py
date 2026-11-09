@@ -168,14 +168,17 @@ class BridgeClient:
         return self.request("set_retaliate", uid=uid, on=on)["retaliate"]
 
     def interact(self, uid: int, name: str, option: str, is_object: bool = True, ids: list[int] | None = None,
-                 radius: int | None = None, index: int | None = None) -> dict[str, Any]:
+                 radius: int | None = None, index: int | None = None,
+                 at: tuple[int, int] | None = None) -> dict[str, Any]:
         """Use ``option`` on the scenery object (or NPC, with ``is_object=False``) called ``name`` (and, with ``ids``, of
         those ids) that the character can walk to soonest; raises BridgeError ("none reachable") if it can reach
         none within ``radius`` tiles (default the server's MAX_PATHFIND_DISTANCE). With ``index``, the NPC with that
-        index (e.g. one of ``state()["attackers"]``)."""
+        index (e.g. one of ``state()["attackers"]``); with ``at``, the one standing on that tile (x, y)."""
         fields: dict[str, Any] = {"uid": uid, "name": name, "option": option, "object": is_object}
         if index is not None:
             fields["index"] = index
+        if at is not None:
+            fields["at"] = list(at)
         if ids is not None:
             fields["ids"] = ids
         if radius is not None:

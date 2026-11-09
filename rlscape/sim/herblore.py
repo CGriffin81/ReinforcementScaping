@@ -3,15 +3,15 @@ potions; Choice F (a): grinding). The spec is docs/sim-v1-skills-draft.md §4. D
 
 From content/global/skill/herblore (rlscape.gamedata.server: herbs, herblore_potions, grindings):
 - Cleaning a grimy herb (HerbCleanListener): an item option, for the herb's XP from its level; it locks the player a
-  tick, so a person cleans one a tick (CLEAN_TICKS).
+  tick, so a person cleans one a tick (CLEAN_TICKS), the first a tick after the first click (CLEAN_FIRST).
 - An unfinished potion (HerblorePulse, from a vial of water): the clean herb into the vial, no XP, one a tick after
   the how-many (UNF_FIRST, UNF_TICKS); a lone one takes SINGLE_TICKS and opens no how-many.
 - A finished potion: the secondary into the unfinished potion, for the potion's XP, the first SINGLE_TICKS after the
   how-many, then one every FINISH_TICKS (the pulse waits 3 ticks between); the product has three doses.
 - Grinding (GrindItemPlugin): a pestle and mortar on the whole ingredient (a unicorn horn, a chocolate bar, a desert
   goat horn, a blue dragon scale, a bird's nest) makes the dust, one every GRIND_TICKS, no XP.
-Each how-many batch starts with START_TICKS of clicks (the item used on the other, the how-many's All), as Crafting's
-did on the server; to measure.
+Each how-many batch starts with START_TICKS of clicks (the item used on the other, the how-many's All). The times
+are measured on the server (scripts/calibrate_herblore.py, 2026-11-08): every stage and load within 1.00.
 
 The paths, at the nearest bank, as Crafting's are:
 - `clean_<herb>` (15; CleanAtBank): take out a load of the grimy herb, clean it, bank it, again.
@@ -38,11 +38,17 @@ from rlscape.sim.state import INVENTORY_SLOTS, CharacterState
 from rlscape.travel import BANKING_TICKS
 
 CLEAN_TICKS = 1  # HerbCleanListener: lock(player, 1), a herb a click
+CLEAN_FIRST = 1  # the first click's tick (measured, scripts/calibrate_herblore.py, 2026-11-08: 28 herbs in 29 ticks)
 UNF_FIRST = UNF_TICKS = 1  # HerblorePulse's delay for a batch of unfinished potions
 SINGLE_TICKS = 4  # HerblorePulse: a lone unfinished potion, or a finished one, after the pulse's 3-tick wait
 FINISH_TICKS = 3  # HerblorePulse: setDelay(3) between finished potions
 GRIND_FIRST = GRIND_TICKS = 2  # GrindItemPlugin's SkillPulse: setDelay(2)
-START_TICKS = 3  # a how-many batch's clicks, assumed as Crafting's skill dialogue measured (2026-11-08); to measure
+START_TICKS = 3  # a how-many batch's clicks (measured, scripts/calibrate_herblore.py, 2026-11-08: every stage exact)
+
+
+def clean_ticks(units: int) -> int:
+    """Cleaning `units` grimy herbs, a click a tick."""
+    return CLEAN_FIRST + units * CLEAN_TICKS if units > 0 else 0
 
 
 def batch_ticks(units: int, first: int, every: int) -> int:
@@ -123,11 +129,11 @@ class CleanAtBank(Option):
             units = state.inventory.get(h.grimy, 0)
             if units == 0:
                 return OptionResult(max(elapsed, 1), INPUTS_EXHAUSTED, detail=detail)
-            done = min(units, max(budget - elapsed, 0) // CLEAN_TICKS)
+            done = min(units, max(budget - elapsed - CLEAN_FIRST, 0) // CLEAN_TICKS)
             state.take(h.grimy, done)
             state.add(h.clean, done)
             _add_xp(state, done * h.experience)
-            elapsed += done * CLEAN_TICKS
+            elapsed += clean_ticks(done)
             if done < units or elapsed + BANKING_TICKS > budget:
                 return OptionResult(budget, COMPLETED, detail=detail)
             elapsed += BANKING_TICKS
@@ -250,7 +256,7 @@ class PotionAtBank(Option):
                    - inv.get(p.herb, 0), 0)
         n = min(need, inv.get(h.grimy, 0)) if state.level("herblore") >= h.level else 0
         if n:
-            elapsed += n * CLEAN_TICKS
+            elapsed += clean_ticks(n)
             state.take(h.grimy, n)
             state.add(p.herb, n)
             _add_xp(state, n * h.experience)
@@ -299,7 +305,7 @@ def load_ticks(potion: gd.Potion, units: int, grimy: bool, ground: bool, unfinis
         return BANKING_TICKS
     ticks = grind_ticks(units) if ground else 0
     if not unfinished:
-        ticks += (units * CLEAN_TICKS if grimy else 0) + unfinished_ticks(units)
+        ticks += (clean_ticks(units) if grimy else 0) + unfinished_ticks(units)
     return ticks + finished_ticks(units) + BANKING_TICKS
 
 

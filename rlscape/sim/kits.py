@@ -70,6 +70,8 @@ def kit(state: CharacterState, task: str | None) -> set[int]:
     if kind == "runecrafting":
         from rlscape.sim.runecrafting import inputs as rc_inputs  # imported here, as fletching's
         return inventory & rc_inputs()
+    if kind == "agility":  # food, for the falls (rlscape.sim.agility eats as thieving does)
+        return inventory & food
     if kind == "processing":
         return _processing_kit(state, detail)
     if kind == "combat":

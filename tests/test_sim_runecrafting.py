@@ -1,5 +1,5 @@
-"""Runecrafting in the sim (sim v1, docs/sim-v1-skills-draft.md §5): the runes and ruins from the server, essence
-mining, and the rc_<rune> paths."""
+"""Runecrafting in the sim (sim v1, docs/sim-v1-skills-draft.md §5): the runes and ruins from the server, and the
+rc_<rune> paths, with the times measured on the server. Essence isn't mined (Caleb, 2026-11-08)."""
 
 from __future__ import annotations
 
@@ -11,14 +11,13 @@ import pytest
 from rlscape.gamedata import runecrafting as rcd
 from rlscape.gamedata import server as gd
 from rlscape.sim.kits import kit
-from rlscape.sim.runecrafting import (RC_RUNES, SCRIPT_WAIT_EXTRA, MineEssence, RunecraftAtRuins, inputs,
-                                      runecrafting_paths)
+from rlscape.sim.runecrafting import RC_RUNES, RunecraftAtRuins, inputs, inside_ticks, runecrafting_paths
 from rlscape.sim.skilling import SKILLS, SkillingSlots, path_options, path_rate
 from rlscape.sim.skills import SKILL_INDEX, XP_FOR_LEVEL
 from rlscape.sim.state import COINS, CharacterState
 
 needs_server = pytest.mark.skipif(not gd.SERVER_CONTENT.exists(), reason="server submodule missing")
-BRONZE_PICKAXE, BRONZE_SWORD = 1265, 1277
+BRONZE_SWORD = 1277
 
 
 def character(inventory: dict[int, int], bank: dict[int, int] | None = None, **levels: int) -> CharacterState:
@@ -49,24 +48,16 @@ def test_the_ruins_talismans_and_tiaras_are_the_servers():
     assert (ruins["air"].base, ruins["air"].end) == ((2983, 3292, 0), (2841, 4829, 0))
     assert ruins["law"].base == (2857, 3379, 0) and ruins["cosmic"].base == (2406, 4375, 0)  # Entrana; Zanaris
     assert rcd.talismans()["air"] == 1438 and rcd.tiaras()["air"] == (5527, 25.0)
-    assert rcd.essence_delays()["BRONZE_PICKAXE"] == 7 and rcd.essence_delays()["RUNE_PICKAXE"] == 2
-    assert rcd.essence_wizards()["aubury"] == ((3253, 3401, 0), 553) and len(rcd.essence_landings()) == 7
 
 
-@needs_server
-def test_essence_is_mined_to_a_full_inventory_and_the_portal_leads_back_to_the_wizard():
-    """An essence every pickaxe delay + 1 ticks, 5 Mining XP each; pure essence from Mining 30."""
-    state = character({BRONZE_PICKAXE: 1}, mining=1)
-    option = MineEssence()
-    assert option.available(state) and option.essence_ticks(state) == 7 + SCRIPT_WAIT_EXTRA
-    result = option.run(state, np.random.default_rng(0), 3_000)
-    assert result.termination == "inventory_full" and state.inventory == {BRONZE_PICKAXE: 1, rcd.RUNE_ESSENCE: 27}
-    assert state.xp[SKILL_INDEX["mining"]] == pytest.approx(27 * 5.0)
-    assert state.location == rcd.essence_wizards()["aubury"][0]  # the nearest from Lumbridge
-    pure = character({BRONZE_PICKAXE: 1}, mining=30)
-    option.run(pure, np.random.default_rng(0), 3_000)
-    assert pure.inventory.get(rcd.PURE_ESSENCE) == 27 and not option.available(pure)  # full
-    assert not option.available(character({}))  # no pickaxe
+def test_the_times_inside_the_ruins_are_the_servers():
+    """scripts/calibrate_runecrafting.py, 2026-11-08 (results/calibration/runecrafting-20261108-2046-i6.json): from
+    landing to standing outside again, air 13 ticks, mind 21, water 18, earth 19, fire 20, body 13, nature 13, law
+    21."""
+    measured = {"air": 13, "mind": 21, "water": 18, "earth": 19, "fire": 20, "body": 13, "nature": 13, "law": 21}
+    for rune, ticks in measured.items():
+        from rlscape.sim.runecrafting import ENTER_TICKS
+        assert abs(inside_ticks(rune) - ENTER_TICKS - ticks) <= 1, rune
 
 
 @needs_server
@@ -114,12 +105,28 @@ def test_law_banks_the_arms_entranas_monks_refuse_and_nature_carries_its_fares()
 def test_runecrafting_has_its_slots_kit_and_rates():
     assert "runecrafting" in SKILLS and len(runecrafting_paths()) == len(RC_RUNES) == 9
     ids = {p.id for p in path_options()}
-    assert {"mine_essence", "rc_air", "rc_law"} <= ids and "rc_cosmic" not in ids  # Zanaris: OQ-45
+    assert {"rc_air", "rc_law"} <= ids and "rc_cosmic" not in ids and "mine_essence" not in ids  # OQ-45 (a): the
+    # cosmic altar only by the Abyss; essence isn't mined (Caleb)
     state = character({rcd.PURE_ESSENCE: 20, rcd.talismans()["air"]: 1, COINS: 5})
     assert kit(state, "runecrafting") == {rcd.PURE_ESSENCE, rcd.talismans()["air"]} <= inputs()
     banked = character({}, {rcd.RUNE_ESSENCE: 1_000, rcd.talismans()["air"]: 1}, runecrafting=20)
     rate = path_rate(RunecraftAtRuins("air"), banked)
     assert rate.gather_xp > 0 and rate.process_xp == 0
     assert SkillingSlots().candidate(banked, "runecrafting", 0).path.id == "rc_air"
-    miner = character({BRONZE_PICKAXE: 1})
-    assert path_rate(MineEssence(), miner).gather_xp > 0
+
+
+@needs_server
+def test_a_paths_essence_and_talisman_are_bought_on_the_ge():
+    """Essence isn't mined (Caleb), so it's bought, with the talisman (Choice A (a) and I (a)): rune essence and pure in
+    lots of 1,000, a talisman one at a time and not again while held."""
+    from rlscape.sim.buying import RUNECRAFTING_INPUTS, BuyGE
+    from rlscape.vocabulary import vocabulary
+    assert set(RUNECRAFTING_INPUTS) <= set(vocabulary()) and len(RUNECRAFTING_INPUTS) == 11
+    state, rng = character({COINS: 1_000_000}, runecrafting=1), np.random.default_rng(0)
+    path, talisman = RunecraftAtRuins("air"), rcd.talismans()["air"]
+    assert not path.available(state)
+    for item in (talisman, rcd.RUNE_ESSENCE):
+        assert BuyGE(item).run(state, rng, 10_000).termination == "completed"
+    noted = gd.noted_ids()[rcd.RUNE_ESSENCE]
+    assert state.inventory.get(talisman) == 1 and state.inventory.get(noted) == 1_000
+    assert path.available(state) and not BuyGE(talisman).available(state)

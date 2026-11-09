@@ -22,7 +22,8 @@ hitpoints are at or under half (the sim's rule, rlscape.sim.health); click again
 person waits for the walk to start. Attacked with no target (an eat click stops the fight on this server; a monster of
 another kind engaged it, OQ-35), it attacks the attacker back at once, its own kind first (2026-11-08: waiting for
 auto-retaliate took 8 ticks an eat at the poison spiders, 1.28 to 1.17); stop when there's no food left to eat then
-(the sim retreats), at death, or when the budget runs out. Busy STUCK_TICKS without XP, it walks back to the spawn.
+(the sim retreats), at death, or when the budget runs out. Busy STUCK_TICKS without XP (a caster: without damage, its
+hitpoints XP, since a spell that misses still gives base Magic XP; Caleb, OQ-43 (a)), it walks back to the spawn.
 A monster it sees listed alive at 0 hitpoints never dies (the server's null killer, OQ-44 (a)): the run records it
 (`at_zero`) and the report flags the case, whose site is then likely a hazard.
 Ranged fights safespot as the sim's do (rlscape.combat.safespots; Caleb, 2026-11-07, OQ-27 (d)): where the sim's
@@ -38,7 +39,10 @@ it casts again on the same monster each tick until one is taken (the server refu
 last), which then lands when the next attack is due: the autocast rate the sim assumes. The kill is when that monster
 is no longer listed alive (`npcs`), or, another kind, no longer attacking; its loot waits for it, as ranged's does.
 Between kills it casts on whatever attacks it, the case's kind first, as retaliating would: in single combat another
-kind attacking it holds it "under attack", so it's fought back before the next (OQ-19's monsters near a fight).
+kind attacking it holds it "under attack", so it's fought back before the next (OQ-19's monsters near a fight). In
+the middle of a fight too: a cast refused with "You're already under attack!" while another kind attacks it, it casts
+on that one at once, and takes up the case's monster again after (Caleb, OQ-43 (a)), as a person who reads the
+message does.
 Looting, as a person loots their own kills: after a kill it waits for the drop (up to DROP_WAIT_TICKS, the default
 death animation, DeathTask) before the next attack; between kills, attacked or not (Caleb, 2026-11-07: the sim picks
 up after every kill), it takes the nearest of its own drops the loot mode keeps and has room for (`take`, after
@@ -363,12 +367,15 @@ def server_run(client: BridgeClient, case: Case, budget: int) -> dict[str, Any]:
         fills = looting and fills_inventory(case)
         ammo = {i["id"] for i in client.state(uid)["equipment"] if i["id"] in stackable}
         pending, first, prev_hp, prev_xp, last_gain, idle, still = [attack] if not spot else [], None, 0, 0.0, 0, 0, 0
+        prev_progress = 0.0  # XP, or for a caster its hitpoints XP (OQ-43 (a)), at the last reading
+        seen_messages: set[str] | None = None  # the game messages read so far (none before the first reading)
         mine: dict[tuple[int, int, int], int] = {}  # its ground items (id, x, y) -> when first seen
         fighting, ended_at, dropped_at, started_at, last_kill = False, -DROP_WAIT_TICKS, -1, 0, 0
         counts = {"clicks": 0, "no_target": 0, "eaten": 0, "eat_clicks": 0, "hits_taken": 0, "damage_taken": 0,
                   "walked_back": 0, "taken": 0, "trips": 0, "off_tile": 0, "recasts": 0, "kills": 0,
                   "other_kills": 0,  # (kills counted for magic: of the case's monster, and of others it fought back)
-                  "other_engagements": 0}  # monsters of other kinds that started attacking it (OQ-35)
+                  "other_engagements": 0,  # monsters of other kinds that started attacking it (OQ-35)
+                  "held_switches": 0}  # magic: casts refused while another kind held it, which it then fought (OQ-43)
         others: set[int] = set()  # the indices of other kinds attacking it at the last reading
         at_zero: dict[int, int] = {}  # monsters seen listed alive at 0 hitpoints, index -> id (OQ-44 (a))
         if spot:
@@ -421,15 +428,21 @@ def server_run(client: BridgeClient, case: Case, budget: int) -> dict[str, Any]:
             counts["other_engagements"] += len(attacking - others)
             others = attacking
             hp, gained = state["hitpoints"], sum(xp(state, s) for s in XP_SKILLS)
+            # progress in a fight: XP, or for a caster the damage it deals (hitpoints XP), since a spell that does no
+            # damage still gives its base Magic XP (Caleb, OQ-43 (a))
+            progress = xp(state, "hitpoints") if magic else gained
+            new_messages = [m for m in state["messages"] if seen_messages is not None and m not in seen_messages]
+            seen_messages = set(state["messages"])
+            refused = any("already under attack" in m for m in new_messages)
             now = food_count(state)
             counts["eaten"] += max((food if food is not None else now) - now, 0)  # food looted only adds
             food = now
             if offset and hp < prev_hp:
                 counts["hits_taken"] += 1
                 counts["damage_taken"] += prev_hp - hp
-            if gained > prev_xp:
+            if progress > prev_progress:
                 last_gain = offset
-            prev_hp, prev_xp = hp, gained
+            prev_hp, prev_xp, prev_progress = hp, gained, progress
             if spot and not fetching and (state["location"]["x"], state["location"]["y"],
                                           state["location"]["z"]) != spot["tile"]:
                 counts["off_tile"] += 1  # a safespotter off its tile, not out for its loot
@@ -489,6 +502,16 @@ def server_run(client: BridgeClient, case: Case, budget: int) -> dict[str, Any]:
                 pending, idle, still = [{"cmd": "take", "uid": uid, "item": item["id"], "x": item["location"]["x"],
                                          "y": item["location"]["y"], "packet": True}], 0, 0
                 counts["taken"] += 1
+            elif magic and engaged and refused and (holders := sorted(
+                    (a for a in state["attackers"] if a["hitpoints"] > 0 and a["id"] not in again["ids"]),
+                    key=lambda a: a["id"] != case.npc)):
+                # a cast refused ("You're already under attack!"): a monster of another kind holds it in single
+                # combat. As a person who reads the message does, it casts on that one at once, and takes up the
+                # case's monster again after (attackers first, its kind first; Caleb, OQ-43 (a))
+                a = holders[0]
+                again = {**again, "name": a["name"], "ids": [a["id"]], "index": a["index"]}
+                pending, mark, last_gain = [again], a["index"], offset
+                counts["held_switches"] += 1
             elif magic and engaged and offset - last_gain > STUCK_TICKS:  # its casts refused or not landing
                 pending, last_gain, mark = [back], offset, None
                 counts["walked_back"] += 1

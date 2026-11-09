@@ -49,9 +49,10 @@ from rlscape.sim.economy import nearest_bank
 from rlscape.sim.fishing import Fishing, fishing_options
 from rlscape.sim.fletching import FIRST_TICK as FLETCH_FIRST
 from rlscape.sim.fletching import FletchAtBank, FletchLogs, fletching_paths
-from rlscape.sim.herblore import (CLEAN_TICKS, CleanAtBank, PotionAtBank, finished_ticks, grind_ticks,
+from rlscape.sim.herblore import (CleanAtBank, PotionAtBank, clean_ticks, finished_ticks, grind_ticks,
                                   herblore_paths, unfinished_ticks)
-from rlscape.sim.runecrafting import MineEssence, RunecraftAtRuins, runecrafting_paths
+from rlscape.sim.runecrafting import RunecraftAtRuins, runecrafting_paths
+from rlscape.sim.agility import AgilityLaps, agility_paths
 from rlscape.sim.gathering import respawn_ticks, site_offsets
 from rlscape.sim.kits import kit
 from rlscape.sim.mining import ATTEMPT_TICKS as MINE_TICKS
@@ -68,7 +69,8 @@ from rlscape.sim.woodcutting import AFTER_LOG_TICKS, FELL_CHANCE, SWING_TICKS, W
     skill_success_chance, woodcutting_options
 from rlscape.travel import BANKING_TICKS, travel_ticks
 
-SKILLS = ("woodcutting", "fishing", "mining", "thieving", "fletching", "crafting", "herblore", "runecrafting")
+SKILLS = ("woodcutting", "fishing", "mining", "thieving", "fletching", "crafting", "herblore", "runecrafting",
+          "agility")
 PROCESSED_BY = {"woodcutting": "firemaking", "fishing": "cooking", "mining": "smithing"}
 K_XP = K_GP = 2  # Caleb, 2026-10-31: 2 by XP + 2 by gp per skill
 TICKS_PER_HOUR = 6000
@@ -167,8 +169,8 @@ def path_options() -> list[Path]:
     paths += [Path("thieving", option) for option in (*pickpocket_options(), *stall_options())]
     flax = PickFlax()
     paths += [Path("crafting", flax), Path("crafting", flax, SpinFlaxAtWheel(), "_spin")]
-    return [*paths, *fletching_paths(), *crafting_paths(), *station_paths(), *herblore_paths(), MineEssence(),
-            *runecrafting_paths()]
+    return [*paths, *fletching_paths(), *crafting_paths(), *station_paths(), *herblore_paths(),
+            *runecrafting_paths(), *agility_paths()]
 
 
 @dataclass(frozen=True)
@@ -389,7 +391,7 @@ def _herb_rate(path: CleanAtBank | PotionAtBank, state: CharacterState, duration
     if isinstance(path, CleanAtBank):
         h = path.herb
         load = max(min(held, INVENTORY_SLOTS), 1)
-        load_ticks, xp, gain = load * CLEAN_TICKS + BANKING_TICKS, h.experience, values.get(h.clean, 0) - values.get(
+        load_ticks, xp, gain = clean_ticks(load) + BANKING_TICKS, h.experience, values.get(h.clean, 0) - values.get(
             h.grimy, 0)
     else:
         p, h, s = path.potion, path.herb, path.sources(state, True)
@@ -401,7 +403,7 @@ def _herb_rate(path: CleanAtBank | PotionAtBank, state: CharacterState, duration
         pestle = 1 if ground > 0 else 0
         load = max(min(held, (INVENTORY_SLOTS - pestle) // (2 if unf >= 1 else 3)), 1)
         load_ticks = (finished_ticks(load) + ground * grind_ticks(load) + BANKING_TICKS
-                      + (1 - unf) * (unfinished_ticks(load) + grimy * load * CLEAN_TICKS))
+                      + (1 - unf) * (unfinished_ticks(load) + grimy * clean_ticks(load)))
         xp = p.experience + (1 - unf) * grimy * h.experience
         base = unf * values.get(p.unfinished, 0) + (1 - unf) * (
             values.get(gd.VIAL_OF_WATER, 0) + grimy * values.get(h.grimy, 0) + (1 - grimy) * values.get(p.herb, 0))
@@ -419,7 +421,9 @@ def path_rate(path: Path, state: CharacterState, duration_ticks: int = ACTIVITY_
         return _fletch_rate(path, state, duration_ticks)
     if isinstance(path, CraftAtBank):
         return _craft_rate(path, state, duration_ticks)
-    if isinstance(path, (MineEssence, RunecraftAtRuins)):  # before AtStation, which RunecraftAtRuins is
+    if isinstance(path, RunecraftAtRuins):  # before AtStation, which it is
+        return PathRate(*path.rate(state, duration_ticks))
+    if isinstance(path, AgilityLaps):
         return PathRate(*path.rate(state, duration_ticks))
     if isinstance(path, AtStation):
         return _station_rate(path, state, duration_ticks)
