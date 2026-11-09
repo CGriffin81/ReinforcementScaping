@@ -6658,3 +6658,43 @@ than exp." `m002-oq61`.
 
 - **E1 keeps its name.** Its branch, config and summary were already `e1-baselines`. OQ-61's other rules stand.
   Records `m002-e1-baselines` and `m002-oq62`.
+
+### Decided: OQ-63, the experiments renumbered, the sanity ladder after E1 (Caleb)
+- **Raised and decided:** 2026-11-09, by Caleb: "Let's renumber the experiments so that E0, which requires E1 to
+  complete is numbered after E1." The ladder's second rung, PPO beating random, is judged against E1's random
+  baseline, so it comes after E1. Record `m002-oq63`.
+- **Options** (asked in chat):
+  - **(a) Recommended:** `e1b-ppo-sanity-ladder`, and E2 to E5 keep the proposal's numbers, so the report needs no
+    mapping.
+  - **(b) Shift everything after E1:** the ladder is E2 and each later experiment moves up one. The numbers run
+    straight through, but no longer match the proposal's, so the report maps them.
+  - **(c)** The ladder unnumbered (`ladder-ppo-sanity`), sorting after the numbered ones.
+- **Caleb: (b).** The experiments, their branches (`experiment/<name>`), configs and summaries:
+
+  | Experiment | Branch, config and summary name |
+  |---|---|
+  | E1, the baselines | `e1-baselines` |
+  | E2, the sanity ladder | `e2-ppo-sanity-ladder` |
+  | E3, the reward-weight sweep | `e3-reward-weight-sweep` |
+  | E4, PPO + RND | `e4-rnd-exploration` |
+  | E5, the weight-conditioned PPO | `e5-weight-conditioned-ppo` |
+  | E6a, the γ_hr sweep | `e6a-discount-sweep` |
+  | E6b, PBRS | `e6b-pbrs-shaping` |
+
+- **The proposal's numbers,** which every document and record before this one uses (the env contract, the option
+  catalog, the resources, ROADMAP's weeks 1 to 5, this log), map to these:
+
+  | The proposal's | Now (OQ-63) |
+  |---|---|
+  | E1, baselines | E1 |
+  | (none: the sanity ladder) | E2 |
+  | E2, the reward-weight sweep | E3 |
+  | E3, exploration (RND) | E4 |
+  | E4, the preference-conditioned agent (Envelope Q, now a weight-conditioned PPO) | E5 |
+  | E5, ablations (γ_hr, PBRS; granularity cut) | E6a, E6b |
+  | E6, real-server validation (cut; the calibration gate instead) | none |
+  | E7, the stretch (cut; RQ5 is OQ-1) | none |
+
+- **Written into:** CLAUDE.md, ROADMAP's finishing plan (with this mapping) and OQ-1's live text. The approved
+  documents and the records keep the proposal's numbers. The report gives the mapping.
+- **E1 is unchanged** (PR #10). Nothing else has run.

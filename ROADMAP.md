@@ -244,25 +244,39 @@ confirmed every env contract version (to v1.37) and option catalog v1.4 the same
 
 Every research question is answered (Caleb), all on sim v1, with 5 seeds per configuration. RQ5 is OQ-1.
 
-**Branches** (Caleb, OQ-61, and OQ-62 for the names):
+**Numbering** (Caleb, 2026-11-09, OQ-63): from here on, the experiments are numbered with the sanity ladder after
+E1. Everything above this plan, the approved documents and the records use the proposal's numbers:
+
+  | The proposal's | Now (OQ-63) |
+  |---|---|
+  | E1, baselines | E1 |
+  | (none: the sanity ladder) | E2 |
+  | E2, the reward-weight sweep | E3 |
+  | E3, exploration (RND) | E4 |
+  | E4, the preference-conditioned agent (Envelope Q, now a weight-conditioned PPO) | E5 |
+  | E5, ablations (γ_hr, PBRS; granularity cut) | E6a, E6b |
+  | E6, real-server validation (cut; the calibration gate instead) | none |
+  | E7, the stretch (cut; RQ5 is OQ-1) | none |
+
+**Branches** (Caleb, OQ-61, OQ-62 and OQ-63 for the names):
 - each experiment runs on its own `experiment/<name>` branch from `main`, after the `sim-v1` tag (PR #8's merge),
   its config `configs/<name>.yaml` and its summary `results/summary/<name>/`:
 
   | Experiment | Branch, config and summary name |
   |---|---|
-  | the sanity ladder | `e0-ppo-sanity-ladder` |
   | E1, the baselines | `e1-baselines` |
-  | E2, the reward-weight sweep | `e2-reward-weight-sweep` |
-  | E3, PPO + RND | `e3-rnd-exploration` |
-  | the weight-conditioned PPO (in E4's place) | `e4-weight-conditioned-ppo` |
-  | E5's γ_hr sweep | `e5a-discount-sweep` |
-  | E5's PBRS | `e5b-pbrs-shaping` |
+  | E2, the sanity ladder | `e2-ppo-sanity-ladder` |
+  | E3, the reward-weight sweep | `e3-reward-weight-sweep` |
+  | E4, PPO + RND | `e4-rnd-exploration` |
+  | E5, the weight-conditioned PPO | `e5-weight-conditioned-ppo` |
+  | E6a, the γ_hr sweep | `e6a-discount-sweep` |
+  | E6b, PBRS | `e6b-pbrs-shaping` |
 
 - shared tooling (the mask speed-up, `train.py`, `results/summary/`) goes into `main` first;
 - each experiment merges back by its own PR, its summary committed.
 
-**Cut:**
-- E4's Envelope Q, replaced by a weight-conditioned PPO;
+**Cut** (in the proposal's numbers):
+- E4's Envelope Q, replaced by a weight-conditioned PPO (E5 now);
 - `ServerEnv` and E6's replays, with the calibration gate's results per option as the sim-to-real evidence;
 - E5's option granularity, which no research question asks about;
 - E7 as planned.
@@ -285,21 +299,22 @@ The old weeks 6 to 8 (E6 on the server, the stretch, a replay with the client) a
   - each run's config, its hash and the git SHA.
 
 *Nov 11–12: does PPO learn?*
-- [ ] The sanity ladder:
+- [x] **E1** rerun on sim v1: random, greedy XP/hr, greedy GP/hr and the scripted guide, 30 seeds (run 2026-11-09,
+  PR #10).
+- [ ] **E2, the sanity ladder** (after E1: its second rung is judged against E1's random):
   1. the toy catalog;
   2. PPO beats random on the full catalog;
   3. a small hyperparameter sweep at (.5, .5).
-- [ ] E1 rerun on sim v1: random, greedy XP/hr, greedy GP/hr and the scripted guide.
 
 *Nov 13–18: the experiments* (the runs overlap the building)
-- [ ] **E2** (RQ1 to RQ3): (1,0), (.75,.25), (.5,.5), (.25,.75) and (0,1), 5 seeds each.
-- [ ] **E3** (RQ2, RQ4, H3): the RND wrapper, then PPO + RND at (.5,.5), 5 seeds, against E2's (.5,.5).
-- [ ] **E5** (RQ4), at (.5,.5) with 5 seeds each:
-  - two more γ_hr values (§3's set: 0.5, 0.9, 0.99);
-  - raw reward against PBRS. Φ is §3's candidate, the best GP/hr the current unlocks allow, confirmed when it's
-    built.
-- [ ] **The weight-conditioned PPO** (RQ3's second half): weights drawn each episode and given in the observation.
-  Pareto coverage, hypervolume and training cost against E2's agents.
+- [ ] **E3, the reward-weight sweep** (RQ1 to RQ3): (1,0), (.75,.25), (.5,.5), (.25,.75) and (0,1), 5 seeds each.
+- [ ] **E4, PPO + RND** (RQ2, RQ4, H3): the RND wrapper, then PPO + RND at (.5,.5), 5 seeds, against E3's (.5,.5).
+- [ ] **E5, the weight-conditioned PPO** (RQ3's second half): weights drawn each episode and given in the
+  observation. Pareto coverage, hypervolume and training cost against E3's agents.
+- [ ] **E6** (RQ4), at (.5,.5) with 5 seeds each:
+  - **E6a:** two more γ_hr values (§3's set: 0.5, 0.9, 0.99);
+  - **E6b:** raw reward against PBRS. Φ is §3's candidate, the best GP/hr the current unlocks allow, confirmed when
+    it's built.
 
 *Nov 19–21: analysis*
 - [ ] The figures:

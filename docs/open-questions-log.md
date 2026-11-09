@@ -12,10 +12,10 @@ Started 2026-10-31 (Caleb), from a review of the documentation.
 
 ---
 
-### OQ-1. Which stretch experiment (E7), if any, and how is RQ5 answered?
+### OQ-1. Which stretch experiment (the proposal's E7), if any, and how is RQ5 answered?
 - **Raised:** 2026-10-05, in the plan. The options are compared in `ROADMAP.md` Appendix B. Caleb tentatively
-  accepted A on 2026-10-28, to be confirmed at the midpoint and only if E1–E6 were solid by then.
-- **Now (2026-11-09):** OQ-17's (a′) leaves no week for a stretch, and E1 to E6 haven't started. Caleb wants every
+  accepted A on 2026-10-28, to be confirmed at the midpoint and only if the proposal's E1–E6 were solid by then.
+- **Now (2026-11-09):** OQ-17's (a′) leaves no week for a stretch, and no experiment had run. Caleb wants every
   research question answered. RQ5 asks: "Do learned low-level options (click-ahead pathing, prayer flicking) improve
   high-level results over scripted versions?" The proposal marked it "exploratory, time permitting". Only C answers
   it as asked, and C needs a tick-level environment on the server: 1.5 to 2 weeks (Appendix B), more than (a′)'s
@@ -26,8 +26,9 @@ Started 2026-10-31 (Caleb), from a review of the documentation.
     - **Prayer flicking:** a learned flick can't beat the scripted one. The scripted flick never drains prayer and
       gets the prayer's full effect (tested live on this server, env contract v1.8), so it's already the best a flick
       can do.
-    - **Click-ahead pathing:** E2's decision logs give the share of game time spent walking. The travel model's
-      measured overhead per click gives the part of that walking a perfect click-ahead could save, at most.
+    - **Click-ahead pathing:** E3's decision logs (the reward-weight sweep, in OQ-63's numbers) give the share of
+      game time spent walking. The travel model's measured overhead per click gives the part of that walking a
+      perfect click-ahead could save, at most.
     - The report says this is a bound, not a test of learned options.
   - **(D) None:** the report says RQ5 wasn't attempted, as "time permitting" allows, with what it would take. It goes
     in `docs/post-project-gaps.md`.
