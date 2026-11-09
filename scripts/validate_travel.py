@@ -6,7 +6,9 @@ runner sets up the same character, takes the same transports the same way a play
 times the whole trip a tick at a time. Two sets:
 "fit", whose transports' times were set from these runs (rlscape.gamedata.transports), and "check", trips none of
 those times came from: other walks, spells, tablets, jewellery, a charter and a ship. Entrana isn't checked yet (its
-monks' conversation).
+monks' conversation). "shortcuts" crosses each Agility shortcut one way with walks either side (their times were
+measured alone, by scripts/measure_shortcuts.py, and what one costs a trip was fitted on these), and
+"shortcuts_check" the other way.
 
 Usage, with the server running (worldprops/rl.conf):
     uv run python scripts/validate_travel.py [--trips name ...]
@@ -88,7 +90,42 @@ CHECK = (
     Trip("ship Brimhaven to Ardougne", (2770, 3226, 0), (2662, 3305, 0), items=((995, 30),),
          expect=("ship:brimhaven-ardougne",)),
 )
-SETS = {"fit": TRIPS, "check": CHECK}
+# Over each Agility shortcut (rlscape.gamedata.shortcuts) one way, at its level: from about 10 tiles behind it to 10
+# past it, where a level below walks round (the Al Kharid pit's from 8: from 10 the walk round is as quick). The
+# shortcuts' TRIP_TICKS was fitted on these; "shortcuts_check" goes the other way over each.
+SHORTCUTS = (
+    Trip("over Falador's west wall", (2924, 3355, 0), (2945, 3356, 0), levels=(("agility", 5),),
+         expect=("shortcut:falador_wall_in",)),
+    Trip("the coal trucks' log balance west", (2613, 3477, 0), (2588, 3477, 0), levels=(("agility", 20),),
+         expect=("shortcut:coal_trucks_log_west",)),
+    Trip("Rellekka's log balance south", (2722, 3606, 0), (2722, 3582, 0), levels=(("agility", 48),),
+         expect=("shortcut:rellekka_log_south",)),
+    Trip("Ardougne's log balance east", (2588, 3336, 0), (2612, 3336, 0), levels=(("agility", 33),),
+         expect=("shortcut:ardougne_log_east",)),
+    Trip("the River Lum's stepping stone west", (3164, 3363, 0), (3138, 3362, 0), levels=(("agility", 31),),
+         expect=("shortcut:lum_stone_west",)),
+    Trip("the Al Kharid pit west", (3315, 3315, 0), (3295, 3315, 0), levels=(("agility", 38),),
+         expect=("shortcut:al_kharid_pit_west",)),
+    Trip("the lumberyard's fence south", (3240, 3348, 0), (3240, 3324, 0), levels=(("agility", 13),),
+         expect=("shortcut:lumberyard_fence_south",)),
+)
+SHORTCUTS_CHECK = (
+    Trip("back over Falador's west wall", (2945, 3356, 0), (2924, 3355, 0), levels=(("agility", 5),),
+         expect=("shortcut:falador_wall_out",)),
+    Trip("the coal trucks' log balance east", (2588, 3477, 0), (2613, 3477, 0), levels=(("agility", 20),),
+         expect=("shortcut:coal_trucks_log_east",)),
+    Trip("Rellekka's log balance north", (2722, 3582, 0), (2722, 3606, 0), levels=(("agility", 48),),
+         expect=("shortcut:rellekka_log_north",)),
+    Trip("Ardougne's log balance west", (2612, 3336, 0), (2588, 3336, 0), levels=(("agility", 33),),
+         expect=("shortcut:ardougne_log_west",)),
+    Trip("the River Lum's stepping stone east", (3138, 3362, 0), (3164, 3363, 0), levels=(("agility", 31),),
+         expect=("shortcut:lum_stone_east",)),
+    Trip("the Al Kharid pit east", (3295, 3315, 0), (3315, 3315, 0), levels=(("agility", 38),),
+         expect=("shortcut:al_kharid_pit_east",)),
+    Trip("the lumberyard's fence north", (3240, 3321, 0), (3240, 3345, 0), levels=(("agility", 13),),
+         expect=("shortcut:lumberyard_fence_north",)),
+)
+SETS = {"fit": TRIPS, "check": CHECK, "shortcuts": SHORTCUTS, "shortcuts_check": SHORTCUTS_CHECK}
 
 
 def sim_character(trip: Trip) -> CharacterState:

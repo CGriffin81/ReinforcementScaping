@@ -5630,3 +5630,54 @@ at 1,000 gp, OQ-41). `m002-barbfishing`.
   89).
 - **Tests:** `tests/test_sim_aggression_rates.py` (3): the willows' share and the strong character's 1.0; no_aggression
   leaves the cache alone; the fresh fisher's ranking. The suite without the server: 382 passed.
+
+### Built and measured (sim v1, Agility in travel): seven shortcuts, taken from their levels on both backends
+2026-11-08, OQ-16 (a) (Caleb: "Agility shortcuts with Agility"). `m002-agility-shortcuts`.
+- **Which** (Claude's choice, reversible; to confirm): the server's shortcuts (`agility/shortcuts/`) whose two ends
+  the travel planner joins only by a long walk round, in places the sim travels. Each comes as a pair of one-way links:
+
+  | Shortcut | Agility | Walk round (steps) | Across (tiles) | Ticks alone | XP |
+  |---|---|---|---|---|---|
+  | Falador's west wall | 5 | 202 | 2 | 4 | 0 |
+  | the lumberyard's fence | 13 | 56 | 7 | 5 | 0 |
+  | the coal trucks' log balance | 20 | 242 | 5 | 7 | 5 |
+  | the River Lum's stepping stone | 31 | 157 | 5 | 13 | 0 |
+  | Ardougne's log balance | 33 | 91 | 4 | 6 | 1 |
+  | the Al Kharid pit | 38 | 73 | 4 | 6 | 0 |
+  | Rellekka's log balance | 48 | 216 | 4 | 6 | 1 |
+
+  - Left out: those into areas the sim doesn't travel (Tirannwn's logs, Karamja's jungle and Shilo, the lighthouse's
+    basalt rocks, Trollheim's climbs, which Caleb left out), the dungeons' (the planner has no underground map), and
+    the grapples (a mithril grapple and a crossbow).
+- **The model** (`rlscape/gamedata/shortcuts.py`): each link is a transport of kind "shortcut", which the route search
+  treats as a boat (a start and an end, at most one transport a route), usable from its Agility level.
+  - None of them can fail: each handler uses `AgilityShortcut`'s constructor without a fail chance.
+  - Only the log balances' handler gives XP, and the sim gives it on the way.
+- **Measured** (`scripts/measure_shortcuts.py`, `results/calibration/shortcuts-20261108-2246-i5.json`): from the start
+  tile to standing idle on the far end, 3 runs each way, every one the same.
+  - **Found:** the stepping stone jumps a tile every 2 ticks and stands idle between jumps. A first runner that counted
+    "idle within a tile of the end" timed it at 3 ticks, which was wrong; it's 13.
+- **In a trip**, a shortcut costs 3 ticks beyond its own (`TRIP_TICKS`): the approach and the click (2), and the start
+  of the walk on, which the sim's walk overhead counts once a route.
+  - Fitted, as the boats' boarding was, on 7 trips over each shortcut one way with walks either side
+    (`scripts/validate_travel.py --set shortcuts`). Before the fit, the server's trips were 2 to 6 ticks longer (sim
+    over server 0.79 to 0.94).
+- **The server backend** (`rlscape/bridge/travel.py`): a shortcut is taken as a player takes it, by its option on the
+  nearest of its scenery, done once the character stands idle on the far end. Before this, `perform` raised on any
+  kind it didn't know, so a server trip over a shortcut would have failed.
+- **Validated** on the server (instance 5, 50 ms):
+  - the fit set: sim over server 0.90 to 1.03, 7 of 7 within ±20% (`travel-validation-20261108-2249-i5.json`);
+  - the check set, each shortcut the other way: 0.90 to 1.00, 7 of 7 (`travel-validation-20261108-2248-i5.json`).
+  - Every trip took the shortcut the sim planned.
+- **Env contract v1.32** (to confirm): travel's ways gain the shortcuts. No actions or features change (2,283 and
+  3,462).
+- **Speed:** about 7% fewer decisions a second over 450 seeded decisions (27.0 against 28.9). Most of it is one-time
+  searches from the shortcuts' ends, which aren't places in the planner's table. They're remembered per process, so a
+  long-running worker pays them once. Adding the 14 ends to the places table would remove them, at the cost of
+  rebuilding `data/travel/places.npz`.
+- **Tests:**
+  - `tests/test_shortcuts.py` (3): each link is its handler's scenery and level; Falador's west wall from Agility 5;
+    a log balance's XP on the way.
+  - `tests/test_shortcuts_live.py` (2): the trip over Falador's wall on the server in the sim's time; a level short,
+    the server keeps the character outside.
+  - The seeded trajectories change where a route crosses a shortcut.

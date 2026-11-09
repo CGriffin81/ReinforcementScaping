@@ -161,9 +161,12 @@ each 50 Fishing, 5 Agility and 5 Strength XP.
   Otto's bed gives the rod only once his Barbarian Training starts, which stays unflagged, so the GE is the way to get
   one.
 
-**Agility in travel:** with Agility trainable, the shortcuts the server has (`agility/shortcuts/`: log balances,
-stepping stones, rope swings, the Al Kharid pit, grapples, …) can join the travel model's crossings at their levels,
-as OQ-16 (a) puts it ("Agility shortcuts with Agility"). Agility also raises run energy's restore (already in the
+**Agility in travel** (built, 2026-11-08; OQ-16 (a): "Agility shortcuts with Agility"): seven of the server's
+shortcuts (`agility/shortcuts/`), each both ways, are transports in travel, taken from their levels on both backends
+(`rlscape/gamedata/shortcuts.py`): Falador's west wall (5), the lumberyard's fence (13), the coal trucks' log balance
+(20), the River Lum's stepping stone (31), Ardougne's log balance (33), the Al Kharid pit (38) and Rellekka's log
+balance (48). They're the ones whose two ends the planner joins only by a long walk round, in places the sim travels.
+None can fail; the log balances give their XP on the way. Agility also raises run energy's restore (already in the
 sim: `rlscape.sim.energy`).
 
 ## 4. Herblore

@@ -4,7 +4,8 @@
 are built): Crafting's skilling slots and paths (§2), and XP slots hold only paths that give XP; Crafting's inputs in
 *V* and the GE buys (§8, §9); Herblore's skilling slots and paths (§2); Agility's skilling slots and laps (§2);
 Runecrafting's skilling slots and paths (§2), and its essence and talismans in *V* and the GE buys (§8, §9);
-Barbarian Fishing (§2) and the barbarian rod in *V* and the GE buys (§8, §9).
+Barbarian Fishing (§2) and the barbarian rod in *V* and the GE buys (§8, §9); seven Agility shortcuts in travel
+(§4).
 
 **Status:** v1.3, 2026-11-06: quests are out, and every quest the server has is complete from the start (Caleb;
 §10); the anti-dragon shield, the dragon dagger and longsword and the Fremennik helms are bought on the GE (§4.B,
@@ -109,8 +110,8 @@ obstacle rolled at the character's Agility (`AgilityHandler.hasFailed`), a fall'
 eats as thieving does, and stops when it's out of food then. No gp: a lap path fills only XP slots. A fall into the
 Wilderness log's pit is attacked by its skeletons (OQ-46 (a)). **Barbarian Fishing** (`barb_fish`,
 `rlscape/sim/barbfishing.py`) fishes Otto's Grotto with the barbarian rod (bought on the GE) to a full inventory,
-for Fishing, Agility and Strength XP; it ranks in the Fishing and the Agility slots by its XP in each. The shortcuts
-come next.
+for Fishing, Agility and Strength XP; it ranks in the Fishing and the Agility slots by its XP in each. Agility
+levels open seven of the server's shortcuts in travel (§4).
 
 **Runecrafting** (sim v1, v1.4; Caleb, 2026-11-08, OQ-2; `rlscape/sim/runecrafting.py`) has `rc_<rune>` for the nine
 runes whose ruins the travel model reaches: air, mind, water, earth, fire, body, chaos, nature and law. A path works
@@ -432,8 +433,15 @@ mapped yet), it's still straight-line distance × 1.3. The server walker clicks 
 unreachable: walking, the crossings, the Shantay gate, every teleport and every boat, from Lumbridge. That's 231 of
 the 2,792 places the sim travels to, mostly quest areas no way the model knows reaches, and pens and cells. A place the character
 can't get to now (an island without the fare or a teleport) is unreachable for it until it can: its options are
-masked, and the combat slots skip it. Ways the model doesn't know yet (some items, Agility shortcuts, quest steps)
-are OQ-16.
+masked, and the combat slots skip it. Ways the model doesn't know yet (some items, quest steps) are OQ-16.
+
+**Agility shortcuts (OQ-16 (a), 2026-11-08; built; which seven is Claude's choice, to confirm).** Seven of the
+server's shortcuts, each both ways, are transports in travel, taken from their Agility levels like any other way
+(`rlscape/gamedata/shortcuts.py`): Falador's west wall (5), the lumberyard's fence (13), the coal trucks' log balance
+(20), the River Lum's stepping stone (31), Ardougne's log balance (33), the Al Kharid pit (38) and Rellekka's log
+balance (48). Each was measured on the server: 4 to 7 ticks a crossing (the stepping stone 13), and 3 more in a trip
+(fitted). None can fail, and the log balances give their XP on the way (5 at the coal trucks, 1 at the others). Both
+backends: the bridge clicks the shortcut as a player does (`rlscape/bridge/travel.py`).
 
 **Transports (Caleb, 2026-11-01; built).** Travel includes the home teleport, the standard teleport spells, every
 teleport jewellery item at every charge (usable and buyable at any charge), the teleport tablets, the Grand seed pod,

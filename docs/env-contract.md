@@ -1,6 +1,9 @@
-# Environment Contract (v1.31, Signed off)
+# Environment Contract (v1.32, Signed off)
 
-**Status:** v1.31, 2026-11-08. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
+**Status:** v1.32, 2026-11-08. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
+- **v1.32** (2026-11-08, building sim v1's Agility in travel per OQ-16 (a); to confirm) adds seven Agility shortcuts
+  to travel (§7), each both ways, taken from their levels on both backends. No actions or features change: 2,283
+  actions, 3,462 features.
 - **v1.31** (2026-11-08, building sim v1's Barbarian Fishing per OQ-2's Choice D; to confirm) adds the barbarian rod: a
   GE buy (§2, at Caleb's 1,000 gp, OQ-41) and the rod in *V* (*V* 368), with its 5 actions and 2 features; and a
   barbfishing task (its kit, the rod and the bait). 2,283 actions, 3,462 features.
@@ -205,7 +208,7 @@ buys and 51 items; v1.28 Agility's slots and task; v1.29 11 buys and 9 items; v1
   Fishing, Cooking, Firemaking, Thieving, and Fletching (brought forward by Caleb, 2026-10-31)
 - added in sim v1, before E2 (4): Crafting, Agility, Herblore, Runecrafting (Caleb, 2026-10-28).
   Herblore needs Druidic Ritual and Runecrafting needs Rune Mysteries, both complete from the start (§1). Agility
-  levels also open the Agility shortcuts in the access table.
+  levels also open seven Agility shortcuts in travel (§7, v1.32).
 
 **Slayer:** there are no tasks, so it stays at 1, and Slayer levels lock no monster (Caleb, 2026-11-07, OQ-32; the
 fork drops them too). Monsters that need Slayer gear the sim doesn't model stay out
@@ -253,7 +256,8 @@ for every step.
     for gathering (the bridge's `set_retaliate`).
   - **travel** (Caleb, 2026-11-01; option catalog §4): every trip takes the fastest way the character can use
     then, paying for it: walking on the server's collision map, the home teleport, teleport spells, jewellery,
-    tablets, the seed pod, ships and charters. The home teleport can be cast once every 30 minutes (a fork change,
+    tablets, the seed pod, ships and charters, and seven Agility shortcuts from their levels (v1.32, to confirm:
+    `rlscape/gamedata/shortcuts.py`). The home teleport can be cast once every 30 minutes (a fork change,
     counted in game ticks). A place nothing the character can use reaches is unreachable for it: its options are
     masked. Both backends: `ServerEnv` takes the same transports by the player's clicks (`rlscape/bridge/travel.py`).
   - **staged:** sim v0 has every family except the four v1 skills, which sim v1 adds before E2. Quests are out

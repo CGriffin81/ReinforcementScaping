@@ -29,6 +29,7 @@ from functools import cache
 
 from rlscape.gamedata import server as gd
 from rlscape.gamedata.server import SERVER_CONTENT
+from rlscape.gamedata.shortcuts import LINKS as SHORTCUT_LINKS, TRIP_TICKS as SHORTCUT_TRIP_TICKS
 
 LAW, AIR, FIRE, WATER, EARTH, BANANA = 563, 556, 554, 555, 557, 1963
 COINS = 995
@@ -37,7 +38,7 @@ COINS = 995
 @dataclass(frozen=True)
 class Transport:
     id: str
-    kind: str  # spell, home, jewellery, tablet, seed_pod, ship, charter
+    kind: str  # spell, home, jewellery, tablet, seed_pod, ship, charter, shortcut
     end: tuple[int, int, int]  # where it arrives (for a boat that lands on its deck: the deck)
     ticks: int  # from the first click to being able to walk on
     start: tuple[int, int, int] | None = None  # boats: where they're boarded; teleports work from anywhere
@@ -236,9 +237,17 @@ def _boats() -> list[Transport]:
     return out
 
 
+def _shortcuts() -> list[Transport]:
+    """The Agility shortcuts (rlscape.gamedata.shortcuts), as the boats are: taken from where they're clicked to where
+    they land, at their Agility level, in their measured ticks and what one costs a trip, for any XP they give."""
+    return [Transport(f"shortcut:{s.key}", "shortcut", s.end, s.ticks + SHORTCUT_TRIP_TICKS, start=s.start,
+                      skills=(("agility", s.level),), xp=(("agility", s.xp),) if s.xp else (), land=s.end)
+            for s in SHORTCUT_LINKS]
+
+
 @cache
 def transports() -> tuple[Transport, ...]:
-    return tuple(_teleports() + _boats())
+    return tuple(_teleports() + _boats() + _shortcuts())
 
 
 def wilderness_level(tile: tuple[int, int, int]) -> int:

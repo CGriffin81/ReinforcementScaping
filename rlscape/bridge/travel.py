@@ -6,7 +6,8 @@ The route's transports are taken in order, with walks between them (rlscape.brid
 - a tablet "Break", the seed pod "Squash" or "Launch";
 - a ship: "Pay-fare" on its NPC, which before Pirate's Treasure opens its conversation: the answers a player gives
   (SHIP_ANSWERS); a charter: "Charter" on a crewmember, the destination's button on the charter interface (95), then
-  "Ok" (the bridge clicks through the fare's message); off a ship's deck, "Cross" the gangplank.
+  "Ok" (the bridge clicks through the fare's message); off a ship's deck, "Cross" the gangplank;
+- an Agility shortcut (rlscape.gamedata.shortcuts): its option on the nearest of its scenery, from its near side.
 Each step waits for its effect, a tick at a time, and the trip's ticks are the game's own.
 """
 
@@ -17,6 +18,7 @@ from typing import Any, Callable
 
 from rlscape.bridge.client import BridgeClient
 from rlscape.bridge.walker import chebyshev, walk_route
+from rlscape.gamedata.shortcuts import LINKS
 from rlscape.gamedata.transports import CHARTER_IFACE, SPELLBOOK, Transport
 from rlscape.routes import Map, surface, toll_surface
 
@@ -27,6 +29,7 @@ ITEM_OPTIONS = {"tablet": "Break"}
 # The options to pick, in order, in a ship NPC's conversation (SeamanDialoguePlugin: "Yes, please."; CustomsOfficer:
 # "Can I journey on this ship?", "Search away, I have nothing to hide.", "Ok.")
 SHIP_ANSWERS = {"Seaman Thresnor": (1,), "Customs officer": (1, 2, 1)}
+SHORTCUTS = {f"shortcut:{link.key}": link for link in LINKS}
 
 
 @dataclass
@@ -130,7 +133,18 @@ def perform(client: BridgeClient, uid: int, transport: Transport) -> int:
                             "packet": True})
         ticks += 1 + _until(client, uid, _near(transport.end), transport.id)
         return ticks + (_disembark(client, uid) if transport.end[2] > 0 else 0)
+    if kind == "shortcut":
+        link = SHORTCUTS[transport.id]
+        _tick(client, uid, {"cmd": "interact", **uid_, "name": link.name, "option": link.option, "object": True,
+                            "ids": list(link.ids), "packet": True})
+        return 1 + _until(client, uid, _over(link.end), transport.id)
     raise ValueError(f"no way to take {transport.id}")
+
+
+def _over(tile: tuple[int, int, int]) -> Callable[[dict[str, Any]], bool]:
+    """Standing on a shortcut's far end, done with it: on the tile itself, as a stepping stone stands idle a moment
+    between its one-tile jumps, and some ends are 2 tiles from the start (ARRIVED won't do)."""
+    return lambda s: _here(s) == tile and not (s["busy"] or s["moving"] or s["script"] is not None)
 
 
 def go(client: BridgeClient, uid: int, transports: tuple[Transport, ...], destination: tuple[int, int, int],
@@ -141,7 +155,7 @@ def go(client: BridgeClient, uid: int, transports: tuple[Transport, ...], destin
     trip = Trip()
     try:
         for transport in transports:
-            if transport.start is not None:  # a boat: walk up to its NPC (it walks the last steps to it)
+            if transport.start is not None:  # a boat or a shortcut: walk up to its NPC or scenery (it walks the last steps)
                 walked = walk_route(client, uid, world, _short_of(world, _here(client.state(uid)), transport.start))
                 trip.steps.append((f"walk to {transport.id}", walked.ticks))
                 trip.ticks += walked.ticks
