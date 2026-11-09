@@ -123,12 +123,14 @@ def main() -> None:
     parser.add_argument("--sim-runs", type=int, default=200)
     parser.add_argument("--budget", type=int, default=3000)
     parser.add_argument("--tick-ms", type=int, default=50)
+    parser.add_argument("--case", type=int, nargs=3, action="append", metavar=("FISHING", "AGILITY", "STRENGTH"),
+                        help="run only these levels (repeatable; default: every case in CASES)")
     args = parser.parse_args()
     rows = []
     with BridgeClient() as client:
         old_ms = client.set_tick_ms(args.tick_ms)
         try:
-            for case in CASES:
+            for case in [tuple(c) for c in args.case] if args.case else CASES:
                 server = [server_run(client, case, args.budget) for _ in range(args.runs)]
                 sim = [sim_run(case, seed, args.budget) for seed in range(args.sim_runs)]
                 s, m = per_hour(server), per_hour(sim)

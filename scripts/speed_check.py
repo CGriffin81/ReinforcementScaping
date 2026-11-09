@@ -2,9 +2,11 @@
 calibration's tick (50 ms, 12x real time) and at the real one (600 ms) must agree within their run-to-run noise.
 
 It compares two results files of one kind, written by scripts/calibrate.py (gathering), scripts/calibrate_combat.py
-(combat) or scripts/validate_travel.py (travel), case by case:
-- gathering and combat: each run's XP/hr (XP over its ticks). They agree when the means differ by at most two
-  standard errors of the difference (TOLERANCE_SE), from each side's runs.
+(combat), scripts/calibrate_barbfishing.py (Barbarian Fishing), scripts/measure_agility.py (a course's laps) or
+scripts/validate_travel.py (travel), case by case:
+- gathering, combat and Barbarian Fishing: each run's XP/hr (XP over its ticks; per skill, summed). A course: each
+  whole lap's. They agree when the means differ by at most two standard errors of the difference (TOLERANCE_SE),
+  from each side's runs.
 - travel: each trip's ticks. A trip is run once at each speed, so there's no spread to judge by: they agree within
   TRAVEL_TOLERANCE.
 
@@ -27,8 +29,19 @@ TRAVEL_TOLERANCE = 0.05
 
 
 def run_xp(run: dict) -> float:
-    """A run's XP: gathering records it whole, combat per skill."""
-    return run["xp"] if "xp" in run else sum(v for k, v in run.items() if k.startswith("xp_"))
+    """A run's XP: gathering records it whole, combat per skill, Barbarian Fishing per skill in a dict."""
+    if "xp" in run:
+        return sum(run["xp"].values()) if isinstance(run["xp"], dict) else run["xp"]
+    return sum(v for k, v in run.items() if k.startswith("xp_"))
+
+
+def label(case: dict) -> str:
+    if "option_id" in case:
+        return f'{case["option_id"]}, band {case["band"]}'
+    if "combat_class" in case:
+        return f'{case["combat_class"]} {case["name"]}, band {case["band"]}'
+    fields = ", ".join(f"{k} {v}" for k, v in case.items())
+    return f"barb_fish at {fields}" if set(case) == {"fishing", "agility", "strength"} else fields
 
 
 def per_hour(runs: list[dict]) -> list[float]:
@@ -57,6 +70,10 @@ def compare(fast_path: Path, slow_path: Path) -> list[dict]:
             out.append({"case": trip["trip"], "fast_ticks": trip["server_ticks"], "slow_ticks": other["server_ticks"],
                         "slow_over_fast": ratio, "agrees": abs(ratio - 1) <= TRAVEL_TOLERANCE})
         return out
+    if "laps" in fast:  # one course at one level a file: its whole laps
+        laps = lambda d: [lap for lap in d["laps"] if not lap["abandoned"]]  # noqa: E731
+        return [{"case": f'{fast["course"]} laps, Agility {fast["agility"]}',
+                 **compare_runs(per_hour(laps(fast)), per_hour(laps(slow)))}]
     key = lambda case: json.dumps(case, sort_keys=True)  # noqa: E731
     slow_cases = {key(c["case"]): c for c in slow["cases"]}
     out = []
@@ -64,8 +81,7 @@ def compare(fast_path: Path, slow_path: Path) -> list[dict]:
         other = slow_cases.get(key(case["case"]))
         if other is None:
             continue
-        label = case["case"].get("option_id") or f'{case["case"]["combat_class"]} {case["case"]["name"]}'
-        out.append({"case": f'{label}, band {case["case"]["band"]}',
+        out.append({"case": label(case["case"]),
                     **compare_runs(per_hour(case["server_runs"]), per_hour(other["server_runs"]))})
     return out
 

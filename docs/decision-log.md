@@ -5681,3 +5681,45 @@ at 1,000 gp, OQ-41). `m002-barbfishing`.
   - `tests/test_shortcuts_live.py` (2): the trip over Falador's wall on the server in the sim's time; a level short,
     the server keeps the character outside.
   - The seeded trajectories change where a route crosses a shortcut.
+
+### Measured: the gate's speed check passes for Agility's calibrations (OQ-21); `set_tick_ms` never set the tick back
+2026-11-08, OQ-21 (a) (Caleb, 2026-11-06: a speed check at 600 ms in the gate). `m002-agility-speed-check`.
+- **Why now:** none of sim v1's calibrations had been run at 600 ms. Of the processing family, only burying had.
+  These are Agility's three: the courses, Barbarian Fishing and the shortcut trips. Crafting, Herblore and
+  Runecrafting are their sessions'.
+- **The cases** (Claude's choice, reversible), the same at 50 and 600 ms on instance 5:
+  - the Gnome Stronghold at Agility 30, 5 laps (no obstacle there can fail);
+  - the Barbarian Outpost at 75, 8 laps;
+  - the Wilderness at 99, 6 laps;
+  - Barbarian Fishing at Fishing 70, Agility and Strength 45, 3 runs to a full inventory;
+  - the 7 shortcut check trips.
+
+  The Barbarian and Wilderness courses still fall at 99, which is fewer than 69 levels above them.
+- **The rule** is the gate's (`scripts/speed_check.py`): XP/hr means within two standard errors of their
+  difference (a course's whole laps, or the runs), and travel within 5% a trip. The script now reads `measure_agility`
+  and `calibrate_barbfishing` files.
+- **Result: 11 of 11 agree** (`results/calibration/speed-check-20261108-2331.json`).
+  - Laps, 600 ms over 50 ms: Gnome 1.00, Barbarian 1.01, Wilderness 1.01.
+  - Barbarian Fishing: 1.06, within the noise of 3 runs a side.
+  - The shortcut trips: every one the same to the tick.
+- **Found: scripts running at once on one server shift a trip's timing.** With all five 600 ms cases at once, 5 of
+  the 7 shortcut trips took 1 to 3 ticks longer, all in the shortcut's own step. Run alone, every one matched its
+  50 ms time to the tick.
+  - The laps and the fishing, run at once with them, still agreed: their obstacle times were if anything slightly
+    shorter at 600 ms.
+  - Whether the character got there later or the polling saw it a tick late isn't known.
+  - So timing measurements are best run one script per server. The CLAUDE.md note that a server takes several scripts
+    at once doesn't say so (for Caleb).
+- **Found and fixed: `BridgeClient.set_tick_ms` returned the new tick.** The bridge answers with the tick it has just
+  set. Nine scripts keep that answer as the old tick and set it back at the end, so the server stayed at whatever
+  tick the script used:
+  - `calibrate_crafting`, `_herblore`, `_processing`, `_runecrafting` and `_barbfishing`;
+  - `measure_agility`, `_shortcuts` and `_abyss`;
+  - `export_abyss`.
+
+  The first 600 ms batch ran on a server that had been left at 50 ms. The first script to finish set it back to 50,
+  and those files were deleted.
+  - Fixed in the client (`rlscape/bridge/client.py`): it reads the tick first and returns the one it replaced, as every
+    caller expects. No script changes.
+  - Earlier results stand: each script set its own tick before measuring.
+  - **Test:** `tests/test_bridge_client_live.py`.

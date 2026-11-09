@@ -64,7 +64,13 @@ class BridgeClient:
         return self.request("ping")
 
     def set_tick_ms(self, ms: int) -> int:
-        return self.request("set_tick_ms", ms=ms)["tick_ms"]
+        """Set the world's tick length from the next tick on, and return the length it had, for setting it back.
+
+        (The bridge answers with the new length; the callers keep this as the old one, so it's read first.)
+        """
+        old = self.ping()["tick_ms"]
+        self.request("set_tick_ms", ms=ms)
+        return old
 
     def wait(self, ticks: int) -> int:
         """Block until ``ticks`` game ticks have passed; returns the tick it resumed on."""

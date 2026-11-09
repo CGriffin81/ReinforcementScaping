@@ -158,7 +158,9 @@ ReinforcementScaping/
 (Caleb, OQ-46 (a)). Barbarian Fishing built and calibrated (`barb_fish` in the Fishing and Agility slots, 1.00 to 1.03; the barbarian
 rod in V and on the GE: env contract v1.31, to confirm). The skilling slots now price the aggressive monsters at a gathering site (the share of XP per tick the sim's own
 option keeps under them). Seven Agility shortcuts are in travel, each both ways, taken from their levels on both backends
-(OQ-16 (a); measured, and validated on the server at 0.90 to 1.03: env contract v1.32, to confirm). Next:
+(OQ-16 (a); measured, and validated on the server at 0.90 to 1.03: env contract v1.32, to confirm). Agility's
+calibrations pass the gate's 600 ms speed check (11 of 11, OQ-21), and the bridge client now sets a script's tick
+back as the scripts expected. Next:
 Runecrafting (in another session) and OQ-17's scope review (today).
 - [ ] `sim/` v0: per option, check preconditions, sample outcomes, apply XP/item/GP deltas and update state. Formulas are ported from the server source; overheads start as placeholders. Decided 2026-10-28:
   - **event-level sampling**
