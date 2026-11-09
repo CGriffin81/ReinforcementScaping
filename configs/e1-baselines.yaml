@@ -1,0 +1,9 @@
+# E1: the baselines (RQ1), on sim v1 (the sim-v1 tag), each from a fresh level-3 character for 20 game-hours.
+# 30 seeds (OQ-54); the option length is the sim's default. workers changes the wall time, never a result.
+#   uv run python scripts/evaluate.py --config configs/e1-baselines.yaml
+#   uv run python scripts/publish_summary.py results/eval/e1-baselines e1-baselines
+policies: [random, greedy_xp, greedy_wealth, scripted_guide]
+seeds: 30
+hours: 20
+workers: 16
+out: results/eval/e1-baselines
