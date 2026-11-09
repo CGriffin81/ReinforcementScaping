@@ -14,26 +14,42 @@ one's as laps run (the last's to the next lap's first click, so the walk round i
 course's start tile, each fall's ticks from its click to the next click, and the entry's.
 
 Hitpoints, as thieving's (rlscape.sim.thieving): it eats at or below the retreat point, or the course's largest fall
-hit if that's higher, and stops when it has no food left then. The Gnome Stronghold can't fail, so it never eats.
+hit if that's higher, and stops when it has no food left then. The Gnome Stronghold can't fail, so it never eats. A
+fall into a pit among aggressive monsters (the Wilderness log's spikes, its skeletons) is attacked while the character
+climbs out (OQ-46 (a); `pit_attacks`), and can die there.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from functools import cache
 from math import inf, isfinite
 
 import numpy as np
 
+from rlscape.combat.neighbours import Aggressor, site_aggressors
+from rlscape.combat.rates import npc_offence
 from rlscape.gamedata.agility import COURSES, Course, Obstacle, fail_chance, fall_hit
+from rlscape.sim.aggression import GATHERING_STANCE
+from rlscape.sim.combat import die
+from rlscape.sim.equipment import fighter_for
 from rlscape.sim.health import EAT_TICKS, eat_one, foods_held, regenerate, retreat_hp
 from rlscape.sim.movement import reachable, walk
-from rlscape.sim.options import COMPLETED, OUT_OF_FOOD, Option, OptionResult
+from rlscape.sim.options import COMPLETED, DIED, OUT_OF_FOOD, Option, OptionResult
 from rlscape.sim.skills import MAX_XP, SKILL_INDEX
 from rlscape.sim.state import CharacterState
 from rlscape.sim.transport import home_ready
 from rlscape.travel import travel_ticks
 
 TICKS_PER_HOUR = 6000
+# OQ-46 (a) (Caleb, 2026-11-08): a fall into a pit with aggressive monsters (the Wilderness log's spikes, among level-25
+# skeletons) is attacked while the character climbs out, as a gathering site's aggressors attack
+# (rlscape.sim.aggression): those whose level picks it, each at PIT_ATTACKS_PER_TICK, each attack rolled with its hit
+# chance and max hit, auto-retaliate off. Measured on the server (agility-pit-20261108-2126 and -2131: 89 falls at
+# combat level 25): 18 ticks underground every fall, 41 damaging hits from the 4 skeletons in reach (an attack does
+# damage 65% of the time then), so an attack every 101 ticks each; 2.0 damage a hit, as the model's.
+PIT_TICKS = 18
+PIT_ATTACKS_PER_TICK = 0.0099
 
 
 @dataclass(frozen=True)
@@ -158,6 +174,10 @@ class AgilityLaps(Option):
                 return OptionResult(elapsed, OUT_OF_FOOD, regenerated=True)
             if not self._attempt(state, rng, o):
                 state.hp -= fall_hit(state.hp, o.hit)
+                if state.hp <= 0 or (o.pit is not None and pit_attacks(state, rng, o.pit)):
+                    died = max(elapsed + PIT_TICKS, 1)
+                    die(state, state.tick + died)
+                    return OptionResult(min(died, budget), DIED, regenerated=True)
                 if not spend(times.falls[i]):
                     return self._end(state, elapsed, budget)
                 if o.resume is not None:  # the lap goes on further along, without this obstacle's flag
@@ -225,6 +245,30 @@ class AgilityLaps(Option):
         laps = max(duration_ticks - travel, 0.0) / lap_ticks
         per_hour = TICKS_PER_HOUR / duration_ticks
         return (laps * lap_xp + (entry.xp if entry else 0.0)) * per_hour, 0.0, 0.0, travel
+
+
+@cache
+def _pit_aggressors(tile: tuple[int, int, int]) -> tuple[Aggressor, ...]:
+    return site_aggressors(tile)
+
+
+def pit_attacks(state: CharacterState, rng: np.random.Generator, tile: tuple[int, int, int]) -> bool:
+    """The pit's aggressive monsters' attacks while the character climbs out (OQ-46 (a)): those whose level picks it,
+    at PIT_ATTACKS_PER_TICK each over PIT_TICKS, each rolled with its hit chance and max hit against it; True if they
+    killed it."""
+    level = state.combat_level()
+    active = [a for a in _pit_aggressors(tile) if level <= 2 * a.level]
+    if not active:
+        return False
+    fighter = fighter_for(state)
+    for _ in range(int(rng.poisson(PIT_ATTACKS_PER_TICK * len(active) * PIT_TICKS))):
+        npc = active[int(rng.integers(len(active)))].npc
+        chance, max_hit, _, _ = npc_offence(fighter, GATHERING_STANCE, npc)
+        if rng.random() < chance:
+            state.hp -= int(rng.integers(0, max_hit + 1))
+        if state.hp <= 0:
+            return True
+    return False
 
 
 def agility_paths() -> list[AgilityLaps]:

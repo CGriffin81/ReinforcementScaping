@@ -10,7 +10,7 @@ import pytest
 
 from rlscape.gamedata import server as gd
 from rlscape.gamedata.agility import BARBARIAN, COURSES, GNOME, WILDERNESS, fail_chance, fall_hit
-from rlscape.sim.agility import TIMES, AgilityLaps
+from rlscape.sim.agility import TIMES, AgilityLaps, pit_attacks
 from rlscape.sim.skills import SKILL_INDEX, XP_FOR_LEVEL
 from rlscape.sim.state import CharacterState
 
@@ -90,3 +90,41 @@ def test_the_laps_average_what_the_slots_rank_them_by(key, agility):
         xp_per_tick.append((state.xp[SKILL_INDEX["agility"]] - before) / result.ticks)
     lap_xp, lap_ticks = path.expected_rate(character(agility))
     assert np.mean(xp_per_tick) == pytest.approx(lap_xp / lap_ticks, rel=0.05)
+
+
+@needs_server
+def test_the_wilderness_log_pits_skeletons_attack_a_low_level_climber():
+    """OQ-46 (a): a fall onto the Wilderness log's spikes lands among level-25 skeletons, which pick a character of
+    combat level 50 or under. Measured: 81 damage in 89 falls at combat level 25 (agility-pit-20261108-2126, -2131);
+    the sim's attacks average the same. A character they don't pick takes none."""
+    pit = WILDERNESS.obstacles[3].pit
+    rng = np.random.default_rng(0)
+    damage = []
+    for _ in range(4_000):
+        state = character(52, hitpoints=99)
+        assert state.combat_level() <= 50
+        before = state.hp
+        assert not pit_attacks(state, rng, pit)
+        damage.append(before - state.hp)
+    assert np.mean(damage) == pytest.approx(81 / 89, rel=0.1)
+    strong = character(52, hitpoints=99, attack=99, strength=99, defence=99)
+    assert strong.combat_level() > 50
+    before = strong.hp
+    assert not pit_attacks(strong, rng, pit) and strong.hp == before
+
+
+@needs_server
+def test_a_death_in_the_pit_ends_the_laps():
+    """With no food and a few hitpoints, the laps go on until the eating point stops them, or a fall into the pit
+    kills: then the path ends, died, respawned at full hitpoints at home with its items lost in the Wilderness."""
+    course = replace(WILDERNESS, entry=None, approach=None)
+    path = AgilityLaps(course)
+    outcomes = set()
+    for seed in range(200):
+        state = character(52)  # 10 hitpoints: the skeletons pick it, and a fall's hit is 2
+        state.location = course.start
+        result = path.run(state, np.random.default_rng(seed), 3_000)
+        outcomes.add(result.termination)
+        if result.termination == "died":
+            assert state.hp == state.max_hp() and state.location != course.start
+    assert "died" in outcomes

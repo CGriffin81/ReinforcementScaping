@@ -36,6 +36,7 @@ class Obstacle:
     at: tuple[int, int] | None = None  # the tile, where it shares its id with another of the course's
     resume: int | None = None  # the obstacle a lap goes on from after a fall here (None: this one again)
     inert_fail: bool = False  # a fail does nothing: the character stands where it was, and clicks again
+    pit: tuple[int, int, int] | None = None  # the pit a fall drops into, whose aggressive monsters attack (OQ-46)
 
 
 @dataclass(frozen=True)
@@ -89,7 +90,8 @@ WILDERNESS = Course("wilderness", "Wilderness", 52, 499.0, (3004, 3937, 0), (
     Obstacle("Obstacle pipe", (2288,), "Squeeze-through", 12.5, 0, level=49, at=(3004, 3938)),
     Obstacle("Ropeswing", (2283,), "Swing-on", 20.0, 1, (1, 0.1), inert_fail=True),  # as the Barbarian swing's
     Obstacle("Stepping stone", (37704,), "Cross", 20.0, 2, (1, 0.3), LAVA),  # into the lava
-    Obstacle("Log balance", (2297,), "Walk-across", 20.0, 3, (1, 0.5), TWELFTH),  # onto the spikes (2998, 10345)
+    # onto the spikes in a pit below, among aggressive skeletons (level 25), climbed out by its ladder (OQ-46)
+    Obstacle("Log balance", (2297,), "Walk-across", 20.0, 3, (1, 0.5), TWELFTH, pit=(2998, 10345, 0)),
     Obstacle("Rocks", (2328,), "Climb", 0.0, 4),
 ), entry=Obstacle("Door", (2309,), "Open", 15.0, None, (1, 0.3), TWELFTH, level=52), approach=(2998, 3916, 0))
 

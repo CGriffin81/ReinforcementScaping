@@ -5473,3 +5473,30 @@ be seen as a time waste." `m002-runecrafting`.
     recasts, 90,770 XP/hr against 92,560).
   - The magic fit and check sets, as the ranker picks them now, were still running when the tree was committed. Their
     results follow.
+
+### Decided and built: OQ-46 (a), the Wilderness log's spike pit and its skeletons (Caleb)
+2026-11-08, Caleb: "OQ46 - option a". `m002-oq46`.
+- **The question:** a fall off the Wilderness course's log drops the character onto the spikes in a pit below (2998,
+  10345), among aggressive skeletons (level 25, picking a character of combat level 50 or under). A measurement
+  character of combat level about 26 died there after three falls in one lap. The sim's laps didn't count the pit.
+- **The options:**
+  - (a) recommended: count them as a gathering site's aggressors are counted (`rlscape.sim.aggression`): while the
+    character climbs out, the skeletons that would pick it attack at a rate measured on the server, each attack
+    rolled with their hit chance and max hit; the laps' eating rule covers it, and with no food left the path stops;
+  - (b) offer the Wilderness laps only to a character the skeletons won't pick (combat level over 50);
+  - (c) leave them out and document that the sim is optimistic there.
+- **Caleb: (a).**
+- **Measured** (`scripts/measure_agility.py --pit`; `results/calibration/agility-pit-20261108-2126` and `-2131`): a
+  calibration character (Agility 1, so the log fails; Hitpoints 99; combat level 25; auto-retaliate off, as Caleb's rule
+  for gathering has it) teleported to the log's start (setup only), fell 89 times and climbed the pit's ladder as soon
+  as it could. It was underground 18 ticks every time, and took 41 damaging hits, 81 damage, about 0.9 a fall. The 4
+  skeletons in reach of the pit (the sim's `site_aggressors`) hit such a character 86% of the time for up to 3, so an
+  attack does damage 65% of the time: an attack every 101 ticks each (`PIT_ATTACKS_PER_TICK`), and 2.0 damage a hit, as
+  the model gives.
+- **Built** (`rlscape/sim/agility.py`; the obstacle's `pit` in `rlscape/gamedata/agility.py`): after a fall into a pit,
+  `pit_attacks` draws the attacks over the 18 ticks from the aggressors that pick the character, each rolled with
+  `npc_offence`. A death there, or from a fall's own hit, ends the path (`die`; in the Wilderness the items go). The 18
+  ticks are inside the log fall's measured 105.6, so the lap's times don't change. The skeletons' aggression tolerance
+  isn't counted: a fall's stays are short.
+- **Tests:** the sim's damage a fall against the measured 0.91 (within 10%), none for a character of combat level over
+  50, and a low-hitpoint character without food can die in the pit.

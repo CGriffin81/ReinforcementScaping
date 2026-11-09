@@ -39,24 +39,3 @@ Started 2026-10-31 (Caleb), from a review of the documentation.
   Sunday." Caleb hopes calibration was an unusually heavy lift and is nearly done. Reopens Sunday, 2026-11-08.
 - **Since:** Caleb cut quests on 2026-11-06 (every quest the server has is complete from the start), so sim v1 is
   the four skills only. The level-3 start stays.
-
-### OQ-46. The Wilderness course's spike pit has aggressive skeletons: should the sim's laps count them?
-- **Raised:** 2026-11-08, measuring the agility courses on the server (`m002-agility`). A fall off the Wilderness
-  course's log drops the character onto the spikes in a pit below (2998, 10345), where aggressive skeletons spawn
-  (level 25, several; they pick a character of combat level 50 or under). Climbing out and walking back takes about
-  100 ticks a fall. A measurement character (Agility 52, Hitpoints 99, its other combat skills 1: combat level about 26)
-  died there after three log falls in one lap. The sim's laps don't count the pit's monsters, so for a character of
-  combat level 50 or under they're safer in the sim than on the server. (The Barbarian course's pit below the rope
-  swing is never reached: the swings' fails do nothing.)
-- **Options:**
-  - **(a) Recommended:** count them as a gathering site's aggressors are counted (`rlscape.sim.aggression`): while
-    the character climbs out of the pit, the skeletons that would pick it attack at a rate measured on the server, each
-    attack rolled with their hit chance and max hit; the laps' eating rule covers it, and with no food left the path
-    stops. About half a day, with the measurement.
-  - (b) Offer the Wilderness laps only to a character the skeletons won't pick (combat level over 50). Simple, but the
-    server lets anyone with Agility 52 run them.
-  - (c) Leave them out, and document that the sim is optimistic there for low-combat characters.
-- **Decides:** Caleb (what the sim models).
-- **Blocks:** nothing now; the Wilderness course's gate (0.86 over 45 laps at Agility 52) was measured with hitpoints
-  set back each lap.
-- **Status:** open.

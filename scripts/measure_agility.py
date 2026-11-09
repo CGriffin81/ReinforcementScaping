@@ -230,6 +230,57 @@ def measure_entries(client: BridgeClient, course: Course, agility: int, runs: in
     return out
 
 
+def measure_pit(client: BridgeClient, course: Course, visits: int) -> dict[str, Any]:
+    """OQ-46 (a): the pit a fall drops into, measured. A calibration character (Agility 1, so the obstacle fails;
+    Hitpoints 99; its other skills 1, combat level about 25, which the Wilderness pit's skeletons pick; auto-retaliate
+    off, as Caleb's rule for gathering has it) teleported to the obstacle's start (setup only) falls into the pit and
+    climbs its ladder as soon as it can, as a person does. Per visit: the ticks underground, and the damaging hits and
+    damage taken there after the fall's own hit."""
+    i = next(k for k, o in enumerate(course.obstacles) if o.pit is not None)
+    o, out = course.obstacles[i], []
+    uid = client.spawn()["uid"]
+    try:
+        client.debug_set_levels(uid, {"agility": 1, "hitpoints": 99})
+        client.set_retaliate(uid, False)
+        level = client.state(uid)["combat_level"]
+        r = Runner(client, uid)
+        start = {2297: (3002, 3945, 0)}[o.ids[0]]  # WildernessCourse.getDestination for the log
+        for _ in range(visits):
+            client.debug_set_levels(uid, {"hitpoints": 99})  # setup only
+            client.debug_teleport(uid, *start)
+            client.wait(3)
+            click(client, uid, o)
+            landed = None
+            for _ in range(STEP_TICKS):
+                if r.step()["location"]["y"] >= UNDERGROUND_Y:
+                    landed = r.tick
+                    break
+            if landed is None:
+                continue  # it got across (1% at Agility 1)
+            for _ in range(2):  # the fall's hit lands with the teleport
+                r.step()
+            hp, hits, damage = r.state["hitpoints"], 0, 0
+            for _ in range(400):
+                s = r.step()
+                if s["hitpoints"] < hp:
+                    hits, damage = hits + 1, damage + hp - s["hitpoints"]
+                hp = s["hitpoints"]
+                if s["location"]["y"] < UNDERGROUND_Y or hp <= 0:
+                    break
+                if idle(s):
+                    try:
+                        client.request("interact", uid=uid, name="Ladder", option="Climb-up", object=True,
+                                       packet=True)
+                    except BridgeError:
+                        pass
+            out.append({"ticks": r.tick - landed, "hits": hits, "damage": damage,
+                        "out": r.state["location"]["y"] < UNDERGROUND_Y})
+            print(f"  pit: {out[-1]}", flush=True)
+    finally:
+        client.despawn(uid)
+    return {"course": course.key, "obstacle": i, "combat_level": level, "visits": out}
+
+
 def summarise(result: dict[str, Any], course: Course) -> dict[str, Any]:
     """Per obstacle: the click-to-next-click ticks of its successes (within a lap, so the last obstacle's is to the
     next lap's first click), and its falls' costs."""
@@ -281,19 +332,31 @@ def main() -> None:
     parser.add_argument("--agility", type=int, required=True)
     parser.add_argument("--laps", type=int, default=10)
     parser.add_argument("--entries", type=int, default=0, help="instead of laps, cross the course's entry this often")
+    parser.add_argument("--pit", type=int, default=0, help="instead of laps, fall into the course's pit this often")
     parser.add_argument("--tick-ms", type=int, default=50)
     args = parser.parse_args()
     course = COURSES[args.course]
     with BridgeClient() as client:
         old_ms = client.set_tick_ms(args.tick_ms)
         try:
-            if args.entries:
+            if args.pit:
+                result = measure_pit(client, course, args.pit)
+            elif args.entries:
                 result = {"course": course.key, "agility": args.agility,
                           "entries": measure_entries(client, course, args.agility, args.entries)}
             else:
                 result = measure(client, course, args.agility, args.laps)
         finally:
             client.set_tick_ms(old_ms)
+    if args.pit:
+        v = result["visits"]
+        print(f"  pit: combat level {result['combat_level']}, {len(v)} falls, {sum(x['ticks'] for x in v)} ticks "
+              f"underground, {sum(x['hits'] for x in v)} hits, {sum(x['damage'] for x in v)} damage")
+        out = (REPO / "results" / "calibration"
+               / f"agility-pit-{datetime.now():%Y%m%d-%H%M}-{args.course}{run_suffix(args.tick_ms)}.json")
+        out.write_text(json.dumps({"args": vars(args), **result}, indent=1))
+        print(f"saved {out.relative_to(REPO)}")
+        return
     if args.entries:
         e = result["entries"]
         print(f"  entries: mean {sum(x['ticks'] for x in e) / len(e):.1f} ticks, falls {sum(x['falls'] for x in e)}")

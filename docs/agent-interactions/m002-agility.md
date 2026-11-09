@@ -9,7 +9,7 @@
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: DONE for the courses (Agility's laps built, measured and gated); Barbarian Fishing and the shortcuts not
   started
-- Commit: uncommitted
+- Commit: main repo `9ee593e` (branch `sim-v0`), committed and pushed by the Runecrafting session when Caleb asked it to commit; the fork's `at` filter is fork `4f58237` (committed the next turn)
 
 ## Full Prompt
 

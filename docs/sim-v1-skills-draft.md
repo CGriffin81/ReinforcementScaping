@@ -121,6 +121,8 @@ fights do).
 - **Times:** measured on the server, each obstacle's click to the next click as laps run, each fall's click to the next
   click, and the entries'. The Gnome Stronghold's lap is 74 ticks; the Barbarian Outpost's 71 without falls.
 - Eating is thieving's rule (the retreat point, or the largest fall hit if that's higher), not the fights'.
+- **The Wilderness log's spike pit** has aggressive skeletons (level 25): a fall there is attacked while the character
+  climbs out, at a rate measured on the server (Caleb, OQ-46 (a)), and can kill.
 
 **Choice D, the courses:** (a) *recommended*: Gnome Stronghold, Barbarian Outpost and Wilderness, and the Pyramid
 with its top handed to Simon Templeton for coins as the server pays; (b) the same without the Pyramid. The Brimhaven
