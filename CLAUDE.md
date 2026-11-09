@@ -63,7 +63,12 @@ work.
 
 - Windows 11, Ryzen 7 5800X (16 threads), 32 GB RAM, RTX 3050 8 GB.
 - Python: a `uv` project pinned to 3.12. The system Python is 3.14, which is
-  too new for the RL stack.
+  too new for the RL stack. The RL stack (2026-11-08): torch 2.14.1 with CUDA
+  13.0 for the RTX 3050 (Caleb), stable-baselines3, sb3-contrib, tensorboard.
+  torch installs from `wheels/` (git-ignored, a local flat index in
+  pyproject.toml): uv's own download of the 1.9 GB wheel breaks on this
+  connection, so on a fresh checkout run `uv run --no-project python
+  scripts/fetch_torch_wheel.py` (resumes, checks the SHA-256) before `uv sync`.
 - JDK 11: `C:\Program Files\Eclipse Adoptium\jdk-11.0.32.101-hotspot`.
   Maven comes from the repo's `server/Server/mvnw.cmd` wrapper.
 - `server/` is a **git submodule** pointing to the fork

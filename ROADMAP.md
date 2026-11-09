@@ -135,7 +135,7 @@ ReinforcementScaping/
 
 *Python track*
 - [x] `git init`, and a `uv` project pinned to Python 3.12 (`rlscape` package, pytest).
-- [ ] Add the RL stack when the sim needs it: gymnasium, torch, stable-baselines3, sb3-contrib, morl-baselines, mo-gymnasium, tensorboard, pandas, pyarrow, matplotlib.
+- [x] Add the RL stack when the sim needs it: gymnasium, torch, stable-baselines3, sb3-contrib, morl-baselines, mo-gymnasium, tensorboard, pandas, pyarrow, matplotlib. *Done 2026-11-08 for PPO:* torch 2.14.1 with CUDA 13.0 (Caleb), stable-baselines3 and sb3-contrib 2.9.2, tensorboard; torch comes from `wheels/` (`scripts/fetch_torch_wheel.py`). morl-baselines and mo-gymnasium wait for E4.
 - [x] `docs/env-contract.md` **v1.0, signed off by Caleb on 2026-10-28.** It adds the death rule: respawn and carry
   on, with a 2-minute gravestone outside the Wilderness.
 - [x] `docs/option-catalog.md` **v1.0, signed off by Caleb on 2026-10-28:** about 452 actions. Every question is
@@ -188,7 +188,7 @@ option in the Abyss (in another session), and OQ-17's scope review (today).
 **Exit:** E1 table on the sim with CIs, and calibration runs started.
 
 ### Week 3 (Oct 19–25): Masked PPO and the E2 sweep
-- [ ] SMDP rollout buffer, unit-tested against hand-computed returns.
+- [x] SMDP rollout buffer, unit-tested against hand-computed returns. *Done 2026-11-08:* `rlscape/agents/smdp.py` (GAE and PBRS with γ_hr^τ) and `rlscape/agents/ppo.py` (`SMDPMaskableRolloutBuffer`, `SMDPMaskablePPO`), with a short run on the sim.
 - [ ] `scripts/train.py`: config files, periodic checkpoints, TensorBoard, and a decision-logger callback.
 - [ ] Sanity ladder:
   1. PPO solves a 3-option toy catalog with a known optimum.

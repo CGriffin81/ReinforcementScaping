@@ -5813,6 +5813,41 @@ at 1,000 gp, OQ-41). `m002-barbfishing`.
   - chaos's maze, the way in for `rc_chaos`;
   - the gate's 600 ms speed check for Runecrafting's calibrations (OQ-21).
 
+### Decided and built: the RL stack (CUDA torch, Caleb); the SMDP rollout buffer and MaskablePPO with γ_hr^τ
+2026-11-08, ROADMAP week 3's first item (and week 1's "Add the RL stack"). `m002-smdp-ppo`.
+- **The stack** (Claude's question: CPU torch, recommended, about 250 MB, since the sim is the bottleneck for small
+  MLP policies; or CUDA torch, about 2.5 GB; or not now. **Caleb: CUDA torch.**): torch 2.14.1 with CUDA 13.0 (the
+  RTX 3050's driver supports CUDA 13.4; 2.15 was the newest, 2.14.1 the more settled), stable-baselines3 and
+  sb3-contrib 2.9.2, tensorboard 2.21. torch sees the GPU.
+  - **Found:** on this connection a long TLS download breaks partway (uv: "cannot decrypt peer's message"; curl:
+    SEC_E_DECRYPT_FAILURE), inside the sandbox or not. uv starts the 1.9 GB wheel again each time and never finished.
+    So `scripts/fetch_torch_wheel.py` downloads it with resumes into `wheels/` (git-ignored) and checks PyTorch's
+    published SHA-256, and pyproject.toml installs torch from there (a local flat index). On a fresh checkout, run
+    that script before `uv sync` (CLAUDE.md).
+- **Built:**
+  - `rlscape/agents/smdp.py`:
+    - `option_discounts` (γ_hr^τ, τ in game-hours);
+    - `smdp_gae` (δ_t = r_t + γ_hr^{τ_t} V(s_{t+1}) − V(s_t), A_t = δ_t + λ γ_hr^{τ_t} A_{t+1});
+    - `pbrs_bonus` (F = γ_hr^τ Φ(s′) − Φ(s), Φ of a terminal state 0).
+  - `rlscape/agents/ppo.py`:
+    - `SMDPMaskableRolloutBuffer`, sb3-contrib's buffer storing each decision's τ, with GAE by `smdp_gae`;
+    - `SMDPMaskablePPO`, MaskablePPO with that buffer. Its `collect_rollouts` reads `info["duration"]`, and a time
+      limit's bootstrap is discounted by γ_hr^τ. sb3's per-decision `gamma` is 1 and unused, and passing one is an
+      error.
+- **Claude's choices (reversible, for Caleb's review):**
+  - λ applies once a decision, not per game-hour;
+  - an option's reward counts at its start, undiscounted within the option (the env reports its total, as the plan's
+    δ = r + γ^τ V(s′) − V(s) has it).
+- **Tests:**
+  - `tests/test_smdp.py` (7), against hand-computed returns: an episode at λ 1, the TD errors at λ 0, a cut rollout's
+    bootstrap, no leakage across an episode's end, two envs, equal durations as standard GAE, PBRS telescoping to
+    −Φ(s₀);
+  - `tests/test_smdp_ppo.py` (4): the buffer against the same returns, sb3's episode starts turned into ends, and a
+    short run on the sim (two envs, 32 decisions).
+
+  The suite without the server: 405 passed.
+- **Next:** `scripts/train.py` (configs, checkpoints, TensorBoard, the decision logger), then the sanity ladder.
+
 ### Decided: OQ-48 (a), the skull in the observation and the Abyss's prayer drain a documented gap (Caleb); built
 Caleb, 2026-11-09: "OQ 48 - Option A." `m002-oq48`.
 - **The question** (raised 2026-11-08, building the Abyss): the Mage of Zamorak's teleport drains the character's
