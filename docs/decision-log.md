@@ -6608,3 +6608,23 @@ than exp." `m002-oq61`.
     trajectories on E1's 30 seeds.
   - **Merging:** each experiment merges into `main` by its own PR once its run is checked. To run it again, check out
     its merge commit and run its one command.
+
+### Built: committed results summaries and experiment configs (the first tooling PR, OQ-61)
+
+- **Why:** OQ-61's branches each commit a small summary and run from one config, and OQ-17 (a′) wants a reviewer to
+  read every result without running anything.
+- **`results/summary/` is committed;** the rest of `results/` stays git-ignored (`.gitignore`: `/results/*`, then
+  `!/results/summary/`).
+- **`scripts/publish_summary.py <run dir> <name>`** (`rlscape/eval/publish.py`) writes `results/summary/<name>/`:
+  - `config.json` as the run wrote it (the config, its hash, the git and fork SHAs, the dirty flag, the command);
+  - the summary, checkpoints and episodes tables as CSV, which diff and open anywhere (the run's parquet stays in
+    `results/eval/`);
+  - a README with the provenance and the last checkpoint's means and CIs.
+  It refuses a run from a tree with uncommitted changes (its SHA wouldn't reproduce it) unless `--allow-dirty`, which
+  the README then states, and never overwrites a summary unless `--force`.
+- **`scripts/evaluate.py --config configs/<name>.yaml`:** the YAML's keys are the script's options (policies, seeds,
+  first_seed, hours, activity_minutes, workers, out); one on the command line overrides the file, and an unknown key is
+  refused. `config.json` records the command line, outside the hashed config: the hash names what was run, not how
+  it was asked for. PyYAML (6.0.3) is a new dependency.
+- **Results:** unchanged. The harness's tables and hash are the same; `save` only takes an optional `extra` for
+  provenance.

@@ -159,6 +159,10 @@ work.
 - Python: `uv sync`, `uv run pytest` (live bridge tests skip when the server
   is down), and `uv run python scripts/gate_check.py`. In parallel:
   `uv run pytest -n 8 --dist loadgroup` (the live tests stay on one worker).
+- An experiment's run: `uv run python scripts/evaluate.py --config configs/<name>.yaml` (or `train.py`'s, when
+  it's built), then `uv run python scripts/publish_summary.py <run dir> <name>`, which writes the committed
+  `results/summary/<name>/` (CSV tables, `config.json`, a README) and refuses a run from a dirty tree. The rest
+  of `results/` stays git-ignored.
 - More servers at once (Caleb, 2026-11-06): `uv run python
   scripts/server_instances.py 2 3` writes `results/servers/rl-<n>.conf`
   (world n, bridge port 43610 + n - 1, its own GE under

@@ -3,7 +3,12 @@
 Writes checkpoints.parquet, episodes.parquet, summary.parquet and config.json to the output directory, and prints
 each policy's metrics at the last checkpoint with bootstrap 95% CIs.
 
+An experiment's settings live in a YAML file (configs/<name>.yaml, OQ-61) whose keys are the options below without
+their dashes (policies, seeds, first_seed, hours, activity_minutes, workers, out); an option given on the command
+line overrides the file. config.json records the command line.
+
 Usage:
+    uv run python scripts/evaluate.py --config configs/e1-baselines.yaml
     uv run python scripts/evaluate.py --policies random greedy_xp greedy_wealth --seeds 10 --workers 8
     uv run python scripts/evaluate.py --policies random --seeds 5 --hours 4 --out results/smoke
 """
@@ -16,13 +21,30 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+import yaml
+
 from rlscape.envs.sim_env import DEFAULT_REWARD_WEIGHTS
 from rlscape.eval.harness import POLICIES, REPO, run, save, summarize
 from rlscape.sim.engine import ACTIVITY_TICKS, TICKS_PER_HOUR
 
 
+def parse_args(parser: argparse.ArgumentParser, argv: list[str] | None = None) -> argparse.Namespace:
+    """The options, with a --config file's keys as their defaults, so an option on the command line overrides it."""
+    args = parser.parse_args(argv)
+    if args.config is None:
+        return args
+    loaded = yaml.safe_load(args.config.read_text(encoding="utf-8")) or {}
+    settings = {key.replace("-", "_"): value for key, value in loaded.items()}
+    unknown = sorted(set(settings) - (set(vars(args)) - {"config"}))
+    if unknown:
+        parser.error(f"{args.config}: unknown keys {unknown}")
+    parser.set_defaults(**settings)
+    return parser.parse_args(argv)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--config", type=Path, default=None, help="a YAML file of these options (configs/<name>.yaml)")
     parser.add_argument("--policies", nargs="+", default=["random", "greedy_xp", "greedy_wealth"],
                         choices=sorted(POLICIES))
     parser.add_argument("--seeds", type=int, default=10, help="seeds 0 .. N-1")
@@ -31,7 +53,7 @@ def main() -> None:
     parser.add_argument("--activity-minutes", type=float, default=ACTIVITY_TICKS / 100, help="D, the option length")
     parser.add_argument("--workers", type=int, default=1)
     parser.add_argument("--out", type=Path, default=None, help="default: results/eval/<UTC time>")
-    args = parser.parse_args()
+    args = parse_args(parser)
 
     seeds = list(range(args.first_seed, args.first_seed + args.seeds))
     env_kwargs = {"horizon_ticks": round(args.hours * TICKS_PER_HOUR),
@@ -43,7 +65,7 @@ def main() -> None:
     started = time.perf_counter()
     checkpoints, episodes = run(args.policies, seeds, env_kwargs, args.workers)
     summary = summarize(checkpoints)
-    save(out, config, checkpoints, episodes, summary)
+    save(out, config, checkpoints, episodes, summary, extra={"script": "scripts/evaluate.py", "argv": sys.argv[1:]})
     print(f"{len(episodes)} episodes in {time.perf_counter() - started:.0f}s -> {out}", file=sys.stderr)
 
     last = summary[summary.hour == summary.hour.max()]

@@ -63,8 +63,8 @@ Whole options (`reset` / `step` in the env contract) are built in Python on top 
 
 *As built:* `rlscape/` also has `travel.py` and `routes.py` (walking routes on the server's collision map),
 `vocabulary.py`, `agents/` (`smdp.py`, `ppo.py`; RND to come), `eval/` (the harness), and `baselines/`
-(`policies.py`, `guide.py`). There's no `envs/ServerEnv` or Envelope Q (cut, OQ-17). `results/` is git-ignored, so
-the finishing plan's committed summaries need `results/summary/` un-ignored when the first one is written.
+(`policies.py`, `guide.py`). There's no `envs/ServerEnv` or Envelope Q (cut, OQ-17). `results/` is git-ignored but
+for `results/summary/`, each experiment's committed summary (`scripts/publish_summary.py`, 2026-11-09).
 
 ```
 ReinforcementScaping/
@@ -81,11 +81,11 @@ ReinforcementScaping/
 │   ├── baselines/ random, greedy_xp, greedy_gp, scripted_guide
 │   ├── eval/      harness, bootstrap CIs, hypervolume, discovery metrics
 │   └── analysis/  figure scripts
-├── configs/       one YAML per experiment family
+├── configs/       one YAML per experiment (`evaluate.py --config`; on each experiment's branch)
 ├── scripts/       built: gate_check, ge_warmup, price pipeline, exports, install_ge_db; planned: train.py, evaluate.py, sweep.py, calibrate.py
 ├── server/        fork of 2009scape (git submodule) + RL bridge
 ├── tests/
-└── results/       (git-ignored) runs, checkpoints, logs
+└── results/       (git-ignored) runs, checkpoints, logs; summary/ is committed
 ```
 
 ---
@@ -262,6 +262,8 @@ The old weeks 6 to 8 (E6 on the server, the stretch, a replay with the client) a
   leeches a documented gap (OQ-51 (a)). The gate's 600 ms speed checks for Crafting, Herblore and Runecrafting
   (OQ-21) pass, 43 of 43 (2026-11-09). Picked flax can be banked or spun (OQ-52, env contract v1.38). Caleb confirmed
   every env contract version (to v1.42), option catalog v1.4 and the guide's fifth revision on 2026-11-09.
+- [x] `results/summary/` committed: `scripts/publish_summary.py` (CSV tables, `config.json`, a README; a dirty tree
+  refused) and `evaluate.py --config configs/<name>.yaml` (tooling PR, 2026-11-09).
 - [ ] Speed up the action mask without changing its results, one day at most. It's 92% of a decision's time, and
   training runs at about 1M decisions an hour.
 - [ ] `scripts/train.py`:
