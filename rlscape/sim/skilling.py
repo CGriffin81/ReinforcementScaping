@@ -52,6 +52,7 @@ from rlscape.sim.fletching import FletchAtBank, FletchLogs, fletching_paths
 from rlscape.sim.herblore import (CleanAtBank, PotionAtBank, clean_ticks, finished_ticks, grind_ticks,
                                   herblore_paths, unfinished_ticks)
 from rlscape.sim.runecrafting import RunecraftAtRuins, runecrafting_paths
+from rlscape.sim.aggression import gathering_share
 from rlscape.sim.agility import AgilityLaps, agility_paths
 from rlscape.sim.barbfishing import BarbFish, barbfishing_paths
 from rlscape.sim.gathering import respawn_ticks, site_offsets
@@ -452,6 +453,8 @@ def path_rate(path: Path, state: CharacterState, duration_ticks: int = ACTIVITY_
         cycle = units * unit.ticks + ticks + (bank_trip * slots_left if slots_left else 0.0)
         gather_xp = units * unit.xp
     share = max(duration_ticks - travel, 0.0) / duration_ticks * TICKS_PER_HOUR / cycle
+    # what the site's aggressive monsters leave of it, as the sim's own option has it (rlscape.sim.aggression)
+    share *= gathering_share(path.gather, state, site, path.skill)
     return PathRate(gather_xp * share, process_xp * share, value * share, travel)
 
 

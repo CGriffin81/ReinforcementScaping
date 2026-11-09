@@ -5601,3 +5601,32 @@ at 1,000 gp, OQ-41). `m002-barbfishing`.
 - **Tests:** `tests/test_sim_barbfishing.py` (the fish's order and levels, a load's XP in the three skills and the bait's
   order, what it needs and its two rankings, the kit); the counts in `test_vocabulary`, `test_sim_buying` and
   `test_sim_skilling`.
+
+### Built: the skilling slots price a gathering site's aggressive monsters (the willows' aggression rates)
+2026-11-08, the ROADMAP's open item ("the skilling slots' rate model doesn't price it yet", 2026-10-31).
+`m002-aggression-rates`.
+- **The problem:** the sim's gathering options suffer a site's aggressive monsters (`rlscape.sim.aggression`: attacks,
+  trivial fights, runs away and back, eating, deaths), but the skilling slots' rate model priced every path as if
+  nothing attacked. So a fresh character's fishing slots ranked Draynor's shrimp, where the Dark wizards kill a level-3
+  fisher on about half its runs away, above Lumbridge Swamp's.
+- **Built** (`aggression.gathering_share`, applied in `skilling.path_rate`):
+  - The share of the option's XP per tick its own run keeps with the aggressors, over without them: 20 seeded
+    sessions each way (`no_aggression()` switches them off), cached.
+  - The runs start at the site, from a state built from the cache key alone: the combat skills and the gathering
+    one, the hitpoints, the gear, the task's kit carried (food at most 10), and the tolerance it would have there.
+    So the share is a function of the key, whatever was computed before, and trajectories stay the same across
+    processes (`test_the_same_seed_gives_the_same_trajectory_in_another_process`). The walk there is left to the rate
+    model, which already prices travel.
+  - It's 1.0 where no aggressor picks the character, or its tolerance in the region has run out, without running
+    anything. A cache miss costs 20 to 60 ms.
+- **For a fresh character** (combat 3, at the gathering level each path needs): the willows keep 0.48 of their XP/hr
+  (and the willow-and-burn path the same), Al Kharid's iron 0.70, Draynor's shrimp 0.63. At combat 34 all are 1.00.
+  The slots change: a level-30 woodcutter's second XP slot is oaks, not willows. A fresh fisher's swamp shrimp rank
+  above Draynor's.
+- **Claude's choices (reversible):**
+  - a death ends the session with the XP it had, and its other costs (the respawn, the gravestone) aren't priced;
+  - the share measures one load, at its site.
+- **Speed:** within noise of the rate model without it (interleaved: 74, 94, 91 decisions a second against 74, 103,
+  89).
+- **Tests:** `tests/test_sim_aggression_rates.py` (3): the willows' share and the strong character's 1.0; no_aggression
+  leaves the cache alone; the fresh fisher's ranking. The suite without the server: 382 passed.

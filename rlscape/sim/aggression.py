@@ -32,6 +32,9 @@ hitpoints to come back heals as it goes; the option then reports `regenerated`.
 
 from __future__ import annotations
 
+import copy
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -42,8 +45,8 @@ from rlscape.combat.rates import Plan, npc_offence, player_offence
 from rlscape.gamedata import server as gd
 from rlscape.sim.combat import die, kill_sequence
 from rlscape.sim.equipment import fighter_for
-from rlscape.sim.health import EAT_TICKS, REGEN_TICKS, eat_one, regenerate
-from rlscape.sim.skills import MAX_XP, SKILL_INDEX
+from rlscape.sim.health import EAT_TICKS, REGEN_TICKS, eat_one, foods_held, regenerate
+from rlscape.sim.skills import MAX_XP, SKILL_INDEX, XP_FOR_LEVEL
 from rlscape.sim.state import TOLERANCE_TICKS, CharacterState
 
 
@@ -84,7 +87,7 @@ class Exposure:
            site: SiteExposure | None = None) -> Exposure:
         """The exposure at a site's tile, as the site's measured exposure has it."""
         level = state.combat_level()
-        active = [a for a in site_aggressors(tile) if level <= 2 * a.level]
+        active = [] if _OFF else [a for a in site_aggressors(tile) if level <= 2 * a.level]
         return cls(state, rng, active, site or SiteExposure(), keeps_regeneration=bool(active))
 
     @property
@@ -185,3 +188,80 @@ class Exposure:
             return False
         self._advance(ticks)
         return True
+
+
+SHARE_RUNS = 20  # seeded sessions a share is averaged over (the skilling slots' rate model)
+SHARE_BUDGET = 6_000  # ticks: a gathering option ends at a full inventory well before
+_SHARES: dict[tuple, float] = {}
+_OFF = False  # no_aggression(): every site's aggressors switched off
+
+
+@contextmanager
+def no_aggression() -> Iterator[None]:
+    """Within it, no aggressive monster picks the character anywhere (Exposure.at's active list is empty)."""
+    global _OFF
+    _OFF = True
+    try:
+        yield
+    finally:
+        _OFF = False
+
+
+COMBAT_SKILLS = ("attack", "strength", "defence", "hitpoints", "ranged", "magic", "prayer")
+
+
+def gathering_share(option, state: CharacterState, tile: tuple[int, int, int], skill: str) -> float:
+    """The share of a gathering option's XP per tick that a site's aggressive monsters leave, for the skilling slots'
+    rate model (rlscape.sim.skilling.path_rate), which otherwise prices a path as if nothing attacked: 1.0 where none
+    picks the character, or its tolerance in the site's region has run out.
+
+    It runs the option itself (`option.run`, a load, and this module's rule as it gathers: trivial fights, runs away
+    and back, eating, deaths) SHARE_RUNS seeded sessions with the aggressors and as many without, and takes the ratio of
+    `skill`'s XP per tick. A session that dies ends there, with the XP it had. The runs start at the site, from a
+    state built from the key alone, so the share is a function of it, whatever came before, and the walk there is
+    left to the rate model: the combat skills and the gathering one, the hitpoints, the gear, the task's kit carried
+    (its food at most 10), and the tolerance it would have there (all of it, coming from another region).
+    """
+    level = state.combat_level()
+    if _OFF or not any(level <= 2 * a.level for a in site_aggressors(tile)):
+        return 1.0  # (within no_aggression, uncached)
+    here = (state.location[0] >> 6, state.location[1] >> 6, state.location[2])
+    left = (max(state.region_since + TOLERANCE_TICKS - state.tick, 0)
+            if here == (tile[0] >> 6, tile[1] >> 6, tile[2]) else TOLERANCE_TICKS)  # a new region starts it again
+    if left <= 0:
+        return 1.0
+    from rlscape.sim.kits import kit  # here: kits imports the gathering modules, which import this one
+    foods = {item for _, item in foods_held(state)}
+    keep = kit(state, option.task) | foods
+    carried = tuple(sorted((i, min(n, 10) if i in foods else n) for i, n in state.inventory.items() if i in keep))
+    levels = tuple(state.level(s) for s in (*COMBAT_SKILLS, skill))
+    key = (option.id, tile, skill, levels, int(state.hp), tuple(sorted(state.equipment.items())), carried,
+           left // 100 * 100)
+    if key not in _SHARES:
+        base = _canonical(tile, skill, levels, int(state.hp), dict(state.equipment), dict(carried), left // 100 * 100)
+        exposed = _xp_per_tick(option, base, skill)
+        with no_aggression():
+            free = _xp_per_tick(option, base, skill)
+        _SHARES[key] = min(exposed / free, 1.0) if free > 0 else 1.0
+    return _SHARES[key]
+
+
+def _canonical(tile: tuple[int, int, int], skill: str, levels: tuple[int, ...], hp: int, equipment: dict[int, int],
+               carried: dict[int, int], left: int) -> CharacterState:
+    """A character at the site with only what the share's key holds."""
+    state = CharacterState.fresh()
+    for name, level in zip((*COMBAT_SKILLS, skill), levels):
+        state.xp[SKILL_INDEX[name]] = float(XP_FOR_LEVEL[level])
+    state.hp, state.equipment, state.inventory = min(hp, state.max_hp()), equipment, carried
+    state.location, state.region_since = tile, state.tick - (TOLERANCE_TICKS - left)
+    return state
+
+
+def _xp_per_tick(option, base: CharacterState, skill: str) -> float:
+    i, xp, ticks = SKILL_INDEX[skill], 0.0, 0
+    for seed in range(SHARE_RUNS):
+        s = copy.deepcopy(base)
+        before = s.xp[i]
+        result = option.run(s, np.random.default_rng(seed), SHARE_BUDGET)
+        xp, ticks = xp + s.xp[i] - before, ticks + result.ticks
+    return xp / ticks if ticks else 0.0

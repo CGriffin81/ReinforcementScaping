@@ -61,7 +61,10 @@ agents choose a path, not a fixed method. Nine skills (Woodcutting, Fishing, Min
 Herblore, Runecrafting, Agility) × 2 slots by XP/hr + 2 by gp/hr = 36 actions, `skill_<skill>_xp1/xp2/gp1/gp2`. They replace the 31 fixed gathering and thieving
 actions.
 A path in an XP slot doesn't also fill a gp slot (the next best takes its place, as in combat), and slots are
-recomputed every decision. The observation carries each slot's rates (env contract §3).
+recomputed every decision. The observation carries each slot's rates (env contract §3). A gathering path's rate
+counts its site's aggressive monsters (2026-11-08): it keeps the share of XP per tick that the sim's own option keeps
+under their attacks (`aggression.gathering_share`), so a fresh character's slots rank Lumbridge Swamp's shrimp above
+Draynor's, where the Dark wizards are.
 
 A **path** is a gathering method plus what happens to its produce. Caleb: "pair gathering skills with their
 processing counterpart". Each method is either kept (the method below alone, ending at a full inventory) or
