@@ -184,7 +184,8 @@ Picked flax can be banked or spun (Caleb, OQ-52: env contract v1.38), which took
 to about 2M net worth at hour 20. The start has Druidic Ritual's 250 Herblore XP, so Herblore can be trained (Caleb,
 OQ-56, v1.39). The Gem Store's uncut gems stand for 2009's 87 members' worlds on one world (Caleb, OQ-57 (a), v1.41). Crafting gathers
 hides by killing cows, their bones buried (Caleb, v1.42). The scripted guide's fifth revision trains all 18 skills
-(Caleb, OQ-53, OQ-58 (a), OQ-59 (b)): total level 351, net worth 131k on E1's 30 seeds, for Caleb's review.
+(Caleb, OQ-53, OQ-58 (a), OQ-59 (b)): total level 351, net worth 131k on E1's 30 seeds; Caleb signed it off and approved every contract version the same
+day, so sim v1 is frozen.
 OQ-17 is decided: (a′), with every research
 question answered and a simple peer review (Caleb, 2026-11-09). The plan from here is weeks 6 to 8 below. Caleb
 confirmed every env contract version (to v1.37) and option catalog v1.4 the same day.
@@ -243,6 +244,11 @@ confirmed every env contract version (to v1.37) and option catalog v1.4 the same
 
 Every research question is answered (Caleb), all on sim v1, with 5 seeds per configuration. RQ5 is OQ-1.
 
+**Branches** (Caleb, OQ-61):
+- each experiment runs on its own `experiment/<name>` branch from `main`, after the `sim-v1` tag (PR #8's merge);
+- shared tooling (the mask speed-up, `train.py`, `results/summary/`) goes into `main` first;
+- each experiment merges back by its own PR, its summary committed.
+
 **Cut:**
 - E4's Envelope Q, replaced by a weight-conditioned PPO;
 - `ServerEnv` and E6's replays, with the calibration gate's results per option as the sim-to-real evidence;
@@ -252,10 +258,10 @@ Every research question is answered (Caleb), all on sim v1, with 5 seeds per con
 The old weeks 6 to 8 (E6 on the server, the stretch, a replay with the client) are superseded.
 
 *Nov 9–10: freeze and tooling*
-- [ ] Freeze sim v1 on Tue Nov 10. The Runecrafting work is all in: the Abyss's fights by OQ-49 (a) are built, with the
+- [x] Freeze sim v1 (done 2026-11-09, a day early: Caleb approved every contract version and the guide). The Runecrafting work is all in: the Abyss's fights by OQ-49 (a) are built, with the
   leeches a documented gap (OQ-51 (a)). The gate's 600 ms speed checks for Crafting, Herblore and Runecrafting
   (OQ-21) pass, 43 of 43 (2026-11-09). Picked flax can be banked or spun (OQ-52, env contract v1.38). Caleb confirmed
-  every env contract version to v1.38 and option catalog v1.4 on 2026-11-09; v1.42 is to confirm.
+  every env contract version (to v1.42), option catalog v1.4 and the guide's fifth revision on 2026-11-09.
 - [ ] Speed up the action mask without changing its results, one day at most. It's 92% of a decision's time, and
   training runs at about 1M decisions an hour.
 - [ ] `scripts/train.py`:

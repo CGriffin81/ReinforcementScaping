@@ -1,6 +1,6 @@
 # Scripted-Guide Baseline
 
-> **Fifth revision (2026-11-09), for Caleb's review before E1.** Sim v1's four skills join the schedule (Caleb,
+> **Fifth revision (2026-11-09), signed off by Caleb the same day** as E1's scripted-guide baseline. Sim v1's four skills join the schedule (Caleb,
 > OQ-53), each by its January 2009 page ([43]–[48]), with the rules Caleb set while it was built:
 > - **Agility** ([45]): the Gnome Stronghold course to 51, the Wilderness course from 52. The page's Werewolf
 >   Skullball (25–52) and Ape Atoll (80+) aren't in the sim, so the courses beside them stretch.

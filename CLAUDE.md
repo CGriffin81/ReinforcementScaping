@@ -53,6 +53,10 @@ Claude writes the code; Caleb reviews and runs it. So:
   changes what the report claims. Present options with a recommendation; don't
   decide these yourself.
 - Commit or push only when Caleb asks.
+- Each experiment runs on its own branch, `experiment/<name>` (Caleb, 2026-11-09, OQ-61). It starts from `main`,
+  where the `sim-v1` tag marks the frozen sim, and holds only its config, the code only it uses, its committed
+  summary (`results/summary/<name>/`) and its records. It never changes the sim. It merges into `main` by its
+  own PR once its run is checked. Tooling several experiments share goes into `main` first, by its own PR.
 
 ## AI interaction logging (mandatory)
 

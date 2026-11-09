@@ -6557,3 +6557,54 @@ Caleb, 2026-11-09: "Env contract 1.38 is accepted." `m002-confirm-138-pr`.
   observation's task one-hot (18).
 - **Still to confirm:** v1.42 (`kill_cows`: its site, plan and ammunition), and the scripted guide's fifth revision
   (`docs/scripted-guide-draft.md`), before E1.
+
+### Confirmed: every env contract version (to v1.42) and the scripted guide's fifth revision (Caleb); sim v1 frozen
+Caleb, 2026-11-09: "All environment contracts are approved. The guide is approved. After this branch is merged in, I
+want to start new branches to allow each experiment to be independently run for reproducibility." `m002-freeze`.
+- **Approved:**
+  - every env contract version to v1.42, including v1.42's choices of `kill_cows`' site, plan and ammunition;
+  - option catalog v1.4;
+  - the scripted guide's fifth revision (`docs/scripted-guide-draft.md`), as E1's scripted-guide baseline.
+- **So sim v1 is frozen,** a day ahead of the finishing plan's Nov 10. Its contract changes only by a new version
+  Caleb approves.
+- **Next (Caleb):** once PR #8 is merged, each experiment runs on its own branch, so it can be run again on its own.
+  The scheme is for Caleb to confirm (`m002-freeze`).
+
+### Decided: OQ-61, one branch per experiment, `experiment/<name>` (Caleb)
+Caleb, 2026-11-09: "OQ 61 - The recommendations are all good, but I want the branches to be experiment/<name>, rather
+than exp." `m002-oq61`.
+- **The question** (raised the same day from Caleb's "start new branches to allow each experiment to be independently
+  run for reproducibility"): how the branches work.
+- **The options:**
+  - **(a) recommended:**
+    - a `sim-v1` tag on PR #8's merge commit;
+    - shared tooling first, on short PRs that don't change results;
+    - a branch per experiment, holding only its config, its own code, its committed summary and its records;
+    - the sim never changed on an experiment branch;
+    - each experiment merged into `main` by its own PR.
+  - **(b):** the experiment branches left unmerged.
+- **Caleb: (a), with the branches named `experiment/<name>`:**
+
+  | Branch | Experiment |
+  |---|---|
+  | `experiment/e1-baselines` | E1 |
+  | `experiment/ladder` | the sanity ladder |
+  | `experiment/e2-weights` | E2 |
+  | `experiment/e3-rnd` | E3 |
+  | `experiment/e5-gamma` | E5's γ_hr sweep |
+  | `experiment/e5-pbrs` | E5's PBRS |
+  | `experiment/rq3-conditioned` | the weight-conditioned PPO |
+
+- **The rules,** as CLAUDE.md and ROADMAP now state them:
+  - **What a branch holds:** each `experiment/<name>` starts from `main` and holds only:
+    - its config (`configs/<name>.yaml`);
+    - the code only it uses;
+    - its results summary (`results/summary/<name>/`, with the git SHA, the fork's SHA and the config hash);
+    - its records.
+  - **The sim:** a branch never changes it. A sim change goes through its own PR and a contract version, and the
+    experiments it touches run again.
+  - **Tooling** several experiments share is a PR into `main` first: the mask speed-up, `train.py` with the decision
+    logger, and the un-ignored `results/summary/`. None changes results; the speed-up's proof is identical
+    trajectories on E1's 30 seeds.
+  - **Merging:** each experiment merges into `main` by its own PR once its run is checked. To run it again, check out
+    its merge commit and run its one command.

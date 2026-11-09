@@ -1,8 +1,8 @@
 # Environment Contract (v1.42, Signed off)
 
-**Status:** v1.42, 2026-11-09. Caleb confirmed every version to v1.37 on 2026-11-09. Any change needs Caleb's
+**Status:** v1.42, 2026-11-09. Caleb confirmed every version, to v1.42, on 2026-11-09: sim v1's contract is frozen. Any change needs Caleb's
 approval and is logged in `docs/decision-log.md`.
-- **v1.42** (2026-11-09, Caleb; the choices of site, plan and ammunition Claude's, to confirm) adds `kill_cows`,
+- **v1.42** (2026-11-09, Caleb; the choices of site, plan and ammunition Claude's, confirmed by Caleb on 2026-11-09) adds `kill_cows`,
   Crafting's gathering path for hides (option catalog §2): it fights cows with the plan that kills them fastest
   and whose ammunition lasts a load, keeps the hides and normal bones, buries the bones as the inventory fills, and
   ends at a full inventory of hides. Its task is the class fought. It's a path in the skilling slots, so the
