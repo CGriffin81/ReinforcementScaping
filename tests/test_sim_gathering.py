@@ -156,8 +156,10 @@ def test_fresh_character_can_chop_mine_copper_and_tin_net_shrimp_and_pickpocket(
     sim.reset(seed=0)
     paths = {p.id for p in path_options() if p.available(sim.state)}
     assert paths == {"wc_logs", "wc_logs_burn", "mine_copper", "mine_tin", "fish_shrimp", "fish_shrimp_cook",
-                     "fish_shrimp_swamp", "fish_shrimp_swamp_cook", "pickpocket_men", "pick_flax"}
+                     "fish_shrimp_swamp", "fish_shrimp_swamp_cook", "pickpocket_men", "pick_flax",
+                     "mine_essence"}  # the starter kit's bronze pickaxe and Aubury's teleport
     slots = {o.id for o, ok in zip(sim.options, sim.action_mask()) if ok and o.family == "gathering"}
     assert slots == {f"skill_{s}_xp{n}" for s in ("woodcutting", "fishing", "mining") for n in (1, 2)} | {
         "skill_thieving_xp1", "skill_fishing_gp1", "skill_fishing_gp2",
-        "skill_crafting_gp1"}  # two shrimp sites: four fishing paths; picking flax, no XP: a gp slot
+        "skill_crafting_gp1", "skill_mining_gp1"}  # two shrimp sites: four fishing paths; picking flax, no XP: a
+    # gp slot; three mining paths with essence: one fills a gp slot

@@ -5109,3 +5109,95 @@ fork (Recommended)". `m002-flaky-tests-and-regions`.
   with it once that server had stopped.
 - **Test:** `test_the_servers_measured_times_a_batch_starts_with_its_clicks`; the timing tests take the start. The
   full suite on instance 5: 409 passed.
+
+### Built (sim v1, Herblore part 1): herbs and the 21 potions, with grinding; Herblore's slots
+2026-11-08, `docs/sim-v1-skills-draft.md` §4 (OQ-2's Choices E (a), F (a) and A (a), Caleb). `m002-commit-herblore`.
+- **The data** (`gamedata.server`, from content/global/skill/herblore):
+  - `herbs()`: Herbs' 15 standard herbs, guam to torstol (the quest herbs after them are left out).
+  - `herblore_potions()`: FinishedPotion's 21 standard potions (`STANDARD_POTIONS`). Each has its clean herb, its
+    unfinished potion and that's level (UnfinishedPotion), its secondary, level, XP and three-dose product. The
+    Saradomin brew's secondary is the crushed nest (GrindingItem's).
+  - `grindings()`: GrindingItem, a whole ingredient to its dust.
+- **The times, from the server's source** (`rlscape/sim/herblore.py`; to measure on the server):
+  - cleaning: an item option that locks a tick, so a herb a tick (`CLEAN_TICKS`);
+  - unfinished potions: one a tick in a batch; a lone one, or a lone finished one, after 4 ticks (`HerblorePulse`'s
+    3-tick wait), with no how-many;
+  - finished potions: from 4 ticks, then one every 3;
+  - grinding: one every 2 (`GrindItemPlugin`).
+  Each batch starts with `START_TICKS` of clicks, assumed at the 3 Crafting's skill dialogue measured, until
+  Herblore's are measured.
+- **The paths** (36), at the nearest bank as Crafting's are:
+  - `clean_<herb>` (15): a load of the grimy herb, cleaned, banked, again.
+  - `potion_<potion>` (21): a load of as many units as fit, each from what's there. The base is an unfinished potion,
+    or a vial of water and the herb, clean or grimy (cleaned first, for its XP too). The secondary is the dust, or
+    its whole ingredient ground first, with the pestle and mortar taken out for it (Choice F (a)). The stages run in
+    order: grind, clean, the unfinished potions, the finished ones.
+  - Claude's choice, reversible: the base is a vial of water (79 gp at January 2009 prices). The draft's *V* list says
+    "vials (empty)", but `HerblorePulse` takes a vial of water, and no option fills vials at a water source.
+- **Slots and sizes** (env contract v1.25, to confirm): Herblore's 4 skilling slots, a `herblore` kit (the pestle and
+  mortar and the herblore inputs carried) and task. 1,832 actions, 2,826 features. The skilling slots' rate
+  (`skilling._herb_rate`) weighs a potion load's stages by the share of units from unfinished potions, grimy herbs and
+  whole ingredients.
+- **Speed:** about 100 decisions a second in one process, against about 106 with Herblore's paths left out. Those were
+  interleaved runs under the other sessions' servers and tests, whose load swung the runs between 86 and 117.
+- **Working beside two other sessions** (Caleb's Runecrafting and Agility sessions, in the same checkout):
+  `skilling.py`, `encoding.py`, `kits.py` and the two count tests now hold both Herblore's and Runecrafting's edits.
+  The sessions agreed on who edits which shared file when, and that nobody commits another's work.
+- **Tests:** `tests/test_sim_herblore.py` (7): the enums, the pulses' timing, cleaning, a potion load from grimy herbs,
+  unfinished potions and grinding, the slots, kit and rate.
+- **Next:** Herblore's inputs in *V* and the GE buys (Choice I (a)), then its times measured on the server.
+
+### Built (sim v1, Runecrafting part 1): essence mining and the rc_<rune> paths; Runecrafting's slots
+2026-11-08, building `docs/sim-v1-skills-draft.md` §5 (Caleb: "Work on Runecrafting."). `m002-runecrafting`.
+- **The server's data** (`rlscape/gamedata/runecrafting.py`): the runes (`Rune.java`), the ruins (`MysteriousRuins`:
+  the tile outside and where entering lands), the talismans and tiaras, the essence wizards and the mine's landing spots
+  (`EssenceTeleport`), and essence mining's pickaxe delays (`MiningListener`). rl.conf's
+  `runecrafting_formula_revision` is 530, where an essence makes as many runes as the multiple levels reached, with no
+  chance of one more between them (`RuneCraftPulse.getMultiplier`). The Lumbridge diary's bonus never applies.
+- **`mine_essence`** (`MineEssence`, a Mining path):
+  - walk to the nearest wizard who teleports to the mine (Aubury, Cromperty or Distentor; Sedridor's basement is off
+    the travel map), then his Teleport, to one of the seven landing spots at random;
+  - walk to the nearest essence rock (the pathfinder's steps on the server from each spot: 1 to 20);
+  - mine to a full inventory. Essence always succeeds: an essence every pickaxe delay plus the script's extra tick
+    (bronze 8, rune 3), 5 Mining XP each, pure essence from Mining 30;
+  - then the mine's portal back to the wizard.
+  - It ends there, with a full inventory, as gathering paths do (catalog §1). The draft had it banking (Claude's
+    choice, reversible, as picking flax's).
+- **`rc_<rune>`** (`RunecraftAtRuins`, between the nearest bank and the ruins, as tanning and spinning are):
+  - At the bank it banks all but the essence and the talisman, and takes out the talisman and a load of one kind of
+    essence: rune essence first for air to body, as `getEssenceItem` crafts them, and pure only for the rest.
+  - Then it enters the ruins with the talisman, crafts every essence carried at the altar, and leaves by the portal.
+  - Nine runes: air, mind, water, earth, fire, body, chaos, nature and law, the ruins the travel model reaches.
+  - Law's ruins are on Entrana, so the path banks the worn weapons and armour the monks refuse (the travel model's
+    boat rule).
+  - Nature's are reached from Draynor's bank by the Karamja boat, so the path carries 60 gp for the fares.
+    Shilo Village's bank is walled off from the ruins on the travel map (535 ticks to them, more than from
+    Lumbridge).
+  - **Cosmic's ruins are in Zanaris**, which the travel model doesn't map, so `rc_cosmic` isn't built. New question:
+    OQ-45. Death's altar comes with the Abyss; astral and blood stay out (OQ-39).
+- **Inside the ruins** (found with `debug_nearby` on the server, setup only): the steps from the landing to the altar
+  and the tiles from the altar to the portal: air 4 and 5, mind 12 and 13, water 2 and 12, earth 10 and 11, fire 15
+  and 9, body 5 and 6, law 12 and 14, nature 5 and 6. They're walked with run energy, as walks outside are.
+  - Chaos's altar is at the foot of a maze three floors below its landing: an estimate (30 tiles and 3 changes of
+    floor each way), to measure.
+  - Entering (3 ticks), crafting (4, the altar's lock), leaving (3), the wizard's teleport (5) and the mine's portal
+    (3) are estimates, to measure on the server next.
+- **Found:** at the frozen 2009 prices, fire and body runes lose gold at the levels a character reaches them early.
+  Two runes an essence don't cover 44 gp of rune essence. Air, law and nature gain: at Runecrafting 60, about 35,000,
+  145,000 and 31,000 gp/hr from Lumbridge's banks.
+- **The slots:** Runecrafting joins `SKILLS`, with its 4 slots, a `runecrafting` task and a kit (the essence and
+  talismans carried). `mine_essence` goes in Mining's slots: from a fresh character, it takes Mining's first gp slot,
+  since a fresh character's bronze pickaxe and Aubury's teleport open it.
+  - 1,836 actions and 2,851 features with Herblore's (env contract v1.26, to confirm).
+- **Built alongside:** `crafting.AtStation` asks its own `station()`, so a subclass picks its station; tanning and
+  spinning are unchanged.
+- **Tests:** `tests/test_sim_runecrafting.py` (7): the runes at revision 530, the ruins and talismans, mining essence,
+  a path's loads, the essence kinds, law's arms and nature's fares, the slots, kit and rates. The counts in
+  `test_vocabulary`, `test_sim_skilling` and `test_sim_gathering`.
+- **Speed:** with and without Runecrafting's paths, alternating in one process: 105 and 101 decisions a second after the
+  first warm-up, so no measurable cost. `scripts/benchmark_sim.py` gave 56 while three other sessions were using the
+  machine.
+- **Three sessions, one checkout:** Herblore, Agility and Runecrafting were built at once by three Claude sessions in
+  this working tree. They agreed by message which shared lines each adds (`skilling.py`, `encoding.py`, `kits.py`, the
+  count tests), each its own server instance (Agility 5, Runecrafting 6, Herblore 7), the contract's version numbers
+  and the questions' ids. Commits stage explicit paths only.

@@ -106,7 +106,8 @@ REGION_RADIUS = 60  # tiles (Chebyshev)
 CANDIDATE_FEATURES = ("xp_per_hour", "gp_per_hour", "damage_vs_food", "travel", "open")
 SKILLING_FEATURES = ("gather_xp_per_hour", "process_xp_per_hour", "gp_per_hour", "travel", "open")
 TASKS = ("none", "woodcutting", "mining", "fishing:SMALL_NET", "fishing:LURE", "fishing:LOBSTER_CAGE", "thieving",
-         "fletching", "crafting", "processing", "combat:melee", "combat:ranged", "combat:magic")
+         "fletching", "crafting", "herblore", "runecrafting", "processing", "combat:melee", "combat:ranged",
+         "combat:magic")
 
 
 @dataclass(frozen=True)

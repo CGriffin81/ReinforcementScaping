@@ -1,6 +1,11 @@
-# Environment Contract (v1.24, Signed off)
+# Environment Contract (v1.26, Signed off)
 
-**Status:** v1.24, 2026-11-08. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
+**Status:** v1.26, 2026-11-08. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
+- **v1.26** (2026-11-08, building sim v1's Runecrafting per OQ-2; to confirm) adds Runecrafting's 4 skilling slots
+  (§3): 4 actions, their 20 candidate features and 4 mask entries, and a runecrafting task. 1,836 actions, 2,851
+  features.
+- **v1.25** (2026-11-08, building sim v1's Herblore per OQ-2; to confirm) adds Herblore's 4 skilling slots (§3): 4
+  actions, their 20 candidate features and 4 mask entries, and a herblore task. 1,832 actions, 2,826 features.
 - **v1.24** (2026-11-08, building sim v1's Crafting per OQ-2's Choices A (a) and I (a); to confirm) adds Crafting's
   inputs: 25 GE buys (§2) and the 18 of them not yet in *V* (*V* 297), each with its 5 actions and 2 features. 1,828
   actions, 2,801 features.
@@ -144,9 +149,9 @@ roughly [0, 1].
 | Equipment | E | tier index / max tier per slot: weapon (melee / ranged / staff), ammunition, head, body, legs, shield; tools (axe, pickaxe, fishing gear); cape (Ava's devices: attractor 1, accumulator 2) |
 | Region | R | one-hot over the catalog's regions |
 | Combat candidates | C × 5 | for each candidate slot: XP/hr, gp/hr, expected damage taken per hour vs food held, travel minutes, Slayer / level eligibility (option catalog §4) |
-| Skilling candidates | 24 × 5 | per skilling slot (option catalog §2; Crafting's 4 since v1.23): the gathering skill's XP/hr, its processing counterpart's XP/hr, gp/hr, travel, open; scaled as the combat candidates |
+| Skilling candidates | 32 × 5 | per skilling slot (option catalog §2; Crafting's 4 since v1.23, Herblore's since v1.25, Runecrafting's since v1.26): the gathering skill's XP/hr, its processing counterpart's XP/hr, gp/hr, travel, open; scaled as the combat candidates |
 | Loot mode | 4 | one-hot: all / valuable / vocabulary / none (option catalog §4.D) |
-| Task | 13 | one-hot: the last activity's task (none, woodcutting, mining, the three fishing methods, thieving, fletching, crafting, processing, the three combat classes), which decides what `bank_deposit` keeps (option catalog §5) |
+| Task | 15 | one-hot: the last activity's task (none, woodcutting, mining, the three fishing methods, thieving, fletching, crafting, herblore, runecrafting, processing, the three combat classes), which decides what `bank_deposit` keeps (option catalog §5) |
 | Access | A | 0/1 per access rule (`data/access_areas.csv`, A = 55 today; `access.unlocked_rules`): unlocked by quests, items held, levels or coins (option catalog §4.C). Rules decided by quests alone are constant, since the quests are complete from the start |
 | Mask | N | the action mask |
 | Preference | 2 | (w_s, w_b), for the E4 agent only |
@@ -157,10 +162,10 @@ option catalog.
 **As built** (`rlscape/envs/encoding.py`, 2026-10-30): E = 12 roles (weapons for melee, ranged and magic,
 ammunition, head, body, legs, shield, axe, pickaxe, fishing gear), R = 12 (the catalog's 11 regions and
 "elsewhere"), C = 18 slots (6 per combat class). The encoder's docstring lists how each part is scaled. With the
-catalog as built (1,828 actions, *V* = 297) the vector has 2,801 features (v1.12 dropped the quest part's 64; v1.13
+catalog as built (1,836 actions, *V* = 297) the vector has 2,851 features (v1.12 dropped the quest part's 64; v1.13
 added 7 buys and 27 items; v1.14 11 buys, 11 items and the potions part's 22; v1.16 2 buys, 2 items and the cape role;
 v1.17 64 buys and 63 items; v1.19 the home teleport's wait; v1.23 Crafting's slots and task; v1.24 25 buys and 18
-items).
+items; v1.25 Herblore's slots and task; v1.26 Runecrafting's).
 
 **Left out on purpose:** GE prices. They're frozen, so a price snapshot would be a constant.
 

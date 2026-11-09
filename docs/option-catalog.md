@@ -2,7 +2,7 @@
 
 **v1.4** (2026-11-08, building sim v1 per OQ-2 and `docs/sim-v1-skills-draft.md`; to confirm when the four skills
 are built): Crafting's skilling slots and paths (§2), and XP slots hold only paths that give XP; Crafting's inputs in
-*V* and the GE buys (§8, §9). The other three skills come next.
+*V* and the GE buys (§8, §9); Herblore's skilling slots and paths (§2).
 
 **Status:** v1.3, 2026-11-06: quests are out, and every quest the server has is complete from the start (Caleb;
 §10); the anti-dragon shield, the dragon dagger and longsword and the Fremennik helms are bought on the GE (§4.B,
@@ -55,8 +55,8 @@ each target's spawn area.
 
 **Skilling slots** (Caleb, 2026-10-30/31; `rlscape/sim/skilling.py`). Like the combat slots (§4), each gathering
 skill offers its best **paths** by XP/hr and by gp/hr at the current levels, gear and position, as actions, and
-agents choose a path, not a fixed method. Six skills (Woodcutting, Fishing, Mining, Thieving, Fletching, Crafting) ×
-2 slots by XP/hr + 2 by gp/hr = 24 actions, `skill_<skill>_xp1/xp2/gp1/gp2`. They replace the 31 fixed gathering and thieving
+agents choose a path, not a fixed method. Seven skills (Woodcutting, Fishing, Mining, Thieving, Fletching, Crafting,
+Herblore) × 2 slots by XP/hr + 2 by gp/hr = 28 actions, `skill_<skill>_xp1/xp2/gp1/gp2`. They replace the 31 fixed gathering and thieving
 actions.
 A path in an XP slot doesn't also fill a gp slot (the next best takes its place, as in combat), and slots are
 recomputed every decision. The observation carries each slot's rates (env contract §3).
@@ -88,10 +88,18 @@ station: `tan_<leather>` (6, at a tanner, for its fee and no XP) and `spin_wool`
 ticks). Flax is picked in Seers' Village's field (`pick_flax`, kept, no XP) or picked and spun at the Seers' wheel
 (`pick_flax_spin`), both ending at a full inventory. The agent buys the inputs on the GE (§9).
 
+**Herblore** (sim v1, v1.4; Caleb, 2026-11-08, OQ-2's Choices E (a) and F (a); `rlscape/sim/herblore.py`) has paths
+at a bank too: `clean_<herb>` (15, the grimy herb cleaned, a herb a tick, for its XP) and `potion_<potion>` (the 21
+standard potions). A potion path takes out as many units as fit (3 slots a unit, 2 from unfinished potions, and one
+for a pestle and mortar if it grinds) and makes each from what's there: an unfinished potion, or a vial of water and the herb (clean, or grimy and cleaned first, for
+its XP too); and the secondary, or its whole ingredient ground first, with a pestle and mortar taken out for it. The
+stages are the server's (`HerblorePulse`, `GrindItemPlugin`): the unfinished potions one a tick, the finished ones
+one every 3 ticks, grinding one every 2, each batch after its clicks. The product has three doses.
+
 A path that gives no XP (tanning, picking flax) fills only a gp slot: the XP slots take the best paths that give XP
 (v1.4).
 
-That's 83 paths: woodcutting 12, fishing 8, mining 7, thieving 20, fletching 36; and crafting's 39 (sim v1). Mining's include iron at the Al
+That's 83 paths: woodcutting 12, fishing 8, mining 7, thieving 20, fletching 36; and crafting's 39 and herblore's 36 (sim v1). Mining's include iron at the Al
 Kharid mine (Caleb, 2026-10-31), kept or smelted, beside Varrock's: scorpions roam it, so it costs a low-level miner
 hitpoints (below). Fishing's include shrimp at Lumbridge Swamp (Caleb, 2026-11-01), kept or cooked, beside
 Draynor's: Draynor's spots are next to the bank, but its Dark wizards make them dangerous for a character of combat

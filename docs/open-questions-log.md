@@ -39,3 +39,21 @@ Started 2026-10-31 (Caleb), from a review of the documentation.
   Sunday." Caleb hopes calibration was an unusually heavy lift and is nearly done. Reopens Sunday, 2026-11-08.
 - **Since:** Caleb cut quests on 2026-11-06 (every quest the server has is complete from the start), so sim v1 is
   the four skills only. The level-3 start stays.
+
+### OQ-45. Should the cosmic altar also be reached through Zanaris?
+- **Raised:** 2026-11-08, building Runecrafting (sim v1, `rlscape/sim/runecrafting.py`). Record
+  `m002-runecrafting`.
+- **The problem:** the cosmic ruins are in Zanaris (2406, 4375). A character enters Zanaris by the shed in Lumbridge
+  Swamp with a dramen staff wielded (`LostCityListeners`; Lost City is complete from the start). The travel model has
+  no map of Zanaris: it's off the surface map, where route planning only has a straight-line estimate. So `rc_cosmic`
+  isn't built; the other nine runes' ruins are. The dramen staff has no January 2009 GE price in
+  `data/prices_v2.csv`; a character would cut one from the dramen tree on Entrana.
+- **Options:**
+  - **(a) Recommended:** the cosmic altar only by the Abyss's cosmic rift, once the Abyss is built (the draft's §5).
+    No Zanaris route. Cosmic runes then need the Abyss's skull, its monsters and an obstacle.
+  - (b) Zanaris too: check the shed on the server, export Zanaris's collision map, add the shed as a travel link,
+    and give the dramen staff a way in (a set GE price, as the barbarian rod's, or the Entrana tree). About a day.
+  - (c) Leave cosmic runes out entirely.
+- **Decides:** Caleb (scope).
+- **Blocks:** `rc_cosmic` only.
+- **Status:** open.

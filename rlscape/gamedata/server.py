@@ -898,6 +898,100 @@ def spinning_recipes() -> dict[str, SpinRecipe]:
     return {key: SpinRecipe(key, *rows[name]) for key, name in (("wool", "WOOL"), ("flax", "FLAX"))}
 
 
+HERBLORE = SERVER_CONTENT / "global" / "skill" / "herblore"
+VIAL_OF_WATER, PESTLE_AND_MORTAR = 227, 233
+# OQ-2's Choice E (a) (Caleb, 2026-11-08): FinishedPotion's 21 standard potions, without the quest and minigame mixes,
+# weapon poisons, Summoning and Hunter potions
+STANDARD_POTIONS = ("ATTACK_POTION", "ANTIPOISON_POTION", "STRENGTH_POTION", "RESTORE_POTION", "ENERGY_POTION",
+                    "DEFENCE_POTION", "AGILITY_POTION", "COMBAT_POTION", "PRAYER_POTION", "SUPER_ATTACK",
+                    "SUPER_ANTIPOISON", "FISHING_POTION", "SUPER_ENERGY", "SUPER_STRENGTH", "SUPER_RESTORE",
+                    "SUPER_DEFENCE", "ANTIFIRE", "RANGING_POTION", "MAGIC", "ZAMORAK_BREW", "SARADOMIN_BREW")
+STANDARD_HERBS = 15  # Herbs' first 15, guam to torstol; the rest are quest herbs (snake weed, ardrigal, ...)
+
+
+@dataclass(frozen=True)
+class Herb:
+    """A Herbs constant: a grimy herb cleaned (an item option) for its XP, from its level."""
+
+    name: str  # e.g. "guam", "dwarf_weed"
+    grimy: int
+    clean: int
+    level: int
+    experience: float
+
+
+@dataclass(frozen=True)
+class Potion:
+    """A standard potion (FinishedPotion), as a path makes it: the clean herb into a vial of water makes the
+    unfinished potion (UnfinishedPotion, no XP, from `unfinished_level`), and the secondary finishes it into the
+    three-dose potion, for the XP, from `level`."""
+
+    name: str  # e.g. "attack", "super_restore", "zamorak_brew"
+    herb: int  # the clean herb
+    unfinished: int
+    unfinished_level: int
+    secondary: int
+    level: int
+    experience: float
+    product: int  # the three-dose potion
+
+
+def _item_const(text: str) -> int:
+    """An `Items.NAME_123` constant's id (org.rs09.consts.Items names end in the id)."""
+    return int(re.search(r"_(\d+)$", text).group(1))
+
+
+@cache
+def herbs() -> dict[str, Herb]:
+    text = (HERBLORE / "Herbs.java").read_text(encoding="utf-8")
+    rows = re.findall(r"([A-Z_]+)\(new Item\((\d+)\),\s*([\d.]+),\s*(\d+),\s*new Item\((\d+)\)\)", text)
+    return {name.lower(): Herb(name.lower(), int(grimy), int(clean), int(level), float(xp))
+            for name, grimy, xp, level, clean in rows[:STANDARD_HERBS]}
+
+
+@cache
+def unfinished_potions() -> dict[str, tuple[int, int, int]]:
+    """UnfinishedPotion's vial-of-water ones: herb name -> (the clean herb, the unfinished potion, the level)."""
+    text = (HERBLORE / "UnfinishedPotion.kt").read_text(encoding="utf-8")
+    clean = {h.name: h.clean for h in herbs().values()}
+    out = {}
+    for name, herb, level, potion in re.findall(
+            r"([A-Z_]+)\(Item\(Items\.VIAL_OF_WATER_227\),\s*Herbs\.([A-Z_]+)\.product,\s*(\d+),\s*Item\(Items\.([A-Z_0-9]+)\)\)",
+            text):
+        if herb.lower() in clean:
+            out[name.lower()] = (clean[herb.lower()], _item_const(potion), int(level))
+    return out
+
+
+@cache
+def grindings() -> dict[int, int]:
+    """GrindingItem: a whole ingredient -> its dust, ground with a pestle and mortar (one every 2 ticks, no XP)."""
+    text = (HERBLORE / "GrindingItem.java").read_text(encoding="utf-8")
+    return {_item_const(whole): _item_const(dust) for whole, dust in re.findall(
+        r"new Item\[\]\s*\{\s*new Item\(Items\.([A-Z_0-9]+)\)\s*\},\s*new Item\(Items\.([A-Z_0-9]+)\)", text)}
+
+
+@cache
+def herblore_potions() -> dict[str, Potion]:
+    text = (HERBLORE / "FinishedPotion.kt").read_text(encoding="utf-8")
+    grind = (HERBLORE / "GrindingItem.java").read_text(encoding="utf-8")
+    ground = {name: _item_const(dust) for name, dust in re.findall(
+        r"([A-Z_]+)\(new Item\[\][^}]*\},\s*new Item\(Items\.([A-Z_0-9]+)\)\)", grind)}
+    unf = unfinished_potions()
+    out = {}
+    for name, herb, secondary, level, xp, product in re.findall(
+            r"^\s*([A-Z_]+)\(UnfinishedPotion\.([A-Z_]+)\.potion,\s*(Item\(Items\.[A-Z_0-9]+\)|GrindingItem\.[A-Z_]+"
+            r"\.product),\s*(\d+),\s*([\d.]+),\s*Item\(Items\.([A-Z_0-9]+)\)", text, re.M):
+        if name not in STANDARD_POTIONS:
+            continue
+        clean, unfinished, unf_level = unf[herb.lower()]
+        second = (ground[secondary.split(".")[1]] if secondary.startswith("GrindingItem")
+                  else _item_const(secondary[len("Item(Items."):-1]))
+        key = name.lower().removesuffix("_potion")
+        out[key] = Potion(key, clean, unfinished, unf_level, second, int(level), float(xp), _item_const(product))
+    return out
+
+
 @cache
 def ground_spawns(item: int) -> tuple[tuple[tuple[int, int, int], int], ...]:
     """(tile, respawn ticks) for each spawn of an item (data/configs/ground_spawns.json, read by GroundSpawnLoader:

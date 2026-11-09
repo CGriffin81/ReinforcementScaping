@@ -49,6 +49,9 @@ from rlscape.sim.economy import nearest_bank
 from rlscape.sim.fishing import Fishing, fishing_options
 from rlscape.sim.fletching import FIRST_TICK as FLETCH_FIRST
 from rlscape.sim.fletching import FletchAtBank, FletchLogs, fletching_paths
+from rlscape.sim.herblore import (CLEAN_TICKS, CleanAtBank, PotionAtBank, finished_ticks, grind_ticks,
+                                  herblore_paths, unfinished_ticks)
+from rlscape.sim.runecrafting import MineEssence, RunecraftAtRuins, runecrafting_paths
 from rlscape.sim.gathering import respawn_ticks, site_offsets
 from rlscape.sim.kits import kit
 from rlscape.sim.mining import ATTEMPT_TICKS as MINE_TICKS
@@ -65,7 +68,7 @@ from rlscape.sim.woodcutting import AFTER_LOG_TICKS, FELL_CHANCE, SWING_TICKS, W
     skill_success_chance, woodcutting_options
 from rlscape.travel import BANKING_TICKS, travel_ticks
 
-SKILLS = ("woodcutting", "fishing", "mining", "thieving", "fletching", "crafting")
+SKILLS = ("woodcutting", "fishing", "mining", "thieving", "fletching", "crafting", "herblore", "runecrafting")
 PROCESSED_BY = {"woodcutting": "firemaking", "fishing": "cooking", "mining": "smithing"}
 K_XP = K_GP = 2  # Caleb, 2026-10-31: 2 by XP + 2 by gp per skill
 TICKS_PER_HOUR = 6000
@@ -164,7 +167,8 @@ def path_options() -> list[Path]:
     paths += [Path("thieving", option) for option in (*pickpocket_options(), *stall_options())]
     flax = PickFlax()
     paths += [Path("crafting", flax), Path("crafting", flax, SpinFlaxAtWheel(), "_spin")]
-    return [*paths, *fletching_paths(), *crafting_paths(), *station_paths()]
+    return [*paths, *fletching_paths(), *crafting_paths(), *station_paths(), *herblore_paths(), MineEssence(),
+            *runecrafting_paths()]
 
 
 @dataclass(frozen=True)
@@ -374,6 +378,40 @@ def _station_rate(path: AtStation, state: CharacterState, duration_ticks: int) -
     return PathRate(per_hour * xp, 0.0, per_hour * gain, travel)
 
 
+def _herb_rate(path: CleanAtBank | PotionAtBank, state: CharacterState, duration_ticks: int) -> PathRate:
+    """A Herblore path, as a Crafting one: loads at the nearest bank, as many as the inputs held make, within the
+    option. A potion load's stages are weighed by the share of its units that start from unfinished potions, grimy
+    herbs and whole ingredients (rlscape.sim.herblore). Its gp is what the products are worth over the inputs."""
+    values = gd.item_values()
+    bank = nearest_bank(state)
+    travel = travel_ticks(state.location, (bank.x, bank.y, bank.plane), home_ready(state)) + BANKING_TICKS
+    held = path.held_units(state)
+    if isinstance(path, CleanAtBank):
+        h = path.herb
+        load = max(min(held, INVENTORY_SLOTS), 1)
+        load_ticks, xp, gain = load * CLEAN_TICKS + BANKING_TICKS, h.experience, values.get(h.clean, 0) - values.get(
+            h.grimy, 0)
+    else:
+        p, h, s = path.potion, path.herb, path.sources(state, True)
+        units = max(held, 1)
+        unf = min(s.unfinished, units) / units  # units from unfinished potions
+        made = max(units - s.unfinished, 0)
+        grimy = max(made - s.clean, 0) / made if made else 0.0  # of those made, from grimy herbs
+        ground = max(units - s.secondary, 0) / units  # from whole ingredients
+        pestle = 1 if ground > 0 else 0
+        load = max(min(held, (INVENTORY_SLOTS - pestle) // (2 if unf >= 1 else 3)), 1)
+        load_ticks = (finished_ticks(load) + ground * grind_ticks(load) + BANKING_TICKS
+                      + (1 - unf) * (unfinished_ticks(load) + grimy * load * CLEAN_TICKS))
+        xp = p.experience + (1 - unf) * grimy * h.experience
+        base = unf * values.get(p.unfinished, 0) + (1 - unf) * (
+            values.get(gd.VIAL_OF_WATER, 0) + grimy * values.get(h.grimy, 0) + (1 - grimy) * values.get(p.herb, 0))
+        second = ground * values.get(path.whole or p.secondary, 0) + (1 - ground) * values.get(p.secondary, 0)
+        gain = values.get(p.product, 0) - base - second
+    loads = min(held / load, max(duration_ticks - travel, 0.0) / load_ticks)
+    per_hour = loads * load * TICKS_PER_HOUR / duration_ticks
+    return PathRate(per_hour * xp, 0.0, per_hour * gain, travel)
+
+
 def path_rate(path: Path, state: CharacterState, duration_ticks: int = ACTIVITY_TICKS) -> PathRate | None:
     """The path's XP/hr and gp/hr over an option of `duration_ticks`, or None if the model can't value it. A path's
     XP is in its own skill and, for a processing path, its counterpart."""
@@ -381,8 +419,12 @@ def path_rate(path: Path, state: CharacterState, duration_ticks: int = ACTIVITY_
         return _fletch_rate(path, state, duration_ticks)
     if isinstance(path, CraftAtBank):
         return _craft_rate(path, state, duration_ticks)
+    if isinstance(path, (MineEssence, RunecraftAtRuins)):  # before AtStation, which RunecraftAtRuins is
+        return PathRate(*path.rate(state, duration_ticks))
     if isinstance(path, AtStation):
         return _station_rate(path, state, duration_ticks)
+    if isinstance(path, (CleanAtBank, PotionAtBank)):
+        return _herb_rate(path, state, duration_ticks)
     keep = kit(state, path.task)
     room = INVENTORY_SLOTS - sum(1 if i in gd.stackable_items() else n for i, n in state.inventory.items()
                                  if i in keep)

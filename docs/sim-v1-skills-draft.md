@@ -194,7 +194,10 @@ The server makes three-dose potions. Dusts are ground with a pestle and mortar (
 chocolate bar, goat horn, blue dragon scale, bird's nest).
 
 **The paths:** `clean_<herb>` (15); `potion_<potion>` (21): from the clean herb (or grimy, cleaned on the way), a
-vial of water and the secondary, the unfinished potion made and finished in the one path.
+vial of water and the secondary, the unfinished potion made and finished in the one path. As built (2026-11-08,
+`rlscape/sim/herblore.py`): a unit can also start from an unfinished potion carried or banked, and grinding takes a
+pestle and mortar out with the load; the times are `HerblorePulse`'s and `GrindItemPlugin`'s, each batch after its
+clicks (to measure).
 
 **Choice E, the potions:** (a) *recommended*: the 21 above, leaving out the quest and minigame mixes (Relicym's balm,
 Serum 207, Blamish oil, Sanfew, Guthix balance, weapon poisons, Summoning and Hunter potions); (b) the combat ones

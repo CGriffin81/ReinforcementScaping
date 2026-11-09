@@ -260,10 +260,14 @@ class AtStation(Option):
     def _work(self, state: CharacterState, budget: int) -> OptionResult:
         raise NotImplementedError
 
+    def station(self, state: CharacterState) -> gd.Station | None:
+        """The station the path works at from where the character stands; a subclass can pick its own."""
+        return usable_station(state, self.station_kind)
+
     def available(self, state: CharacterState) -> bool:
         bank = nearest_bank(state)
         return (self.allowed(state) and self.held_units(state) > 0 and reachable(state, (bank.x, bank.y, bank.plane))
-                and usable_station(state, self.station_kind) is not None)
+                and self.station(state) is not None)
 
     def run(self, state: CharacterState, rng: np.random.Generator, budget: int) -> OptionResult:
         elapsed, detail = 0, {"path": self.id}
@@ -273,7 +277,7 @@ class AtStation(Option):
                 return OptionResult(budget, COMPLETED, detail=detail)
             elapsed += trip
             self._restock(state)
-            station = usable_station(state, self.station_kind)
+            station = self.station(state)
             if not self._loaded(state) or station is None:
                 return OptionResult(max(elapsed, 1), INPUTS_EXHAUSTED, detail=detail)
             walked = walk(state, station.tile, budget - elapsed, elapsed)
