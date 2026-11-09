@@ -5076,3 +5076,97 @@ fork (Recommended)". `m002-flaky-tests-and-regions`.
 - **Test:** `test_a_crafting_paths_inputs_are_bought_on_the_ge` (a fresh character buys a needle, thread and leather,
   and the glove path opens). The counts in `test_vocabulary` and `test_sim_buying`. Speed: 96 decisions a second in
   one process, as before.
+
+### Found: the animated spades' stuck runs are a spade left alive at 0 hitpoints, a server bug (OQ-42, OQ-43)
+2026-11-08, Caleb's task: find the cause of the bimodal magic case at the animated spades (band 61, (3420, 9657),
+OQ-19's site), left unexplained in the region fix's re-check above. `m002-spade-zero-hitpoints`.
+- **Reproduced** on the current fork (`321d759`, with the region fix), at 50 ms ticks: the runner's own `server_run`
+  for the case, traced tick by tick (`results/calibration/trace-spades-20261108-1927/`). Runs 0 to 2 killed 18, 15
+  and 17 spades. Run 3 killed none: 6 pickaxes, 1,211 recasts and 6 walk-backs, as the stored stuck runs show.
+- **What the stuck run casts at:** spade 11294, at 0 hitpoints and still alive. `npcs` lists it, and it walks and
+  attacks the character. Each spell swings and gives the spell's base Magic XP (34.5) with no hitpoints XP: a hit is
+  capped at the target's hitpoints when it's swung (`MagicSwingHandler.swing`), so it's 0. When the spade heals to 1,
+  the next hit takes it back to 0, and it still doesn't die. Run 3 began with that spade at 15 hitpoints: run 2's
+  character had dealt it 59 and was despawned at the budget.
+- **The cause, in the server:**
+  - A monster's killer is the player who dealt it the most damage (`ImpactHandler.getMostDamageEntity`, from the
+    monster's impact log, by account uid). The log is cleared only when the monster dies. If that player has left
+    the world, `Repository.getPlayerByUid` returns null, and the death starts with a null killer.
+  - The spades stand in the Abandoned Mine's zone (`AbandonedMineZone`, a Kotlin `MapArea`; mine floor 1 is
+    (3395, 9609) to (3448, 9664)). The zone that `ClassScanner` wraps around every `MapArea` declares
+    `startDeath(e: Entity, killer: Entity)`, with a non-null killer. So a null killer throws
+    (`NullPointerException: Parameter specified as non-null is null: ... parameter killer`) out of
+    `ImpactHandler.handleImpact` before the death task starts, with the hitpoints already at 0. The server's log has
+    130 of these, all during run 3, none in runs 0 to 2.
+  - So a spade a departed character dealt more than half its hitpoints can't be killed: the next character can deal
+    only what's left (and what the spade heals meanwhile), so the departed character's share stays the largest. Below
+    half, the spade dies normally, which is why it happens only sometimes.
+  - It latches. The stored stuck runs come in streaks: `combat-20261108-1914-i2` runs 3 and 4, `-1915-i4` runs 1 to 4
+    (run 2 got 5 kills, from the other spade), `-1850` runs 1 and 2. After run 3, a fresh character found spade 11294
+    still alive at 4 hitpoints, with the departed characters' damage still logged.
+  - A human logging out does the same; for an RL character, every despawn does. `getMostDamageEntity` returns the
+    killer itself for upstream's artificial players (`isArtificial()`), which RL characters aren't (treated as human).
+  - Not the region fix: nothing in this involves regions, as the A/B found (both builds got stuck).
+- **Why the runner never left that spade:** `STUCK_TICKS` waits for any XP, and each swing at the 0-hitpoint spade
+  gives base Magic XP. So it cast at it all run, and walked back only when a pickaxe held it under attack (6 times).
+- **Scope:** 107 of the sim's 2,185 combat sites are inside a Kotlin `MapArea`, counting literal borders only (71 in
+  `MorytaniaArea`, 13 in the Lair of Tarn, 7 in the Abandoned Mine, 5 at the Kalphite Queen). Of the 24 gate cases,
+  only the spades. Elsewhere a null killer doesn't throw: `DeathTask` makes the monster its own killer, and
+  `NPC.finalizeDeath` passes no player to `handleDrops`, so that kill's drops and credit go to no player. In
+  calibration, that's a monster the previous run's character dealt most of the damage to. It would bear on the loot
+  cases' gp/hr; not checked.
+- **Found on the way, in the runner (every run, the good ones too):** when a possessed pickaxe engages the character
+  in the middle of a spade fight, its casts on the spade are refused ("You're already under attack!",
+  `MapZone.checkMulti`). The runner keeps recasting until `STUCK_TICKS` walks it back, and only then fights the
+  pickaxe. That's 59, 124 and 50 ticks in the three good runs (3% to 8% of 1,500). In the sim, such an engagement
+  is a kill in the fight's plan, with no wait (`FightNeighbours`). The melee and ranged loops weren't checked for
+  the same thing. OQ-43.
+- **Nothing changed yet:** the server fix is OQ-42 and the runner fix OQ-43.
+
+### Decided and built: OQ-42, the Abandoned Mine's animated spades are hazards (Caleb); OQ-44 raised
+2026-11-08, Caleb: "OQ-42 - Treat the spades as hazards." `m002-spade-zero-hitpoints`.
+- **OQ-42** (raised in the entry above): a monster whose top damager has left the world dies with a null killer,
+  which in a Kotlin `MapArea` zone leaves it alive at 0 hitpoints.
+  - The options: (a) fix it in the fork: in `getMostDamageEntity`, the killer is the top damager still in the world,
+    or the hit's source (recommended); (b) fix it for RL characters only: a despawned one's uid leaves the monsters'
+    impact logs; (c) leave the server and work around it in the runner.
+  - Caleb: none of these. The spades are hazards, as Taverley's eastern Black Knights and the Fishing Guild's moss
+    giants are, and the server stays as it is.
+- **Built** (`candidates.HAZARDS`): the animated spades (5414) on the Abandoned Mine's first floor, by the server's
+  own zone ((3395, 9609) to (3448, 9664), plane 0), are never targets there (agent choice: the floor, as the zone
+  that throws has it). They stay in the world. The possessed pickaxe beside them stays a target and an aggressor.
+  The spades' other site, in the Chaos Tunnels (3182, 5447), stays a target: its zone isn't a Kotlin `MapArea`, so a
+  null killer doesn't throw there. The pool has 2,184 sites.
+- **The gate's case:** the ranker's top magic fight at band 61 (slot 0) is now the experiments at (3488, 9934) with
+  fire blast, the site that bands 31 and 91 use. On the server (3 runs, 200 sim runs): XP/hr 81,170 on the server
+  and 82,617 in the sim (1.02), kills/hr 80 and 83 (1.03), inside the ±20% gate. The runs killed 19, 21 and 18
+  experiments, no monster of another kind engaged, and the server's log has no NPEs
+  (`results/calibration/combat-20261108-2003-magic-b61-hazard.json`).
+- **Tests:** the hazards test checks that the spades' only site left is the Chaos Tunnels' and that the pickaxe
+  beside the mine's spades is still a target. The neighbour tests keep the mine as their example, since
+  `ENGAGE_PER_TICK` was fitted to the server there. They build its site as the pool built it before (its two spades,
+  `mine_site()`). Its bank, the Chaos Tunnels', doesn't matter where nothing is looted: the fights are the same, seed
+  for seed, as on the pool's own site (20 of 20). Full suite without a server: 343 passed, 64 skipped.
+- **Still open:** OQ-43 (the runner's recasting while held under attack) no longer touches a gate case: no other
+  magic case meets a monster of another kind. OQ-44 (raised): the null killer beyond the spades.
+
+### Decided and built: OQ-44 (a), the null killer beyond the spades is a documented gap, and the runner flags stuck monsters (Caleb)
+2026-11-08, Caleb: "OQ-44 (a): document". `m002-spade-zero-hitpoints`.
+- **OQ-44** (raised in the entry above): the server's null killer reaches beyond the spades. The possessed pickaxe
+  beside them and 106 other sites inside Kotlin `MapArea` zones can get a monster stuck at 0 hitpoints, and
+  elsewhere a kill's drops go to no player, whenever a departed character dealt the monster most of its damage.
+  - The options: (a) document it as a gap, and treat a monster as a hazard where a calibration or E6 run finds one
+    stuck, the runner flagging a target listed alive at 0 hitpoints (recommended); (b) make every target in a
+    Kotlin `MapArea` zone a hazard now (106 sites); (c) the fork fix after all (OQ-42 (a)).
+  - Caleb: (a).
+- **Documented:** `docs/post-project-gaps.md`, "A monster whose top damager has left the world dies with no killer":
+  what's missing, why, what it costs, how it's found and how to close it.
+- **Built** (`scripts/calibrate_combat.py`, `alive_at_zero`): every run now reads `npcs` for the case's monsters (only
+  magic and safespot runs did; the read changes nothing in the world). Any monster listed alive at 0 hitpoints, or
+  attacking the character at 0, goes into the run's `at_zero` (index and id), and the report prints a warning for
+  the case. A normal death starts in the same tick as the last hit and stops the monster's own fight
+  (`ImpactHandler.handleImpact`), and `npcs` lists no dying monster, so this needs no timing allowance.
+  - Checked on the four traced spade runs (the server's own readings): it flags spade 11294 at the reading where it
+    reached 0 in run 3, and nothing in the 4,481 readings of runs 0 to 2.
+  - A live smoke run (melee and magic rats, 300 ticks, one run each): it runs, and flags nothing.
+- **Not built:** `ServerEnv` doesn't exist yet; the gap says it should flag the same.

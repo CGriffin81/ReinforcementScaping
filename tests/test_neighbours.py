@@ -3,12 +3,14 @@ engage, how the rankers count them, and the sim's fights with them."""
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import numpy as np
 import pytest
 
 from rlscape.combat import neighbours as nb
 from rlscape.combat import safespots as ss
-from rlscape.combat.candidates import Character, Neighbours, enemy_pool, loot_rule, neighbour_kills, site_rates
+from rlscape.combat.candidates import Character, Neighbours, Site, enemy_pool, loot_rule, neighbour_kills, site_rates
 from rlscape.combat.rates import Plan, Rates, combat_rates
 from rlscape.sim.combat import FightNeighbours, fight
 from rlscape.sim.equipment import fighter_for, wield_best
@@ -16,13 +18,21 @@ from rlscape.sim.skills import SKILL_INDEX, XP_FOR_LEVEL
 from rlscape.sim.state import CharacterState
 
 SPADE, PICKAXE, RAT = 5414, 5413, 47
-SPADES = (3420, 9657, 0)  # the animated spades, with a possessed pickaxe spawned beside them
+# The animated spades in the Abandoned Mine, with a possessed pickaxe spawned beside them: where ENGAGE_PER_TICK was
+# fitted to the server. A hazard since 2026-11-08 (OQ-42), so not a site in the pool; the fights here still are.
+SPADES = (3420, 9657, 0)
 FIRE_BLAST = Plan("magic", "fire_blast")
 DEATH_RUNE, AIR_RUNE, STAFF_OF_FIRE = 560, 556, 1387
 
 
 def entry(npc_id: int):
     return next(e for e in enemy_pool() if e.npc.id == npc_id)
+
+
+def mine_site() -> Site:
+    """The spades' site in the Abandoned Mine, as the pool built it before it was a hazard: its two spades. Its bank
+    is the spades' other site's (the Chaos Tunnels'), which doesn't matter here: these fights loot nothing."""
+    return replace(entry(SPADE).sites[0], spawn=SPADES, spawns=2)
 
 
 @pytest.fixture(autouse=True)
@@ -76,7 +86,7 @@ def test_neighbour_fights_take_the_place_of_target_kills():
 def test_the_rankers_count_the_neighbours_while_aggression_lasts():
     state = caster()
     spades = entry(SPADE)
-    site = next(s for s in spades.sites if s.spawn == SPADES)
+    site = mine_site()
     fighter, rule = fighter_for(state), loot_rule("none")
     character = Character((3222, 3218, 0), state.max_hp(), state.hp, 0.0, state.free_slots(), None, "none",
                           combat_level=state.combat_level())
@@ -100,7 +110,7 @@ def test_the_rankers_count_the_neighbours_while_aggression_lasts():
 
 def test_the_sims_fight_kills_the_neighbours_that_engage_it():
     spades = entry(SPADE)
-    site = next(s for s in spades.sites if s.spawn == SPADES)
+    site = mine_site()
     totals = {"kills": 0, "neighbour_kills": 0}
     for seed in range(20):
         state = caster()
@@ -114,7 +124,7 @@ def test_the_sims_fight_kills_the_neighbours_that_engage_it():
 
 def test_no_neighbour_engages_after_the_tolerance_or_where_there_are_none():
     spades = entry(SPADE)
-    site = next(s for s in spades.sites if s.spawn == SPADES)
+    site = mine_site()
     state = caster()
     state.location, state.tick, state.region_since = SPADES, 5000, 0  # here for 5,000 ticks: tolerated
     result = fight(state, np.random.default_rng(0), 1500, spades, FIRE_BLAST, site, loot_rule("none"))
@@ -129,7 +139,7 @@ def test_a_fight_without_neighbours_draws_as_one_with_no_engagements(monkeypatch
     """Where none would engage, the fight is the same as with the engagement rate at nothing: the neighbours draw
     nothing from the rng."""
     spades = entry(SPADE)
-    site = next(s for s in spades.sites if s.spawn == SPADES)
+    site = mine_site()
     results = []
     for rate in (nb.ENGAGE_PER_TICK, 0.0):
         monkeypatch.setattr(nb, "ENGAGE_PER_TICK", rate)

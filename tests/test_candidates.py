@@ -75,9 +75,9 @@ def test_pool_drops_unattackable_placeholder_and_unkillable_npcs():
 
 @needs_data
 def test_hazards_are_never_targets_there_but_still_aggressors():
-    """Taverley dungeon's Black Knights east of the lesser demons and the moss giants west of the Fishing Guild: no
-    site there, though the monsters' other sites stay; and the aggression model still counts them by a site near
-    them."""
+    """Taverley dungeon's Black Knights east of the lesser demons, the moss giants west of the Fishing Guild and the
+    Abandoned Mine's animated spades: no site there, though the monsters' other sites stay; and the aggression model
+    still counts them by a site near them."""
     from rlscape.sim.aggression import site_aggressors
 
     knights = next(e for e in enemy_pool() if e.npc.id == 178)
@@ -87,6 +87,10 @@ def test_hazards_are_never_targets_there_but_still_aggressors():
     giants = next(e for e in enemy_pool() if e.npc.id == 112)  # west of the Fishing Guild (Caleb, 2026-11-06)
     spawns = {s.spawn for s in giants.sites}
     assert (2825, 3249, 0) in spawns and not any(2545 <= x <= 2566 and 3394 <= y <= 3417 for x, y, _ in spawns)
+    spades = next(e for e in enemy_pool() if e.npc.id == 5414)  # the Abandoned Mine's (Caleb, 2026-11-08, OQ-42)
+    assert [s.spawn for s in spades.sites] == [(3182, 5447, 0)]  # the Chaos Tunnels' stay
+    pickaxes = next(e for e in enemy_pool() if e.npc.id == 5413)
+    assert (3423, 9658, 0) in {s.spawn for s in pickaxes.sites}  # beside the mine's spades: still a target
 
 
 @needs_data

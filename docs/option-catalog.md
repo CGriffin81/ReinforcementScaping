@@ -291,7 +291,10 @@ holds or what it's doing must be available.
 - **hazards aren't targets where they spawn** (`HAZARDS`, Caleb, 2026-11-05): Taverley dungeon's two Black
   Knights east of the lesser demons, whom the server doesn't let a character attack; only that pair (Caleb,
   2026-11-06), since the dungeon's other Black Knights fight as usual. The four moss giants west of the Fishing
-  Guild too (Caleb, 2026-11-06), for the same reason; the other moss giants stay targets.
+  Guild too (Caleb, 2026-11-06), for the same reason; the other moss giants stay targets. And the animated spades on
+  the Abandoned Mine's first floor (Caleb, 2026-11-08, OQ-42): there, one that a character who has since left dealt
+  more than half its hitpoints can't be killed, and stays alive at 0. The possessed pickaxe beside them and the
+  spades in the Chaos Tunnels stay targets.
 - **the Yanille Agility Dungeon is out of the project** (`IGNORED_AREAS`, Caleb, 2026-11-06): no monster in it is a
   target (zombies, a giant bat, skeletons, poison spiders, chaos druids, Salarin the Twisted); the same monsters
   elsewhere are. Its inner room is past a pile of rubble that takes Agility 67, and Salarin there, whom only the
