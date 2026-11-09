@@ -137,13 +137,16 @@ RUNECRAFTING_INPUTS = tuple(sorted(rc_inputs()))
 RUNECRAFTING_TOOLS = tuple(sorted(tiara_of(rune) for rune in RC_RUNES))
 RUNECRAFTING_PAIRS = tuple(sorted({PLAIN_TIARA, *(rc_talismans()[rune] for rune in RC_RUNES)}))
 TIARA_LOT = 14
+# Barbarian Fishing's rod (sim v1; rlscape.sim.barbfishing): untradeable in the game, on the frozen GE at Caleb's 1,000
+# gp (OQ-41), as Ava's devices are; a tool, one. Otto's bed gives it only once his training starts, which stays unflagged.
+BARBARIAN_ROD = (11323,)
 
 # The anti-dragon shield (Caleb, 2026-11-06): on the GE, once Duke Horacio's alone. Fights against dragonfire monsters
 # put it on (equipment.wield_best's `protect`).
 GE_ITEMS = (AXES + PICKAXES + FISHING_TOOLS + BAIT_AND_FEATHERS + (HAMMER,) + SCIMITARS + ARMOUR + SHORTBOWS + ARROWS
             + RUNES + STAVES + FOOD_TIERS + PROCESSING_INPUTS + (KNIFE,) + FLETCHING_INPUTS + (ANTI_DRAGON_SHIELD,)
             + DRAGON_WEAPONS + FREMENNIK_HELMS + ANTIPOISONS + COMBAT_POTIONS + AVAS_DEVICES + CROSSBOWS + BOLTS
-            + CRAFTING_INPUTS + HERBLORE_INPUTS + RUNECRAFTING_INPUTS)
+            + CRAFTING_INPUTS + HERBLORE_INPUTS + RUNECRAFTING_INPUTS + BARBARIAN_ROD)
 SHOP_ITEMS = {**dict.fromkeys(AXES[:2], BOBS), **dict.fromkeys(PICKAXES, NURMOFS),
               **dict.fromkeys(FISHING_TOOLS + BAIT_AND_FEATHERS, GERRANTS), HAMMER: LUMBRIDGE_STORE,
               **dict.fromkeys(SCIMITARS[:3], ZEKES), **dict.fromkeys(SHORTBOWS + ARROWS, LOWES),
@@ -160,7 +163,7 @@ ROLES = {**dict.fromkeys(AXES, "axe"), **dict.fromkeys(PICKAXES, "pickaxe"),
          **dict.fromkeys(SCIMITARS + DRAGON_WEAPONS, "melee"), **dict.fromkeys(SHORTBOWS + CROSSBOWS, "ranged"),
          **dict.fromkeys(ARMOUR + FREMENNIK_HELMS, "armour"),
          **dict.fromkeys(FISHING_TOOLS + (HAMMER, KNIFE, ANTI_DRAGON_SHIELD) + STAVES + CRAFTING_TOOLS + HERBLORE_TOOLS
-                         + RUNECRAFTING_TOOLS, "unique"),
+                         + RUNECRAFTING_TOOLS + BARBARIAN_ROD, "unique"),
          **dict.fromkeys(AVAS_DEVICES, "ava")}
 TOOL_CHAINS = {"axe": (HATCHET_PRIORITY, "woodcutting"), "pickaxe": (PICKAXE_PRIORITY, "mining")}
 GEAR_CLASSES = ("melee", "ranged", "magic")

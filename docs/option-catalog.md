@@ -3,7 +3,8 @@
 **v1.4** (2026-11-08, building sim v1 per OQ-2 and `docs/sim-v1-skills-draft.md`; to confirm when the four skills
 are built): Crafting's skilling slots and paths (§2), and XP slots hold only paths that give XP; Crafting's inputs in
 *V* and the GE buys (§8, §9); Herblore's skilling slots and paths (§2); Agility's skilling slots and laps (§2);
-Runecrafting's skilling slots and paths (§2), and its essence and talismans in *V* and the GE buys (§8, §9).
+Runecrafting's skilling slots and paths (§2), and its essence and talismans in *V* and the GE buys (§8, §9);
+Barbarian Fishing (§2) and the barbarian rod in *V* and the GE buys (§8, §9).
 
 **Status:** v1.3, 2026-11-06: quests are out, and every quest the server has is complete from the start (Caleb;
 §10); the anti-dragon shield, the dragon dagger and longsword and the Fremennik helms are bought on the GE (§4.B,
@@ -102,8 +103,11 @@ one every 3 ticks, grinding one every 2, each batch after its clicks. The produc
 by the door and ridge). A path walks to the course and runs laps until the option's time is up, at the server's
 times: each obstacle's XP, the lap bonus at the lap's last flag, and on the two courses that can fail, each failing
 obstacle rolled at the character's Agility (`AgilityHandler.hasFailed`), a fall's hit and its measured recovery. It
-eats as thieving does, and stops when it's out of food then. No gp: a lap path fills only XP slots. Barbarian Fishing
-and the shortcuts come next.
+eats as thieving does, and stops when it's out of food then. No gp: a lap path fills only XP slots. A fall into the
+Wilderness log's pit is attacked by its skeletons (OQ-46 (a)). **Barbarian Fishing** (`barb_fish`,
+`rlscape/sim/barbfishing.py`) fishes Otto's Grotto with the barbarian rod (bought on the GE) to a full inventory,
+for Fishing, Agility and Strength XP; it ranks in the Fishing and the Agility slots by its XP in each. The shortcuts
+come next.
 
 **Runecrafting** (sim v1, v1.4; Caleb, 2026-11-08, OQ-2; `rlscape/sim/runecrafting.py`) has `rc_<rune>` for the nine
 runes whose ruins the travel model reaches: air, mind, water, earth, fire, body, chaos, nature and law. A path works

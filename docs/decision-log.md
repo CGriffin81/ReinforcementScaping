@@ -5528,3 +5528,29 @@ be seen as a time waste." `m002-runecrafting`.
   - `scripts/calibrate_runecrafting.py` names the ruins that way now.
 - **Tests:** `test_a_worn_tiara_lets_the_character_in_and_the_trip_carries_28_essence`,
   `test_a_tiara_path_makes_a_tiara_of_each_pair_and_uses_the_talisman_up`; the buy test's lots; the counts.
+
+### Built and measured (sim v1, Barbarian Fishing): `barb_fish` in the Fishing and Agility slots; the rod on the GE
+2026-11-08, OQ-2's Choice D (Caleb: "include Barbarian Fishing as a viable agility training method"; the rod on the GE
+at 1,000 gp, OQ-41). `m002-barbfishing`.
+- **The server** (`gather/fishing/barbfishing`): `BarbFishingPulse` needs Fishing 48, Agility 15 and Strength 15, a
+  barbarian rod in the inventory, a free slot and bait (fish offcuts, feathers, fishing bait, roe or caviar, used in that
+  order). Its first try comes 6 ticks after the click, then one every 5. A try goes through leaping trout (Fishing 48),
+  salmon (58, Strength and Agility 30) and sturgeon (70, 45) in that order and catches the first whose roll passes
+  (`Fish.getSuccessChance`), so trout come first at every level. A catch gives 50, 70 or 80 Fishing XP and 5, 6 or 7
+  Agility and Strength XP.
+  - **Found:** the pulse fishes a placeholder spot (`NPC(FISHING_SPOT_2722)`), not the one clicked, so the spots'
+    moves (every 400 to 2,000 ticks) don't stop it. Measured: no run needed a second click.
+- **The sim** (`rlscape/sim/barbfishing.py`): `barb_fish` walks to Otto's Grotto and fishes to a full inventory, the
+  bait's end or the option's time, as fishing's paths do (the agent banks or drops the fish). The one path ranks in
+  both the Fishing and the Agility slots, by its XP in each, valued as fishing's paths are (a bank trip a load). At
+  Fishing 48 and Agility 15, from Lumbridge: about 9,700 Fishing and 970 Agility XP an hour of the option, so the
+  courses outrank it for Agility. A barbfishing task keeps the rod and the bait.
+- **The rod** joins *V* (*V* 368) and the GE buys (a tool, one), at Caleb's 1,000 gp. It's untradeable on this server
+  as the bird's nest is: the spell and the stores refuse it, and it drops. The leaping fish stay misc. Sizes (env
+  contract v1.31, to confirm): 2,283 actions, 3,462 features.
+- **Calibrated** (`scripts/calibrate_barbfishing.py`, 5 runs a case to a full inventory): sim over server, Fishing,
+  Agility and Strength XP/hr and catches/hr: Fishing 48 (trout only) 1.00; Fishing 70 with Agility and Strength 45 1.00
+  to 1.03; all 99 1.02 to 1.03 (`results/calibration/barbfishing-20261108-2157-i5.json`).
+- **Tests:** `tests/test_sim_barbfishing.py` (the fish's order and levels, a load's XP in the three skills and the bait's
+  order, what it needs and its two rankings, the kit); the counts in `test_vocabulary`, `test_sim_buying` and
+  `test_sim_skilling`.

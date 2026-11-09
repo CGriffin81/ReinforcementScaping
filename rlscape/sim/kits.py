@@ -72,6 +72,9 @@ def kit(state: CharacterState, task: str | None) -> set[int]:
         return inventory & rc_inputs()
     if kind == "agility":  # food, for the falls (rlscape.sim.agility eats as thieving does)
         return inventory & food
+    if kind == "barbfishing":  # the barbarian rod and the bait (rlscape.sim.barbfishing)
+        from rlscape.sim.barbfishing import BAITS, ROD  # imported here, as fletching's
+        return inventory & {ROD, *BAITS}
     if kind == "processing":
         return _processing_kit(state, detail)
     if kind == "combat":

@@ -53,6 +53,7 @@ from rlscape.sim.herblore import (CleanAtBank, PotionAtBank, clean_ticks, finish
                                   herblore_paths, unfinished_ticks)
 from rlscape.sim.runecrafting import RunecraftAtRuins, runecrafting_paths
 from rlscape.sim.agility import AgilityLaps, agility_paths
+from rlscape.sim.barbfishing import BarbFish, barbfishing_paths
 from rlscape.sim.gathering import respawn_ticks, site_offsets
 from rlscape.sim.kits import kit
 from rlscape.sim.mining import ATTEMPT_TICKS as MINE_TICKS
@@ -170,7 +171,7 @@ def path_options() -> list[Path]:
     flax = PickFlax()
     paths += [Path("crafting", flax), Path("crafting", flax, SpinFlaxAtWheel(), "_spin")]
     return [*paths, *fletching_paths(), *crafting_paths(), *station_paths(), *herblore_paths(),
-            *runecrafting_paths(), *agility_paths()]
+            *runecrafting_paths(), *agility_paths(), *barbfishing_paths()]
 
 
 @dataclass(frozen=True)
@@ -423,7 +424,7 @@ def path_rate(path: Path, state: CharacterState, duration_ticks: int = ACTIVITY_
         return _craft_rate(path, state, duration_ticks)
     if isinstance(path, RunecraftAtRuins):  # before AtStation, which it is
         return PathRate(*path.rate(state, duration_ticks))
-    if isinstance(path, AgilityLaps):
+    if isinstance(path, (AgilityLaps, BarbFish)):
         return PathRate(*path.rate(state, duration_ticks))
     if isinstance(path, AtStation):
         return _station_rate(path, state, duration_ticks)

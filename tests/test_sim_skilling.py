@@ -37,8 +37,8 @@ def test_each_method_is_kept_or_processed_by_its_counterpart():
     assert "mine_copper_smelt" not in ids and not any(i.startswith("pickpocket") and "_" in i[11:] and
                                                       i.endswith(("_burn", "_cook", "_smelt")) for i in ids)
     by_skill = {s: sum(1 for p in path_options() if p.skill == s) for s in SKILLS}
-    assert by_skill == {"woodcutting": 12, "fishing": 8, "mining": 7, "thieving": 20, "fletching": 36,
-                        "crafting": 39, "herblore": 36, "runecrafting": 18, "agility": 3}  # Al Kharid iron,
+    assert by_skill == {"woodcutting": 12, "fishing": 9, "mining": 7, "thieving": 20, "fletching": 36,
+                        "crafting": 39, "herblore": 36, "runecrafting": 18, "agility": 4}  # Al Kharid iron,
     # Lumbridge Swamp's shrimp: 2 each
 
 

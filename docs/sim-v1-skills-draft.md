@@ -154,6 +154,9 @@ each 50 Fishing, 5 Agility and 5 Strength XP.
   full inventory, then bank or drop the fish, as fishing's paths do. It joins the Fishing and Agility slots' rankings
   (§1) by its XP in each. The leaping fish go in *V* only if something uses them (Choice I); cutting them for roe and
   caviar (Cooking) is out.
+- **As built** (2026-11-08, `rlscape/sim/barbfishing.py`, `scripts/calibrate_barbfishing.py`): as above, the first try
+  6 ticks after the click. The pulse fishes a placeholder spot, not the one clicked, so the spots' moves don't stop it.
+  Calibrated within 1.00 to 1.03 at Fishing 48, 70 and 99.
 - **The rod** is untradeable, so it goes on the frozen GE at a set price, as Ava's devices did. The price is OQ-41.
   Otto's bed gives the rod only once his Barbarian Training starts, which stays unflagged, so the GE is the way to get
   one.

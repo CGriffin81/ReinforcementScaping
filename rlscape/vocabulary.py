@@ -6,7 +6,7 @@ drop tables' shared sub-tables are modelled (Caleb); the 11 four-dose potions bo
 Ava's attractor and accumulator, bought on the GE (Caleb, 2026-11-07); and every tradeable crossbow and bolt on
 the 2009 GE, 63 more (Caleb, 2026-11-07; mithril bolts were in already); and Crafting's inputs, 18 not in it yet,
 Herblore's, 51, and Runecrafting's, 19: the essence, talismans and tiaras (sim v1, OQ-2's Choice I (a), Caleb,
-2026-11-08: the inputs the agent buys or holds): 367.
+2026-11-08: the inputs the agent buys or holds); and Barbarian Fishing's rod: 368.
 Nothing has been taken out.
 
 Each item in V gets its own drop, alchemy and sell actions and its own inventory and bank features; everything else

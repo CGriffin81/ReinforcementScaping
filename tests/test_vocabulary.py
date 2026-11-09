@@ -7,7 +7,7 @@ import pytest
 from rlscape.envs import SimEnv
 from rlscape.gamedata import server as gd
 from rlscape.sim import build_catalog
-from rlscape.sim.buying import AVAS_DEVICES, GE_ITEMS, SHOP_ITEMS
+from rlscape.sim.buying import AVAS_DEVICES, BARBARIAN_ROD, GE_ITEMS, SHOP_ITEMS
 from rlscape.sim.economy import alchable
 from rlscape.sim.state import COINS
 from rlscape.vocabulary import vocabulary
@@ -25,8 +25,8 @@ def test_v_is_the_accepted_list():
     # quest-gear buys, 5 the drop sub-tables brought, and 11 four-dose potions (their lower doses are misc: OQ-25);
     # on 2026-11-07, Ava's attractor and accumulator, bought on the GE, and every tradeable crossbow and bolt on the
     # 2009 GE, 63 (Caleb); on 2026-11-08, Crafting's inputs not in it yet, 18, Herblore's, 51, and Runecrafting's, 19
-    # with its tiaras (sim v1, Choice I (a))
-    assert len(v) == len(set(v)) == 367 and COINS not in v
+    # with its tiaras (sim v1, Choice I (a)); and the barbarian rod (Barbarian Fishing)
+    assert len(v) == len(set(v)) == 368 and COINS not in v
 
 
 @needs_server
@@ -37,10 +37,11 @@ def test_every_item_in_v_is_a_real_tradeable_item_with_live_actions():
     # so no per-item action is always masked, but for Ava's devices: untradeable, so the spell and the stores refuse
     # them and the game offers Destroy, not Drop; the GE sells and buys them at Caleb's prices (2026-11-07); and broad
     # bolts (Caleb's every bolt, 2026-11-07), tradeable but Destroy too
-    # and the bird's nest (Herblore's), untradeable on this server too, so the spell and the stores refuse it; it drops
+    # and the bird's nest (Herblore's) and the barbarian rod (Barbarian Fishing's, on the GE at 1,000 gp), untradeable on
+    # this server too, so the spell and the stores refuse them; they drop
     assert all(alchable(item) and (item not in gd.destroy_only_items() or item == BROAD_BOLTS) for item in v
-               if item not in AVAS_DEVICES and item != BIRDS_NEST)
-    assert not alchable(BIRDS_NEST) and BIRDS_NEST not in gd.destroy_only_items()
+               if item not in AVAS_DEVICES and item != BIRDS_NEST and item not in BARBARIAN_ROD)
+    assert not any(alchable(i) or i in gd.destroy_only_items() for i in (BIRDS_NEST, *BARBARIAN_ROD))
     assert not any(alchable(item) for item in AVAS_DEVICES) and set(AVAS_DEVICES) <= gd.destroy_only_items()
     assert set(GE_ITEMS) | set(SHOP_ITEMS) <= set(v)  # every bought item (catalog §8)
 
@@ -49,6 +50,6 @@ def test_every_item_in_v_is_a_real_tradeable_item_with_live_actions():
 def test_the_catalog_and_observation_grow_by_5_actions_and_7_features_per_item():
     v, catalog, empty = vocabulary(), build_catalog(), build_catalog(())
     ids = {o.id for o in catalog}
-    assert len(catalog) == len(empty) + 5 * len(v) == 2_277
+    assert len(catalog) == len(empty) + 5 * len(v) == 2_283
     assert all(f"{prefix}{item}" in ids for item in v for prefix in PER_ITEM)
-    assert SimEnv().encoder.size == SimEnv(vocabulary=()).encoder.size + 7 * len(v) == 3_453
+    assert SimEnv().encoder.size == SimEnv(vocabulary=()).encoder.size + 7 * len(v) == 3_462
