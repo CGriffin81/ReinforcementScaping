@@ -5295,3 +5295,34 @@ OQ-19's site), left unexplained in the region fix's re-check above. `m002-spade-
   this working tree. They agreed by message which shared lines each adds (`skilling.py`, `encoding.py`, `kits.py`, the
   count tests), each its own server instance (Agility 5, Runecrafting 6, Herblore 7), the contract's version numbers
   and the questions' ids. Commits stage explicit paths only.
+
+### Decided: the bird's nest on the GE at 1,765 gp (Caleb)
+2026-11-08, Caleb, while Herblore's inputs joined *V*: "Add bird's nests to the GE." `m002-herblore-inputs`.
+- **Why it came up:** the Saradomin brew's secondary is the crushed nest, ground from a bird's nest (5075; Choice F).
+  The nest had no January 2009 GE price, and it's untradeable on this server (its item config), so it could come only
+  from drops and woodcutting's nests.
+- **The options (Claude's question):** (a) recommended, 1,865 gp, the crushed nest's 2009 price, since grinding costs
+  nothing, so a cheaper nest would be free gold (buy, grind, sell the dust) and a dearer one would never be ground;
+  (b) a price of Caleb's own. Caleb: "Set the price at 1,765 gp."
+- **Built:** `scripts/build_price_tables.py`'s `SET_PRICES` takes it, as the rod and Ava's devices are (a price_index
+  row as `::allowge` would, and the historical list), so the frozen seller sells it and the frozen buyer buys it at
+  1,765, and net worth values it there. The rebuilt tables changed only the nest's rows. The servers' GE databases
+  take it at their next `install_ge_db.py` (or `server_instances.py`).
+- **So:** buying nests and grinding them gains 100 gp a crushed nest at the frozen prices.
+
+### Built (sim v1, Herblore part 2): Herblore's inputs in *V* and the GE's buys
+2026-11-08, OQ-2's Choices A (a) and I (a) (Caleb). `m002-herblore-inputs`.
+- **The buys** (`buying.HERBLORE_INPUTS`, from `herblore.inputs()`): the 66 items a Herblore path uses:
+  - the 15 herbs grimy and clean;
+  - the 14 unfinished potions the 21 potions use;
+  - the 15 secondaries and the 5 whole ingredients ground into them;
+  - vials of water and a pestle and mortar (a tool, one a buy).
+
+  The rest come in lots of 1,000, as Crafting's do. The bird's nest is sold at Caleb's 1,765 gp (above).
+- **Into *V*:** the 51 it lacked (11 grimy herbs, unicorn horns and their dust, limpwurt roots and vials of water were
+  in already, and now say "bought" too). The made potions stay misc (three doses; OQ-25). *V* is 348.
+  - The nest is untradeable on this server, so the alchemy spell and the stores refuse it, as they do Ava's devices.
+    It can be dropped, sold on the GE and withdrawn. `test_vocabulary` makes it an exception beside them.
+- **Sizes** (env contract v1.27, to confirm): 2,157 actions and 3,274 features. That's with Runecrafting's slots
+  (v1.26): 66 buys, and 5 actions and 2 features for each new item.
+- **Test:** `test_a_potion_paths_inputs_are_bought_on_the_ge`; the counts in `test_vocabulary` and `test_sim_buying`.

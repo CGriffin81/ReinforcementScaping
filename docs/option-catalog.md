@@ -697,7 +697,11 @@ Sim v1 (v1.4, to confirm; OQ-2's Choice I (a), Caleb): the inputs the agent buys
 only where something else uses them. Crafting's (2026-11-08): the uncut gems, the soft, hard and dragon leathers, the
 hides tanned, wool, flax, thread, a needle and a chisel, 25 in all, which the GE sells (§8, Choice A (a)); 18 weren't
 in *V* (cowhide, the green and blue dragonhides and four uncut gems were). The cut gems, the armour, and balls of wool
-stay misc; bowstrings were in *V* already. 297 in all.
+stay misc; bowstrings were in *V* already. 297 in all. Herblore's (2026-11-08): the 15 herbs grimy and clean, the 14
+unfinished potions the 21 potions use, the 15 secondaries and the 5 whole ingredients ground into them, vials of water
+and a pestle and mortar, 66 in all, which the GE sells (§8, Choice A (a)); the bird's nest at Caleb's 1,765 gp, as it's
+untradeable on this server and had no 2009 price, and the alchemy spell and stores refuse it. 51 weren't in *V*. The
+made potions stay misc (three doses; OQ-25 keeps four-dose potions alone in *V*). 348 in all.
 
 **Size (*V* = 279: the 156 accepted, 20 fletching inputs added by the same rule on 2026-10-31, 38 on 2026-11-06 and 65
 on 2026-11-07;
@@ -714,7 +718,7 @@ selling as "all in the inventory"):**
 | Selling | 560 (GE and store, 280 each) |
 | Buying | 217 (180 at the GE, with the knife, 19 fletching inputs, the anti-dragon shield, 6 quest items, 2 antipoisons, 8 combat potions and antifire, Ava's 2 devices, 11 crossbows and 53 bolts; 37 at shops) |
 | **Total in sim v0** | **1,709** |
-| Sim v1 so far (v1.4) | Crafting's 4 skilling slots; Crafting's 25 GE buys (needle and chisel one each, the rest in lots of 1,000) and its 18 new *V* items' 90 actions: **1,828** |
+| Sim v1 so far (v1.4) | Crafting's 4 skilling slots; Crafting's 25 GE buys (needle and chisel one each, the rest in lots of 1,000) and its 18 new *V* items' 90 actions: 1,828; Herblore's and Runecrafting's 4 skilling slots each; Herblore's 66 GE buys (the pestle and mortar one, the rest in lots of 1,000) and its 51 new *V* items' 255 actions: **2,157** |
 
 Each *V* item adds 7 observation features: its inventory and bank counts, and its 5 actions' mask entries (env
 contract §3).

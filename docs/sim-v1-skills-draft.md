@@ -351,6 +351,8 @@ barbarian rod, which Caleb set at 1,000 gp (OQ-41), and the four pouches, which 
   crafted from). As built (2026-11-08): those 18, and the GE buys all 25 inputs (`buying.CRAFTING_INPUTS`).
 - Herblore (about 40): the 4 grimy herbs not yet in *V*, the 15 clean herbs, about 15 secondaries and their whole
   ingredients, a pestle and mortar, vials (empty), and the 15 unfinished potions (they're bought and sold on the GE).
+  As built (2026-11-08): 51 new, 66 bought (`buying.HERBLORE_INPUTS`): vials of water, not empty ones, which the
+  potions take; the 14 unfinished potions the 21 use; and the bird's nest, on the GE at Caleb's 1,765 gp.
 - Runecrafting (about 26): rune and pure essence, the 8 talismans not yet in *V* (earth is), the body rune, the plain
   tiara and the 10 elemental tiaras (worn to enter the ruins), and the four pouches (held: withdraw and hold, their
   buy, sell and alchemy actions masked). The death rune is in *V* already; the astral rune stays out with its altar

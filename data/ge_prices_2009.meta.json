@@ -2,7 +2,7 @@
   "description": "Historical GE prices: median of RuneScape Wiki (Weird Gloop) sampled prices in January 2009, else in the item's first 2009 month with data.",
   "source": "https://api.weirdgloop.org/exchange/history/rs/sample?id=<item>",
   "target": "2009Scape targets content in and around January 1st, 2009 (2009scape.org, About 2009Scape)",
-  "built": "2026-11-08T13:49:58-06:00",
+  "built": "2026-11-08T20:35:37-06:00",
   "items_with_2009_price": 3276,
   "items_by_month": {
     "2009-01": 3188,

@@ -96,6 +96,27 @@ def test_a_potion_path_starts_from_unfinished_potions_and_grinds_with_a_pestle()
 
 
 @needs_server
+def test_a_potion_paths_inputs_are_bought_on_the_ge():
+    """Choices A (a) and I (a) (Caleb): the inputs join *V* and the GE buys, the bird's nest at Caleb's 1,765 gp. A
+    fresh character with coins buys vials of water, clean guam and eyes of newt (1,000, the inputs' lot), and
+    the attack potion path opens at Herblore 3; the pestle and mortar is a tool, one a buy."""
+    from rlscape.sim.buying import HERBLORE_INPUTS, BuyGE
+    from rlscape.sim.herblore import inputs
+    from rlscape.sim.state import COINS
+    from rlscape.vocabulary import vocabulary
+    assert inputs() <= set(vocabulary()) and set(HERBLORE_INPUTS) == inputs()
+    assert gd.ge_prices_2009()[5075] == 1_765  # the bird's nest
+    state, rng = character({COINS: 10_000_000}, herblore=3), np.random.default_rng(0)
+    path = PotionAtBank(gd.herblore_potions()["attack"])
+    assert not path.available(state)
+    for item in (VIAL, GUAM, EYE_OF_NEWT, PESTLE):
+        assert BuyGE(item).run(state, rng, 10_000).termination == "completed"
+    held = lambda item: state.inventory.get(item, 0) + state.inventory.get(gd.noted_ids().get(item, -1), 0)  # noqa: E731
+    assert held(VIAL) == held(GUAM) == held(EYE_OF_NEWT) == 1_000 and held(PESTLE) == 1
+    assert path.available(state) and not BuyGE(PESTLE).available(state)
+
+
+@needs_server
 def test_herblore_has_its_slots_kit_and_a_rate():
     assert "herblore" in SKILLS
     ids = {p.id for p in path_options() if p.skill == "herblore"}

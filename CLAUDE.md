@@ -127,7 +127,8 @@ work.
 - **Net worth** uses `data/prices_v2.csv`: max(high alchemy − nature rune,
   January 2009 GE price). `prices_v1` is superseded. Ava's devices, untradeable
   in the game, are on the frozen GE at Caleb's set prices (2,500 and 10,000 gp),
-  and so is the barbarian rod (1,000 gp, 2026-11-08).
+  and so are the barbarian rod (1,000 gp) and the bird's nest (1,765 gp), both
+  2026-11-08.
 - Build from `server/Server`: `mvnw.cmd -B package -DskipTests` (about 3 min
   cold, about 1 min incremental).
 - Run from `server/Server` (the working directory matters for `data/`):
