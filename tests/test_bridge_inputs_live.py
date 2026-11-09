@@ -111,6 +111,24 @@ def test_a_bar_on_an_anvil_and_raw_fish_on_a_range_open_their_interfaces_and_the
     assert client.state(uid)["chatbox_id"] == 307
 
 
+def test_the_runecrafting_ruins_are_found_by_the_name_a_player_sees(client, uid):
+    """The ruins are a multi-object (2452 at the air ruins) whose own definition is named "null"; a player sees
+    "Mysterious ruins". The bridge matches scenery by the form a player sees (RLCommands.shown, 2026-11-08), so the
+    talisman used on "Mysterious ruins" lands the character inside, beside the altar."""
+    from rlscape.gamedata import runecrafting as rcd
+    talisman, ruins = rcd.talismans()["air"], rcd.ruins()["air"]
+    client.debug_give(uid, talisman, 1)
+    client.debug_teleport(uid, ruins.base[0], ruins.base[1] - 3, 0)
+    client.wait(2)
+    client.use_item_on(uid, talisman, "Mysterious ruins")
+    for _ in range(12):
+        client.wait(1)
+        here = client.state(uid)["location"]
+        if here["y"] > 4000:
+            break
+    assert (here["x"], here["y"], here["z"]) == ruins.end
+
+
 def test_craftings_interfaces_and_dialogues_stay_open_for_the_next_click(client, uid):
     """The bridge leaves open what Crafting's clicks open (2026-11-08): a needle on soft leather opens the leather
     interface (154), and on hard leather the how-many (chatbox 309, LeatherCraftDialogue, not a skill dialogue); the

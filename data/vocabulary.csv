@@ -356,3 +356,13 @@ item_id,name,groups
 1452,Chaos talisman,bought;drop
 1462,Nature talisman,bought;drop
 1458,Law talisman,bought;drop
+5525,Tiara,bought;consumed
+5527,Air tiara,bought;made
+5529,Mind tiara,bought;made
+5531,Water tiara,bought;made
+5535,Earth tiara,bought;made
+5537,Fire tiara,bought;made
+5533,Body tiara,bought;made
+5543,Chaos tiara,bought;made
+5541,Nature tiara,bought;made
+5545,Law tiara,bought;made

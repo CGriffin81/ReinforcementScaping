@@ -112,14 +112,16 @@ between the nearest bank and the ruins, as tanning does: it takes out the talism
 and leaves by the portal. An essence makes as many runes as the rune's multiple levels the character has reached
 (rl.conf's formula revision 530). Law's path banks the weapons and armour Entrana's monks refuse; nature's carries the
 Karamja boat's 60 gp. The times inside the ruins are the server's. Essence isn't mined (Caleb: it's cheap, and mining
-it wastes the time); the agent buys it (§9). The cosmic altar waits for the Abyss's rift (OQ-45 (a)), as do the death
-altar and the tiaras.
+it wastes the time); the agent buys it (§9). A path wears the rune's tiara when the character has one, in place of the
+talisman, and carries 28 essence. `make_tiara_<rune>` (nine) uses pairs of a plain tiara and the talisman on the altar,
+14 a trip, for the tiaras' XP (the talisman used up; a loss in gold, as the GE sells the tiaras for less). The cosmic
+altar waits for the Abyss's rift (OQ-45 (a)), as does the death altar.
 
 A path that gives no XP (tanning, picking flax) fills only a gp slot: the XP slots take the best paths that give XP
 (v1.4).
 
 That's 83 paths in sim v0: woodcutting 12, fishing 8, mining 7, thieving 20, fletching 36; and in sim v1 crafting's
-39, herblore's 36, runecrafting's 9 and agility's 3. Mining's include iron at the Al
+39, herblore's 36, runecrafting's 18 and agility's 3. Mining's include iron at the Al
 Kharid mine (Caleb, 2026-10-31), kept or smelted, beside Varrock's: scorpions roam it, so it costs a low-level miner
 hitpoints (below). Fishing's include shrimp at Lumbridge Swamp (Caleb, 2026-11-01), kept or cooked, beside
 Draynor's: Draynor's spots are next to the bank, but its Dark wizards make them dangerous for a character of combat
@@ -722,9 +724,10 @@ unfinished potions the 21 potions use, the 15 secondaries and the 5 whole ingred
 and a pestle and mortar, 66 in all, which the GE sells (§8, Choice A (a)); the bird's nest at Caleb's 1,765 gp, as it's
 untradeable on this server and had no 2009 price, and the alchemy spell and stores refuse it. 51 weren't in *V*. The
 made potions stay misc (three doses; OQ-25 keeps four-dose potions alone in *V*). 348 in all. Runecrafting's
-(2026-11-08): rune and pure essence, which isn't mined (Caleb), in lots of 1,000, and the nine runes' talismans, one
-each, 11 in all, which the GE sells; 9 weren't in *V* (the mind and earth talismans were). The runes made were in *V*
-for magic but body runes, which stay misc. 357 in all.
+(2026-11-08): rune and pure essence, which isn't mined (Caleb), in lots of 1,000; the nine runes' talismans and plain
+tiaras, in lots of 14 (a tiara load); and the nine runes' tiaras, one each; 21 in all, which the GE sells. 19 weren't
+in *V* (the mind and earth talismans were). The runes made were in *V* for magic but body runes, which stay misc. 367
+in all.
 
 **Size (*V* = 279: the 156 accepted, 20 fletching inputs added by the same rule on 2026-10-31, 38 on 2026-11-06 and 65
 on 2026-11-07;
@@ -741,7 +744,7 @@ selling as "all in the inventory"):**
 | Selling | 560 (GE and store, 280 each) |
 | Buying | 217 (180 at the GE, with the knife, 19 fletching inputs, the anti-dragon shield, 6 quest items, 2 antipoisons, 8 combat potions and antifire, Ava's 2 devices, 11 crossbows and 53 bolts; 37 at shops) |
 | **Total in sim v0** | **1,709** |
-| Sim v1 so far (v1.4) | Crafting's 4 skilling slots; Crafting's 25 GE buys (needle and chisel one each, the rest in lots of 1,000) and its 18 new *V* items' 90 actions: 1,828; Herblore's and Runecrafting's 4 skilling slots each; Herblore's 66 GE buys (the pestle and mortar one, the rest in lots of 1,000) and its 51 new *V* items' 255 actions: 2,157; Agility's 4 skilling slots: 2,161; Runecrafting's 11 GE buys (the talismans one each, the essence in lots of 1,000) and its 9 new *V* items' 45 actions: **2,217** |
+| Sim v1 so far (v1.4) | Crafting's 4 skilling slots; Crafting's 25 GE buys (needle and chisel one each, the rest in lots of 1,000) and its 18 new *V* items' 90 actions: 1,828; Herblore's and Runecrafting's 4 skilling slots each; Herblore's 66 GE buys (the pestle and mortar one, the rest in lots of 1,000) and its 51 new *V* items' 255 actions: 2,157; Agility's 4 skilling slots: 2,161; Runecrafting's 21 GE buys (the essence in lots of 1,000, the talismans and plain tiaras in lots of 14, a rune's tiara one) and its 19 new *V* items' 95 actions: **2,277** |
 
 Each *V* item adds 7 observation features: its inventory and bank counts, and its 5 actions' mask entries (env
 contract §3).

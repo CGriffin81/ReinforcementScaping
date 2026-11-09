@@ -10,8 +10,8 @@ The cases:
 The sim's side is the same steps from the same start: the walk to the ruins and ENTER_TICKS, and inside_ticks.
 (Essence isn't mined, Caleb 2026-11-08, so the essence mine isn't measured.)
 
-The ruins are a multi-object whose own definition is named "null" (the form a player sees is "Mysterious ruins"), so
-the runner names them by id, the id `debug_nearby` finds at the ruins (setup only).
+The ruins are a multi-object whose own definition is named "null"; the bridge matches the form a player sees,
+"Mysterious ruins" (the fork's RLCommands.shown, 2026-11-08).
 
 Usage, with the server running (worldprops/rl.conf, or an instance with RL_BRIDGE_PORT):
     uv run python scripts/calibrate_runecrafting.py [--runes air ...] [--runs 3]
@@ -30,7 +30,7 @@ import numpy as np
 from rlscape.bridge.client import BridgeClient, run_suffix
 from rlscape.gamedata import runecrafting as rcd
 from rlscape.sim.movement import timed
-from rlscape.sim.runecrafting import ENTER_TICKS, RC_RUNES, inside_ticks
+from rlscape.sim.runecrafting import ENTER_TICKS, RC_RUNES, TIARA_LOAD, TIARA_TICKS, inside_ticks
 from rlscape.sim.state import CharacterState
 
 REPO = Path(__file__).resolve().parents[1]
@@ -75,9 +75,7 @@ def rc_run(c: BridgeClient, rune: str, budget: int = 200) -> dict[str, Any]:
         start = (ruins.base[0] + START_OFFSET[0], ruins.base[1] + START_OFFSET[1], ruins.base[2])
         c.debug_teleport(uid, *start)
         c.wait(3)
-        nodes = c.request("debug_nearby", uid=uid, name="null", radius=6, object=True)["nodes"]
-        ruin = min(nodes, key=lambda n: n["distance"])["id"]
-        c.use_item_on(uid, rcd.talismans()[rune], "null", ids=[ruin])
+        c.use_item_on(uid, rcd.talismans()[rune], "Mysterious ruins")
         t0, s = tick(c, uid)
         phase, out = "enter", {}
         for _ in range(budget):
@@ -109,6 +107,37 @@ def sim_rc(rune: str) -> dict[str, float]:
     return {"enter": walk_in + ENTER_TICKS, "inside": inside_ticks(rune) - ENTER_TICKS}
 
 
+def tiara_run(c: BridgeClient, rune: str = "air", pairs: int = TIARA_LOAD, budget: int = 400) -> dict[str, Any]:
+    """Inside the rune's altar (setup only: debug_teleport to the landing), with pairs of a plain tiara and the
+    talisman: a plain tiara used on the altar each time the character is free, as a person clicks. Measured: the ticks
+    from the first click to the first tiara, and between tiaras after it."""
+    uid = c.spawn()["uid"]
+    try:
+        tiara = rcd.tiaras()[rune][0]
+        fresh(c, uid, [(rcd.PLAIN_TIARA, pairs), (rcd.talismans()[rune], pairs)])
+        c.debug_teleport(uid, *rcd.ruins()[rune].end)
+        c.wait(3)
+        made, ticks, clicked, first_click = 0, [], None, None
+        for _ in range(budget):
+            t, s = tick(c, uid)
+            now = held(s, tiara)
+            if now > made:
+                ticks.append(t)
+                made = now
+            if made >= pairs:
+                break
+            if idle(s) and (clicked is None or t - clicked >= RECLICK_TICKS):
+                c.use_item_on(uid, rcd.PLAIN_TIARA, "Altar")
+                clicked = t
+                first_click = t if first_click is None else first_click
+        first = ticks[0] - first_click if ticks and first_click is not None else None
+        gaps = [b - a for a, b in zip(ticks, ticks[1:])]
+        return {"made": made, "first": first, "each": float(np.mean(gaps)) if gaps else None,
+                "xp": rcd.tiaras()[rune][1] * made}
+    finally:
+        c.despawn(uid)
+
+
 def ratio(server: float, sim: float) -> dict[str, Any]:
     r = sim / server if server else float("inf")
     return {"server": round(server, 2), "sim": round(sim, 2), "sim_over_server": round(r, 3),
@@ -120,6 +149,7 @@ def main() -> None:
     parser.add_argument("--runes", nargs="*", default=[r for r in RC_RUNES if r != "chaos"])
     parser.add_argument("--runs", type=int, default=3)
     parser.add_argument("--tick-ms", type=int, default=50)
+    parser.add_argument("--tiaras", action="store_true", help="also time making air tiaras at the altar")
     args = parser.parse_args()
     rows: dict[str, Any] = {"rc": {}}
     with BridgeClient() as c:
@@ -133,6 +163,11 @@ def main() -> None:
                 rows["rc"][rune] = {"runs": runs, "compare": {k: ratio(server[k], sim[k]) for k in server}}
                 print(rune, {k: (v["server"], v["sim"], v["sim_over_server"]) for k, v in rows["rc"][rune]["compare"].items()},
                       f"{len(done)}/{len(runs)} done", flush=True)
+            if args.tiaras:
+                runs = [tiara_run(c) for _ in range(args.runs)]
+                each = float(np.mean([r["each"] for r in runs if r["each"] is not None]))
+                rows["tiara"] = {"runs": runs, "compare": {"each": ratio(each, TIARA_TICKS)}}
+                print("tiara", [(r["made"], r["first"], r["each"]) for r in runs], rows["tiara"]["compare"], flush=True)
         finally:
             c.set_tick_ms(old_ms)
     out = REPO / "results" / "calibration" / f"runecrafting-{datetime.now():%Y%m%d-%H%M}{run_suffix(args.tick_ms)}.json"

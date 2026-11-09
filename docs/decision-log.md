@@ -5500,3 +5500,31 @@ be seen as a time waste." `m002-runecrafting`.
   isn't counted: a fall's stays are short.
 - **Tests:** the sim's damage a fall against the measured 0.91 (within 10%), none for a character of combat level over
   50, and a low-hitpoint character without food can die in the pit.
+
+### Built (sim v1, Runecrafting part 3): the tiaras, worn and made; the bridge finds the ruins by the name a player sees
+2026-11-08, OQ-2's Choice H (Caleb: the tiaras are in). `m002-commit-runecrafting`.
+- **Worn:** `rc_<rune>` puts on the rune's tiara at the bank when the character has one (whatever was on its head goes
+  to the bank), and enters without the talisman (`MysteriousRuinListener.handleTiaraOrStaff`). So the trip carries 28
+  essence, not 27. A tiara has no combat bonuses, so Entrana's monks let it pass.
+- **Made:** `make_tiara_<rune>` (`MakeTiaraAtRuins`), for the nine runes, takes 14 pairs of a plain tiara and the rune's
+  talisman to its altar. Each pair used on the altar makes the tiara for its Runecrafting XP (25 for air to 47.5 for
+  law), with the talisman used up (`TalismanEnchantingListener`). It takes no level. A tiara takes 8 ticks, measured at
+  the air altar (7.85, 14 a run, the same each run; `scripts/calibrate_runecrafting.py --tiaras`): the enchanting
+  script's 2-tick wait, then its 3-tick lock, which drops the next click until it's over.
+  - **Found:** the GE sells the tiaras for 45 gp or so in January 2009 (fire's 52, water's 3,204), well under a talisman
+    (158 to 3,287 gp) and a plain tiara (45). So a tiara path loses gold, and is for the XP; a character after a tiara
+    to wear buys it.
+- **The buys and *V*:** the plain tiara and the nine runes' tiaras join the GE buys and *V* (*V* 367). The rune tiaras
+  are tools, one each.
+  - **Changed (Claude's choice, reversible):** talismans and plain tiaras now come in lots of 14, a tiara load, not one
+    each as part 2 had the talismans. A tiara uses its talisman up, so one at a time would make a tiara a trip. At the
+    frozen prices the GE buys them back for what they cost, so the spare talismans cost no net worth.
+  - **Sizes** (env contract v1.30, to confirm): 2,277 actions and 3,453 features. Runecrafting has 18 paths.
+- **The bridge (fork):** `RLCommands.shown` now resolves scenery to the form a player sees (`Scenery.getChild`), as it
+  does NPCs, so the runecrafting ruins (2452 at the air ruins, named "null") are found as "Mysterious ruins". Built in a
+  fork worktree first and run on instance 6: the live suite passed (66). Then put in the main checkout's fork, on top
+  of the Agility session's `4f58237`, uncommitted.
+  - New live test: `test_the_runecrafting_ruins_are_found_by_the_name_a_player_sees`.
+  - `scripts/calibrate_runecrafting.py` names the ruins that way now.
+- **Tests:** `test_a_worn_tiara_lets_the_character_in_and_the_trip_carries_28_essence`,
+  `test_a_tiara_path_makes_a_tiara_of_each_pair_and_uses_the_talisman_up`; the buy test's lots; the counts.

@@ -48,9 +48,9 @@ def character(inventory: dict[int, int], bank: dict[int, int] | None = None, **l
 
 
 @needs_server
-def test_the_catalog_has_319_buys_and_9_withdrawals():
+def test_the_catalog_has_329_buys_and_9_withdrawals():
     ids = [o.id for o in buying_options()]
-    assert sum(i.startswith("buy_ge_") for i in ids) == 282 and sum(i.startswith("buy_shop_") for i in ids) == 37
+    assert sum(i.startswith("buy_ge_") for i in ids) == 292 and sum(i.startswith("buy_shop_") for i in ids) == 37
     assert [i for i in ids if i.startswith("bank_withdraw")] == [
         "bank_withdraw_gear_melee", "bank_withdraw_gear_ranged", "bank_withdraw_gear_magic",
         *(f"bank_withdraw_{food}" for food in FOOD_TIERS), "bank_withdraw_food", "bank_withdraw_for_sale"]

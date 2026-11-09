@@ -1,6 +1,9 @@
-# Environment Contract (v1.29, Signed off)
+# Environment Contract (v1.30, Signed off)
 
-**Status:** v1.29, 2026-11-08. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
+**Status:** v1.30, 2026-11-08. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
+- **v1.30** (2026-11-08, building sim v1's Runecrafting per OQ-2's Choices H and I (a); to confirm) adds the tiaras: 10
+  GE buys (§2: the plain tiara and the nine runes' tiaras) and those 10 items in *V* (*V* 367), each with its 5 actions
+  and 2 features. 2,277 actions, 3,453 features.
 - **v1.29** (2026-11-08, building sim v1's Runecrafting per OQ-2's Choices A (a) and I (a); to confirm) adds
   Runecrafting's inputs: 11 GE buys (§2: rune and pure essence, which isn't mined, Caleb; the nine runes' talismans) and
   the 9 of them not yet in *V* (*V* 357), each with its 5 actions and 2 features. 2,217 actions, 3,373 features.
@@ -170,11 +173,11 @@ option catalog.
 **As built** (`rlscape/envs/encoding.py`, 2026-10-30): E = 12 roles (weapons for melee, ranged and magic,
 ammunition, head, body, legs, shield, axe, pickaxe, fishing gear), R = 12 (the catalog's 11 regions and
 "elsewhere"), C = 18 slots (6 per combat class). The encoder's docstring lists how each part is scaled. With the
-catalog as built (2,217 actions, *V* = 357) the vector has 3,373 features (v1.12 dropped the quest part's 64; v1.13
+catalog as built (2,277 actions, *V* = 367) the vector has 3,453 features (v1.12 dropped the quest part's 64; v1.13
 added 7 buys and 27 items; v1.14 11 buys, 11 items and the potions part's 22; v1.16 2 buys, 2 items and the cape role;
 v1.17 64 buys and 63 items; v1.19 the home teleport's wait; v1.23 Crafting's slots and task; v1.24 25 buys and 18
 items; v1.25 Herblore's slots and task; v1.26 Runecrafting's; v1.27 66
-buys and 51 items; v1.28 Agility's slots and task; v1.29 11 buys and 9 items).
+buys and 51 items; v1.28 Agility's slots and task; v1.29 11 buys and 9 items; v1.30 10 buys and 10 items).
 
 **Left out on purpose:** GE prices. They're frozen, so a price snapshot would be a constant.
 

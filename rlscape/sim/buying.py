@@ -45,8 +45,10 @@ from rlscape.combat.candidates import ANTI_DRAGON_SHIELD, DRAGONFIRE_PROTECTION
 from rlscape.gamedata import server as gd
 from rlscape.sim.crafting import inputs as craft_inputs
 from rlscape.sim.herblore import inputs as herb_inputs
+from rlscape.sim.runecrafting import RC_RUNES, tiara_of
 from rlscape.sim.runecrafting import inputs as rc_inputs
-from rlscape.gamedata.runecrafting import PURE_ESSENCE, RUNE_ESSENCE
+from rlscape.gamedata.runecrafting import PLAIN_TIARA, PURE_ESSENCE, RUNE_ESSENCE
+from rlscape.gamedata.runecrafting import talismans as rc_talismans
 from rlscape.sim.economy import (GE_TICKS, GE_TILE, STORE_TICKS, bank_notes, bank_trip, banked_or_noted,
                                  kept_on_deposit)
 from rlscape.sim.equipment import (
@@ -128,10 +130,13 @@ CRAFTING_TOOLS = (gd.NEEDLE, gd.CHISEL)
 # on the GE at Caleb's price, 1,765 gp (2026-11-08; scripts/build_price_tables.py), as the rod is.
 HERBLORE_INPUTS = tuple(sorted(i for i in herb_inputs() if i in gd.ge_prices_2009()))
 HERBLORE_TOOLS = (gd.PESTLE_AND_MORTAR,)
-# Runecrafting's inputs (sim v1; Choices A (a) and I (a)): rune and pure essence, which isn't mined (Caleb,
-# 2026-11-08), and the talismans of the runes the paths craft (tools, one each: a trip keeps its talisman).
+# Runecrafting's inputs (sim v1; Choices A (a), H and I (a)): rune and pure essence, which isn't mined (Caleb,
+# 2026-11-08), in lots of 1,000; the talismans and plain tiaras for the runes the paths craft, in lots of 14, a tiara
+# load (making a tiara uses its talisman up); and those runes' tiaras, worn to enter (tools, one each).
 RUNECRAFTING_INPUTS = tuple(sorted(rc_inputs()))
-RUNECRAFTING_TOOLS = tuple(sorted(i for i in rc_inputs() if i not in (RUNE_ESSENCE, PURE_ESSENCE)))
+RUNECRAFTING_TOOLS = tuple(sorted(tiara_of(rune) for rune in RC_RUNES))
+RUNECRAFTING_PAIRS = tuple(sorted({PLAIN_TIARA, *(rc_talismans()[rune] for rune in RC_RUNES)}))
+TIARA_LOT = 14
 
 # The anti-dragon shield (Caleb, 2026-11-06): on the GE, once Duke Horacio's alone. Fights against dragonfire monsters
 # put it on (equipment.wield_best's `protect`).
@@ -148,7 +153,8 @@ LOTS = {**dict.fromkeys(ARROWS + BOLTS + RUNES, 100), **dict.fromkeys(BAIT_AND_F
         **dict.fromkeys(PROCESSING_INPUTS + FLETCHING_INPUTS
                         + tuple(i for i in CRAFTING_INPUTS if i not in CRAFTING_TOOLS)
                         + tuple(i for i in HERBLORE_INPUTS if i not in HERBLORE_TOOLS)
-                        + tuple(i for i in RUNECRAFTING_INPUTS if i not in RUNECRAFTING_TOOLS), 1_000)}  # 1 the rest
+                        + (RUNE_ESSENCE, PURE_ESSENCE), 1_000),
+        **dict.fromkeys(RUNECRAFTING_PAIRS, TIARA_LOT)}  # 1 for the rest
 # role -> how the upgrade check compares; items without a role (consumables) have no upgrade check
 ROLES = {**dict.fromkeys(AXES, "axe"), **dict.fromkeys(PICKAXES, "pickaxe"),
          **dict.fromkeys(SCIMITARS + DRAGON_WEAPONS, "melee"), **dict.fromkeys(SHORTBOWS + CROSSBOWS, "ranged"),
