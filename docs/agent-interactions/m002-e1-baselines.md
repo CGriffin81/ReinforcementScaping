@@ -7,10 +7,9 @@
   ended at 14:09:59 CST (its `config.json`).
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: PARTIAL (E1 run from a clean commit, checked, and its summary committed on the local branch; the push and
-  the PR wait for OQ-62, the branch names)
-- Commit: the main repo commit on branch `experiment/e1-baselines` after `d73e4d1` that adds this record and
-  `results/summary/e1-baselines/`
+- Status: SUCCESS (E1 run from a clean commit, checked, its summary committed, and its PR opened for Caleb)
+- Commit: `c098880` on branch `experiment/e1-baselines` (the summary and this record), after `d73e4d1` (the config),
+  and the commit after it that brings this record up to date
 
 ## Full Prompt
 
@@ -64,7 +63,8 @@ are OQ-62.)
 
 ## Infrastructure Changes
 
-- The local branch `experiment/e1-baselines`. Not pushed yet: Caleb may rename the experiment branches (OQ-62).
+- The branch `experiment/e1-baselines`, pushed once Caleb took OQ-62 (a), which keeps its name, and its PR into
+  `main`.
 - `results/eval/e1-baselines/` (git-ignored): the run's parquet tables.
 
 ## Decisions
@@ -72,7 +72,7 @@ are OQ-62.)
 - **User decisions (Caleb, earlier):** E1 on 30 seeds (OQ-54); one branch per experiment (OQ-61).
 - **Agent recommendation:** OQ-62's names, with the proposal's experiment numbers and a short description.
   `experiment/e1-baselines` keeps its name under it.
-- **Pending (Caleb):** OQ-62.
+- **User decision (Caleb, later in the turn):** OQ-62 (a) (record `m002-oq62`).
 
 ## Validation
 
@@ -82,6 +82,6 @@ are OQ-62.)
 
 ## Follow-Up
 
-- **Caleb:** OQ-62, the branch names. Then review E1's PR, once it's opened.
-- **Claude:** after OQ-62, rename the branch if needed, push it and open its PR into `main` (stacked on PR #9 until
-  that merges). Then the mask speed-up PR, proved on these 30 seeds, and `train.py`.
+- **Caleb:** review and merge PR #9, then E1's PR (stacked on PR #9: its diff shows PR #9's first commit until
+  that merges).
+- **Claude:** the mask speed-up PR, proved on these 30 seeds, then `train.py`.
