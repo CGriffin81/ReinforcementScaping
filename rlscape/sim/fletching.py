@@ -140,9 +140,11 @@ class FletchAtBank(Option):
 
     def available(self, state: CharacterState) -> bool:
         tool = self.recipe.tool
+        if not (self.craft.allowed(state) and (tool is None or state.holds(tool) or state.bank.get(tool, 0) > 0)
+                and self.held_units(state) > 0):
+            return False  # the cheap checks first: most states hold no fletching inputs (the mask speed-up)
         bank = nearest_bank(state)
-        return (self.craft.allowed(state) and (tool is None or state.holds(tool) or state.bank.get(tool, 0) > 0)
-                and self.held_units(state) > 0 and reachable(state, (bank.x, bank.y, bank.plane)))
+        return reachable(state, (bank.x, bank.y, bank.plane))
 
     def load_size(self) -> int | None:
         """Units one inventory takes, or None if the inputs all stack (then everything held is one load)."""

@@ -293,8 +293,8 @@ The old weeks 6 to 8 (E6 on the server, the stretch, a replay with the client) a
   every env contract version (to v1.42), option catalog v1.4 and the guide's fifth revision on 2026-11-09.
 - [x] `results/summary/` committed: `scripts/publish_summary.py` (CSV tables, `config.json`, a README; a dirty tree
   refused) and `evaluate.py --config configs/<name>.yaml` (tooling PR, 2026-11-09).
-- [ ] Speed up the action mask without changing its results, one day at most. It's 92% of a decision's time, and
-  training runs at about 1M decisions an hour.
+- [x] Speed up the action mask without changing its results (2026-11-09): routes remembered and the cheap checks
+  first, 1.49× on E1's episodes (the mask was 88% of a decision), every digest of E1's 120 episodes unchanged.
 - [ ] `scripts/train.py`:
   - one config file per experiment (`configs/`);
   - periodic checkpoints and TensorBoard;
