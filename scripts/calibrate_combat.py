@@ -23,6 +23,8 @@ person waits for the walk to start. Attacked with no target (an eat click stops 
 another kind engaged it, OQ-35), it attacks the attacker back at once, its own kind first (2026-11-08: waiting for
 auto-retaliate took 8 ticks an eat at the poison spiders, 1.28 to 1.17); stop when there's no food left to eat then
 (the sim retreats), at death, or when the budget runs out. Busy STUCK_TICKS without XP, it walks back to the spawn.
+A monster it sees listed alive at 0 hitpoints never dies (the server's null killer, OQ-44 (a)): the run records it
+(`at_zero`) and the report flags the case, whose site is then likely a hazard.
 Ranged fights safespot as the sim's do (rlscape.combat.safespots; Caleb, 2026-11-07, OQ-27 (d)): where the sim's
 fight shoots from the site's safespot, the runner stands on it (setup only) with auto-retaliate off, as rangers
 safespotting do (retaliating walks them off it), and attacks only a monster it holds against, once that one stands
@@ -271,6 +273,14 @@ def holding(state: dict[str, Any]) -> dict[int, int]:
     return out
 
 
+def alive_at_zero(state: dict[str, Any], npcs: list[dict[str, Any]]) -> dict[int, int]:
+    """The monsters listed alive at 0 hitpoints (index -> id): stuck there, never dying (OQ-44 (a)). A death starts
+    in the same tick the hitpoints reach 0 and stops the monster's own fight (ImpactHandler.handleImpact), so a
+    monster `npcs` lists (no dying ones) or one attacking the character at 0 is stuck: the server's null killer when
+    its top damager has left the world, which a Kotlin MapArea zone throws on. A sign of a hazard, not a rate."""
+    return {m["index"]: m["id"] for m in (*npcs, *state["attackers"]) if m["hitpoints"] <= 0}
+
+
 def setup(client: BridgeClient, case: Case, budget: int) -> tuple[int, dict | None]:
     """The character for a run, at the site; with the sim's safespot for the case, on it (the server's tile the sim's
     is, found again for this world's monster indices) with the indices of those it holds against. Despawned if
@@ -360,6 +370,7 @@ def server_run(client: BridgeClient, case: Case, budget: int) -> dict[str, Any]:
                   "other_kills": 0,  # (kills counted for magic: of the case's monster, and of others it fought back)
                   "other_engagements": 0}  # monsters of other kinds that started attacking it (OQ-35)
         others: set[int] = set()  # the indices of other kinds attacking it at the last reading
+        at_zero: dict[int, int] = {}  # monsters seen listed alive at 0 hitpoints, index -> id (OQ-44 (a))
         if spot:
             counts["same_tile"] = spot["same_tile"]
         food = None  # food carried at the last reading
@@ -371,14 +382,16 @@ def server_run(client: BridgeClient, case: Case, budget: int) -> dict[str, Any]:
         bow = client.state(uid)["equipment"]
         bow = next((i["id"] for i in bow if i["id"] in gd.ranged_weapons()), None)
         while True:
-            reads = [{"cmd": "state", "uid": uid}, {"cmd": "ground_items", "uid": uid, "radius": LOOT_RADIUS}]
-            if spot or magic:  # magic: whether the monster it fights is still alive (the bridge lists no dying one)
-                reads.append({"cmd": "npcs", "uid": uid, "name": case.name, "ids": [case.npc], "object": False,
-                              "radius": LOOT_RADIUS if spot else MARK_RADIUS, "range": style_range(case.plan)})
+            # the case's monsters near it: for magic, whether the one it fights is still alive (the bridge lists no
+            # dying one); on a safespot, which it holds against; for every run, any stuck alive at 0 (OQ-44 (a))
+            reads = [{"cmd": "state", "uid": uid}, {"cmd": "ground_items", "uid": uid, "radius": LOOT_RADIUS},
+                     {"cmd": "npcs", "uid": uid, "name": case.name, "ids": [case.npc], "object": False,
+                      "radius": LOOT_RADIUS if spot else MARK_RADIUS, "range": style_range(case.plan)}]
             step = client.schedule([[*pending, *reads]])[0]
             results = step["results"]
             state, ground = results[len(pending)]["state"], results[len(pending) + 1]["items"]
             seen = results[-1]["npcs"] if spot or magic else []
+            at_zero.update(alive_at_zero(state, results[-1].get("npcs", [])))
             if pending and pending[0].get("cmd") in ("interact", "cast") and "index" not in pending[0]:
                 counts["clicks" if results[0].get("ok") else "no_target"] += 1
             if magic and pending and pending[0].get("cmd") == "cast" and results[0].get("ok"):
@@ -530,7 +543,8 @@ def server_run(client: BridgeClient, case: Case, budget: int) -> dict[str, Any]:
                 counts["walked_back"] += 1
     finally:
         client.despawn(uid)
-    out = {"ticks": offset, "ended": ended, **counts, "loot_gp": loot_gp(holding(first[1]), holding(state), ammo)}
+    out = {"ticks": offset, "ended": ended, **counts, "loot_gp": loot_gp(holding(first[1]), holding(state), ammo),
+           "at_zero": [{"index": index, "id": npc} for index, npc in sorted(at_zero.items())]}
     for skill in XP_SKILLS:
         out[f"xp_{skill}"] = xp(state, skill) - xp(first[1], skill)
     return out
@@ -599,6 +613,11 @@ def report(case: Case, row: dict[str, Any]) -> None:
           f"{c['gp_per_hour']['server']:6.0f} {c['gp_per_hour']['sim']:6.0f}  food/h "
           f"{c['food_per_hour']['server']:5.1f} {c['food_per_hour']['sim']:5.1f}  ended {row['server']['ended']} / "
           f"{row['sim']['ended']}")
+    stuck = [run["at_zero"] for run in row["server_runs"] if run.get("at_zero")]  # (older files: none kept)
+    if stuck:
+        ids = sorted({m["id"] for found in stuck for m in found})
+        print(f"  !! {len(stuck)} of {len(row['server_runs'])} server runs saw a monster alive at 0 hitpoints (ids "
+              f"{ids}): stuck, a hazard here? (OQ-44 (a); its rates aren't the fight's)")
 
 
 def resimulate(path: Path, runs: int, budget: int) -> None:

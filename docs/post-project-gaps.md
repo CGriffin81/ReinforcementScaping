@@ -32,3 +32,41 @@ third-best there, travel aside).
   Crandor's passage is done (`rlscape.routes.CROSSINGS`, `rlscape.bridge.walker.PASSAGE_STEPS`), passable only with
   the mask carried or worn. It needs timing on the server.
 - Unmask West Ardougne's places, and check its sites in the calibration sets.
+
+## A monster whose top damager has left the world dies with no killer (OQ-42, OQ-44 (a), 2026-11-08)
+
+**What's missing.** The server credits a monster's death to the player who dealt it the most damage
+(`ImpactHandler.getMostDamageEntity`, from the monster's impact log, by account uid). The log is cleared only when the
+monster dies. If that player has left the world, the killer is null. The sim has no such case: its fights start
+from monsters at full hitpoints.
+- Inside a Kotlin `MapArea` zone, a null killer throws (`ClassScanner`'s zone wrapper declares
+  `startDeath(e: Entity, killer: Entity)`), and the monster stays alive at 0 hitpoints: it can't be killed, every
+  later hit on it is capped at 0, and it stays so until one character still there has dealt it more than the
+  departed one did. The animated spades in the Abandoned Mine did this (`m002-spade-zero-hitpoints`).
+- Elsewhere the death goes ahead with the monster as its own killer (`DeathTask`), and `NPC.finalizeDeath` passes no
+  player to `handleDrops`: the kill's drops and credit go to no player.
+
+**Why.** Caleb chose not to change the server for it: the spades are hazards (OQ-42), and the rest is this gap
+(OQ-44 (a)). For an RL character it happens whenever a character is despawned with a monster hurt (every calibration
+run ends at its budget mid-fight; an episode ends the same way). A human logging out does the same.
+
+**What it costs.**
+- It needs a departed character to have dealt the monster more than half its hitpoints (more than the next one can
+  deal), so it shows up only where runs or episodes follow each other at one site.
+- Stuck monsters: 106 of the sim's 2,184 combat sites are inside a Kotlin `MapArea` zone, by literal borders (71 in
+  `MorytaniaArea`, 13 in the Lair of Tarn, 6 more in the Abandoned Mine (the possessed pickaxe beside the spades
+  among them), 5 at the Kalphite Queen). None of the gate's cases is among them since the spades became hazards.
+- Drops credited to no one: anywhere, for a kill a departed character did most of. It would bear on the loot cases'
+  gp/hr in calibration and on E6's loot; not measured.
+
+**How it's found.** `scripts/calibrate_combat.py` records any monster it sees listed alive at 0 hitpoints in a run
+(`at_zero`), and its report flags the case. A normal death starts in the same tick as the last hit, so such a
+monster is stuck. The site is then a candidate hazard (`candidates.HAZARDS`), for Caleb. `ServerEnv` (E6) should do
+the same once it exists. The unowned drops aren't flagged.
+
+**How to close it.**
+- In the fork (OQ-42 (a)): `getMostDamageEntity` returns the top damager still in the world, or the hit's source if
+  none is (about six lines). Then the spades can be targets again, the stuck-monster check should find nothing, and
+  a live test can pin it (one character deals a spade more than half its hitpoints and is despawned; a second kills
+  it).
+- Or, for RL characters only, a despawned character's uid leaves every monster's impact log (`RLPlayer.clear`).

@@ -57,6 +57,11 @@ HAZARDS = (
     # either (scripts/probe_drops.py: no kill in 2,000 ticks; spawns 2551-2560, 3400-3411). The goblins beside
     # them aren't in it, and the other moss giants stay targets.
     (112, (2545, 3394, 2566, 3417, 0)),
+    # The animated spades in the Abandoned Mine's first floor, by the server's own zone (AbandonedMineZones.kt's
+    # ZoneBorders) (Caleb, 2026-11-08, OQ-42): one that a character who has since left dealt more than half its
+    # hitpoints can't be killed there, and stays alive at 0 (the zone throws on the null killer). The possessed
+    # pickaxe beside them stays a target and an aggressor, and the spades in the Chaos Tunnels stay targets.
+    (5414, (3395, 9609, 3448, 9664, 0)),
 )
 
 

@@ -40,6 +40,23 @@ Started 2026-10-31 (Caleb), from a review of the documentation.
 - **Since:** Caleb cut quests on 2026-11-06 (every quest the server has is complete from the start), so sim v1 is
   the four skills only. The level-3 start stays.
 
+### OQ-43. The caster held "under attack" in the middle of a fight: fight the holder back at once?
+- **Raised:** 2026-11-08, `m002-spade-zero-hitpoints`, from the spade traces. When a possessed pickaxe engaged the
+  character in the middle of a spade fight, the casts on the spade were refused ("You're already under attack!",
+  `MapZone.checkMulti`). The runner's magic loop keeps recasting until `STUCK_TICKS` (30 ticks without XP) walks it
+  back, and only then fights the other monster. That cost 50 to 124 ticks a run (3% to 8%) in the three good spade
+  runs. In the sim, such an engagement is a kill in the fight's plan with no wait (`FightNeighbours`).
+- **Options:**
+  - **(a) Recommended:** the runner does as a person who reads the message does: when a cast on its target is
+    refused and a monster of another kind is attacking it, it casts on that monster at once, and takes up its
+    target again after. Also, `STUCK_TICKS` waits for damage (hitpoints XP), not any XP, so a target that takes no
+    damage is left (a 0-damage swing still gives base Magic XP).
+  - (b) Keep the runner as it is and give the sim the same wait, measured (a sim model change).
+  - (c) Keep both as they are, and report the bias at sites with neighbours.
+- **Decides:** Caleb (it changes what the server side measures).
+- **Blocks:** no gate case since the spades became hazards (OQ-42): no other magic case in the fit or check sets
+  meets a monster of another kind. It matters for server runs at sites with neighbours (E6's spot checks).
+
 ### OQ-45. Should the cosmic altar also be reached through Zanaris?
 - **Raised:** 2026-11-08, building Runecrafting (sim v1, `rlscape/sim/runecrafting.py`). Record
   `m002-runecrafting`.
