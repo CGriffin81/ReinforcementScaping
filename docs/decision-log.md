@@ -5529,6 +5529,53 @@ be seen as a time waste." `m002-runecrafting`.
 - **Tests:** `test_a_worn_tiara_lets_the_character_in_and_the_trip_carries_28_essence`,
   `test_a_tiara_path_makes_a_tiara_of_each_pair_and_uses_the_talisman_up`; the buy test's lots; the counts.
 
+### Measured: the magic fit and check sets with OQ-43 (a); a caster's damage-based wait walks it back at band 1
+2026-11-08, `m002-oq43-oq45`. The magic sets as the ranker picks them now, with the spades hazards (OQ-42), 3 runs a
+case on instance 7, with OQ-43 (a) in the runner (`results/calibration/combat-20261108-2122-i7.json`, `-2138-i7-slot3-
+valuable.json`).
+- **Sim over server XP/hr, all within ±20%:**
+  - fit set: rats (band 1) 0.94; experiments (31, 61, 91) 0.98, 1.03, 1.01;
+  - check set (valuable loot): Black Knights (1, 31) 1.09, 0.99; abyssal demons (61, 91) 0.94, 0.95.
+  - The check set's gp/hr is still off where rare drops make the loot (OQ-20's drop probe checks those).
+- **The switch:** no monster of another kind engaged in these 24 runs, so it never fired (it did at the band-31 poison
+  spiders, above).
+- **Found, the damage-based wait:** at the band-1 Black Knights, wind strike at Magic 1 often goes 6 casts (30 ticks)
+  without damage. The runner now walks back 11 to 17 times a run, against 4 before. XP/hr fell from 8,679 to 8,315
+  (about 4%), still within the gate. The band-31 Black Knights' walk-backs (18 to 22, against 16 to 20) are mostly
+  safespot returns, which count the same way. A longer wait for casters would avoid it (for example 60 ticks, 12
+  casts); that's for Caleb, since it shapes what the server side measures.
+
+### Decided: OQ-47 (c), a cast that lands for 0 counts as a caster's progress (Caleb)
+2026-11-08, Caleb: "OQ47 - Option c". `m002-oq47`.
+- **The question** (raised from the magic sets' rerun, above): OQ-43 (a) made a caster's `STUCK_TICKS` (30 ticks)
+  count from its last damage. At the band-1 Black Knights, wind strike at Magic 1 often goes 6 casts without damage
+  by chance, so the runner walked back 11 to 17 times a run (4 before), about 4% of its XP/hr.
+- **The options:** (a) recommended, a caster waits 60 ticks (12 casts) before walking back for want of damage; (b) keep
+  30 ticks and accept the walk-backs; (c) count a cast that lands without damage (a 0 hit, not a splash) as progress,
+  which needs the bridge to tell a 0 hit from a splash.
+- **Caleb: (c).** Built next.
+
+### Built: OQ-47 (c), the bridge counts landed hits, and a caster's progress is a spell that lands
+2026-11-08, Caleb's OQ-47 (c). `m002-oq47`.
+- **The fork** (two small changes):
+  - `ImpactHandler.handleImpact` adds one to `rl:hits-landed` on the hit's source for every hit that lands, 0s
+    included. A splash never gets there: `MagicSwingHandler` sets a missed spell's hit to -1, and `impact` skips it. A
+    player tells them apart the same way, by the hitsplat or the splash graphic.
+  - The bridge's `state` reports it as `hits_landed`.
+- **The runner** (`scripts/calibrate_combat.py`): a caster's `STUCK_TICKS` counts from its last landed spell, a 0
+  included, instead of its last damage. On a server without the count, it falls back to damage (hitpoints XP).
+- **Live test:** `test_a_spell_that_lands_counts_in_hits_landed_and_a_splash_doesnt`. Wind strike at Magic 1, on cows
+  at full hitpoints, 20 casts: more hits land than do damage (0s count), and none land beyond the casts. Passed 3 of 3
+  on instance 7.
+- **The band-1 Black Knights again**, 3 runs (`results/calibration/combat-20261108-2151-i7-valuable.json`): walk-backs
+  8 to 11 a run, against 11 to 17 with the damage rule and 4 with the first, XP-based rule. XP/hr 8,578, against 8,315
+  and 8,679, and sim over server 1.06.
+  - What's left is about 4 safespot returns, which count as walk-backs at this site, and runs of 6 splashes in a row.
+    Wind strike at Magic 1 splashes often against a Black Knight, and a target the character keeps missing is what
+    (c) still treats as no progress.
+- The main checkout's jar was rebuilt with these and the Runecrafting session's uncommitted `shown()` change in
+  `RLCommands.kt`, which is in the same working tree.
+
 ### Built and measured (sim v1, Barbarian Fishing): `barb_fish` in the Fishing and Agility slots; the rod on the GE
 2026-11-08, OQ-2's Choice D (Caleb: "include Barbarian Fishing as a viable agility training method"; the rod on the GE
 at 1,000 gp, OQ-41). `m002-barbfishing`.

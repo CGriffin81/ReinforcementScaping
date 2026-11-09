@@ -22,8 +22,9 @@ hitpoints are at or under half (the sim's rule, rlscape.sim.health); click again
 person waits for the walk to start. Attacked with no target (an eat click stops the fight on this server; a monster of
 another kind engaged it, OQ-35), it attacks the attacker back at once, its own kind first (2026-11-08: waiting for
 auto-retaliate took 8 ticks an eat at the poison spiders, 1.28 to 1.17); stop when there's no food left to eat then
-(the sim retreats), at death, or when the budget runs out. Busy STUCK_TICKS without XP (a caster: without damage, its
-hitpoints XP, since a spell that misses still gives base Magic XP; Caleb, OQ-43 (a)), it walks back to the spawn.
+(the sim retreats), at death, or when the budget runs out. Busy STUCK_TICKS without XP (a caster: without a spell that
+lands, a hit of 0 included, since a splash still gives base Magic XP; Caleb, OQ-43 (a) and OQ-47 (c)), it walks back
+to the spawn.
 A monster it sees listed alive at 0 hitpoints never dies (the server's null killer, OQ-44 (a)): the run records it
 (`at_zero`) and the report flags the case, whose site is then likely a hazard.
 Ranged fights safespot as the sim's do (rlscape.combat.safespots; Caleb, 2026-11-07, OQ-27 (d)): where the sim's
@@ -367,7 +368,7 @@ def server_run(client: BridgeClient, case: Case, budget: int) -> dict[str, Any]:
         fills = looting and fills_inventory(case)
         ammo = {i["id"] for i in client.state(uid)["equipment"] if i["id"] in stackable}
         pending, first, prev_hp, prev_xp, last_gain, idle, still = [attack] if not spot else [], None, 0, 0.0, 0, 0, 0
-        prev_progress = 0.0  # XP, or for a caster its hitpoints XP (OQ-43 (a)), at the last reading
+        prev_progress = 0.0  # XP, or for a caster its landed hits (OQ-47 (c)), at the last reading
         seen_messages: set[str] | None = None  # the game messages read so far (none before the first reading)
         mine: dict[tuple[int, int, int], int] = {}  # its ground items (id, x, y) -> when first seen
         fighting, ended_at, dropped_at, started_at, last_kill = False, -DROP_WAIT_TICKS, -1, 0, 0
@@ -428,9 +429,10 @@ def server_run(client: BridgeClient, case: Case, budget: int) -> dict[str, Any]:
             counts["other_engagements"] += len(attacking - others)
             others = attacking
             hp, gained = state["hitpoints"], sum(xp(state, s) for s in XP_SKILLS)
-            # progress in a fight: XP, or for a caster the damage it deals (hitpoints XP), since a spell that does no
-            # damage still gives its base Magic XP (Caleb, OQ-43 (a))
-            progress = xp(state, "hitpoints") if magic else gained
+            # progress in a fight: XP, or for a caster a spell that lands, 0s included (the bridge's `hits_landed`),
+            # since a splash still gives its base Magic XP (Caleb, OQ-43 (a), OQ-47 (c)); on a server without the count,
+            # the damage it deals (hitpoints XP)
+            progress = state.get("hits_landed", xp(state, "hitpoints")) if magic else gained
             new_messages = [m for m in state["messages"] if seen_messages is not None and m not in seen_messages]
             seen_messages = set(state["messages"])
             refused = any("already under attack" in m for m in new_messages)

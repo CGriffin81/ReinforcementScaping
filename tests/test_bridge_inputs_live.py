@@ -615,6 +615,46 @@ def test_a_hand_cast_is_one_spell_and_casting_again_each_tick_keeps_the_autocast
     assert magic(end) - magic(start) >= 5.5 * cast
 
 
+def test_a_spell_that_lands_counts_in_hits_landed_and_a_splash_doesnt(client, uid):
+    """`hits_landed` (ImpactHandler.handleImpact; Caleb, OQ-47 (c)): every hit that lands, 0s included; a splash never
+    reaches it (MagicSwingHandler.impact skips a hit of -1). Wind strike at Magic 1 on cows at their full 8 hitpoints,
+    20 casts: a third of the landed hits are 0s (RandomFunction.random(2) is 0, 1 or 2), so more hits land than do
+    damage, and none land beyond the casts."""
+    client.set_retaliate(uid, False)
+    client.debug_set_levels(uid, {"hitpoints": 99})
+    client.debug_give(uid, AIR_RUNE, 100)
+    client.debug_give(uid, MIND_RUNE, 100)
+    client.debug_teleport(uid, *COWS)
+    client.wait(2)
+    spell, full = gd.combat_spells()["wind_strike"].button, gd.npcs()[81].hitpoints
+    landed0, minds0 = client.state(uid)["hits_landed"], held(client, uid, MIND_RUNE)
+    damaging, index, hp, casts = 0, None, None, 0
+    for _ in range(300):
+        step = client.schedule([[{"cmd": "state", "uid": uid},
+                                 {"cmd": "npcs", "uid": uid, "name": "Cow", "ids": [81], "object": False}]])[0]
+        state, seen = step["results"][0]["state"], step["results"][1]["npcs"]
+        casts = minds0 - sum(s["amount"] for s in state["inventory"] if s["id"] == MIND_RUNE)
+        cow = next((n for n in seen if n["index"] == index), None)
+        if index is not None and cow is None:
+            damaging, index = damaging + 1, None  # killed: its last hit did damage
+        elif cow is not None and cow["hitpoints"] < hp:
+            damaging += 1
+        hp = cow["hitpoints"] if cow is not None else None
+        if casts >= 20 and state["target"] is None:
+            break
+        if index is None:
+            unhurt = [n for n in seen if n["hitpoints"] == full]
+            if unhurt:
+                index, hp = unhurt[0]["index"], full
+                client.cast(uid, spell, "Cow", index=index)
+        elif state["target"] is None:
+            client.cast(uid, spell, "Cow", index=index)
+    client.wait(6)  # the last spell's impact
+    landed = client.state(uid)["hits_landed"] - landed0
+    casts = minds0 - held(client, uid, MIND_RUNE)
+    assert casts >= 20 and damaging < landed <= casts, (casts, landed, damaging)
+
+
 def test_the_monsters_in_the_regions_a_human_would_see_are_live(client, uid):
     """An RL character keeps the regions in a client's view active, as a human's does (RLPlayer.update; Caleb,
     2026-11-08): from (3257, 3270), in region (50, 51), the cows across the boundary at y = 3264 walk about. Before,
