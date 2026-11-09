@@ -6632,3 +6632,29 @@ than exp." `m002-oq61`.
   stayed untouched and clean throughout, so E1's record holds.
 - **Results:** unchanged. The harness's tables and hash are the same; `save` only takes optional `extra` and
   `started` provenance.
+
+### Decided: OQ-62 (a), the experiment branches named by number and what they do (Caleb)
+- **Raised:** 2026-11-09, by Caleb, mid-turn while E1 ran: "It may be smart to give a short description in the name
+  of the experiment branches." OQ-61 had named them `experiment/e1-baselines`, `experiment/ladder`,
+  `experiment/e2-weights`, `experiment/e3-rnd`, `experiment/e5-gamma`, `experiment/e5-pbrs` and
+  `experiment/rq3-conditioned`.
+- **Options:**
+  - **(a) Recommended:** the proposal's experiment number and a short description. The branches sort in the report's
+    order and a reviewer matches each to the proposal's table. The weight-conditioned PPO takes E4's number, as it
+    fills E4's place.
+  - **(b):** OQ-61's names, as they were.
+- **Caleb, 2026-11-09: "OQ-62 Option a".** Each name is `experiment/<name>`, and the config and the summary take the
+  same name (`configs/<name>.yaml`, `results/summary/<name>/`):
+
+  | Experiment | Branch, config and summary name |
+  |---|---|
+  | the sanity ladder | `e0-ppo-sanity-ladder` |
+  | E1, the baselines | `e1-baselines` |
+  | E2, the reward-weight sweep | `e2-reward-weight-sweep` |
+  | E3, PPO + RND | `e3-rnd-exploration` |
+  | the weight-conditioned PPO (in E4's place) | `e4-weight-conditioned-ppo` |
+  | E5's γ_hr sweep | `e5a-discount-sweep` |
+  | E5's PBRS | `e5b-pbrs-shaping` |
+
+- **E1 keeps its name.** Its branch, config and summary were already `e1-baselines`. OQ-61's other rules stand.
+  Records `m002-e1-baselines` and `m002-oq62`.

@@ -244,8 +244,20 @@ confirmed every env contract version (to v1.37) and option catalog v1.4 the same
 
 Every research question is answered (Caleb), all on sim v1, with 5 seeds per configuration. RQ5 is OQ-1.
 
-**Branches** (Caleb, OQ-61):
-- each experiment runs on its own `experiment/<name>` branch from `main`, after the `sim-v1` tag (PR #8's merge);
+**Branches** (Caleb, OQ-61, and OQ-62 for the names):
+- each experiment runs on its own `experiment/<name>` branch from `main`, after the `sim-v1` tag (PR #8's merge),
+  its config `configs/<name>.yaml` and its summary `results/summary/<name>/`:
+
+  | Experiment | Branch, config and summary name |
+  |---|---|
+  | the sanity ladder | `e0-ppo-sanity-ladder` |
+  | E1, the baselines | `e1-baselines` |
+  | E2, the reward-weight sweep | `e2-reward-weight-sweep` |
+  | E3, PPO + RND | `e3-rnd-exploration` |
+  | the weight-conditioned PPO (in E4's place) | `e4-weight-conditioned-ppo` |
+  | E5's γ_hr sweep | `e5a-discount-sweep` |
+  | E5's PBRS | `e5b-pbrs-shaping` |
+
 - shared tooling (the mask speed-up, `train.py`, `results/summary/`) goes into `main` first;
 - each experiment merges back by its own PR, its summary committed.
 
