@@ -66,8 +66,12 @@ def test_a_guided_episode_is_deterministic_and_balanced():
     assert first.decisions < 300  # no loops (each was thousands of decisions)
     state = env.sim.state
     combat = [state.level(s) for s in ("attack", "strength", "defence")]
-    assert min(combat) > 1 and max(combat) - min(combat) <= 5  # together, though one 15-minute fight gains several
-    assert all(state.level(s) > 1 for s in SKILLS)  # every scheduled skill gets trained
+    # every melee stat trained; no longer within 5 of each other: kill_cows fights in the style with the fastest kills
+    # (Caleb, 2026-11-09), so Crafting's cows train that one
+    assert min(combat) > 1
+    # every scheduled skill gets trained but Crafting: in 6 hours its cows (slow for a level-3 fighter) haven't paid
+    # off yet; the 20-hour test below checks it
+    assert all(state.level(s) > 1 for s in SKILLS if s != "crafting")
 
 
 def test_a_long_guided_episode_trains_every_skill_without_loops():

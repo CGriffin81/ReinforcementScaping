@@ -537,7 +537,20 @@ class AbyssRunecraft(RunecraftAtRuins):
         if not (self.allowed(state) and self.held_units(state) > 0):
             return False  # the cheap checks first: most states hold no essence
         bank = edgeville_bank()
-        return reachable(state, (bank.x, bank.y, bank.plane)) and self.station(state) is not None
+        return (reachable(state, (bank.x, bank.y, bank.plane)) and self.station(state) is not None
+                and self._can_cover(state))
+
+    def _can_cover(self, state: CharacterState) -> bool:
+        """The crossing's hitpoints can be met at Edgeville's booth, from the hitpoints and all the food held or banked
+        (run() eats banked food there, a deposit having banked what's carried, and turns back if still short).
+        Otherwise a pick would stop at the booth with nothing done (OUT_OF_FOOD), again and again (found
+        2026-11-09)."""
+        need = min(self.need(state), state.max_hp())
+        if state.hp >= need:
+            return True
+        heals = gd.food_healing()
+        food = sum(heals[i] * n for held in (state.inventory, state.bank) for i, n in held.items() if i in heals)
+        return state.hp + food >= need
 
     def _restock(self, state: CharacterState) -> None:
         """At the booth, after `_prepare` and the food: the pouches and a load of one kind of essence (`_load`)."""

@@ -7,7 +7,7 @@
 - Agent: Claude Code (desktop app, Code tab), the Runecrafting session (a fork of the roadmap session), working beside
   the Herblore and Agility sessions in the same checkout
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: COMPLETE (the Abyss's crossing and `abyss_rc_<rune>` built, measured and committed; the pouches next)
+- Status: SUCCESS (the Abyss's crossing and `abyss_rc_<rune>` built, measured and committed; the pouches next)
 - Commit: main `77d6179` (branch `sim-v0`, with fork `6101e45`'s pointer), pushed when Caleb next asked
   (2026-11-09), staged by hunk so the Herblore session's uncommitted RL-stack work stayed out
 

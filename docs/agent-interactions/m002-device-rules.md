@@ -6,7 +6,7 @@
 - Timestamp CST: 2026-11-07 09:28:02 CST, from the session transcript's message timestamp (UTC−06:00)
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: DONE (OQ-28 answered and built in the fork and the sim, tested offline and live; the interference rule
+- Status: SUCCESS (OQ-28 answered and built in the fork and the sim, tested offline and live; the interference rule
   raised as OQ-29)
 - Commit: fork `5e531bb` (branch `rl`) and the main repo commit after `bc7bfec` that adds this record (branch
   `sim-v0`), both pushed 2026-11-07 with `m002-pull-request`

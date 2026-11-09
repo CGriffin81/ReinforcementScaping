@@ -6,7 +6,7 @@
 - Timestamp CST: 2026-11-08 19:58:07 CST, from the session transcript's message timestamp (UTC−06:00)
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: DONE (Herblore part 1 built in the sim; its inputs in *V* and its server times not yet)
+- Status: SUCCESS (Herblore part 1 built in the sim; its inputs in *V* and its server times not yet)
 - Commit: the earlier work is fork `df2b8a6` (branch `rl`) and main repo `5a5cd73` (branch `sim-v0`), both pushed; this
   turn's Herblore work is in the main repo commit after `5a5cd73`, with the Runecrafting session's part 1, pushed
 

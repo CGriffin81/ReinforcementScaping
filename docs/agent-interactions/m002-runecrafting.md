@@ -8,7 +8,7 @@
 - Agent: Claude Code (desktop app, Code tab), a fork of the roadmap session, working beside the Herblore and Agility
   sessions in the same checkout
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: IN PROGRESS (parts 1 and 2 built: the rc_<rune> paths with the server's times, Runecrafting's slots, and the
+- Status: PARTIAL (parts 1 and 2 built: the rc_<rune> paths with the server's times, Runecrafting's slots, and the
   essence and talismans in *V*; tiaras, the Abyss and its pouches to come)
 - Commit: part 1 is in `6c233da` (branch `sim-v0`), committed with the Herblore session's work by that session when
   Caleb asked it to, and pushed (with the spades merge, `db3f87c`). The rest is in the whole-tree commit after

@@ -8,7 +8,7 @@
 - Agent: Claude Code (desktop app, Code tab), the Agility session, beside the Herblore and Runecrafting sessions in the
   same checkout
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: DONE (Barbarian Fishing built and calibrated; the Agility shortcuts not started)
+- Status: SUCCESS (Barbarian Fishing built and calibrated; the Agility shortcuts not started)
 - Commit: the earlier work is fork `4f58237` (branch `rl`) and main repo `aa26e99` (branch `sim-v0`), both pushed;
   this turn's Barbarian Fishing is the main repo commit after `30cf121`, pushed
 

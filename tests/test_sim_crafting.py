@@ -231,6 +231,29 @@ def test_picking_flax_fills_the_inventory_for_no_xp_and_spinning_it_trains_craft
 
 
 @needs_server
+def test_picked_flax_can_be_banked_or_spun():
+    """Caleb, 2026-11-09 (OQ-52): after picking flax, the character can bank it or spin it into bowstrings. Picking
+    flax keeps nothing, since its flax is the product (spinning keeps flax as its input, as before)."""
+    from rlscape.sim.economy import BankDeposit
+    from rlscape.sim.crafting import SpinAtWheel
+
+    paths = {p.id: p for p in path_options()}
+    state = character({}, crafting=10)
+    state.location = (2726, 3485, 0)  # Seers' Village's bank
+    paths["pick_flax"].run(state, np.random.default_rng(0), 9_000)
+    state.task = paths["pick_flax"].task  # as the engine records it after the option
+    assert state.inventory == {FLAX: 28} and kit(state, state.task) == set()
+    assert SpinAtWheel(gd.spinning_recipes()["flax"]).available(state)  # spin it, at Crafting 10
+    deposit = BankDeposit()
+    assert deposit.available(state)  # or bank it
+    deposit.run(state, np.random.default_rng(0), 9_000)
+    assert FLAX not in state.inventory and state.bank[FLAX] == 28
+    spinning = character({FLAX: 5}, crafting=10)
+    spinning.task = "crafting"  # after spinning, flax left over stays for the wheel
+    assert FLAX in kit(spinning, spinning.task)
+
+
+@needs_server
 def test_a_path_without_xp_goes_to_a_gp_slot_only():
     """A fresh character's only Crafting path is picking flax, which gives no XP: it's in a gp slot, the XP slots
     stay empty."""

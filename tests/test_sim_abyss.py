@@ -295,3 +295,20 @@ def test_a_fight_in_the_abyss_takes_the_rings_attacks_with_no_prayer(monkeypatch
     assert tolerated > 3 and inside > tolerated + 4
     monkeypatch.setattr(combat, "in_abyss", lambda tile: False)
     assert sum(eaten(seed) for seed in range(20)) == 0
+
+
+@needs_server
+def test_a_crossing_the_hitpoints_and_food_cant_cover_is_masked():
+    """Found 2026-11-09 (the guide's extension, OQ-53): abyss_rc_air was open to a character whose hitpoints and food
+    couldn't reach what the crossing needs, so each pick stopped at Edgeville's booth (OUT_OF_FOOD, 8 ticks) with
+    nothing done, and a policy could pick it again and again. Now it's masked, as run() would turn back."""
+    path = AbyssRunecraft(ABYSS_RUNES["air"]) if isinstance(ABYSS_RUNES, dict) else AbyssRunecraft("air")
+    state = character({1436: 1})  # a rune essence, no food
+    state.inventory = {1436: 1}
+    state.bank = {}
+    state.hp = 1
+    assert path.need(state) > 1 and not path.available(state)
+    state.bank = {379: 10}  # ten lobsters at the bank cover it
+    assert path.available(state)
+    state.bank, state.hp = {}, state.max_hp()  # or full hitpoints, if they're enough
+    assert path.available(state) == (state.hp >= min(path.need(state), state.max_hp()))

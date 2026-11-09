@@ -7,7 +7,7 @@
 - Agent: Claude Code (desktop app, Code tab), the Runecrafting session (a fork of the roadmap session), beside the
   Herblore session in the same checkout
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: COMPLETE (committed and pushed; the session not ended, as Runecrafting had work left)
+- Status: SUCCESS (committed and pushed; the session not ended, as Runecrafting had work left)
 - Commit: fork `6101e45` (branch `rl`); main `77d6179` and `6ac9684` (branch `sim-v0`), all pushed
 
 ## Full Prompt

@@ -7,7 +7,7 @@
   transcript's message timestamps (UTC−06:00); the second and third arrived while work was running
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: IN PROGRESS (built in the fork and the sim, exported, tested offline and live; the ranged calibration runs
+- Status: PARTIAL (built in the fork and the sim, exported, tested offline and live; the ranged calibration runs
   and the pickup-time refit remain; Caleb's answers to OQ-30 to OQ-32 are in `m002-safespot-answers`)
 - Commit: fork `0c0f5dd` (branch `rl`) and the main repo commit after `2916c1e` that adds this record (branch
   `sim-v0`), both pushed 2026-11-07 with `m002-case-deltas`

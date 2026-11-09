@@ -6,7 +6,7 @@
 - Timestamp CST: 2026-11-08 09:30:54 CST, from the session transcript's message timestamp (UTC−06:00)
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: DONE (committed and pushed what there was; OQ-16 (a)'s quest-opened areas: the ferries built; West
+- Status: SUCCESS (committed and pushed what there was; OQ-16 (a)'s quest-opened areas: the ferries built; West
   Ardougne raised as OQ-37; Trollheim found to need its climbing obstacles)
 - Commit: the earlier work is fork `1a36c9e` (branch `rl`) and main repo `dedcb5d` (branch `sim-v0`), both pushed;
   this turn's later work (the ferries, OQ-37) is the main repo commit after `dedcb5d`, pushed

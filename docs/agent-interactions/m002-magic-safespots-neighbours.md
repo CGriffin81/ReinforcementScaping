@@ -7,7 +7,7 @@
   into 2026-11-08
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: DONE (built and measured; one new question for Caleb, OQ-36)
+- Status: SUCCESS (built and measured; one new question for Caleb, OQ-36)
 - Commit: fork `1a36c9e` (branch `rl`) and the main repo commit after `21365bd` (branch `sim-v0`), both pushed
 
 ## Full Prompt

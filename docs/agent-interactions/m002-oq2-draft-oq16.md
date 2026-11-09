@@ -6,7 +6,7 @@
 - Timestamp CST: 2026-11-08 02:29:33 CST, from the session transcript's message timestamp (UTC−06:00)
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: DONE (OQ-2's draft for Caleb; OQ-16 (a)'s server checks and the Crandor passage; the rest of OQ-16 next)
+- Status: SUCCESS (OQ-2's draft for Caleb; OQ-16 (a)'s server checks and the Crandor passage; the rest of OQ-16 next)
 - Commit: the main repo commit after `21365bd` (branch `sim-v0`), pushed (with fork `1a36c9e`)
 
 ## Full Prompt

@@ -6,7 +6,7 @@
 - Timestamp CST: 2026-11-07 19:31:41 CST, from the session transcript's message timestamp (UTC−06:00)
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: DONE (the ranged check set rerun under the no-threats rule; committed and pushed)
+- Status: SUCCESS (the ranged check set rerun under the no-threats rule; committed and pushed)
 - Commit: fork `f5d1aba` (branch `rl`) and the main repo commit after `8229e12` that adds this
   record (branch `sim-v0`), both pushed
 

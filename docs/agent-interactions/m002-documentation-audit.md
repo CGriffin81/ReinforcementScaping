@@ -7,7 +7,7 @@
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS (audit complete; the fixes it found are proposed, not applied)
-- Commit: None
+- Commit: `d65bc81`, which added this record
 
 ## Full Prompt
 

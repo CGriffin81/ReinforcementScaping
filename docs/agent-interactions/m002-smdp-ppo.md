@@ -7,7 +7,7 @@
   session transcript's timestamps (UTC−06:00)
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: DONE (the RL stack installed; the SMDP rollout buffer and MaskablePPO built and tested)
+- Status: SUCCESS (the RL stack installed; the SMDP rollout buffer and MaskablePPO built and tested)
 - Commit: the earlier work is main repo `fc41eab` (branch `sim-v0`), pushed. The RL stack and the SMDP PPO are the
   main repo commit after `6ac9684` that adds this record (branch `sim-v0`), pushed on Caleb's later request
   (`m002-commit-rl-stack-and-pr`), so they join PR #8

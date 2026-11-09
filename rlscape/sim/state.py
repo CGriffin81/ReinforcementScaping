@@ -17,6 +17,10 @@ INVENTORY_SLOTS = 28
 COINS = 995
 SPAWN = (3233, 3230, 0)  # where the bridge's `spawn` places a character leaving Tutorial Island
 FRESH_HITPOINTS_LEVEL = 10
+# Druidic Ritual's reward (DruidicRitual.finish: rewardXP(HERBLORE, 250.0)), the one quest XP the start has (Caleb,
+# 2026-11-09, OQ-56): every Herblore recipe needs level 3, so without it no policy could train Herblore. Quests are
+# otherwise flags only (2026-11-06).
+DRUIDIC_RITUAL_XP = 250.0
 
 
 @dataclass
@@ -58,9 +62,10 @@ class CharacterState:
     @classmethod
     def fresh(cls) -> CharacterState:
         """A level-3 character exactly as it leaves Tutorial Island, with every quest the server has complete (env
-        contract §1)."""
+        contract §1), and Druidic Ritual's Herblore XP."""
         xp = [0.0] * len(SKILLS)
         xp[SKILL_INDEX["hitpoints"]] = float(XP_FOR_LEVEL[FRESH_HITPOINTS_LEVEL])
+        xp[SKILL_INDEX["herblore"]] = DRUIDIC_RITUAL_XP
         inventory, bank = gd.starter_kit()
         state = cls(tick=0, xp=xp, hp=FRESH_HITPOINTS_LEVEL, inventory={}, bank=dict(bank))
         for item, amount in inventory:

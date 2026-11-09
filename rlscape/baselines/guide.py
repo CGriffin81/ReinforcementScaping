@@ -1,6 +1,7 @@
 """The scripted-guide baseline (E1; env contract decision 17): a new player following the RuneScape Wiki's training
 guides as they stood in January 2009, the month the GE prices are frozen at. Its second draft, all 13 sim v0
 skills, was reviewed by Caleb on 2026-10-31 (`docs/scripted-guide-draft.md`; decision log) and is one of E1's baselines.
+Its fifth revision (Caleb, 2026-11-09, OQ-53 to OQ-59) adds sim v1's four skills, with the rules marked below.
 
 The guides are the members' ones where January 2009 had them (Caleb, 2026-10-31: the character is a member):
 melee [34], ranged [35], woodcutting [36], fishing [37], cooking [38], firemaking [39]. Mining, smithing, prayer and
@@ -11,11 +12,24 @@ article [40].
 The guides say how to train each skill: the method at each level, and the tool or gear tier to use. They don't say
 how to split time between skills, so the schedule is Caleb's:
 - **Schedule** (2026-10-30, "Go after lowest skill"; 2026-10-31, "Minimum stint where the goal levels are multiples
-  of 5"): the lowest of the 14 skills the sim trains directly (all but Hitpoints, which rises with combat) starts a
-  stint, trained until it reaches the next multiple of 5; then the lowest starts the next. Ties go to SKILLS' order.
-  A skill that can't be trained right now (no bones, no logs, a fight its style can't start) passes the turn to the
-  next lowest, and the stint resumes when it can. Stints cut the trips between distant sites that switching every
-  option would cost.
+  of 5"): the lowest of the 18 skills the sim trains directly (all but Hitpoints, which rises with combat; sim v1's
+  four since OQ-53) starts a stint, trained until it reaches the next multiple of 5; then the lowest starts the next.
+  Ties go to SKILLS' order. A skill that can't be trained right now (no bones, no logs, a fight its style can't start)
+  passes the turn to the next lowest, which starts a stint of its own (OQ-58 (a): the stint used to stay, and Prayer's
+  held most of an episode); the first resumes when it's the lowest again. Stints cut the trips between distant sites
+  that switching every option would cost.
+- **Sim v1's skills** (OQ-53): Agility, the Gnome course then the Wilderness's; Crafting, gems from drops, hard
+  leather from 28, flax picked and spun from 10, soft leather below it from `kill_cows`' hides; Herblore, the best
+  potion the level allows; Runecrafting, air then earth runes at the ruins. Their tables are below.
+- **The coins** (Caleb, 2026-11-09): an upgrade takes at most half of them, the rest kept for the skills that lose
+  gp; those skills' inputs (rune essence, herbs, vials, secondaries, thread) are bought whenever due. When the
+  inputs for the stint cost more than the coins, the guide picks flax by Seers' Village, banks it until it covers them
+  and the GE trip's two fares, sells it in one trip, and buys before any upgrade (OQ-59 (b): the money-maker carries
+  through the stint).
+- **Loot** (Caleb, 2026-11-09): half of what's obtained of an item is sold, half kept for processing, a whole stack at
+  a time; what it buys to use is never sold.
+- **Banking before a task** (Caleb, 2026-11-09): before gathering or a fight, a deposit if it would bank 5 or more
+  slots the coming task doesn't use.
 - **Gathering through the skilling slots** (rlscape.sim.skilling): the guide runs the slot that holds its method's
   path (the method, its produce kept); if no slot holds it, the skill's top XP slot.
 - **Woodcutting** ([36]): normal trees to 14, oaks 15–29, willows from 30 (the guide's teaks and eucalyptus aren't
@@ -83,6 +97,7 @@ how to split time between skills, so the schedule is Caleb's:
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import replace
 from functools import cache
 
@@ -90,15 +105,16 @@ import numpy as np
 
 from rlscape.envs.sim_env import SimEnv
 from rlscape.gamedata import server as gd
-from rlscape.sim.buying import (ARMOUR, ARROWS, AXES, HAMMER, PICKAXES, SCIMITARS, SHORTBOWS,
-                                BankWithdrawForSale, is_upgrade, usable)
+from rlscape.sim.buying import (ARMOUR, ARROWS, AXES, CRAFTING_INPUTS, HAMMER, HERBLORE_INPUTS, PICKAXES,
+                                RUNECRAFTING_INPUTS, SCIMITARS, SHORTBOWS, BankWithdrawForSale, is_upgrade, usable)
 from rlscape.sim.economy import kept_on_deposit
 from rlscape.sim.equipment import WEAPON
 from rlscape.sim.health import foods_held
 from rlscape.sim.skilling import slot_holding
 from rlscape.sim.skills import SKILL_INDEX, XP_FOR_LEVEL
 from rlscape.sim.slots import K
-from rlscape.sim.state import CharacterState
+from rlscape.sim.kits import kit
+from rlscape.sim.state import COINS, CharacterState
 from rlscape.vocabulary import vocabulary
 
 FLY_ROD, FEATHERS, FEATHER_REORDER = 309, 314, 50
@@ -109,8 +125,9 @@ KIT_WITHDRAWAL = {"fish_shrimp": "bank_withdraw_for_fish_shrimp", "fish_shrimp_s
                   "fish_fly": "bank_withdraw_for_fish_fly"}
 DRAYNOR_WIZARDS_PICK = 14  # Draynor's Dark wizards (level 7) pick a character of combat level 14 or less
 COMBAT = ("attack", "strength", "defence")
+SIM_V1 = ("agility", "crafting", "herblore", "runecrafting")  # Caleb, 2026-11-09 (OQ-53): they join the schedule
 SKILLS = (*COMBAT, "ranged", "magic", "prayer", "woodcutting", "firemaking", "fletching", "fishing", "cooking",
-          "mining", "smithing", "thieving")  # SCHEDULE: the lowest of these starts the next stint
+          "mining", "smithing", "thieving", *SIM_V1)  # SCHEDULE: the lowest of these starts the next stint
 STINT = 5  # a stint trains its skill to the next multiple of this level
 STYLE = {"attack": "accurate", "strength": "aggressive", "defence": "defensive"}
 PROCESSING = {"prayer": "bury_bones", "firemaking": "burn_logs", "cooking": "cook_fish"}
@@ -147,6 +164,35 @@ FLETCHING = ((1, ("wc_logs_fletch",)), (25, ("fletch_oak_longbow_u", "wc_oak_fle
 # Thieving training, January 2009 ([27]): (first level, method), as mapped onto sim v0 above.
 THIEVING = ((1, "pickpocket_men"), (5, "steal_bakers_stall"), (20, "steal_silk_stall"), (35, "steal_fur_stall"),
             (38, "pickpocket_master_farmers"), (55, "pickpocket_knights"), (65, "pickpocket_menaphite_thugs"))
+# Sim v1's four skills (Caleb, 2026-11-09, OQ-53), from the January 2009 pages:
+# Agility training ([45]): the Gnome Stronghold course to 25, Werewolf Skullball 25-52 (not in the sim, so the Gnome
+# course stretches over it), the Wilderness course 52-80, Ape Atoll 80+ (not in the sim, so the Wilderness stretches).
+AGILITY = ((1, "agility_gnome"), (52, "agility_wilderness"))
+# Crafting ([43], [44]): hard leather bodies from 28, from cows' hides tanned at Ellis; flax picked by Seers' Village
+# and spun into bowstrings from 10; below 10, soft leather from cows' hides (Caleb: "Cowhides from cows"), the best item
+# the level allows, the hides from kill_cows (Caleb, 2026-11-09); gems only as drops bring them ("buying uncut gems for
+# cutting is not worthwhile"). The page's wool (spun to 8) was bought for a while, and then taken out (Caleb,
+# 2026-11-09: "Remove wool"): a spin loses 112 gp, wool's 123 against a ball's 11.
+SOFT_LEATHER = ((1, "craft_leather_gloves"), (7, "craft_leather_boots"), (9, "craft_leather_cowl"),
+                (11, "craft_leather_vambraces"), (14, "craft_leather_body"), (18, "craft_leather_chaps"))
+GEM_CUTS = ((1, "cut_opal", 1625), (13, "cut_jade", 1627), (16, "cut_red_topaz", 1629), (20, "cut_sapphire", 1623),
+            (27, "cut_emerald", 1621), (34, "cut_ruby", 1619), (43, "cut_diamond", 1617))
+FLAX_SPIN, HARD_LEATHER_LEVEL = 10, 28
+NEEDLE, THREAD, CHISEL, FLAX = 1733, 1734, 1755, 1779
+COWHIDE, LEATHER, HARD_LEATHER = 1739, 1741, 1743
+THREAD_REORDER = 5  # a reel sews 5 items
+# Runecrafting ([47]): air runes to 9, then earth runes ("one may stay at earth runecrafting until 30"); the members'
+# page's methods ([48]: Zanaris's cosmics, the ZMI altar, astral runes) aren't in the sim. Its talisman is bought
+# (quests are flags only, so Rune Mysteries' air talisman isn't given), and rune essence too (the sim mines none).
+RUNECRAFTING = ((1, "rc_air", 1438), (9, "rc_earth", 1440))
+RUNE_ESSENCE, ESSENCE_LOAD = 1436, 28
+# The flax money-maker (Caleb, 2026-11-09, OQ-59 (b)) sells at the GE, and the sim's way from the GE to the field is
+# the home teleport and the 1,000 gp charter from Port Sarim to Catherby (back, the charter too when the teleport
+# waits). Selling each load netted nothing, so the flax is banked until it covers the inputs and two fares.
+FLAX_FARES = 2_000
+# Herblore ([46], the potions by level; January 2009 had no training page): the best potion the level allows, from
+# level 3 (Druidic Ritual's XP, Caleb, OQ-56), its herb, vial of water and secondary bought.
+VIAL_OF_WATER, HERB_LOAD = 227, 14
 
 
 def woodcutting_method(level: int) -> str:
@@ -181,6 +227,23 @@ def fletching_methods(level: int) -> list[str]:
     return [path for start, paths in reversed(FLETCHING) if start <= level for path in paths]
 
 
+def methods_for(table: tuple, level: int) -> list:
+    """A (first level, method, ...) table's methods for the level, the guide's first, then the earlier ones."""
+    return [row[1] if len(row) == 2 else row[1:] for row in reversed(table) if row[0] <= level]
+
+
+def guide_potion(level: int) -> gd.Potion | None:
+    """The best potion the Herblore level allows, by the January 2009 table ([46])."""
+    potions = [p for p in gd.herblore_potions().values() if p.level <= level]
+    return max(potions, key=lambda p: (p.level, p.experience), default=None)
+
+
+@cache
+def grimy_of() -> dict[int, int]:
+    """A clean herb -> its grimy herb, which is what's bought (the GE's herbs)."""
+    return {h.clean: h.grimy for h in gd.herbs().values()}
+
+
 def guide_spell(level: int) -> gd.CombatSpell:
     """The best of the guide's spells the Magic level allows."""
     spells = gd.combat_spells()
@@ -191,6 +254,12 @@ def held(state: CharacterState, item: int) -> int:
     """Units held anywhere: inventory, bank, or worn."""
     worn = sum(state.worn(slot) for slot, i in state.equipment.items() if i == item)
     return state.inventory.get(item, 0) + state.bank.get(item, 0) + worn
+
+
+def units(state: CharacterState, item: int) -> int:
+    """Units held anywhere, banknotes in the inventory included (a GE buy of several arrives as notes)."""
+    note = gd.noted_ids().get(item)
+    return held(state, item) + (state.inventory.get(note, 0) if note is not None else 0)
 
 
 def at_most(state: CharacterState, skill: str, level: int) -> CharacterState:
@@ -207,6 +276,50 @@ def smithing_metals(level: int) -> tuple[str, ...]:
 
 
 @cache
+def kept_for_skills() -> frozenset[int]:
+    """What the guide buys for sim v1's Crafting, Herblore and Runecrafting, never sold: their tools, thread, wool,
+    vials, the potions' secondaries and unfinished potions, rune essence and talismans. Loot they use (hides,
+    leathers, uncut gems, herbs) is produce, half sold (Caleb, 2026-11-09)."""
+    loot = {COWHIDE, LEATHER, HARD_LEATHER} | {uncut for *_, uncut in GEM_CUTS} | {
+        i for h in gd.herbs().values() for i in (h.grimy, h.clean)}
+    return frozenset((set(CRAFTING_INPUTS) | set(HERBLORE_INPUTS) | set(RUNECRAFTING_INPUTS)) - loot)
+
+
+CLEAR_SLOTS = 5  # a deposit before gathering or a fight must free this many slots (Claude's choice, for Caleb)
+
+
+def task_of(state: CharacterState, option) -> str | None:
+    """The task an option is about to do: a fight's class, the path a skilling slot holds now, kill_cows' class."""
+    if hasattr(option, "slots") and option.family != "combat" and hasattr(option, "index"):
+        candidate = option.slots.candidate(state, option.skill, option.index)
+        option = candidate.path if candidate is not None else option
+    if hasattr(option, "choice") and (choice := option.choice(state)) is not None:
+        return f"combat:{choice[1].combat_class}"  # kill_cows
+    return getattr(option, "task", None)
+
+
+def junk_slots(state: CharacterState, task: str | None) -> int:
+    """Inventory slots carried that the task about to start doesn't use (its kit, rlscape.sim.kits), a slot a stack or
+    banknote, a slot a unit otherwise. Measured against the coming task, not the last: a deposit that banked the
+    coming fight's runes would be undone by its withdrawal, and done again."""
+    keep, stackable, unnoted = kit(state, task), gd.stackable_items(), gd.unnoted_ids()
+    return sum(1 if (i in stackable or unnoted.get(i, i) != i) else n for i, n in state.inventory.items()
+               if i not in keep and i != COINS)
+
+
+def carried_flax(state: CharacterState) -> int:
+    """Flax carried, banknotes included (bank_withdraw_for_sale takes it out as notes)."""
+    return state.inventory.get(FLAX, 0) + state.inventory.get(gd.noted_ids().get(FLAX), 0)
+
+
+def upgrade_budget(state: CharacterState) -> int:
+    """The coins an upgrade may take: half of them, the other half kept for training the skills that lose gp (Caleb,
+    2026-11-09: "half of gp should be preserved for training skills that are net negative on gp, when making upgrade
+    decisions")."""
+    return state.coins() // 2
+
+
+@cache
 def kept_for_prayer() -> frozenset[int]:
     """Bones: Prayer's only source in sim v0, and worth little at the GE."""
     return frozenset(gd.bone_experience())
@@ -218,10 +331,12 @@ class ScriptedGuidePolicy:
     def __init__(self) -> None:
         self.vocabulary = frozenset(vocabulary())
         self.last: str | None = None  # the previous option id
+        self.sold: Counter[int] = Counter()  # units sold of each item this episode (half the loot is sold)
+        self.funding: str | None = None  # the skill the flax money-maker is funding, until its inputs are bought
         self.stint: tuple[str, int] | None = None  # (skill, goal level)
 
     def reset(self, seed: int | None) -> None:  # deterministic: nothing to seed
-        self.last, self.stint = None, None
+        self.last, self.stint, self.sold, self.funding = None, None, Counter(), None
 
     def schedule(self, state: CharacterState) -> list[str]:
         """SCHEDULE: the stint's skill first, then the rest lowest first. A stint ends when its skill reaches the goal
@@ -237,49 +352,83 @@ class ScriptedGuidePolicy:
         ids = {o.id: i for i, o in enumerate(env.options)}
         allowed = lambda option_id: option_id in ids and bool(mask[ids[option_id]])
         order = self.schedule(state)
-        action = next((ids[o] for o in self._plan(env, state, order, allowed) if allowed(o)), None)
-        if action is None:
-            action = int(np.flatnonzero(mask)[0])  # nothing in the plan is possible: the first allowed action
+        plan = ((o, owner) for o, owner in self._plan(env, state, order, allowed) if allowed(o))
+        chosen = next(plan, None)
+        if chosen is not None and chosen[0] == "bank_deposit" and (self.last or "").startswith("bank_withdraw"):
+            # not straight back into the bank what was just taken out (seed 14 looped 1,300 times on a magic
+            # withdrawal and a full inventory's deposit): the plan's next option, if it has one
+            chosen = next((c for c in plan if c[0] != "bank_deposit"), chosen)
+        if chosen is None:  # nothing in the plan is possible: the first allowed action
+            action, owner = int(np.flatnonzero(mask)[0]), None
+        else:
+            action, owner = ids[chosen[0]], chosen[1]
+        just_banked = self.last is not None and self.last.startswith(("bank_withdraw", "bank_deposit"))
+        if (env.options[action].family in ("gathering", "combat") and allowed("bank_deposit") and not just_banked
+                and junk_slots(state, task_of(state, env.options[action])) >= CLEAR_SLOTS):
+            # bank what the task at hand doesn't need before gathering or fighting fills the inventory (Caleb,
+            # 2026-11-09: "not banking everything they don't need for the task at hand"); the option comes next
+            action, owner = ids["bank_deposit"], None
+        if owner is not None and owner != order[0]:
+            # the stint's skill couldn't be trained (Prayer without bones, say), and the plan fell to another skill's
+            # training: that skill starts a stint, and the first resumes when it's the lowest again (Caleb, OQ-58 (a))
+            self.stint = (owner, (state.level(owner) // STINT + 1) * STINT)
         self.last = env.options[action].id
+        self._count_sale(state, self.last)
+        money_maker = (self.last in (f"sell_ge_{FLAX}", "bank_withdraw_for_sale")
+                       or self.last == slot_holding(env.options, state, "pick_flax"))
+        if owner is not None and money_maker and self._input_need(state, owner) is not None:
+            self.funding = owner  # the money-maker took over: it carries through the stint (Caleb, 2026-11-09)
+        if self.funding is not None and (self.stint is None or self.stint[0] != self.funding
+                                         or self._input_need(state, self.funding) is None):
+            self.funding = None  # its inputs are bought, or the stint moved on
         return action
 
     def _plan(self, env: SimEnv, state: CharacterState, order: list[str], allowed):
-        """Option ids in order of preference; the first allowed one is taken. Logistics (upgrades, a full
-        inventory) are decided for the skill due next, then each skill is tried in schedule order."""
+        """(option id, the skill it trains or None for logistics), in order of preference; the first allowed one is
+        taken. Logistics (upgrades, funding, a full inventory) are decided for the skill due next, then each skill
+        is tried in schedule order."""
         skill = order[0]
         if self.last is not None and self.last.startswith("bank_withdraw_gear_"):
             combat_class = self.last.removeprefix("bank_withdraw_gear_")  # use it before it's banked again
-            yield from (f for s in (COMBAT if combat_class == "melee" else (combat_class,))
+            yield from ((f, s) for s in (COMBAT if combat_class == "melee" else (combat_class,))
                         for f in self._fights(env, state, s))
-        prices, coins = gd.ge_prices_2009(), state.coins()
-        roles = self._upgrades(state, skill)
-        # per role, the best tier that's affordable; the guides move up a tier at a time ("mithril if you can
-        # afford it")
-        yield from (f"buy_ge_{best}" for tiers in roles if (best := next((i for i in tiers if prices[i] <= coins),
-                                                                          None)) is not None)
-        shortfall = min((prices[i] - coins for tiers in roles for i in tiers if prices[i] > coins), default=None)
-        if shortfall is not None:  # fund the next upgrade, at GE prices
+        prices, budget = gd.ge_prices_2009(), upgrade_budget(state)
+        roles = [] if self.funding is not None else self._upgrades(state, skill)  # funding: the inputs come first
+        yield from ((o, None) for o in ([] if self.funding is not None else self._affordable(state, skill)))
+        # funding the next upgrade: enough that it fits in the half of the coins upgrades may spend
+        shortfall = min((2 * prices[i] - state.coins() for tiers in roles for i in tiers if prices[i] > budget),
+                        default=None)
+        if shortfall is not None:  # at GE prices
             carried = self._carried_for_sale(state)
             value = sum(prices.get(i, 0) * n for i, n in carried.items())
             if value >= shortfall:
-                yield from (f"sell_ge_{item}" for item in sorted(carried, key=lambda i: -prices.get(i, 0) * carried[i]))
-            banked = sum(prices.get(i, 0) * state.bank[i] for i in BankWithdrawForSale.produce(state)
-                         if self._produce(i))  # only what it will sell, so the trip pays for the upgrade
-            if value + banked >= shortfall:
-                yield "bank_withdraw_for_sale"
+                yield from ((f"sell_ge_{item}", None)
+                            for item in sorted(carried, key=lambda i: -prices.get(i, 0) * carried[i]))
+            if value + self._banked_for_sale(state, prices) >= shortfall:
+                yield "bank_withdraw_for_sale", None
         if state.free_slots() == 0:
+            if carried_flax(state) and any(self._flax_ready(state, s) for s in order):
+                yield f"sell_ge_{FLAX}", None  # enough of the money-maker's flax: sold before a deposit banks it
             if sum(n for _, n in self._food(state)) < FOOD:
-                yield "cook_fish"
+                yield "cook_fish", None
             for next_skill in order:  # use what's carried (logs, bones, ores, bars) before banking it
-                yield from self._process_carried(state, next_skill)
-            yield "bank_deposit"  # keeps the last task's kit (rlscape.sim.kits)
-            yield from (f"sell_ge_{item}" for item, _ in self._food(state) if item in self.vocabulary)
+                yield from ((o, None) for o in self._process_carried(state, next_skill))
+            yield "bank_deposit", None  # keeps the last task's kit (rlscape.sim.kits)
+            yield from ((f"sell_ge_{item}", None) for item, _ in self._food(state) if item in self.vocabulary)
         for next_skill in order:
-            yield from (f"buy_ge_{best}" for chain in self._skill_chains(state, next_skill)
-                        if (best := next((i for i in reversed(chain) if prices[i] <= coins and usable(state, i)
+            yield from ((f"buy_ge_{best}", next_skill) for chain in self._skill_chains(state, next_skill)
+                        if (best := next((i for i in reversed(chain) if prices[i] <= budget and usable(state, i)
                                           and is_upgrade(state, i)), None)) is not None)
-            yield from self._train(env, state, next_skill, allowed)
-        yield "bank_deposit"
+            yield from ((o, next_skill) for o in self._consumables(state, next_skill))
+            if self._short(state, next_skill):  # its inputs cost more than the coins: flax pays for them (OQ-59 (b))
+                if self._flax_ready(state, next_skill):  # sell it all in one GE trip
+                    if carried_flax(state):
+                        yield f"sell_ge_{FLAX}", next_skill
+                    yield "bank_withdraw_for_sale", next_skill  # the banked loads, as banknotes
+                else:  # another load, banked when the inventory fills (picking flax keeps nothing: OQ-52)
+                    yield from ((o, next_skill) for o in self._slots_holding(env, state, ["pick_flax"]))
+            yield from ((o, next_skill) for o in self._train(env, state, next_skill, allowed))
+        yield "bank_deposit", None
 
     def _train(self, env: SimEnv, state: CharacterState, skill: str, allowed):
         """The options that train one skill the guide's way, in order of preference."""
@@ -313,6 +462,22 @@ class ScriptedGuidePolicy:
             yield from self._slots_holding(env, state, fletching_methods(state.level("fletching")))
             yield "bank_withdraw_for_woodcutting"  # the axe and knife, for chopping and cutting on the spot
             yield "skill_fletching_xp1"
+        elif skill == "agility":
+            yield from self._slots_holding(env, state, methods_for(AGILITY, state.level("agility")))
+            yield "skill_agility_xp1"
+        elif skill == "crafting":
+            yield from self._crafting(env, state)
+        elif skill == "herblore":
+            level = state.level("herblore")
+            if (potion := guide_potion(level)) is not None:
+                yield from self._slots_holding(env, state, [f"potion_{potion.name}"])
+            herbs = sorted((h for h in gd.herbs().values() if h.level <= level), key=lambda h: -h.level)
+            yield from self._slots_holding(env, state, [f"clean_{h.name}" for h in herbs])  # herbs drops brought
+            yield "skill_herblore_xp1"
+        elif skill == "runecrafting":
+            methods = methods_for(RUNECRAFTING, state.level("runecrafting"))
+            # the page's methods only, at the ruins: no top-slot fallback, which without the talisman is the Abyss
+            yield from self._slots_holding(env, state, [method for method, _ in methods])
         else:
             method = self._method(state, skill)
             fallback = [shrimp_method(state)] if skill == "fishing" else []  # no fly rod or feathers yet
@@ -321,6 +486,97 @@ class ScriptedGuidePolicy:
             if skill == "fishing":
                 yield "bank_withdraw_for_fish_shrimp"
             yield f"skill_{skill}_xp1"
+
+    def _affordable(self, state: CharacterState, skill: str) -> list[str]:
+        """The upgrades the guide would buy now with the skill due: per role, the best tier that fits the upgrade
+        budget, half the coins (the guides move up a tier at a time: "mithril if you can afford it")."""
+        prices, budget = gd.ge_prices_2009(), upgrade_budget(state)
+        return [f"buy_ge_{best}" for tiers in self._upgrades(state, skill)
+                if (best := next((i for i in tiers if prices[i] <= budget), None)) is not None]
+
+    def _crafting(self, env: SimEnv, state: CharacterState):
+        """Crafting the guide's way ([43], [44]): cut the gems drops brought; hard leather bodies from 28 while hides
+        or hard leather are held; flax picked and spun from 10; soft leather, the best item the level allows, while
+        hides or leather are held; and below 10, cows killed for their hides, `kill_cows`, Crafting's gathering path
+        (Caleb, 2026-11-09)."""
+        level, hides = state.level("crafting"), units(state, COWHIDE)
+        yield from self._slots_holding(env, state, [path for start, path, uncut in reversed(GEM_CUTS)
+                                                    if start <= level and units(state, uncut)])
+        if level >= HARD_LEATHER_LEVEL and (units(state, HARD_LEATHER) or hides):
+            yield from self._slots_holding(env, state, ["craft_hardleather_body", "tan_hard_leather"])
+        if level >= FLAX_SPIN:
+            yield from self._slots_holding(env, state, ["pick_flax_spin"])
+        if units(state, LEATHER) or hides:
+            yield from self._slots_holding(env, state, [*methods_for(SOFT_LEATHER, level), "tan_leather"])
+        if level < FLAX_SPIN:
+            yield from self._slots_holding(env, state, ["kill_cows"])  # the hides, its bones buried
+        yield "skill_crafting_xp1"
+
+    @staticmethod
+    def _input_need(state: CharacterState, skill: str) -> tuple[int, int] | None:
+        """(the input a skill that loses gp is short of, a load of it), or None: rune essence for Runecrafting (a
+        load, 28), thread for leather (a reel's 5 items), and for Herblore the scarcest of its potion's herb, vial and
+        secondary (a load, 14)."""
+        if skill == "runecrafting" and units(state, RUNE_ESSENCE) < ESSENCE_LOAD:
+            return RUNE_ESSENCE, ESSENCE_LOAD
+        if skill == "crafting":
+            if units(state, THREAD) < THREAD_REORDER and any(units(state, i) for i in (COWHIDE, LEATHER, HARD_LEATHER)):
+                return THREAD, THREAD_REORDER
+            return None
+        if skill == "herblore" and (potion := guide_potion(state.level("herblore"))) is not None:
+            herb = grimy_of()[potion.herb]
+            made = units(state, potion.unfinished)
+            counts = {herb: units(state, herb) + units(state, potion.herb) + made,
+                      VIAL_OF_WATER: units(state, VIAL_OF_WATER) + made, potion.secondary: units(state, potion.secondary)}
+            scarcest = min(counts, key=lambda i: (counts[i], i))
+            if counts[scarcest] < HERB_LOAD and scarcest in gd.ge_prices_2009():
+                return scarcest, HERB_LOAD
+        return None
+
+    def _consumables(self, state: CharacterState, skill: str):
+        """GE buys of what a skill uses up (rune essence, herbs, vials, secondaries, thread), whenever it's due:
+        upgrades keep half the coins back for these skills, which lose gp (Caleb, 2026-11-09, replacing OQ-53's
+        "after affordable upgrades"). A buy takes as many as the coins allow, up to the item's lot (rune essence and
+        herblore's inputs 1,000), so it can spend more than that half. While the coins can't cover a load, flax pays
+        for it (_short, OQ-59 (b))."""
+        if (need := self._input_need(state, skill)) is not None and not self._short(state, skill):
+            yield f"buy_ge_{need[0]}"
+
+    def _flax_ready(self, state: CharacterState, skill: str) -> bool:
+        """Enough flax held (carried, noted or banked) to pay for the skill's inputs and the two fares a GE trip costs."""
+        if not self._short(state, skill):
+            return False
+        prices = gd.ge_prices_2009()
+        return units(state, FLAX) * prices[FLAX] >= self._funds_needed(state, skill) - state.coins() + FLAX_FARES
+
+    def _funds_needed(self, state: CharacterState, skill: str) -> int:
+        """What the skill's short input costs: for its stint (Caleb, 2026-11-09: the money-maker carries through the
+        stint), the units the XP to the stint's goal level takes, or at least a load."""
+        need = self._input_need(state, skill)
+        if need is None:
+            return 0
+        item, load = need
+        units_needed = load
+        if self.stint is not None and self.stint[0] == skill and (per := self._xp_per_unit(state, skill)) > 0:
+            xp_left = XP_FOR_LEVEL[self.stint[1]] - state.xp[SKILL_INDEX[skill]]
+            units_needed = max(load, int(np.ceil(xp_left / per)) - units(state, item))
+        return gd.ge_prices_2009().get(item, 0) * units_needed
+
+    @staticmethod
+    def _xp_per_unit(state: CharacterState, skill: str) -> float:
+        """XP an input unit gives: a rune essence its rune's XP, a Herblore input its potion's finishing XP."""
+        if skill == "runecrafting":
+            rune = methods_for(RUNECRAFTING, state.level("runecrafting"))[0][0].removeprefix("rc_")
+            from rlscape.gamedata import runecrafting as rcd  # imported here: the guide needs it only for this
+            return rcd.runes()[rune].experience if rune in rcd.runes() else 0.0
+        if skill == "herblore" and (potion := guide_potion(state.level("herblore"))) is not None:
+            return potion.experience
+        return 0.0
+
+    def _short(self, state: CharacterState, skill: str) -> bool:
+        """The skill's short input costs more than the coins held (Caleb, 2026-11-09, OQ-59 (b): then the guide picks
+        flax by Seers' Village and sells it, 90 gp each, in full: it's picked to sell, not loot to keep half of)."""
+        return self._input_need(state, skill) is not None and self._funds_needed(state, skill) > state.coins()
 
     @staticmethod
     def _kit_banked(state: CharacterState, skill: str) -> bool:
@@ -356,19 +612,50 @@ class ScriptedGuidePolicy:
 
     def _produce(self, item: int) -> bool:
         """Produce the guide sells from its inventory: vocabulary items that are neither gear nor kept when banking
-        (tools, food, ammunition, runes), so it never sells what it bought to use, nor bones (for Prayer)."""
+        (tools, food, ammunition, runes), so it never sells what it bought to use, nor bones (for Prayer), nor what
+        Crafting, Herblore and Runecrafting use (found 2026-11-09: it sold its air talisman to fund an upgrade). Their
+        products (bowstrings, leather, cut gems, potions) are sold."""
         definition = gd.items().get(item)
         return (item in self.vocabulary and not kept_on_deposit(item) and item not in kept_for_prayer()
+                and item not in kept_for_skills()
                 and (definition is None or definition.equipment_slot is None))
 
     def _carried_for_sale(self, state: CharacterState) -> dict[int, int]:
-        """Vocabulary item -> units carried to sell: its produce, and any banknotes (bank_withdraw_for_sale's)."""
+        """Vocabulary item -> units carried to sell: its produce, and any banknotes (bank_withdraw_for_sale's), while
+        under half of the item obtained has been sold (_for_sale)."""
         unnoted, out = gd.unnoted_ids(), {}
         for item, amount in state.inventory.items():
             real = unnoted.get(item, item)
-            if real in self.vocabulary and (real != item or self._produce(item)):
+            if real in self.vocabulary and (real != item or self._produce(item)) and self._produce(real) \
+                    and self._for_sale(state, real):
                 out[real] = out.get(real, 0) + amount
         return out
+
+    def _for_sale(self, state: CharacterState, item: int) -> bool:
+        """Half of the loot is sold and half kept for processing (Caleb, 2026-11-09): an item's stack is sold only
+        while less than half of what's been obtained of it (sold, and held anywhere) has been. A sale sells the whole
+        stack carried, so the half holds over the episode, not to the unit."""
+        return self.sold[item] < (self.sold[item] + units(state, item)) / 2
+
+    def _banked_for_sale(self, state: CharacterState, prices: dict[int, int]) -> int:
+        """The value bank_withdraw_for_sale would bring out that the guide would sell: the stacks it takes (the most
+        valuable first, a slot each, rlscape.sim.buying), for sale (_produce, _for_sale)."""
+        notes, taken = gd.noted_ids(), []
+        slots = state.free_slots()
+        for item in BankWithdrawForSale.produce(state):
+            if notes.get(item, item) in state.inventory:
+                taken.append(item)
+            elif slots > 0:
+                taken.append(item)
+                slots -= 1
+        return sum(prices.get(i, 0) * state.bank[i] for i in taken if self._produce(i) and self._for_sale(state, i))
+
+    def _count_sale(self, state: CharacterState, option_id: str) -> None:
+        """A GE sale of an item sells all of it carried, banknotes included: count those units as sold."""
+        item = option_id.removeprefix("sell_ge_")
+        if option_id.startswith("sell_ge_") and item.isdigit():
+            note = gd.noted_ids().get(int(item))
+            self.sold[int(item)] += state.inventory.get(int(item), 0) + (state.inventory.get(note, 0) if note else 0)
 
     @staticmethod
     def _method(state: CharacterState, skill: str) -> str:
@@ -397,6 +684,15 @@ class ScriptedGuidePolicy:
             chains += [(rune,)]
         if skill == "smithing":
             chains += [(HAMMER,)]
+        if skill == "crafting":  # the tools of what it holds: a needle for leather, a chisel for gems
+            if any(units(state, i) for i in (COWHIDE, LEATHER, HARD_LEATHER)) and not units(state, NEEDLE):
+                chains += [(NEEDLE,)]
+            if any(units(state, uncut) for *_, uncut in GEM_CUTS) and not units(state, CHISEL):
+                chains += [(CHISEL,)]
+        if skill == "runecrafting":  # the method's talisman, once (a talisman has no upgrade check)
+            talisman = methods_for(RUNECRAFTING, state.level("runecrafting"))[0][1]
+            if not units(state, talisman):
+                chains += [(talisman,)]
         return [chain for chain in chains if chain]
 
     def _upgrades(self, state: CharacterState, skill: str) -> list[list[int]]:

@@ -7,7 +7,7 @@
 - Agent: Claude Code (desktop app, Code tab), the Agility session, beside the Herblore and Runecrafting sessions in the
   same checkout
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: DONE (the shortcuts committed and pushed; Agility's speed check run, passing)
+- Status: SUCCESS (the shortcuts committed and pushed; Agility's speed check run, passing)
 - Commit: the shortcuts are main repo `5ae37d4` (branch `sim-v0`), pushed; this turn's speed check is the main repo
   commit after `5ae37d4`, pushed when Caleb asked (`m002-agility-wrapup`)
 

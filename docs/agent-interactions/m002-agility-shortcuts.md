@@ -7,7 +7,7 @@
 - Agent: Claude Code (desktop app, Code tab), the Agility session, beside the Herblore and Runecrafting sessions in the
   same checkout
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: DONE (the Agility shortcuts built, measured and validated on the server)
+- Status: SUCCESS (the Agility shortcuts built, measured and validated on the server)
 - Commit: the earlier work (Barbarian Fishing) is main repo `9dd85c1` (branch `sim-v0`), pushed; this turn's
   shortcuts are the main repo commit after `1c8f05e`, pushed when Caleb asked (the next turn)
 

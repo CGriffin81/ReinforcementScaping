@@ -7,7 +7,7 @@
   transcript's message timestamps (UTC−06:00); the later ones arrived while work was running
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: IN PROGRESS (OQ-30, OQ-31, OQ-32 and OQ-33 built and tested offline and live; the ranged calibration
+- Status: PARTIAL (OQ-30, OQ-31, OQ-32 and OQ-33 built and tested offline and live; the ranged calibration
   with the rune crossbow kit running)
 - Commit: fork `0c0f5dd` (branch `rl`) and the main repo commit after `2916c1e` that adds this record (branch
   `sim-v0`), both pushed 2026-11-07 with `m002-case-deltas`

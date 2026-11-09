@@ -48,9 +48,9 @@ def character(inventory: dict[int, int], bank: dict[int, int] | None = None, **l
 
 
 @needs_server
-def test_the_catalog_has_328_buys_and_9_withdrawals():
+def test_the_catalog_has_330_buys_and_9_withdrawals():
     ids = [o.id for o in buying_options()]
-    assert sum(i.startswith("buy_ge_") for i in ids) == 291 and sum(i.startswith("buy_shop_") for i in ids) == 37
+    assert sum(i.startswith("buy_ge_") for i in ids) == 291 and sum(i.startswith("buy_shop_") for i in ids) == 39  # the Gem Store's 2 (OQ-57)
     assert [i for i in ids if i.startswith("bank_withdraw")] == [
         "bank_withdraw_gear_melee", "bank_withdraw_gear_ranged", "bank_withdraw_gear_magic",
         *(f"bank_withdraw_{food}" for food in FOOD_TIERS), "bank_withdraw_food", "bank_withdraw_for_sale"]
@@ -70,6 +70,28 @@ def test_shop_prices_and_restocking_follow_the_server():
     set_stock(state, PLAYER_STOCK, 1511, 30, now=100)  # sold to a general store, which doesn't stock logs
     assert stock(state, PLAYER_STOCK, 1511, PLAYER_STOCK_CLEAR_TICKS - 1) == 30
     assert stock(state, PLAYER_STOCK, 1511, PLAYER_STOCK_CLEAR_TICKS) == 0  # Shops.tick clears the player stock
+
+
+@needs_server
+def test_the_gem_store_stands_for_2009s_members_worlds():
+    """Caleb, 2026-11-09 (OQ-57): rl.conf's world.shop_worlds gives the Gem Store (92, Hervi in Keldagrim, the only gem
+    shop selling uncut gems for coins) January 2009's 87 members' worlds. Its normal stock and its restock step are
+    x 87, and each unit is priced at one world's stock, as the fork's Shop.kt has it with the setting."""
+    gem_store, uncut_sapphire, uncut_emerald = 92, 1623, 1621
+    shop = gd.shops()[gem_store]
+    assert gd.shop_worlds() == {gem_store: 87} and shop.worlds == 87
+    assert shop.stock[uncut_sapphire] == (87, 100) and shop.stock[uncut_emerald] == (87, 100)
+    assert shop.stock[1619] == (0, 100)  # no uncut rubies, as on one world
+    value = gd.item_base_values()[uncut_sapphire]
+    assert value == 25 and purchase_cost(gem_store, uncut_sapphire, 87, 87) == 87 * value  # a world's full stock each
+    state = CharacterState.fresh()
+    set_stock(state, gem_store, uncut_sapphire, 0, now=50)
+    assert [stock(state, gem_store, uncut_sapphire, t) for t in (99, 100, 199)] == [0, 87, 87]  # 87 units a restock
+    set_stock(state, gem_store, uncut_sapphire, 50, now=50)
+    assert stock(state, gem_store, uncut_sapphire, 100) == 87  # capped at normal
+    assert gd.shops()[54].worlds == 1 and gd.shops()[54].stock[IRON_AXE] == (10, 100)  # every other shop authentic
+    ids = {o.id for o in buying_options()}
+    assert {"buy_shop_1623", "buy_shop_1621"} <= ids and {"buy_ge_1623", "buy_ge_1621"} <= ids
 
 
 @needs_server

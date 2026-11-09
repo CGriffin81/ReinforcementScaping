@@ -22,7 +22,7 @@ Parts, in order (sizes for vocabulary V, A access rules, N actions):
 | combat_candidates | 18 × 5 | per slot: XP/hr, gp/hr, damage per hour vs HP and food, travel, open |
 | skilling_candidates | 20 × 5 | per slot: the slot's skill's XP/hr, its processing counterpart's XP/hr, gp/hr, travel, open |
 | loot_mode | 4 | one-hot |
-| task | 12 | one-hot: the last activity's task, which decides what bank_deposit keeps (rlscape.sim.kits) |
+| task | 18 | one-hot: the last activity's task, which decides what bank_deposit keeps (rlscape.sim.kits) |
 | potions | 11 × 2 | each potion's doses in the inventory and the bank, log1p-scaled (four-dose potions alone are in V) |
 | access | A | 0/1 per access rule (data/access_areas.csv order) |
 | mask | N | the action mask |
@@ -111,7 +111,7 @@ REGION_RADIUS = 60  # tiles (Chebyshev)
 CANDIDATE_FEATURES = ("xp_per_hour", "gp_per_hour", "damage_vs_food", "travel", "open")
 SKILLING_FEATURES = ("gather_xp_per_hour", "process_xp_per_hour", "gp_per_hour", "travel", "open")
 TASKS = ("none", "woodcutting", "mining", "fishing:SMALL_NET", "fishing:LURE", "fishing:LOBSTER_CAGE", "thieving",
-         "fletching", "crafting", "herblore", "runecrafting", "agility", "barbfishing", "processing", "combat:melee", "combat:ranged",
+         "fletching", "crafting", "flax", "herblore", "runecrafting", "agility", "barbfishing", "processing", "combat:melee", "combat:ranged",
          "combat:magic")
 
 

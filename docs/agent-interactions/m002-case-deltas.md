@@ -7,7 +7,7 @@
   message timestamps (UTC−06:00); the second arrived while work was running
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: DONE (committed and pushed what there was; the case deltas investigated and fixed, the fixes committed
+- Status: SUCCESS (committed and pushed what there was; the case deltas investigated and fixed, the fixes committed
   with `m002-check-set-rerun`)
 - Commit: the earlier work is fork `0c0f5dd` (branch `rl`) and main repo `8229e12` (branch `sim-v0`), both pushed.
   The investigation's fixes are fork `f5d1aba` and the next main repo commit, pushed with `m002-check-set-rerun`.

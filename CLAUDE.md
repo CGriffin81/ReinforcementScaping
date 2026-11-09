@@ -6,8 +6,12 @@ CS898BG Reinforcement Learning individual project (Caleb Griffin), due
 **2026-11-30**: *Learning to Climb: Hierarchical RL for Skill and Wealth
 Accumulation in 2009Scape*. A high-level policy picks activity-level options
 (train skill X at location L, kill N monsters, bank, sell or buy at the GE) in
-a semi-MDP. It is trained mostly on a calibrated surrogate simulator and
-validated on a local 2009Scape server.
+a semi-MDP. It is trained on a calibrated surrogate simulator, and the
+simulator is checked option by option against a local 2009Scape server (the
+±20% gate). Scope (Caleb, 2026-11-09, OQ-17 (a′)): every research question is
+answered (RQ5 per OQ-1), the peer review is kept simple (OQ-50), and
+`ServerEnv`, E6's replays, E4's Envelope Q and E7 are cut. The finishing plan
+is ROADMAP's weeks 6 to 8.
 
 - The research plan is in `CS898BG_RL_Project_Proposal_2009Scape.pdf`. The
   course requirements are in `Requirements.md`.
@@ -27,12 +31,15 @@ Fixed decisions: every episode starts from a fresh level-3 character with
 the starter kit; training episodes are 20 game-hours with checkpoints every 2
 game-hours; combat is in scope. Quests are out (2026-11-06): every quest the
 server has (68) is complete from the start, as flags only (quest points and
-unlocks, no XP or items), and there are no quest options. Simulator
+unlocks, no XP or items), and there are no quest options. One exception
+(2026-11-09, OQ-56): the start has Druidic Ritual's 250 Herblore XP, since
+every Herblore recipe needs level 3. Simulator
 (2026-10-28):
 - event-level sampling
-- four more skills (Crafting, Agility, Herblore, Runecrafting) arrive in sim
-  v1, before E2; Fletching was brought into sim v0 (2026-10-31)
-- ambient bots off on the server for calibration and E6
+- four more skills (Crafting, Agility, Herblore, Runecrafting) in sim v1,
+  built and calibrated by 2026-11-09; Fletching was brought into sim v0
+  (2026-10-31)
+- ambient bots off on the server for calibration
 - a ±20% sim-to-server gate before E2 (env contract §7), calibrated at 50 ms
   ticks with a speed check at 600 ms (2026-11-06)
 
@@ -90,7 +97,8 @@ work.
     credit and drops, gravestones and GE offers go by. `spawn` completes every
     quest the server has (`completeEveryQuest`), and the Barcrawl and Enter the
     Abyss miniquests (`completeMiniquests`, 2026-11-08), flags only, except
-    Enter the Abyss's small pouch, which goes in the bank (OQ-40 (c)). A death
+    Enter the Abyss's small pouch, which goes in the bank (OQ-40 (c)), and
+    Druidic Ritual's 250 Herblore XP (OQ-56). A death
     sends it to the home location, as a human (`RLPlayer.init`; AIPlayer used
     the tile it was made on). It keeps the regions in a client's view active
     (`RLPlayer.update`, 2026-11-08; AIPlayer's does nothing), so monsters
@@ -99,7 +107,9 @@ work.
     multi-NPC's own definition is often named "null".
   - Config: `server.tick_ms`, `server.bind_address`, `world.ge_freeze_prices`,
     `world.ge_frozen_buyer`, `world.ge_frozen_seller`, `world.ge_blocked_items`,
-    and the `[rl]` section (`bridge_enabled`, `bridge_port`, `random_events`).
+    `world.shop_worlds` (a shop's stock and restock stand for that many worlds,
+    on one server: rl.conf gives the Gem Store January 2009's 87 members'
+    worlds, OQ-57; the sim reads it from rl.conf), and the `[rl]` section (`bridge_enabled`, `bridge_port`, `random_events`).
   - `worldprops/rl.conf` is the training config: `default.conf` with the
     bridge on, prices frozen, the frozen-price GE buyer and seller on,
     nothing blocked on the GE (the anti-dragon shield was, until
@@ -148,12 +158,14 @@ work.
 - More servers at once (Caleb, 2026-11-06): `uv run python
   scripts/server_instances.py 2 3` writes `results/servers/rl-<n>.conf`
   (world n, bridge port 43610 + n - 1, its own GE under
-  `data/eco/instance-<n>`); start each like the first with that config, and
-  point a script or the tests at one with `RL_BRIDGE_PORT`. Each world has
-  its own tick speed. One server also takes several scripts at once, each
-  with its own characters (the bridge serves each connection on a thread):
-  set its tick first, keep their sites apart, and give the live tests a
-  server of their own (they set the tick).
+  `server/Server/data/eco/instance-<n>`); start each like the first with that
+  config, and point a script or the tests at one with `RL_BRIDGE_PORT`. Each
+  world has its own tick speed. One server also takes several scripts at once,
+  each with its own characters (the bridge serves each connection on a
+  thread): set its tick first, keep their sites apart, and give the live tests
+  a server of their own (they set the tick). But run timing measurements
+  (calibration, the speed check) one script per server: scripts at once
+  shifted shortcut trips by 1 to 3 ticks (2026-11-08).
 - Database: not needed with the current config (auth and account persistence
   are off). `docker compose -f infra/docker-compose.db.yml up -d` starts
   MariaDB on 127.0.0.1:3306 if it's ever needed.

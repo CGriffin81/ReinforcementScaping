@@ -57,11 +57,11 @@ run ends at its budget mid-fight; an episode ends the same way). A human logging
   `MorytaniaArea`, 13 in the Lair of Tarn, 6 more in the Abandoned Mine (the possessed pickaxe beside the spades
   among them), 5 at the Kalphite Queen). None of the gate's cases is among them since the spades became hazards.
 - Drops credited to no one: anywhere, for a kill a departed character did most of. It would bear on the loot cases'
-  gp/hr in calibration and on E6's loot; not measured.
+  gp/hr in calibration, and a policy's loot on the server (E6, cut by OQ-17 (a′)); not measured.
 
 **How it's found.** `scripts/calibrate_combat.py` records any monster it sees listed alive at 0 hitpoints in a run
 (`at_zero`), and its report flags the case. A normal death starts in the same tick as the last hit, so such a
-monster is stuck. The site is then a candidate hazard (`candidates.HAZARDS`), for Caleb. `ServerEnv` (E6) should do
+monster is stuck. The site is then a candidate hazard (`candidates.HAZARDS`), for Caleb. `ServerEnv` (cut by OQ-17 (a′), so for after the project) should do
 the same once it exists. The unowned drops aren't flagged.
 
 **How to close it.**
@@ -89,7 +89,8 @@ read them.
 flicked prayers are worth. That's most for a fight its protection prayer covers, where the sim's character takes no
 damage from that style. Fights in the Abyss itself aren't part of the gap: the teleport is the only way in, so they
 flick nothing in the sim either (OQ-49 (a), 2026-11-09). It bears on the sim-to-server gap for any policy that
-fights soon after leaving the Abyss (E6), not on calibration, which never mixes them.
+fights soon after leaving the Abyss on the server (E6, cut by OQ-17 (a′)), not on calibration, which never mixes
+them.
 
 **How to close it.**
 - `CharacterState.prayer_points` (a float, the Prayer level when full), drained to 0 by `rlscape.sim.abyss.cross`.
@@ -118,7 +119,7 @@ its landing at (2269, 4840, 0); the altar's own portal, 15 steps away, 12 ticks 
   load loses gold until Runecrafting 74 makes two a time.
 - So an agent at 35 to 43 trains on cosmic, body or below instead: a little less XP an essence, and slower trips than
   the Abyss's chaos rift.
-- E6's policies can't craft chaos runes on the server either, so the two backends agree.
+- A policy on the server (E6, cut by OQ-17 (a′)) couldn't craft chaos runes either, so the two backends agree.
 
 **How to close it.**
 - Measure the maze: the ladders' order from the ruins' landing down to the altar's floor. A runner that climbs ladders
@@ -130,3 +131,44 @@ its landing at (2269, 4840, 0); the altar's own portal, 15 steps away, 12 ticks 
   - the rift's landing beside the altar (`abyss.CHAOS_LANDING`, one step from it);
   - the chaos talisman (1452) and tiara (5543) in `data/vocabulary.csv`. Their buys come back with `RC_RUNES`.
 - The decision log's Runecrafting part 4 entry has the Abyss's chaos measurements.
+
+## The Abyss's crowd is too light at the leeches in the sim (OQ-51 (a), 2026-11-09)
+
+**What's missing.** A fight in the Abyss takes the outer ring's crowd (OQ-49 (a)): 0.8 attacks a tick from the
+crossing's mix of kinds, less the fought monster's own swings. The rate was fitted to the server's fights at the
+guardians (band 61) and the walkers (band 91). The sim's mix is the same whatever the character kills. On the
+server, most likely, it isn't: killing leeches never thins the guardians and walkers that gather round, and those do
+the damage. At the leeches the server's site does 0.47 damage a tick against the guardians' 0.37, though a leech
+barely hits.
+
+So at the leeches (band 61, melee) the sim's character:
+- eats 0.68 of the server's food an hour (133.5 lobsters against 197.5);
+- lasts 1.48 times as long before its food runs out.
+
+Its XP an hour matches (0.94). The other two cases held out of the fit are inside the gate: the guardians at band 91
+(1.14) and ranged at the walkers at band 91 (1.18).
+
+**Why.** Caleb chose (a) for OQ-51, since the sim freezes on Nov 10. Modelling how the crowd builds up would need
+three things:
+- a gathering rate fitted on the server;
+- new runs held out of that fit;
+- a new env contract version after the freeze.
+
+**What it costs.**
+- **Food:** a fight at the leeches costs about a third less food in the sim than on the server. At band 61 that's
+  about 64 lobsters an hour, or about 14,600 gp an hour at 228 gp a lobster.
+- **The pouches:** leeches die fastest of the Abyss's monsters (about 550 kills an hour at band 61), so they drop the
+  most of the pouches, which come only from the Abyss's monsters. An agent could overrate fighting leeches for
+  pouches.
+- **The gate:** the case is reported as a residual gap, as the gate's rule has it (ROADMAP week 3: "residual gaps are
+  reported").
+
+**How to close it.**
+- Model how the crowd builds up:
+  - each damaging kind gathers round a character that stays, at a rate fitted on the server. Standing tests can fit
+    it, as the 1.13 attacks a tick measured standing at combat level 50 was;
+  - a kind thins only when the character kills one of it.
+- Fit it on the guardians and the walkers again, and hold out the leeches and another band.
+- Add a new env contract version (§8's row for the Abyss's crowd), confirmed by Caleb.
+- The decision log's OQ-49 (a) entry has the fit and the held-out runs
+  (`results/calibration/abyss-fight-check-cases.json`).

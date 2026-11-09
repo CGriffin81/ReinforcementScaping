@@ -6,7 +6,7 @@
 - Timestamp CST: 2026-11-06 21:03:08 CST (from the session transcript's message timestamp, UTC−06:00)
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: DONE for poison and the eat-count fix (built, tested without the live suite while the drop probe holds
+- Status: SUCCESS for poison and the eat-count fix (built, tested without the live suite while the drop probe holds
   the server); the drop probe's results to follow
 - Commit: fork `d0a7af6` (branch `rl`) and the main repo commit that adds this record (branch `sim-v0`; its SHA
   can only be filled in by a later commit)

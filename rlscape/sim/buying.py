@@ -116,6 +116,10 @@ ANTIPOISONS = (2448, 2446)  # super antipoison(4), antipoison(4)
 COMBAT_POTIONS = FOUR_DOSES + (ANTIFIRE[0],)
 # shops.json ids. Zeke's is listed twice (135 and 150); Shops.startup maps the shopkeeper to the later one.
 BOBS, NURMOFS, GERRANTS, LUMBRIDGE_STORE, ZEKES, LOWES, AUBURYS, ZAFFS, WYDINS = 54, 124, 144, 25, 150, 47, 114, 140, 77
+# The Gem Store (Caleb, 2026-11-09, OQ-57): Hervi's in Keldagrim, the only gem shop selling uncut gems for coins (an
+# uncut sapphire and an uncut emerald a world), its stock and restock x January 2009's 87 members' worlds
+# (rl.conf's world.shop_worlds). They're on the GE too, at the frozen 2009 prices (616 and 985 gp).
+GEM_STORE, UNCUT_SAPPHIRE, UNCUT_EMERALD = 92, 1623, 1621
 
 # Ava's devices (Caleb, 2026-11-07; equipment.AVAS_DEVICES): the GE sells them at the prices he set, 2,500 and 10,000
 # gp (scripts/build_price_tables.py), so the agent needn't learn Draynor Manor. The accumulator outranks the attractor
@@ -150,7 +154,8 @@ GE_ITEMS = (AXES + PICKAXES + FISHING_TOOLS + BAIT_AND_FEATHERS + (HAMMER,) + SC
 SHOP_ITEMS = {**dict.fromkeys(AXES[:2], BOBS), **dict.fromkeys(PICKAXES, NURMOFS),
               **dict.fromkeys(FISHING_TOOLS + BAIT_AND_FEATHERS, GERRANTS), HAMMER: LUMBRIDGE_STORE,
               **dict.fromkeys(SCIMITARS[:3], ZEKES), **dict.fromkeys(SHORTBOWS + ARROWS, LOWES),
-              **dict.fromkeys(RUNES[:7], AUBURYS), **dict.fromkeys(STAVES, ZAFFS), BREAD: WYDINS}
+              **dict.fromkeys(RUNES[:7], AUBURYS), **dict.fromkeys(STAVES, ZAFFS), BREAD: WYDINS,
+              **dict.fromkeys((UNCUT_SAPPHIRE, UNCUT_EMERALD), GEM_STORE)}
 LOTS = {**dict.fromkeys(ARROWS + BOLTS + RUNES, 100), **dict.fromkeys(BAIT_AND_FEATHERS, 200),
         **dict.fromkeys(FOOD_TIERS + (BREAD,), 100),
         **dict.fromkeys(PROCESSING_INPUTS + FLETCHING_INPUTS
@@ -287,7 +292,7 @@ class BuyShop(Option):
     def available(self, state: CharacterState) -> bool:
         in_stock = stock(state, self.shop, self.item, state.tick)
         normal = gd.shops()[self.shop].stock[self.item][0]
-        price = unit_price(self.item, normal, in_stock)
+        price = unit_price(self.item, normal, in_stock, gd.shops()[self.shop].worlds)
         return (in_stock > 0 and can_pay(state, price) and self._room(state) > 0
                 and usable(state, self.item) and is_upgrade(state, self.item))
 

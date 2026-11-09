@@ -6,7 +6,7 @@
 - Timestamp CST: 2026-11-09 00:19:16 CST (the prompt), from the session transcript's timestamp (UTC−06:00)
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: DONE (the RL stack and SMDP PPO committed and pushed; PR #8's title and description cover the whole branch)
+- Status: SUCCESS (the RL stack and SMDP PPO committed and pushed; PR #8's title and description cover the whole branch)
 - Commit: main repo `aa03d37` (branch `sim-v0`), pushed. This record is the main repo commit after `aa03d37` that
   adds it, also pushed. Both are in PR #8.
 

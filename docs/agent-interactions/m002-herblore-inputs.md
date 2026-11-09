@@ -7,7 +7,7 @@
   from the session transcript's timestamps (UTC−06:00)
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: DONE (Herblore's inputs in *V* and on the GE; its server times not yet)
+- Status: SUCCESS (Herblore's inputs in *V* and on the GE; its server times not yet)
 - Commit: the earlier work is main repo `6c233da` and the merge `db3f87c` (branch `sim-v0`), pushed; the fork is
   unchanged at `df2b8a6`; this turn's later work is in the main repo commit after `db3f87c`, pushed
 

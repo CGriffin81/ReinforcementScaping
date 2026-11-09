@@ -7,7 +7,7 @@
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS (the pickpocketing slice is committed; the processing family is built and tested)
-- Commit: pickpocketing slice `32f4ed3` (branch `sim-v0`); processing uncommitted
+- Commit: pickpocketing slice `32f4ed3` (branch `sim-v0`); processing, and this record, `ee6eda8`
 
 ## Full Prompt
 

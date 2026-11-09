@@ -6174,3 +6174,379 @@ Caleb, 2026-11-09: "OQ 49 - Option A." `m002-oq49`.
   - `test_a_fight_in_the_abyss_takes_the_rings_attacks_with_no_prayer`: inside the Abyss, with the tolerance run out,
     and outside it.
 - **The env contract:** v1.37 (§8's Prayer row, and a row for the Abyss's crowd), confirmed by Caleb.
+
+### Decided: OQ-51 (a), the Abyss's leeches are a documented gap (Caleb)
+Caleb, 2026-11-09: "OQ 51 - Option A." `m002-oq51`.
+- **The question** (raised 2026-11-09 by the Runecrafting session, checking OQ-49 (a)'s fitted rate on server cases
+  it wasn't fitted on; the entry above):
+  - Melee at the leeches, band 61, eats 0.68 of the server's food an hour in the sim, and takes 1.48 times as long to
+    run out. The other two held-out cases pass (1.14 and 1.18).
+  - Most likely, killing leeches never thins the guardians and walkers that gather round. The sim's crowd has the
+    same mix whatever the character kills.
+  - Leeches die fastest, so they drop the most pouches.
+- **The options:**
+  - **(a) recommended:** a documented gap, since the sim freezes on Nov 10.
+  - **(b):** model how the crowd builds up. It needs a gathering rate fitted on the server and new runs held out of
+    that fit: about half a day, and a new contract version after the freeze.
+  - **(c):** a factor on the crowd's rate at the leeches, fitted to these five runs, with nothing to check it.
+- **Caleb: (a).** `docs/post-project-gaps.md` has the gap: what, why, what it costs and how to close it.
+  - At band 61 the sim's leech fights eat about 64 lobsters an hour less than the server's (about 14,600 gp an hour),
+    so an agent could overrate the leeches for pouches.
+  - The gate reports the case as a residual gap.
+  - The sim and the env contract (v1.37) are unchanged.
+
+### Decided: OQ-52, picked flax can be banked or spun (Caleb); built
+Caleb, 2026-11-09, after asking "Why does flax not add value?": "For flax, we should add the option to move into
+spinning it into bowstrings or bank." `m002-oq52-question`, `m002-oq52`.
+- **The question** (raised 2026-11-09, in the pre-E1 audit's smoke run of E1):
+  - Greedy GP spent about 70% of its game time on 15-minute Agility stints that earn nothing.
+  - After a load of picked flax, `bank_deposit` was masked, because the Crafting kit kept flax as spinning's input.
+    Every option still allowed rated 0 gp, and the tie went to the lowest action id.
+- **The options:**
+  - **(a) recommended:** fix the kit, and break such ties by the shortest option;
+  - **(b):** the kit only;
+  - **(c):** the tie-break only;
+  - **(d):** neither.
+- **Caleb: bank it or spin it** (the kit). Built:
+  - **The task:** picking flax has its own task, `flax`, whose kit is nothing (`rlscape/sim/kits.py`,
+    `crafting.PickFlax`). After a load, `bank_deposit` banks the flax, or `spin_flax` (Crafting 10) spins it into
+    bowstrings. Spinning's task stays crafting, so leftover flax stays for the wheel.
+  - **The observation:** the task one-hot adds flax, making 3,480 features. Env contract v1.38 (the task's name and
+    the feature are Claude's, to confirm), and option catalog §2's Crafting line.
+- **The tie-break is unchanged.** After the fix, four whole greedy episodes (GP and XP, seeds 0 and 1) took no
+  zero-gain option except the bank fallback. So there's no tie left to break, and as Caleb said, there shouldn't be
+  one.
+- **What it changes:**
+  - **Greedy GP at hour 20:** about 1.98M net worth (1,985,363 and 1,973,198 at seeds 0 and 1), from about 144k. It
+    picks and banks flax all episode: 787 loads, about 99k gp an hour, with total level 34. Greedy XP is unchanged
+    (total level 155).
+  - **It never spins.** Picking gives no XP, so greedy GP never reaches Crafting 10. A bowstring is worth 186 gp
+    against flax's 90 (`data/prices_v2.csv`), so training Crafting to spin is a delayed-payoff investment H1 can look
+    for.
+  - **About 99k gp an hour from flax:**
+    - The pick and the bank trip are the server's times: `pick_flax` is calibrated at 69 ticks a load, 1.00 of the
+      server's, and the travel is validated.
+    - Flax is 90 gp at the January 2009 GE price, and the frozen-price buyer takes any amount.
+    - So it's what this server gives. That the market couldn't absorb so much flax isn't modelled, since the GE is
+      frozen by design.
+- **Tests:**
+  - `tests/test_sim_crafting.py::test_picked_flax_can_be_banked_or_spun`, reproduced first: the kit held the flax;
+  - `test_vocabulary`'s count, now 3,480.
+
+  The suite without the server: 418 passed, 74 skipped.
+
+### Measured: the gate's 600 ms speed check passes for Crafting, Herblore and Runecrafting (OQ-21)
+2026-11-09, OQ-21 (a) (Caleb, 2026-11-06: a speed check at 600 ms in the gate), the finishing plan's freeze item.
+`m002-speed-checks`.
+- **What ran:** the same cases on the server at 50 and 600 ms (`scripts/speed_check.py`,
+  `results/calibration/speed-check-20261109-1021.json`), one script per server (CLAUDE.md). The servers were
+  instances 4 to 7, on the current build, with the frozen GE reinstalled.
+  - **Crafting:** its 14 calibration cases, 3 runs each (`calibrate_crafting.py`).
+  - **Herblore:** its 9, 3 runs each.
+  - **Runecrafting:** `rc_<rune>` at the 8 ruins (entering and inside), 3 runs each, and the air tiaras.
+  - **The Abyss:** whole `abyss_rc` trips, 3 for each of the 10 runes (`measure_abyss.py --trips 3`).
+  - **The Abyss's fight** the crowd's rate was fitted on (melee at the guardians, band 61), 3 runs.
+- **The script now reads these files** (Claude's choices, reversible):
+  - **What it compares:**
+    - a load's ticks;
+    - the ruins' entering and inside ticks;
+    - the ticks between tiaras;
+    - each Abyss trip's server ticks over the sim's estimate for that trip, all the runes pooled. The landing is
+      random, and the sim's estimate is for the actual landing, so the ratio pairs them;
+    - combat also compares food an hour.
+  - **The rule:** these agree within two standard errors, or within 5% (travel's tolerance) where the runs have no
+    spread.
+  - **Checked:** rerun on the two earlier checks' files, it gives their results: 11 of 11, and 18 of 18 plus the two
+    new food rows.
+- **Result: 43 of 43 agree.**
+  - **Crafting, Herblore, the ruins and the tiaras:** the same ticks at both speeds (1.00), except picking flax at
+    1.01 (63.0 and 63.7 ticks).
+  - **The Abyss trips:** server over the sim 1.034 at 50 ms and 1.020 at 600 (30 trips each, 1.6 standard errors
+    apart).
+  - **The guardians' fight:** XP/hr 1.02 and food/hr 1.03 (3 runs each, within 0.4 and 0.2 standard errors).
+- **So every sim v1 calibration has its speed check.** The residual gaps are documented in
+  `docs/post-project-gaps.md`.
+- **Found:** a restart of the Claude Code process stopped the servers, and two 600 ms runs with them (Crafting and the
+  Abyss trips). Both were rerun on the same build.
+
+### Decided: OQ-56, the start has Druidic Ritual's 250 Herblore XP (Caleb); built
+Caleb, 2026-11-09, answering Claude's question while extending the guide (OQ-53): "Give Druidic's 250 XP".
+`m002-oq53-guide`.
+- **The question:**
+  - Every Herblore recipe needs level 3: guam, and the attack potion (`herblore/Herbs.java`, `FinishedPotion`).
+    Grinding and the unfinished potions give no XP.
+  - Quests are flags only (2026-11-06), so Druidic Ritual's 250 XP never arrives, and a fresh character stays at
+    Herblore 1.
+  - So no policy could train Herblore, on either backend.
+- **The options:**
+  - **(a) recommended:** give the start Druidic Ritual's 250 XP on both backends, an exception to flags only;
+  - **(b):** leave Herblore untrainable, as a documented gap.
+- **Caleb: (a).** Built:
+  - **The sim:** `CharacterState.fresh` has 250 Herblore XP (`DRUIDIC_RITUAL_XP`), which is level 3.
+  - **The fork:** `spawnFreshCharacter` adds it as the quest's finish does (`rewardXP`, that is,
+    `skills.addExperience(HERBLORE, 250.0)`). Built, not committed.
+  - A fresh character's total level is now 35 (it was 33).
+- **The env contract:** v1.39 (§1, the start).
+- **Tests:**
+  - `tests/test_sim.py`'s fresh character: 250 Herblore XP, level 3, total 35;
+  - `tests/test_bridge_live.py`'s spawn: run live on instance 7 with the new build, and it passed.
+
+### Decided: OQ-53, the scripted guide trains sim v1's skills too (Caleb)
+Caleb, 2026-11-09: "OQ 53 - Extend the guide."
+- **Caleb's answers to Claude's questions on how:**
+  - all four skills join the lowest-first schedule;
+  - Crafting below 10 trains on cowhides from cows;
+  - essence is bought after affordable upgrades.
+
+  Caleb asked first whether 44 gp was rune or pure essence. It's rune essence; pure is 137. `m002-oq53-guide`.
+- **The question** (raised in the pre-E1 audit): the guide trains sim v0's 14 skills and none of sim v1's four.
+- **The options:**
+  - **(a) recommended:** extend it from the January 2009 wiki pages, and Caleb reviews it before E1;
+  - **(b):** keep it as signed off.
+- **Caleb: (a)**, with:
+  - **The schedule:** the four join the lowest-first schedule as the other 14 are, each by its January 2009 method.
+    Herblore starts at level 3 (OQ-56).
+  - **Crafting below 10:** the sim has no sheep shearing, and wool is 123 gp on the frozen GE. So the guide uses
+    cowhides from cows, tanned at Ellis and made into soft leather, which is where the 2009 page gets its leather.
+  - **Essence:** rune essence (44 gp; pure is 137), bought only when no gear upgrade the guide wants is affordable.
+- **The sources:** the January 2009 revisions, `docs/resources.md` [43] to [49]:
+  - Pay-to-play Crafting training (883396) and Flax (889516);
+  - Agility training (895549);
+  - Herblore (875720);
+  - Free-to-play Runecrafting training (888316) and Pay-to-play Runecrafting training (832614);
+  - Server (893026), for OQ-57.
+- **Being built:** `rlscape/baselines/guide.py`, and the draft's fifth revision for Caleb's review.
+
+### Decided: OQ-54 (a), E1 evaluates 30 seeds per baseline (Caleb)
+Caleb, 2026-11-09: "OQ 54 - Option A". `m002-oq54-55-57`.
+- **The question** (the pre-E1 audit): how many evaluation seeds E1 uses. The proposal asks for at least 5 per
+  comparison, and E1 is cheap on sim v1 (16 episodes in 103 s on 4 workers).
+- **The options:**
+  - **(a) recommended:** 30 seeds (0 to 29), with the same seeds evaluating every PPO checkpoint, so comparisons are
+    paired seed by seed;
+  - **(b):** 10 seeds;
+  - **(c):** 5 seeds.
+- **Caleb: (a).**
+
+### Decided: OQ-55, the audit's housekeeping: all three (a) (Caleb)
+Caleb, 2026-11-09: "OQ 55 - 1 a - 2 a - 3 a". `m002-oq54-55-57`.
+- **1, the weekly rhythm:** ROADMAP §6's Friday status entries had never been written, and the rule is dropped. The
+  records, the decision log and ROADMAP's status line keep the running account.
+- **2, the records' Status values:** a mechanical pass to `docs/ai-log-requirements.md`'s set, each record's
+  parenthetical kept:
+  - DONE and COMPLETE become SUCCESS;
+  - IN PROGRESS becomes PARTIAL;
+  - RECOMMENDATION GIVEN becomes SUCCESS.
+- **3, the env contract's wording:** a wording-only version, v1.40:
+  - `ServerEnv` isn't built (OQ-17 (a′));
+  - the calibration gate is the sim-to-real evidence in place of E6;
+  - the preference features serve the weight-conditioned PPO in place of E4's agent.
+
+### Decided: OQ-57 (a), the Gem Store's uncut gem stock and restock multiplied by 2009's members' worlds (Caleb)
+Caleb, 2026-11-09: "OQ 57 - Option A - It is up to the agents to determine if they want to use the greedy GP loop to
+fund other progress or get fast crafting xp gains while gaining money." `m002-oq54-55-57`.
+- **The question** (Caleb, 2026-11-09, `m002-gem-shops`): gem shops sell uncut gems for less than they pay for cut
+  ones. Should the sim model it, with each shop's stock and restock multiplied by 2009's worlds?
+  - **On this server,** only the Gem Store (shop 92), whose shopkeeper on this server is Hervi in Keldagrim (NPC 2157, one spawn at
+    (2887, 10212)) sells gems for gp at
+    its normal stock: 1 uncut sapphire (25 gp) and 1
+    uncut emerald (50 gp), a unit every 100 ticks.
+  - **The frozen GE** prices them at 616 and 985, above the cut gems' 393 and 652.
+  - **2009 had 87 members' worlds** (Server, revision 893026).
+- **The options:**
+  - **(a):** as asked, with the GE as it is, and its arbitrage;
+  - **(b) recommended:** the shops' own loop, with the gems off the GE and valued at what the shops pay;
+  - **(c):** after the project.
+- **Caleb: (a).** The agents decide what to do with it: fund other progress from the GE loop, or train Crafting
+  quickly while gaining money.
+  - The method: buy uncut gems at Hervi's, then sell them on the frozen GE, or cut them and sell those. Its stock
+    and restock are × 87, the members' worlds, since Keldagrim is members-only.
+  - **Corrected the same day:** Claude first called it Shilo Village's Gem Store from the shop's title. The
+    shopkeeper NPC's only spawn is in Keldagrim. Shop 89 (Green Gemstone Gems, cut gems, all at stock 0) lists the
+    same NPC, and shop 92, parsed last, is the one he opens.
+  - The GE, net worth and every other shop stay as they are.
+- **Built** (Caleb, asked whether this meant 87 worlds: "I want you to -simulate- the number of worlds ... I don't
+  want the agents to have to learn to hop worlds or have to maintain that number of worlds running"; that's what
+  this is, on one server and one world):
+  - **The fork:**
+    - `world.shop_worlds` (`ServerConstants.SHOP_WORLDS`, "shop:worlds" pairs; empty in `default.conf`, so every
+      shop stays authentic) multiplies a shop's normal stock at startup (`Shops.startup`);
+    - each restock step moves that many units (`Shop.restock`);
+    - a unit is priced at one world's stock and overstock (`getGPCost`, `getGPSell`), as a hopping player meets
+      each world's shop;
+    - `rl.conf` has `shop_worlds = "92:87"`.
+  - **The sim:** `gd.shop_worlds()` reads the same setting from `rl.conf`, and `gd.shops()`, `rlscape.sim.shops`
+    and `BuyShop` follow it. `buy_shop_1623` and `buy_shop_1621` are new (env contract v1.41: 2,293 actions,
+    3,482 features).
+  - **Tests:**
+    - `test_sim_buying.py::test_the_gem_store_stands_for_2009s_members_worlds`, reproduced first;
+    - live, `tests/test_gem_store_live.py` on instance 7 with the new build: 9 uncut sapphires in one purchase (all
+      the inventory's room) at 25 gp each, where one world's stock of 1 would sell one.
+
+    The suite without the server: 419 passed, 74 skipped.
+  - **Not measured:** the shop's trip and buy time, which the sim takes from travel and `STORE_TICKS` (3 ticks),
+    as for its other shops.
+
+### Found and fixed: abyss_rc_<rune> was open when the hitpoints and food couldn't cover the crossing
+2026-11-09, building the guide's extension (OQ-53). `m002-oq53-guide`.
+- **Found:**
+  - A character with 1 essence and too few hitpoints, holding no food, could pick `abyss_rc_air`.
+  - Each pick walked to Edgeville's booth, found it couldn't eat up to what the crossing needs
+    (`AbyssRunecraft.need`: its expected damage and twice the attackers' hardest hit, at most full hitpoints), and
+    stopped with nothing done (OUT_OF_FOOD, 8 ticks at the bank).
+  - The guide picked it 46 times in an episode. Any policy could do the same.
+- **Fixed:** `AbyssRunecraft.available` now also asks `_can_cover`, the same test `run()` applies at the booth: the
+  hitpoints and all the food held or banked must reach the need.
+- **Test:** `tests/test_sim_abyss.py::test_a_crossing_the_hitpoints_and_food_cant_cover_is_masked`, reproduced first.
+
+### Decided (Caleb): the guide's early Crafting buys wool; half the loot is sold, and upgrades take at most half the coins
+Caleb, 2026-11-09, while the guide's extension was being built (OQ-53): "Add wool buying and spinning to early
+crafting." Then: "Change behavior such that half of loots are sold and half are preserved for processing. Similarly,
+half of gp should be preserved for training skills that are net negative on gp, when making upgrade decisions."
+`m002-oq53-guide`.
+- **Wool:** below Crafting 10, the guide buys wool on the GE (123 gp; the sim has no shearing) and spins it at a
+  wheel, beside the cowhides.
+- **Half the coins:** an upgrade or tool is bought only if it costs at most half the coins, and funding aims at
+  twice its price. What the skills that lose gp use up (rune essence, herbs, vials, secondaries, wool, thread) is
+  bought whenever due. This replaces OQ-53's "after affordable upgrades".
+- **Half the loot:** an item's stack is sold only while less than half of what's been obtained of it has been sold.
+  Looted hides, leathers, uncut gems and herbs count as loot. What the guide buys to use is never sold: its
+  talismans, essence, tools, thread, wool, vials and secondaries. (It had sold its air talisman to fund an upgrade.)
+- **Exact halves aren't possible in the action space,** which has whole-stack trades:
+  - a sale sells all of an item carried (option catalog v1.0, "selling all of an item");
+  - a GE buy takes as many as the coins allow, up to the item's lot.
+
+  So the loot's half holds over an episode, not to the unit, and an input buy can spend more than the reserved half.
+- **Also in the guide:** Runecrafting uses only the January 2009 page's methods, the ruins' air and earth runes. Its
+  top-slot fallback, which without a talisman was the Abyss, is gone.
+
+### Decided and built: kill_cows, Crafting's gathering path for hides, its bones buried (Caleb)
+Caleb, 2026-11-09: "Add cow killing as a gathering method for crafting supplies. It will use the highest combat style
+so as to have faster kills. Bury all normal bones gathered." `m002-oq53-guide`.
+- **Built** (`rlscape/sim/cows.py`, `KillCows`; a path in Crafting's skilling slots, as `pick_flax` is; env contract
+  v1.42, to confirm):
+  - **The plan:** Claude read "the highest combat style … faster kills" as the class and style with the most kills an
+    hour (`combat_rates`), ties going to the higher level. Only plans whose ammunition lasts a full inventory of kills
+    count. The first build chose Wind Strike, on the starter kit's 15 casts, and ran out with no kills.
+  - **The site:** the cow site with the least travel and bank trip, among those with two or more cows.
+  - **The fight:** fought as any fight is (`combat.fight`). It picks up the hides and the normal bones and leaves the
+    raw beef. Whenever the inventory fills, it buries the bones (3 ticks and 4.5 Prayer XP each) and fights on.
+  - **The end:** a full inventory of hides, the budget, out of food, or a death.
+  - **The task:** the class fought, so a deposit banks the hides.
+  - **In the slots:** no Crafting XP, so a gp path. For a fresh character it holds Crafting's second gp slot, behind
+    `pick_flax`.
+  - **The guide:** below Crafting 10 it takes this path, in place of the combat slots' cows.
+- **Tests:**
+  - `tests/test_sim_cows.py` (3), reproduced first: hides gathered and bones buried, the deposit banks the hides,
+    the fastest kills chosen, a gp path;
+  - the gathering and skilling tests' counts: Crafting's 40 paths, a fresh character's open paths and slots.
+
+  The suite without the server: 421 passed, 75 skipped, the two guide balance tests left out (OQ-59).
+- **What it does to the guide** (4 seeds, 20 hours):
+  - Prayer rises to 18–25, from the bones; it was 3–8.
+  - Crafting reaches 5–9, up from 1–4.
+  - But total level falls to 240–314 and net worth to 22k–68k, from 320–366 and 105k–173k.
+  - **The cause:** at seed 0 the guide spends 37% of the episode at cows (44,585 ticks, 42 runs: 23 stopped at the
+    option's 15 minutes without a full inventory, 18 out of food). A low-level character kills cows slowly, and the
+    lowest-first schedule keeps sending Crafting below 10 back to them.
+- **Caleb asked:** "Is wool -> ball of wool gp positive?" No. Wool is 123 gp and a ball of wool 11 gp
+  (`data/prices_v2.csv`), so a spin loses 112 gp for 2.5 Crafting XP, about 45 gp an XP. Crafting 10 from wool alone
+  is about 462 wool, or 57k gp.
+
+### Decided: the guide's wool out and cows kept; OQ-58 (a), a stalled stint passes on; OQ-59 (b), flax pays for the inputs (Caleb); built
+Caleb, 2026-11-09: "Remove wool. Keep cows. OQ 58 - pass the stint on. OQ 59 - Option B." Then, while it was being
+built: "The agents still are not banking everything they don't need for the task at hand, huh?" and "Also, let the
+money making fallback carry through the entire stint when it becomes active, instead of wasting a lot of time on
+travel." `m002-oq58-59`.
+- **OQ-58, the guide's stints stall on a skill that can't be trained.** The options:
+  - **(a) recommended:** pass it on;
+  - **(b):** the schedule as signed off.
+
+  **Caleb: (a).** When the plan falls to another skill's training, that skill starts a stint. Errands (sales,
+  deposits, upgrades) don't pass it. The flag is gone: it's the guide's schedule.
+- **OQ-59, the guide's Crafting, Herblore and Runecrafting barely trained.** The options:
+  - **(a) recommended:** accept it;
+  - **(b):** a money-maker, flax picked and sold;
+  - **(c):** something else.
+
+  **Caleb: (b).** Built:
+  - **When it starts:** a skill that buys its inputs is short when its input for the stint costs more than the coins.
+    The input for the stint is the units the XP to the stint's goal level takes (rune essence, or Herblore's
+    scarcest of herb, vial and secondary), at least a load.
+  - **While short,** the guide picks flax by Seers' Village and banks it.
+  - **When it sells:** once the flax covers the input and two fares, it takes the flax out as banknotes, sells it in
+    one GE trip, and buys.
+  - **Why two fares:** the sim's way from the GE to the field is the home teleport and the 1,000 gp charter from Port
+    Sarim to Catherby, and back the charter too while the teleport waits. Selling each load netted about nothing
+    (seed 0: 116 sales, 78% of the episode, Herblore never trained).
+  - **Caleb's "carry through the entire stint":** once the money-maker starts, the guide is funding that skill. No
+    upgrade takes the coins until the input is bought or the stint moves on.
+  - **The flax is sold in full,** not half: it's picked to sell.
+- **Wool:** out. A spin loses 112 gp, at 123 for wool against 11 for a ball.
+- **Cows:** kept, below Crafting 10 (`kill_cows`).
+- **Banking (Caleb's question):**
+  - **Why it happens:**
+    - `bank_deposit` keeps the last task's kit and runs only when a policy picks it: no auto-banking (option catalog
+      v1.0);
+    - the guide deposited only when the inventory was full;
+    - its sale withdrawals left the stacks it chose not to sell in the inventory, as banknotes.
+
+    Seed 1 at tick 24,602 started `kill_cows` with 3 free slots: arrow shafts, ores, burnt fish, two scimitars,
+    charms, runes.
+  - **Built in the guide:** before a gathering or combat option, it deposits if that would bank 5 or more slots of
+    what the coming task doesn't use. That's measured against the coming option's kit (a fight's class, the path a
+    skilling slot holds), and skipped right after a withdrawal or a deposit.
+  - **The sim's rule is unchanged** (OQ-60).
+- **Loops found and fixed on the way:**
+  - the pre-deposit measured against the last task's kit (Magic's runes banked and withdrawn, about 14,000 times);
+  - a ranged gear withdrawal undone by the next pre-deposit (1,584 times);
+  - flax banknotes deposited as soon as they were withdrawn for sale (thousands of Herblore decisions).
+- **Results,** 8 seeds × 20 hours:
+  - total level 325–370, one seed 284 (Crafting at its cows);
+  - net worth 103k–167k;
+  - every skill trained: Herblore 11–16, Runecrafting 8–16, Crafting 4–16, Agility 10–17, Prayer 10–22.
+
+  The signed-off 14-skill guide had 336–341 and 107k–122k.
+- **Tests:** `tests/test_guide.py`'s balance test no longer expects the melee stats within 5 of each other
+  (`kill_cows` trains its fastest style), and leaves Crafting out of its 6-hour check (its cows haven't paid off by
+  then; the 20-hour test checks it).
+
+### Decided: OQ-60 (a), the sim's deposit rule stays; the agent learns when to bank (Caleb)
+Caleb, 2026-11-09, after asking (the message cut off) "OQ 60 - if we go with Option A, does the simulation keep":
+"OQ 60 - Option A - I accept that the agent needs to learn to bank at intelligent opportunities. It just seems so
+counterintuitive to me that the agent would ever decide to not have the maximum opportunity to perform the action that
+it has selected." `m002-oq60`.
+- **The question** (raised 2026-11-09, from Caleb's "not banking everything they don't need for the task at hand"):
+  `bank_deposit` keeps the last task's kit and runs only when a policy picks it, so a policy that doesn't deposit
+  starts its next task with whatever it carries.
+- **The options:**
+  - **(a) recommended:** leave the sim as it is;
+  - **(b):** gathering and fighting bank what their kit doesn't use as they start, which reverses "no auto-banking";
+  - **(c):** a deposit keeps only tools, food and ammunition.
+- **Caleb: (a).** The agent learns to bank at good moments. The observation shows what it carries, its free slots,
+  the last task (which decides what a deposit keeps), and whether a deposit is allowed. The scripted guide deposits
+  before gathering or a fight (the entry above).
+- **To watch** (Claude's note, Caleb's concern): skipping a deposit pays only when the trip costs more than the room
+  is worth, near an episode's end, say, or on a short option. An agent that starts gathering with little room
+  otherwise is still learning. Each decision's log will hold the observation, so the free slots as a gathering or
+  fight starts can be checked on the sanity ladder and in E2.
+
+### Measured: the scripted guide's fifth revision on E1's 30 seeds; one more loop fixed
+2026-11-09. `m002-oq58-59`.
+- **Found on 30 seeds:** seed 14 looped about 1,300 times between `bank_withdraw_gear_magic` and a full inventory's
+  `bank_deposit`. The magic fight still couldn't start after the withdrawal.
+- **Fixed:** the guide doesn't deposit straight after a withdrawal while its plan allows anything else. Seed 14 then
+  ended at total level 357.
+- **Results** (`scripts/evaluate.py`, 30 seeds, 20 hours: `results/eval/guide-v5b-20261109` for the guide,
+  `guide-v5-20261109` for the others):
+
+  | At hour 20 (mean [95% CI]) | Total level | Net worth |
+  |---|---|---|
+  | Scripted guide | 351 [344, 357] | 131k [125k, 136k] |
+  | Random | 215 [207, 223] | 15k [10k, 19k] |
+  | Greedy XP | 157 | 1.2k (total XP 701k) |
+  | Greedy GP | 40 [36, 46] | 1.89M [1.77M, 1.98M] |
+
+  The guide's episodes run at most 519 decisions, with no deaths.
+- **Written up:** `docs/scripted-guide-draft.md`'s fifth revision, for Caleb's review before E1.
+- **Tests:** the suite without the server, 423 passed, 75 skipped.

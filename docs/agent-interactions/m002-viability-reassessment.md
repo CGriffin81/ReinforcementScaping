@@ -6,7 +6,7 @@
 - Timestamp CST: 2026-11-09 00:34:15 CST (the prompt), from the session transcript's timestamp (UTC−06:00)
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: RECOMMENDATION GIVEN; Caleb chose (a′), with every research question answered, on 2026-11-09
+- Status: SUCCESS (recommendation given); Caleb chose (a′), with every research question answered, on 2026-11-09
   (`m002-oq17-scope`)
 - Commit: the main repo commit after `dc92982` (branch `sim-v0`) that adds this record (`m002-commit-all`)
 

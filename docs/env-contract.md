@@ -1,7 +1,31 @@
-# Environment Contract (v1.37, Signed off)
+# Environment Contract (v1.42, Signed off)
 
-**Status:** v1.37, 2026-11-09. Caleb confirmed every version to v1.37 on 2026-11-09. Any change needs Caleb's
+**Status:** v1.42, 2026-11-09. Caleb confirmed every version to v1.37 on 2026-11-09. Any change needs Caleb's
 approval and is logged in `docs/decision-log.md`.
+- **v1.42** (2026-11-09, Caleb; the choices of site, plan and ammunition Claude's, to confirm) adds `kill_cows`,
+  Crafting's gathering path for hides (option catalog §2): it fights cows with the plan that kills them fastest
+  and whose ammunition lasts a load, keeps the hides and normal bones, buries the bones as the inventory fills, and
+  ends at a full inventory of hides. Its task is the class fought. It's a path in the skilling slots, so the
+  schema is unchanged (2,293 actions, 3,482 features).
+- **v1.41** (2026-11-09, Caleb, OQ-57 (a)) adds the Gem Store's buys: `buy_shop_1623` and `buy_shop_1621`, the
+  uncut sapphire and emerald at Hervi's in Keldagrim. Both backends give the shop January 2009's 87 members' worlds
+  on one world (rl.conf's `world.shop_worlds`): 87 of each, 87 back a restock (every 100 ticks), and 25 and 50 gp a
+  unit, one world's full-stock price. The GE and net worth are unchanged, so they're also worth their frozen 2009
+  prices (616 and 985 gp). 2,293 actions, 3,482 features (the mask's 2).
+- **v1.40** (2026-11-09, Caleb, OQ-55 (3)) is wording only, for OQ-17 (a′)'s scope:
+  - `ServerEnv` isn't built: the server side of the contract is the calibration runners;
+  - the calibration gate is the sim-to-real evidence, in place of E6;
+  - the preference features serve the weight-conditioned PPO, in place of E4's agent.
+
+  The schema is unchanged.
+- **v1.39** (2026-11-09, Caleb, OQ-56) starts the character with Druidic Ritual's 250 Herblore XP (level 3), on
+  both backends: every Herblore recipe needs level 3, and quests are otherwise flags only. A fresh character's
+  total level is 35. The schema is unchanged.
+- **v1.38** (2026-11-09, Caleb, OQ-52: "For flax, we should add the option to move into spinning it into
+  bowstrings or bank"; the task's name and the feature Claude's, to confirm) gives picking flax its own task,
+  `flax`, whose kit is nothing. So `bank_deposit` banks the flax a picker carries, and `spin_flax` (Crafting 10)
+  spins it. Under the crafting task the kit kept flax as spinning's input, so the deposit was masked after a
+  load. The observation's task part grows by one (§3, 18). 2,291 actions, 3,480 features.
 - **v1.37** (2026-11-09, Caleb, OQ-49 (a); the prayer part and the fitted rate Claude's, confirmed by Caleb on 2026-11-09) has the outer
   ring's crowd attack fights in the Abyss (§8): the crossing's mix of kinds, those the character's combat level draws,
   at a rate fitted to fights on the server, less the swings of the monster it fights, until the region's tolerance
@@ -112,7 +136,9 @@ approval and is logged in `docs/decision-log.md`.
 - **v1.0** added the death rule (§1) to v0.6.
 
 Both backends implement this contract exactly: `SimEnv` (the surrogate simulator) and `ServerEnv` (2009Scape
-through the bridge). Any policy, baseline or logger written against it runs on either one.
+through the bridge). Any policy, baseline or logger written against it runs on either one. *Under OQ-17 (a′)
+(Caleb, 2026-11-09), `ServerEnv` isn't built. The server side is the calibration runners, which drive options
+through the bridge as §7 describes, and the calibration gate is the sim-to-real evidence (v1.40).*
 
 ## 1. Time and episodes
 
@@ -166,8 +192,8 @@ class RSEnv(gymnasium.Env):
     def option_catalog(self) -> list[OptionSpec] # docs/option-catalog.md, same order as the action ids
 ```
 
-- **`reset` options:** `reward_weights=(w_s, w_b)`. For the preference-conditioned agent (E4) the weights are
-  also appended to the observation.
+- **`reset` options:** `reward_weights=(w_s, w_b)`. For the weight-conditioned PPO (RQ3, in place of E4's
+  agent under OQ-17 (a′)) the weights are also appended to the observation.
 - **`step` reward:** the scalar w_s·r_skill + w_b·r_wealth. The unweighted pair is in `info["reward_vec"]`.
 - **Masked action:** passing one to `step` is an error, never a silent no-op.
 
@@ -195,10 +221,10 @@ roughly [0, 1].
 | Combat candidates | C × 5 | for each candidate slot: XP/hr, gp/hr, expected damage taken per hour vs food held, travel minutes, Slayer / level eligibility (option catalog §4) |
 | Skilling candidates | 36 × 5 | per skilling slot (option catalog §2; Crafting's 4 since v1.23, Herblore's since v1.25, Runecrafting's since v1.26, Agility's since v1.28): the gathering skill's XP/hr, its processing counterpart's XP/hr, gp/hr, travel, open; scaled as the combat candidates |
 | Loot mode | 4 | one-hot: all / valuable / vocabulary / none (option catalog §4.D) |
-| Task | 17 | one-hot: the last activity's task (none, woodcutting, mining, the three fishing methods, thieving, fletching, crafting, herblore, runecrafting, agility, barbarian fishing, processing, the three combat classes), which decides what `bank_deposit` keeps (option catalog §5) |
+| Task | 18 | one-hot: the last activity's task (none, woodcutting, mining, the three fishing methods, thieving, fletching, crafting, flax picking (v1.38), herblore, runecrafting, agility, barbarian fishing, processing, the three combat classes), which decides what `bank_deposit` keeps (option catalog §5) |
 | Access | A | 0/1 per access rule (`data/access_areas.csv`, A = 55 today; `access.unlocked_rules`): unlocked by quests, items held, levels or coins (option catalog §4.C). Rules decided by quests alone are constant, since the quests are complete from the start |
 | Mask | N | the action mask |
-| Preference | 2 | (w_s, w_b), for the E4 agent only |
+| Preference | 2 | (w_s, w_b), for the weight-conditioned PPO only (E4's agent before OQ-17 (a′)) |
 
 Inventory and bank are separate because banking is now the agent's decision. *V* is the item vocabulary in the
 option catalog.
@@ -206,7 +232,7 @@ option catalog.
 **As built** (`rlscape/envs/encoding.py`, 2026-10-30): E = 12 roles (weapons for melee, ranged and magic,
 ammunition, head, body, legs, shield, axe, pickaxe, fishing gear), R = 12 (the catalog's 11 regions and
 "elsewhere"), C = 18 slots (6 per combat class). The encoder's docstring lists how each part is scaled. With the
-catalog as built (2,291 actions, *V* = 370) the vector has 3,479 features (v1.12 dropped the quest part's 64; v1.13
+catalog as built (2,293 actions, *V* = 370) the vector has 3,482 features (v1.12 dropped the quest part's 64; v1.13
 added 7 buys and 27 items; v1.14 11 buys, 11 items and the potions part's 22; v1.16 2 buys, 2 items and the cape role;
 v1.17 64 buys and 63 items; v1.19 the home teleport's wait; v1.23 Crafting's slots and task; v1.24 25 buys and 18
 items; v1.25 Herblore's slots and task; v1.26 Runecrafting's; v1.27 66
@@ -299,7 +325,7 @@ for every step.
   - `reset` reinstalls the frozen GE database. This is required, not optional: GE offers outlive the
     character that placed them, and in testing one test's offer filled the next test's.
   - then start the server with `rl.conf` and spawn through the bridge
-  - one RL character per world for validation (E6)
+  - one RL character per world for validation (E6; cut by OQ-17 (a′))
   - **ambient bots off** for calibration and E6 alike (Caleb, 2026-10-28). The gap then measures the model, not
     crowding.
   - not seedable (world randomness); reported as such
@@ -311,7 +337,8 @@ for every step.
   - turns run on (`set_run`) at the start of each walk, as the simulator assumes. The server turns it off when
     energy drops under 1%.
 - **Parity test:** the same scripted option sequence runs on both backends. The per-option XP, item, coin and
-  duration distributions are compared; that's the sim-to-real gap (E6).
+  duration distributions are compared; that's the sim-to-real gap (E6). Under OQ-17 (a′), the calibration
+  gate's per-option comparisons stand in for it.
 - **Calibration and the gate before E2** (Caleb, 2026-10-28):
   - **The gate:** each calibrated option's mean XP/hr, gp/hr and duration must be within **±20%** of the server's.
     Misses get one round of patching; anything still outside is listed as a known gap in the report.

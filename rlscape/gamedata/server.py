@@ -10,6 +10,7 @@ from __future__ import annotations
 import csv
 import json
 import re
+import tomllib
 from dataclasses import dataclass, field
 from functools import cache
 from pathlib import Path
@@ -17,6 +18,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 SERVER_CONFIGS = REPO / "server" / "Server" / "data" / "configs"
 SERVER_CONTENT = REPO / "server" / "Server" / "src" / "main" / "content"
+RL_CONF = REPO / "server" / "Server" / "worldprops" / "rl.conf"  # the training world's config
 SLAYER_TASKS = SERVER_CONTENT / "global" / "skill" / "slayer" / "Tasks.java"
 QUESTS = SERVER_CONTENT / "data" / "Quests.kt"
 CHARACTER_DESIGN = SERVER_CONTENT / "region" / "misc" / "tutisland" / "handlers" / "iface" / "CharacterDesign.java"
@@ -1320,6 +1322,7 @@ class Shop:
     general: bool
     currency: int
     stock: dict[int, tuple[int, int]]  # item -> (normal amount, restock rate in ticks)
+    worlds: int = 1  # rl.conf's world.shop_worlds (OQ-57): normal stock and restock step x worlds
 
     def tile(self) -> tuple[int, int, int] | None:
         """Where its first shopkeeper with a spawn stands."""
@@ -1338,8 +1341,25 @@ def shops() -> dict[int, Shop]:
             else:
                 stock[int(item)] = (normal, int(rate[0]) if rate and rate[0] else 100)
         npcs = tuple(int(n) for n in raw["npcs"].split(",") if n.strip())
+        worlds = shop_worlds().get(int(raw["id"]), 1)  # Shops.startup multiplies the normal stock (OQ-57)
+        if worlds > 1:
+            stock = {i: (n * worlds if n > 0 else n, r) for i, (n, r) in stock.items()}
         out[int(raw["id"])] = Shop(int(raw["id"]), raw["title"], npcs, raw["general_store"] == "true",
-                                   int(raw["currency"]), stock)
+                                   int(raw["currency"]), stock, worlds)
+    return out
+
+
+@cache
+def shop_worlds() -> dict[int, int]:
+    """rl.conf's world.shop_worlds, as the fork's ServerConfigParser reads it (ServerConstants.SHOP_WORLDS): shop id
+    -> the worlds its stock stands for, as a player hopping meets it (Caleb, 2026-11-09, OQ-57: the Gem Store for
+    January 2009's 87 members' worlds)."""
+    conf = tomllib.loads(RL_CONF.read_text(encoding="utf-8"))
+    out = {}
+    for pair in str(conf.get("world", {}).get("shop_worlds", "")).split(","):
+        shop, _, worlds = (part.strip() for part in pair.partition(":"))
+        if shop.isdigit() and worlds.isdigit() and int(worlds) >= 1:
+            out[int(shop)] = int(worlds)
     return out
 
 

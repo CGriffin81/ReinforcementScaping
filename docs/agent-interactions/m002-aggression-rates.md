@@ -6,7 +6,7 @@
 - Timestamp CST: 2026-11-08 22:11:55 CST, from the session transcript's message timestamp (UTC−06:00)
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: DONE (the skilling slots price a gathering site's aggressive monsters)
+- Status: SUCCESS (the skilling slots price a gathering site's aggressive monsters)
 - Commit: the earlier work is fork `efa44b5` (branch `rl`) and main repo `1c8f05e` (branch `sim-v0`), both pushed; this
   turn's rate-model work is uncommitted
 

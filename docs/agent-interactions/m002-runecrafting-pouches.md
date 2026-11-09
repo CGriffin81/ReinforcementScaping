@@ -7,7 +7,7 @@
 - Agent: Claude Code (desktop app, Code tab), the Runecrafting session (a fork of the roadmap session), beside the
   Herblore session in the same checkout
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: COMPLETE (built, measured and tested; uncommitted)
+- Status: SUCCESS (built, measured and tested; uncommitted)
 - Commit: fork `edf3b2ba6` (branch `rl`), pushed; main, the main repo commit after `dc92982` (branch `sim-v0`) that adds this record (`m002-commit-all`)
 
 ## Full Prompt

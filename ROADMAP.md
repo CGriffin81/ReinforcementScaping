@@ -59,7 +59,12 @@ Whole options (`reset` / `step` in the env contract) are built in Python on top 
 
 ---
 
-## 2. Repository layout (proposed)
+## 2. Repository layout (as proposed; mostly built by 2026-11-09)
+
+*As built:* `rlscape/` also has `travel.py` and `routes.py` (walking routes on the server's collision map),
+`vocabulary.py`, `agents/` (`smdp.py`, `ppo.py`; RND to come), `eval/` (the harness), and `baselines/`
+(`policies.py`, `guide.py`). There's no `envs/ServerEnv` or Envelope Q (cut, OQ-17). `results/` is git-ignored, so
+the finishing plan's committed summaries need `results/summary/` un-ignored when the first one is written.
 
 ```
 ReinforcementScaping/
@@ -95,13 +100,17 @@ ReinforcementScaping/
 | **Skill reward normalization** | Raw XP grows exponentially per level, so high-level XP would dominate. Total level is the reported metric. | Reward fractional level gained (level + progress toward the next level) to match the reported metric. Wealth reward = Δnet worth / a fixed scale (e.g. 100k GP). |
 | **Valuation table** | Runs are only comparable if net worth is computed the same way every time. | **Done (Caleb's formula):** `data/prices_v2.csv` = max(high alchemy − nature rune, January 2009 GE price from the RuneScape Wiki), coins = 1. Fixed for the whole study. `prices_v1` (the 10-hour snapshot) is superseded but kept. |
 | **RND with masking** | Neither SB3 nor sb3-contrib includes RND. | v1: a VecEnv wrapper that adds a normalized, non-episodic intrinsic reward for MaskablePPO. v2, only if v1 results are ambiguous: dual value heads, using CleanRL's `ppo_rnd_envpool.py` as reference. |
-| **Masking in Envelope Q** | MORL-Baselines' Envelope Q-learning has no action-mask support out of the box. | Patch action selection and the target max to set invalid Q to −∞, and store the next-state mask in the replay buffer. |
+| **Masking in Envelope Q** | MORL-Baselines' Envelope Q-learning has no action-mask support out of the box. | Patch action selection and the target max to set invalid Q to −∞, and store the next-state mask in the replay buffer. *Cut (OQ-17 (a′), 2026-11-09): a weight-conditioned PPO replaces Envelope Q.* |
 | **Bot helpers cut corners** (found Oct 5) | `ScriptAPI.sellOnGE`/`sellAllOnGe` delete the items and pay nothing (`GrandExchange.addBotOffer`). `buyFromGE` never dispatches. `teleportToGE` and `withdraw` skip travel. And any GE offer from an artificial player becomes a bot offer. | **Done:** the agent's character is an `RLPlayer`, treated as a human by every game rule. The bridge trades through the human GE path (`ge_offer` / `ge_collect`, only at the GE). Gathering and combat logic can still be borrowed from the bundled scripts. |
 | **Python version** | This machine has Python 3.14, and RL libraries lag new Python releases. | Use a `uv` project pinned to Python 3.12. |
 | **Windows multiprocessing** | `SubprocVecEnv` uses spawn on Windows. | Put every entry point behind `if __name__ == "__main__":` and keep env construction picklable. |
 | **Reproducibility** | Every comparison needs ≥5 seeds with bootstrap CIs. | Seeded `numpy.random.Generator` in the sim; each run dir stores the config, config hash and git SHA. |
 
 ### Throughput estimates (to sanity-check, not commitments)
+
+*Superseded by measurement (2026-11-09, decision log):* one sim worker makes 70 to 80 decisions a second, a random
+episode about 385 decisions, and PPO training about 1M decisions an hour on this machine. OQ-7 (a) dropped the
+≥20k target. E6 is cut (OQ-17). The estimates below are kept for history.
 
 - **Sim:** target ≥20k decisions/s on 16 threads. A 20-game-hour episode has roughly 100–300 decisions, so a 5M-decision run should take roughly 15–30 min including PPO updates, and all of E2 (25 runs) fits overnight. Small-MLP PPO runs faster on CPU (Ryzen 7 5800X) than on the GPU. Save the RTX 3050 for Envelope Q and the stretch work.
 - **Real server:** at the default 600 ms tick, 1 game-hour takes 1 wall-hour. With a 10× tick and 8 RL-controlled `AIPlayer`s in one world, 1 wall-hour ≈ 80 game-hours. Then E6 (4 configs × 5 seeds × 20 game-hours = 400 game-hours) takes about 5 wall-hours. **Without the speedup it takes about 50 wall-hours**, which is why decision gate G1 matters. A fallback is to validate only the first 10 game-hours (checkpoints 2–10).
@@ -121,7 +130,7 @@ ReinforcementScaping/
 - [x] Fork the server: [CGriffin81/2009scape-rl](https://github.com/CGriffin81/2009scape-rl) (private, full upstream history; `master` mirrors upstream, at `bea45a9e` until it was synced to `f279da8` on 2026-10-28; our work on `rl`). Linked here as the `server/` submodule.
 - [x] Build the server jar (`Server/target/server-1.0.0-jar-with-dependencies.jar`, ~3 min cold build).
 - [x] Run it against MariaDB (`infra/docker-compose.db.yml`, localhost-only; no longer needed, since auth and account persistence are off). The first launch took 418 s, mostly filling the GE price index in SQLite; built-in bots start ticking right away. The game port 43595 bound to **all interfaces**. *Fixed 2026-10-28: `server.bind_address`, which `rl.conf` sets to `127.0.0.1`.*
-- [ ] Install Singleplayer through the Saradomin launcher, for reference play and for watching bots. *Deferred to week 7 (Caleb, 2026-10-28). It's only needed there, to record a replay with the client attached.*
+- [ ] Install Singleplayer through the Saradomin launcher, for reference play and for watching bots. *Deferred to week 7 (Caleb, 2026-10-28). It's only needed there, to record a replay with the client attached.* *Not needed now: the finishing plan's demo replays checkpoints in the sim (OQ-17, 2026-11-09).*
 - [x] Read `core/game/bots/` (`AIPlayer`, `Script`, `ScriptAPI`, `GeneralBotCreator`) and the bundled-script economy helpers.
 - [x] **G1, tick and headless: PASS.** `server.tick_ms` is now configurable and changeable at runtime through the bridge. Measured with 100 ambient bots: 4.9× at 120 ms, 9.5× at 60 ms, 17.5× at 30 ms, 34× at 15 ms (about 2.6 ms of overhead per tick). The "in combat" wall-clock flag is still untested under speedup.
 - [x] **G2, state and actions: PASS.** `content/rl/RLBridge.kt` + `RLCommands.kt` in the fork, and `rlscape/bridge/client.py` here. Spawns a character exactly as it leaves Tutorial Island, reads its full state, and drives authentic interactions: 600 ticks of chopping gave 10 logs and 250 XP. Covered by `scripts/gate_check.py` and `tests/test_bridge_live.py`.
@@ -169,22 +178,29 @@ v1.34). Chaos rune crafting is out, an intentional gap (Caleb, env contract v1.3
 server gives them, decay and the Dark Mage's repair included (OQ-40 (c)), and the travel model closes the Abyss, in
 by the mage's teleport and out by a teleport or its exit (validated: 0.95 in, 1.02 out), so the combat slots fight
 its monsters and they drop the pouches (env contract v1.36). A fight there also takes the outer ring's crowd,
-with no prayer (Caleb, OQ-49 (a); its rate fitted to the server's fights: env contract v1.37). OQ-17 is decided: (a′), with every research
+with no prayer (Caleb, OQ-49 (a); its rate fitted to the server's fights: env contract v1.37). Two of the three
+cases held out of the fit pass; the leeches' food (0.68 of the server's) is a documented gap (Caleb, OQ-51 (a)).
+Picked flax can be banked or spun (Caleb, OQ-52: env contract v1.38, to confirm), which took greedy GP from about 144k
+to about 2M net worth at hour 20. The start has Druidic Ritual's 250 Herblore XP, so Herblore can be trained (Caleb,
+OQ-56, v1.39). The Gem Store's uncut gems stand for 2009's 87 members' worlds on one world (Caleb, OQ-57 (a), v1.41). Crafting gathers
+hides by killing cows, their bones buried (Caleb, v1.42). The scripted guide's fifth revision trains all 18 skills
+(Caleb, OQ-53, OQ-58 (a), OQ-59 (b)): total level 351, net worth 131k on E1's 30 seeds, for Caleb's review.
+OQ-17 is decided: (a′), with every research
 question answered and a simple peer review (Caleb, 2026-11-09). The plan from here is weeks 6 to 8 below. Caleb
 confirmed every env contract version (to v1.37) and option catalog v1.4 the same day.
-- [ ] `sim/` v0: per option, check preconditions, sample outcomes, apply XP/item/GP deltas and update state. Formulas are ported from the server source; overheads start as placeholders. Decided 2026-10-28:
+- [x] `sim/` v0: per option, check preconditions, sample outcomes, apply XP/item/GP deltas and update state. Formulas are ported from the server source; overheads start as placeholders. Decided 2026-10-28:
   - **event-level sampling**
   - **every family except the v1 skills** (four since Fletching moved into sim v0 on 2026-10-31), which come in sim v1 before E2. Quests are out (Caleb, 2026-11-06): every quest the server has is complete from the start
   - the item vocabulary list is drafted for Caleb to check (*done 2026-10-30:* 156 items, accepted)
 - [x] `envs/SimEnv`: Gymnasium API, `action_masks()`, `info["duration"]`, `info["reward_vec"]`, and reward weights. *2026-10-30:* the weights are a `reset` option, as env contract §2 has it, not a wrapper.
-- [ ] Baselines:
+- [x] Baselines:
   - random (masked) (*done 2026-10-30,* `rlscape/baselines`)
   - greedy XP/hr and greedy GP/hr (one-step lookahead on expected rates at the current state) (*done 2026-10-30:*
     E1 uses raw XP for XP/hr (Caleb) and net worth for GP/hr; `e1_baselines()`)
   - scripted guide routine: Claude drafts it from archived 2009 guides, cites them in `docs/resources.md`, and Caleb reviews it before E1 runs (*drafted 2026-10-30:* `docs/scripted-guide-draft.md`; signed off by Caleb on 2026-10-31 and in `e1_baselines()`)
 - [x] `eval/` harness: any policy × N seeds produces metrics at game-time checkpoints every 2 h (2, 4, …, 20), written to parquet with bootstrap 95% CIs. *2026-10-30:* `rlscape/eval/harness.py` and `scripts/evaluate.py`; metrics are total level, total XP and net worth, with paired differences between policies.
 - [x] Tests: masks are always respected, GP and item counts never go negative, the same seed gives the same trajectory, plus a sim speed benchmark. *Done 2026-10-31:* `tests/test_sim_properties.py` (whole random episodes; the same trajectory under other string-hash seeds) and `scripts/benchmark_sim.py` (804 decisions a second with 16 workers; the contract's target is 20k: OQ-7).
-- [ ] Server: `scripts/calibrate.py` runs each option K times through the bridge and logs duration, XP, item and GP distributions. *Started 2026-10-31:* woodcutting at the site (the activity alone, from the site's tile), within ±20% at four bands. Decided 2026-10-28 (env contract §7):
+- [x] Server: `scripts/calibrate.py` runs each option K times through the bridge and logs duration, XP, item and GP distributions. *Started 2026-10-31:* woodcutting at the site (the activity alone, from the site's tile), within ±20% at four bands. Decided 2026-10-28 (env contract §7):
   - ambient bots off
   - 11 bands of calibration characters, fresh to 99, buying their own gear with 100 gp × total level; every quest the server has is complete at every band (since 2026-11-06; graded quests before)
   - about 10 runs per option at each band where it's unlocked
@@ -200,7 +216,7 @@ confirmed every env contract version (to v1.37) and option catalog v1.4 the same
   1. PPO solves a 3-option toy catalog with a known optimum.
   2. PPO beats random on the full catalog.
   3. Small hyperparameter sweep at w = (0.5, 0.5).
-- [ ] Sim v1, before E2:
+- [x] Sim v1, before E2 (built and calibrated by 2026-11-09, the speed checks passed; the gaps in `docs/post-project-gaps.md`):
   - fold in the calibration data (real duration distributions, travel and bank overheads)
   - add the four new skills (Crafting, Agility, Herblore, Runecrafting; their options are open question OQ-2). Quests are out (2026-11-06)
   - pass the **±20% sim-to-server gate** on mean XP/hr, gp/hr and duration per calibrated option, with one patch round; residual gaps are reported
@@ -236,9 +252,10 @@ Every research question is answered (Caleb), all on sim v1, with 5 seeds per con
 The old weeks 6 to 8 (E6 on the server, the stretch, a replay with the client) are superseded.
 
 *Nov 9–10: freeze and tooling*
-- [ ] Freeze sim v1 on Tue Nov 10 with whatever Runecrafting work is done (the Abyss's fights by OQ-49 (a), Caleb, being
-  built), and run the gate's 600 ms speed checks for Crafting, Herblore and Runecrafting (OQ-21). The contract is
-  ready: Caleb confirmed every env contract version (to v1.37) and option catalog v1.4 on 2026-11-09.
+- [ ] Freeze sim v1 on Tue Nov 10. The Runecrafting work is all in: the Abyss's fights by OQ-49 (a) are built, with the
+  leeches a documented gap (OQ-51 (a)). The gate's 600 ms speed checks for Crafting, Herblore and Runecrafting
+  (OQ-21) pass, 43 of 43 (2026-11-09). Picked flax can be banked or spun (OQ-52, env contract v1.38). Caleb confirmed
+  every env contract version to v1.37 and option catalog v1.4 on 2026-11-09; v1.38 is to confirm.
 - [ ] Speed up the action mask without changing its results, one day at most. It's 92% of a decision's time, and
   training runs at about 1M decisions an hour.
 - [ ] `scripts/train.py`:
@@ -306,9 +323,9 @@ covers E1 and E2 with an analysis of why, which `Requirements.md` accepts.
 ## 6. Weekly rhythm
 
 Trimmed by Caleb on 2026-10-28. The interaction records and the decision log already give a running account, so
-there are no Monday goal entries and no `wkN` tags.
+there are no Monday goal entries and no `wkN` tags. The Friday status entries went too (Caleb, 2026-11-09, OQ-55): the
+records, the decision log and the status line above keep the account.
 
-- Friday: a 5-line status entry in `docs/decision-log.md` (done, blocked, changed, next, risks).
 - Each results table goes into `results/summary/` with the exact config hash that produced it.
 
 ---
@@ -371,5 +388,8 @@ Only attempted after E1–E6 are solid. Pick at most one.
 | **Report value** | High: a vivid contrast in strategy (how the LLM's activity mix compares with PPO's). | Medium–high if it works; an algorithm-comparison result. | High if it works, but it probably won't fit the schedule. | Better polish on the core RQs. |
 
 **Closest prior work:** RuneBench (`docs/resources.md` [18]) benchmarks LLM coding agents on RuneScape skill-XP and gold tasks. rs-sdk [19] shows a tool (MCP) interface and wiki-knowledge setup that option A could follow.
+
+*Superseded (2026-11-09): OQ-17 (a′) leaves no time for a stretch, and OQ-1 now asks how RQ5 is answered (Claude
+recommends (C′), a bound).*
 
 **Recommendation: A (LLM planner).** It's the cheapest, the most likely to finish, and it adds a qualitatively different comparison to RQ1. It needs an Anthropic API key and a small budget (a cap of ~$25–50 is plenty). **B** is the pick if you'd rather keep the project pure-RL and are willing to set up WSL2 Ubuntu early. **C** is best kept as "future work" in the report.

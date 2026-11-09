@@ -6,7 +6,7 @@
 - Timestamp CST: 2026-11-08 20:43:14 CST, from the session transcript's message timestamp (UTC−06:00)
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: DONE (Herblore calibrated on the server; Herblore is built)
+- Status: SUCCESS (Herblore calibrated on the server; Herblore is built)
 - Commit: the earlier work is main repo `ff2fce1` (branch `sim-v0`), pushed; this turn's calibration went into the Runecrafting
   session's whole-tree commit after it, at Caleb's request there
 

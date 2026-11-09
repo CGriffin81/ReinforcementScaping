@@ -46,7 +46,9 @@ def character(client):
 
 def test_spawn_matches_a_character_leaving_tutorial_island(character):
     assert character["combat_level"] == 3
-    assert sum(s["level"] for s in character["skills"]) == 33
+    # Herblore 3 from Druidic Ritual's 250 XP (Caleb, 2026-11-09, OQ-56), as the sim's fresh character has it
+    assert sum(s["level"] for s in character["skills"]) == 35
+    assert [s["xp"] for s in character["skills"] if s["name"].lower() == "herblore"] == [250.0]
     assert character["location"] == TUTORIAL_EXIT
     assert character["equipment"] == []
     # 25 coins, and the small pouch from Enter the Abyss (OQ-40 (c)): the bank the sim's fresh character has

@@ -55,6 +55,7 @@ from rlscape.sim.runecrafting import RunecraftAtRuins, runecrafting_paths
 from rlscape.sim.aggression import gathering_share
 from rlscape.sim.agility import AgilityLaps, agility_paths
 from rlscape.sim.barbfishing import BarbFish, barbfishing_paths
+from rlscape.sim.cows import KillCows
 from rlscape.sim.gathering import respawn_ticks, site_offsets
 from rlscape.sim.kits import kit
 from rlscape.sim.mining import ATTEMPT_TICKS as MINE_TICKS
@@ -171,6 +172,7 @@ def path_options() -> list[Path]:
     paths += [Path("thieving", option) for option in (*pickpocket_options(), *stall_options())]
     flax = PickFlax()
     paths += [Path("crafting", flax), Path("crafting", flax, SpinFlaxAtWheel(), "_spin")]
+    paths.append(KillCows())  # Crafting's hides by killing cows, their bones buried (Caleb, 2026-11-09)
     return [*paths, *fletching_paths(), *crafting_paths(), *station_paths(), *herblore_paths(),
             *runecrafting_paths(), *agility_paths(), *barbfishing_paths()]
 
@@ -425,7 +427,7 @@ def path_rate(path: Path, state: CharacterState, duration_ticks: int = ACTIVITY_
         return _craft_rate(path, state, duration_ticks)
     if isinstance(path, RunecraftAtRuins):  # before AtStation, which it is
         return PathRate(*path.rate(state, duration_ticks))
-    if isinstance(path, (AgilityLaps, BarbFish)):
+    if isinstance(path, (AgilityLaps, BarbFish, KillCows)):
         return PathRate(*path.rate(state, duration_ticks))
     if isinstance(path, AtStation):
         return _station_rate(path, state, duration_ticks)

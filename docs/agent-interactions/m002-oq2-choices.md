@@ -6,7 +6,7 @@
 - Timestamp CST: 2026-11-08 11:23:06 CST, from the session transcript's message timestamp (UTC−06:00)
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: DONE (the choices recorded and the spawn flags built; the four skills not built yet)
+- Status: SUCCESS (the choices recorded and the spawn flags built; the four skills not built yet)
 - Commit: fork `7b377b2` (branch `rl`) and the main repo commit after `d0868d6` (branch `sim-v0`), both pushed
 
 ## Full Prompt

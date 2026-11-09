@@ -6,7 +6,7 @@
 - Timestamp CST: 2026-11-09 08:04:42 CST (the prompt), from the session transcript's timestamp (UTC−06:00)
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: DECISION RECORDED; OQ-1 (RQ5) and OQ-50 (the peer review's form) await Caleb
+- Status: SUCCESS (decision recorded); OQ-1 (RQ5) and OQ-50 (the peer review's form) await Caleb
 - Commit: the main repo commit after `dc92982` (branch `sim-v0`) that adds this record (`m002-commit-all`)
 
 ## Full Prompt

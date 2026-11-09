@@ -6,7 +6,7 @@
 - Timestamp CST: 2026-11-08 19:24:16 CST, from the session transcript's message timestamp (UTC−06:00)
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: DONE (Crafting calibrated on the server; Herblore, Agility and Runecrafting not started)
+- Status: SUCCESS (Crafting calibrated on the server; Herblore, Agility and Runecrafting not started)
 - Commit: the earlier work is fork `321d759` (branch `rl`) and main repo `0bfac9a` (branch `sim-v0`), both pushed; this
   turn's work is fork `df2b8a6` (the bridge change) and the main repo commit after `0bfac9a`, both pushed
 

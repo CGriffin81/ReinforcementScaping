@@ -7,7 +7,7 @@
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS (every decision the simulator needs is made and recorded; three review items follow later)
-- Commit: None (uncommitted, on the new branch `sim-v0`)
+- Commit: `493af16` (branch `sim-v0`), which added this record
 
 ## Full Prompt
 

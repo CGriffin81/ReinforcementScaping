@@ -410,10 +410,14 @@ def mean_flax_picks() -> float:
 
 
 class PickFlax(Option):
-    """pick_flax's gathering: flax in Seers' Village's field until the inventory is full. No XP."""
+    """pick_flax's gathering: flax in Seers' Village's field until the inventory is full. No XP.
+
+    Its task is `flax`, whose kit is nothing (Caleb, 2026-11-09, OQ-52): the flax is the product, so `bank_deposit`
+    banks it, or `spin_flax` spins it at Crafting 10. Under the crafting task the kit kept it as spinning's input, so
+    a picker couldn't bank its load."""
 
     family = "gathering"
-    task = "crafting"
+    task = "flax"
 
     def __init__(self, site: Site = SEERS_FLAX):
         self.id, self.site, self.tile = "pick_flax", site, site.tile

@@ -8,7 +8,7 @@
 - Agent: Claude Code (desktop app, Code tab), the Runecrafting session (a fork of the roadmap session), beside the
   Herblore session in the same checkout
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: COMPLETE (the fork committed and pushed; the main repo's commit handed to the Herblore session; the
+- Status: SUCCESS (the fork committed and pushed; the main repo's commit handed to the Herblore session; the
   session archived)
 - Commit: fork `edf3b2ba6` (branch `rl`), pushed; main, the main repo commit after `dc92982` (branch `sim-v0`) that adds this record (`m002-commit-all`), made by the Herblore
   session (one commit with all changes)

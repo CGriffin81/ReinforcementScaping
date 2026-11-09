@@ -7,7 +7,7 @@
 - Agent: Claude Code (desktop app, Code tab), the Agility session, beside the Herblore and Runecrafting sessions in the
   same checkout
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: DONE (committed and pushed; the Agility session ended and archived)
+- Status: SUCCESS (committed and pushed; the Agility session ended and archived)
 - Commit: the main repo commit after `5ae37d4` (branch `sim-v0`), pushed; it holds this record
 
 ## Full Prompt

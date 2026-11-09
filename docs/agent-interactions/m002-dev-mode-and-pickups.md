@@ -7,7 +7,7 @@
   transcript's message timestamps (UTC−06:00)
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: DONE (built; tested offline and live; two items raised for Caleb)
+- Status: SUCCESS (built; tested offline and live; two items raised for Caleb)
 - Commit: fork `d0a7af6` (branch `rl`) and the main repo commit that adds this record (branch `sim-v0`; its SHA
   can only be filled in by a later commit)
 

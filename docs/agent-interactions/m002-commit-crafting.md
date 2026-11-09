@@ -6,7 +6,7 @@
 - Timestamp CST: 2026-11-08 14:34:39 CST, from the session transcript's message timestamp (UTC−06:00)
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: DONE (Crafting built in the sim; its inputs in *V* and the server's measured times not yet)
+- Status: SUCCESS (Crafting built in the sim; its inputs in *V* and the server's measured times not yet)
 - Commit: the earlier work is fork `7b377b2` (branch `rl`) and main repo `573ffff` (branch `sim-v0`), both pushed; this
   turn's Crafting work is fork `0af2cc4` (the respawn fix) and the main repo commit after `573ffff`, both pushed
 

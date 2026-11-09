@@ -7,7 +7,7 @@
   (the answer to Claude's question), from the session transcript's timestamps (UTC−06:00)
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: DONE (the two flaky tests fixed; the region fix built and the combat sets re-checked; Crafting's inputs in
+- Status: SUCCESS (the two flaky tests fixed; the region fix built and the combat sets re-checked; Crafting's inputs in
   *V*)
 - Commit: the earlier work is fork `0af2cc4` (branch `rl`) and main repo `2ef7288` (branch `sim-v0`), both pushed; this
   turn's work is fork `321d759` (the region fix) and the main repo commit after `2ef7288`, both pushed

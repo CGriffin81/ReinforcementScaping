@@ -91,8 +91,14 @@ dragonhide pieces, with a needle and thread, a piece every 5 ticks). The recipes
 `LeatherCrafting`, `HardCraftPulse`). Thread goes as the server's `decayThread` takes it: a reel every 5 items,
 its charges saved on the character. Tanning and spinning work between the nearest bank and the nearest usable
 station: `tan_<leather>` (6, at a tanner, for its fee and no XP) and `spin_wool`, `spin_flax` (at a wheel, one every 4
-ticks). Flax is picked in Seers' Village's field (`pick_flax`, kept, no XP) or picked and spun at the Seers' wheel
-(`pick_flax_spin`), both ending at a full inventory. The agent buys the inputs on the GE (§9).
+ticks). Hides are gathered by killing cows (`kill_cows`, Caleb, 2026-11-09; `rlscape/sim/cows.py`): the plan
+that kills them fastest (combat_rates' kills an hour, among those whose ammunition lasts a load; ties to the higher
+level), at the cow site with the least travel and bank trip; the hides and normal bones picked up, the bones
+buried whenever the inventory fills, the raw beef left; no Crafting XP, so a gp path. Flax is picked in Seers'
+Village's field (`pick_flax`, kept, no XP) or picked and spun at the Seers' wheel
+(`pick_flax_spin`), both ending at a full inventory. Picking flax is a task of its own, `flax`, with no kit
+(Caleb, 2026-11-09, OQ-52), so after a load `bank_deposit` banks the flax, or `spin_flax` (Crafting 10) spins it
+into bowstrings. The agent buys the inputs on the GE (§9).
 
 **Herblore** (sim v1, v1.4; Caleb, 2026-11-08, OQ-2's Choices E (a) and F (a); `rlscape/sim/herblore.py`) has paths
 at a bank too: `clean_<herb>` (15, the grimy herb cleaned, a herb a tick, for its XP) and `potion_<potion>` (the 21
@@ -588,6 +594,10 @@ run energy and weight in `rlscape/sim/energy.py`).
   agent learns the price-versus-travel trade-off.
   - **Price:** ⌈value × m / 100⌉ a unit, with m rising from 100% at normal stock to 130% when sold out; each further
     unit of a purchase is priced at one less in stock.
+  - **The Gem Store** (Caleb, 2026-11-09, OQ-57 (a)): `buy_shop_1623` and `buy_shop_1621`, uncut sapphires and
+    emeralds at Hervi's in Keldagrim, the only gem shop selling uncut gems for coins. Its stock and restock stand
+    for January 2009's 87 members' worlds on one world (rl.conf's `world.shop_worlds`): 87 of each, 87 back each
+    restock, and a unit priced at one world's stock (25 and 50 gp until sold out). The agent needn't hop worlds.
   - **Stock:** shared (`personalized_shops = false`) and tracked within an episode. It restocks 1 unit per 100
     ticks.
   - **Paying:** the coins for the whole purchase must be in the inventory.
@@ -787,7 +797,7 @@ selling as "all in the inventory"):**
 | Selling | 560 (GE and store, 280 each) |
 | Buying | 217 (180 at the GE, with the knife, 19 fletching inputs, the anti-dragon shield, 6 quest items, 2 antipoisons, 8 combat potions and antifire, Ava's 2 devices, 11 crossbows and 53 bolts; 37 at shops) |
 | **Total in sim v0** | **1,709** |
-| Sim v1 so far (v1.4) | Crafting's 4 skilling slots; Crafting's 25 GE buys (needle and chisel one each, the rest in lots of 1,000) and its 18 new *V* items' 90 actions: 1,828; Herblore's and Runecrafting's 4 skilling slots each; Herblore's 66 GE buys (the pestle and mortar one, the rest in lots of 1,000) and its 51 new *V* items' 255 actions: 2,157; Agility's 4 skilling slots: 2,161; Runecrafting's 21 GE buys (the essence in lots of 1,000, the talismans and plain tiaras in lots of 14, a rune's tiara one) and its 19 new *V* items' 95 actions: 2,277; the barbarian rod's buy and *V* item: 2,283; less chaos's 2 buys and 2 items (Caleb, 2026-11-09): 2,271; the four pouches' 20 actions: **2,291** |
+| Sim v1 so far (v1.4) | Crafting's 4 skilling slots; Crafting's 25 GE buys (needle and chisel one each, the rest in lots of 1,000) and its 18 new *V* items' 90 actions: 1,828; Herblore's and Runecrafting's 4 skilling slots each; Herblore's 66 GE buys (the pestle and mortar one, the rest in lots of 1,000) and its 51 new *V* items' 255 actions: 2,157; Agility's 4 skilling slots: 2,161; Runecrafting's 21 GE buys (the essence in lots of 1,000, the talismans and plain tiaras in lots of 14, a rune's tiara one) and its 19 new *V* items' 95 actions: 2,277; the barbarian rod's buy and *V* item: 2,283; less chaos's 2 buys and 2 items (Caleb, 2026-11-09): 2,271; the four pouches' 20 actions: 2,291; the Gem Store's 2 buys (OQ-57): **2,293** |
 
 Each *V* item adds 7 observation features: its inventory and bank counts, and its 5 actions' mask entries (env
 contract §3).

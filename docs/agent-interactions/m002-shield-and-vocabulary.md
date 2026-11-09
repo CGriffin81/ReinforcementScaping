@@ -6,7 +6,7 @@
 - Timestamp CST: 2026-11-06 17:55:19 CST (from the session transcript's queue timestamp, UTC−06:00)
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: DONE for the shield, the vocabulary, the hazards and the gate's speed check (passes); the drop tables'
+- Status: SUCCESS for the shield, the vocabulary, the hazards and the gate's speed check (passes); the drop tables'
   sub-tables ported; the drop probe built and IN PROGRESS on the server (results to follow)
 - Commit: fork `d0a7af6` (branch `rl`) and the main repo commit that adds this record (branch `sim-v0`; its SHA
   can only be filled in by a later commit)

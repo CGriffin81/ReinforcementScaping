@@ -55,7 +55,7 @@ class RandomPolicy:
 
 def e1_baselines() -> list[Policy]:
     """E1's baselines: masked random, greedy XP/hr (raw XP), greedy GP/hr (net worth) and the scripted guide, its
-    13-skill second draft (reviewed by Caleb, 2026-10-31; docs/scripted-guide-draft.md)."""
+    18-skill fifth revision (Caleb, 2026-11-09, OQ-53 to OQ-59; docs/scripted-guide-draft.md)."""
     return [RandomPolicy(), GreedyPolicy("xp"), GreedyPolicy("wealth"), ScriptedGuidePolicy()]
 
 
