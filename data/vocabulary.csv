@@ -12,10 +12,10 @@ item_id,name,groups
 1515,Yew logs,bought;gathered
 1519,Willow logs,bought;gathered
 1521,Oak logs,bought;gathered
-1617,Uncut diamond,gathered
-1619,Uncut ruby,gathered
-1621,Uncut emerald,gathered
-1623,Uncut sapphire,gathered
+1617,Uncut diamond,bought;consumed;gathered
+1619,Uncut ruby,bought;consumed;gathered
+1621,Uncut emerald,bought;consumed;gathered
+1623,Uncut sapphire,bought;consumed;gathered
 10138,Raw rainbow fish,consumed;gathered
 315,Shrimps,processed
 319,Anchovies,processed
@@ -138,7 +138,7 @@ item_id,name,groups
 1313,Black 2h sword,drop
 1363,Iron battleaxe,drop
 1448,Mind talisman,drop
-1739,Cowhide,drop
+1739,Cowhide,bought;consumed;drop
 1987,Grapes,drop
 2485,Grimy lantadyme,drop
 2859,Wolf bones,drop
@@ -182,8 +182,8 @@ item_id,name,groups
 1213,Rune dagger,drop
 1315,Mithril 2h sword,drop;smithed
 1540,Anti-dragon shield,bought
-1751,Blue dragonhide,drop
-1753,Green dragonhide,drop
+1751,Blue dragonhide,bought;consumed;drop
+1753,Green dragonhide,bought;consumed;drop
 3349,Blamish ochre shell,drop
 3361,Blamish blue shell,drop
 3363,Thin snail,drop
@@ -278,3 +278,21 @@ item_id,name,groups
 13085,Black bolts(p+),bought
 13086,Black bolts(p++),bought
 13280,Broad-tipped bolts,bought
+1733,Needle,bought
+1734,Thread,bought;consumed
+1755,Chisel,bought
+1737,Wool,bought;consumed
+1779,Flax,bought;consumed;gathered
+1749,Red dragonhide,bought;consumed;drop
+1747,Black dragonhide,bought;consumed;drop
+1741,Leather,bought;consumed
+1743,Hard leather,bought;consumed
+1745,Green d-leather,bought;consumed
+2505,Blue d-leather,bought;consumed
+2507,Red dragon leather,bought;consumed
+2509,Black d-leather,bought;consumed
+1625,Uncut opal,bought;consumed
+1627,Uncut jade,bought;consumed
+1629,Uncut red topaz,bought;consumed
+1631,Uncut dragonstone,bought;consumed;drop
+6571,Uncut onyx,bought;consumed

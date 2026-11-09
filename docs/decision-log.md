@@ -4979,3 +4979,100 @@ Caleb, 2026-11-08: "OQ 39 - B / OQ 40 - C / OQ 41 - Set the heavy rod at 1,000 g
   spinning paths, the flax plant's picks, picking and spinning, and XP-less paths in gp slots. Live:
   `test_a_death_sends_the_character_to_lumbridges_home_tile`. The counts in `test_sim_skilling` and
   `test_sim_gathering`. The full suite: 405 passed. Speed: 96 decisions a second in one process (110 before Crafting).
+
+### Decided and built: RL characters keep the regions in a client's view active (Caleb); the two flaky live tests explained
+2026-11-08, Caleb: "Do this task here: 'Harden two flaky live bridge tests'", then, on Claude's question, "Fix in the
+fork (Recommended)". `m002-flaky-tests-and-regions`.
+- **The hand-cast test** (`test_a_hand_cast_is_one_spell_and_casting_again_each_tick_keeps_the_autocast_rate`) failed
+  now and then with `assert 1 >= 3`: one cast seen.
+  - **Cause 1, a hurt cow.** A cow keeps the damage an earlier run left: it heals 1 hitpoint a 100 ticks
+    (`SkillRestore`), and only while its region is active. Run back to back, the test's cow was at 3, 5 and 1
+    hitpoints at the first cast. Wind strike hits at most 2 at Magic 1, so a cow at 1 or 2 died to the first.
+  - **Cause 2, a frozen cow.** While that cow was respawning, the test picked another, at (3264, 3259), which never
+    moved, and no spell landed on it in 60 ticks.
+  - **Fixed in the test:** it casts at the nearest cow at its full 8 hitpoints (`gd.npcs()`), which takes at least 4
+    casts. 4 of 4 passed alone.
+- **Cause 2 was the server: only the region an RL character stood in was active.** A human's client view keeps the
+  regions of its build area active (`MapChunkRenderer.render`: the 13 × 13 chunks around the scene's base count the
+  player as a viewer and flag them active). `AIPlayer.update` does nothing, so for an RL character only its own region
+  was active (`RegionChunk.addPlayer`). An NPC in an inactive region doesn't tick (`NPC.tick`), and a fight on one
+  ends at once (`CombatPulse.pulse`). Live, with the character at (3257, 3270), in region (50, 51): the cows in
+  (50, 50), (51, 50) and (51, 51) didn't move in 30 ticks, and a wind strike on one in (50, 50) did nothing; from
+  inside (50, 50), the same strike hit it for 2.
+  - **Scope:** 1,421 of the sim's 2,185 combat sites (65%) have a region boundary within 15 tiles (`SITE_RADIUS`) of
+    their spawn. On the server, the monsters across one hadn't moved, aggressed or been attackable from the site.
+  - **The options (Claude's question):**
+    - (a) recommended: fix it in the fork. `RLPlayer` keeps the regions a human's view would keep active, as "treated
+      as a human by every game rule" has it. Then re-check the server measurements that involve monsters near the
+      character.
+    - (b) leave it and document a gap. Sim-to-server comparisons near region boundaries stay biased.
+    - (c) make the sim match: only the character's own region's monsters are live.
+  - **Caleb: (a).**
+  - **Built** (fork, `RLPlayer.update`): each tick, what `MapChunkRenderer.render` does to the world, without the
+    packets. The regions of the 13 × 13-chunk build area around the scene's base (`playerFlags.lastSceneGraph`,
+    which `AIPlayer.reset` moves as a human's moves) count the character as a viewer and are flagged active. The ones
+    it no longer sees are checked for inactivity, as a human's are, and so is every region it viewed when it's
+    despawned (`RLPlayer.clear`). Live: all five cows moved, in all four regions. New test:
+    `test_the_monsters_in_the_regions_a_human_would_see_are_live`.
+  - **Gathering is unaffected:** every aggressive monster the sim counts at a gathering site spawns in the site's own
+    region (the willows, Al Kharid's iron, Draynor's shrimp spots), so the measured exposures stand.
+  - **The re-check** (Caleb's (a)): the latest stored run of each combat calibration set, its cases rerun on the fixed
+    server, 3 runs a case. These are the fit and check sets for melee, ranged and magic, 24 cases
+    (`results/calibration/combat-20261108-1814-i2`, `-1823-i2-valuable`, `-1814-i3`, `-1825-i3-valuable`, `-1850`,
+    `-1906-valuable`).
+    - The server's XP/hr is within 0.92 to 1.08 of the stored run in 20 of the 24 cases. Outside: ranged rats (band 1)
+      1.24, at the one site with monsters of its kind across a boundary within 15 tiles (the melee and magic rats
+      there: 0.98 and 1.06); chaos druids (melee, band 61) 1.15; ranged cows (band 1) 0.85; magic's animated spades
+      (band 61) 0.74. Melee experiments (band 61), 0.93, also moved by more than two standard errors.
+    - **A/B, to tell the fix from everything else:** the same runner, at the same time, on the fixed build and on a
+      build of the fork before it (`0af2cc4`, a separate instance), 5 runs a case. Fixed over before: melee experiments
+      1.05 ± 0.03, ranged rats 1.07 ± 0.04, chaos druids 0.99 ± 0.04, ranged cows 1.01 ± 0.06. The fix moves none
+      of them by more than about two standard errors; the other changes came with the runner's changes since the
+      stored runs, and noise.
+    - **The animated spades** (band 61, OQ-19's site), A/B too: the runs split between about 16 spade kills and none or
+      one, with about 1,200 recasts, on both builds (before: 3 of 5 stuck; fixed: 2 of 5). So it's not the fix. It is
+      the run noted on 2026-11-07 (about 250 casts at about 1.5 damage each), now more often. Unexplained, and
+      offered as a task of its own; the case's sim over server is 1.34 to 1.61 while it lasts.
+    - **Against the ±20% gate now:** 21 of 24 inside. Outside: the spades (above); ranged abyssal demons (band 91)
+      at 1.29, where the sim's XP/hr is unchanged and the server's is 0.92 ± 0.07 of before, so a borderline case
+      (1.19) tipped by noise; and melee experiments (band 91) at 1.20, where the sim's XP/hr has risen 14% since the
+      stored run (2026-11-07), with the sim's changes since, not the fix.
+- **The ranger test** (`test_a_ranger_on_a_ranged_safespot_takes_no_hits`) failed in a full parallel run: the
+  character's hitpoints fell to 0 of 59, so it died on the safespot. It passed 6 of 6 alone.
+  - **The likely cause: the click lands a tick after the reading.** (The failing run kept no trace, and the traces
+    below didn't catch a step off.) The bridge serves one request a tick, and each tick runs the
+    bridge's requests before the NPCs move and before players' combat pulses (`MajorUpdateWorker.handleTickActions`).
+    So the test read the giant still where it held, and a tick later clicked Attack. Now and then the giant stepped
+    out of shot in between, and the ranger walked after it, off the tile. A person's click lands the same way.
+    Nothing walked it back, and with auto-retaliate off and the giant no longer held, the giant could beat it to
+    death. The
+    window is wider when the server is loaded, as under the full suite, where more ticks pass between the reading and
+    the click.
+    - Not the giant's own aggression: a ranger standing on the tile without attacking was engaged at once in 4 runs of
+      950 ticks and never hit (the chase stuck). Nor the region fix: the giant and its tile are in one region. Two
+      traced runs of the test (3,100 readings, 50 clicks) never left the tile: the step is rare.
+    - The tile, (2831, 3255) at range 7, holds from only 51.5% of the giant's wandering (`data/ranged_safespots.csv`),
+      under OQ-36's 80% for a usable safespot, and no tile at any range holds from 80% there. So once dragged off, a
+      ranger walking back can't count on the giant getting stuck again.
+  - **Fixed in the test** (Claude's choice, reversible): as a person and the calibration runner do, it clicks back onto
+    the tile when it's off it, and it asserts no hit while it stands settled there (10 readings back on it). The
+    monster is the ogre at (2504, 2984): aggressive, with a range-7 tile that holds from all its wandering and no
+    other threats, one of two such in the table (the other a red dragon in the Wilderness).
+- **Tests:** the full suite with the server up (`-n 8 --dist loadgroup`): 407 passed. Alone, the reworked hand-cast
+  test passed 4 of 4 and the ranger test 3 of 3.
+
+### Built (sim v1, Crafting part 3): Crafting's inputs in *V* and the GE's buys
+2026-11-08, OQ-2's Choices A (a) and I (a) (Caleb). `m002-flaky-tests-and-regions`.
+- **The buys** (`buying.CRAFTING_INPUTS`, from the recipes: `crafting.inputs()`): the 25 items a crafting path uses,
+  all with a January 2009 GE price. They are the 9 uncut gems, the soft and hard leathers, the 4 dragon leathers, cowhide
+  and the 4 dragonhides, wool, flax, thread, a needle and a chisel. The needle and chisel are tools, one a buy and not
+  bought again while held (`ROLES` "unique"); the rest come in lots of 1,000, as Fletching's inputs do (agent choice,
+  reversible).
+- **Into *V*:** the 18 of them it lacked. Cowhide, the green and blue dragonhides and four uncut gems were in already
+  (their groups now say "bought" too). The products stay misc: the cut gems, the leather and dragonhide armour,
+  balls of wool. Bowstrings were in for Fletching. *V* is 297.
+- **Sizes** (env contract v1.24, to confirm): 1,828 actions (25 buys, and 5 for each new item) and 2,801 features (2
+  a new item, and the new actions' mask entries).
+- **Test:** `test_a_crafting_paths_inputs_are_bought_on_the_ge` (a fresh character buys a needle, thread and leather,
+  and the glove path opens). The counts in `test_vocabulary` and `test_sim_buying`. Speed: 96 decisions a second in
+  one process, as before.

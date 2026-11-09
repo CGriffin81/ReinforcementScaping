@@ -1,8 +1,8 @@
 # Option Catalog (v1.3, Signed off; v1.4 being built)
 
 **v1.4** (2026-11-08, building sim v1 per OQ-2 and `docs/sim-v1-skills-draft.md`; to confirm when the four skills
-are built): Crafting's skilling slots and paths (§2), and XP slots hold only paths that give XP. The other three skills
-come next.
+are built): Crafting's skilling slots and paths (§2), and XP slots hold only paths that give XP; Crafting's inputs in
+*V* and the GE buys (§8, §9). The other three skills come next.
 
 **Status:** v1.3, 2026-11-06: quests are out, and every quest the server has is complete from the start (Caleb;
 §10); the anti-dragon shield, the dragon dagger and longsword and the Fremennik helms are bought on the GE (§4.B,
@@ -86,7 +86,7 @@ dragonhide pieces, with a needle and thread, a piece every 5 ticks). The recipes
 its charges saved on the character. Tanning and spinning work between the nearest bank and the nearest usable
 station: `tan_<leather>` (6, at a tanner, for its fee and no XP) and `spin_wool`, `spin_flax` (at a wheel, one every 4
 ticks). Flax is picked in Seers' Village's field (`pick_flax`, kept, no XP) or picked and spun at the Seers' wheel
-(`pick_flax_spin`), both ending at a full inventory. The crafting inputs join *V* next.
+(`pick_flax_spin`), both ending at a full inventory. The agent buys the inputs on the GE (§9).
 
 A path that gives no XP (tanning, picking flax) fills only a gp slot: the XP slots take the best paths that give XP
 (v1.4).
@@ -682,6 +682,12 @@ Karil's, so a shield goes with them, and 53 bolts with their poisoned, gem-tippe
 aren't modelled (they rank by ranged strength); mithril bolts were in already. Broad bolts are Destroy-only, so their
 drop stays masked. 279 in all.
 
+Sim v1 (v1.4, to confirm; OQ-2's Choice I (a), Caleb): the inputs the agent buys or holds join *V*, and the products
+only where something else uses them. Crafting's (2026-11-08): the uncut gems, the soft, hard and dragon leathers, the
+hides tanned, wool, flax, thread, a needle and a chisel, 25 in all, which the GE sells (§8, Choice A (a)); 18 weren't
+in *V* (cowhide, the green and blue dragonhides and four uncut gems were). The cut gems, the armour, and balls of wool
+stay misc; bowstrings were in *V* already. 297 in all.
+
 **Size (*V* = 279: the 156 accepted, 20 fletching inputs added by the same rule on 2026-10-31, 38 on 2026-11-06 and 65
 on 2026-11-07;
 selling as "all in the inventory"):**
@@ -697,6 +703,7 @@ selling as "all in the inventory"):**
 | Selling | 560 (GE and store, 280 each) |
 | Buying | 217 (180 at the GE, with the knife, 19 fletching inputs, the anti-dragon shield, 6 quest items, 2 antipoisons, 8 combat potions and antifire, Ava's 2 devices, 11 crossbows and 53 bolts; 37 at shops) |
 | **Total in sim v0** | **1,709** |
+| Sim v1 so far (v1.4) | Crafting's 4 skilling slots; Crafting's 25 GE buys (needle and chisel one each, the rest in lots of 1,000) and its 18 new *V* items' 90 actions: **1,828** |
 
 Each *V* item adds 7 observation features: its inventory and bank counts, and its 5 actions' mask entries (env
 contract §3).

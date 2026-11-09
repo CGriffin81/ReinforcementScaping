@@ -98,6 +98,25 @@ def test_a_bank_path_needs_its_tool_and_thread():
 
 
 @needs_server
+def test_a_crafting_paths_inputs_are_bought_on_the_ge():
+    """Choice A (a) and I (a) (Caleb): the inputs join *V* and the GE buy actions. A fresh character with coins buys
+    a needle, thread and leather (1,000, the inputs' lot), and then the glove path can run; the needle is a tool, one a
+    buy, and not bought again while it's held."""
+    from rlscape.sim.buying import CRAFTING_INPUTS, BuyGE
+    from rlscape.sim.state import COINS
+    from rlscape.vocabulary import vocabulary
+    assert set(CRAFTING_INPUTS) <= set(vocabulary()) and len(CRAFTING_INPUTS) == 25
+    state, rng = character({COINS: 1_000_000}), np.random.default_rng(0)
+    gloves = CraftAtBank(gd.crafting_recipes()["leather_gloves"])
+    assert not gloves.available(state)
+    for item in (NEEDLE, THREAD, SOFT):
+        assert BuyGE(item).run(state, rng, 10_000).termination == "completed"
+    held = lambda item: state.inventory.get(item, 0) + state.inventory.get(gd.noted_ids().get(item, -1), 0)  # noqa: E731
+    assert held(NEEDLE) == 1 and held(THREAD) == 1_000 and held(SOFT) == 1_000
+    assert gloves.available(state) and not BuyGE(NEEDLE).available(state)
+
+
+@needs_server
 def test_crafting_has_its_slots_and_kit():
     assert "crafting" in SKILLS
     assert {p.id for p in path_options() if p.skill == "crafting"} >= {"cut_sapphire", "craft_green_d_hide_body"}

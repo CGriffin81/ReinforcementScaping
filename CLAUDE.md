@@ -87,7 +87,9 @@ work.
     Abyss miniquests (`completeMiniquests`, 2026-11-08), flags only, except
     Enter the Abyss's small pouch, which goes in the bank (OQ-40 (c)). A death
     sends it to the home location, as a human (`RLPlayer.init`; AIPlayer used
-    the tile it was made on).
+    the tile it was made on). It keeps the regions in a client's view active
+    (`RLPlayer.update`, 2026-11-08; AIPlayer's does nothing), so monsters
+    across a region boundary move, fight and aggress as near a human.
   - The bridge finds NPCs by the form a player sees (`NPC.getShownNPC`): a
     multi-NPC's own definition is often named "null".
   - Config: `server.tick_ms`, `server.bind_address`, `world.ge_freeze_prices`,

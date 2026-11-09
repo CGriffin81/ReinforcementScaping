@@ -23,8 +23,8 @@ def test_v_is_the_accepted_list():
     # 156 accepted, 20 fletching inputs added; on 2026-11-06, 16 from the redraft with every quest complete, 6
     # quest-gear buys, 5 the drop sub-tables brought, and 11 four-dose potions (their lower doses are misc: OQ-25);
     # on 2026-11-07, Ava's attractor and accumulator, bought on the GE, and every tradeable crossbow and bolt on the
-    # 2009 GE, 63 (Caleb)
-    assert len(v) == len(set(v)) == 279 and COINS not in v
+    # 2009 GE, 63 (Caleb); on 2026-11-08, Crafting's inputs not in it yet, 18 (sim v1, Choice I (a))
+    assert len(v) == len(set(v)) == 297 and COINS not in v
 
 
 @needs_server
@@ -45,6 +45,6 @@ def test_every_item_in_v_is_a_real_tradeable_item_with_live_actions():
 def test_the_catalog_and_observation_grow_by_5_actions_and_7_features_per_item():
     v, catalog, empty = vocabulary(), build_catalog(), build_catalog(())
     ids = {o.id for o in catalog}
-    assert len(catalog) == len(empty) + 5 * len(v) == 1_713
+    assert len(catalog) == len(empty) + 5 * len(v) == 1_828
     assert all(f"{prefix}{item}" in ids for item in v for prefix in PER_ITEM)
-    assert SimEnv().encoder.size == SimEnv(vocabulary=()).encoder.size + 7 * len(v) == 2_650
+    assert SimEnv().encoder.size == SimEnv(vocabulary=()).encoder.size + 7 * len(v) == 2_801

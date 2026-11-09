@@ -1,6 +1,9 @@
-# Environment Contract (v1.23, Signed off)
+# Environment Contract (v1.24, Signed off)
 
-**Status:** v1.23, 2026-11-08. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
+**Status:** v1.24, 2026-11-08. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
+- **v1.24** (2026-11-08, building sim v1's Crafting per OQ-2's Choices A (a) and I (a); to confirm) adds Crafting's
+  inputs: 25 GE buys (§2) and the 18 of them not yet in *V* (*V* 297), each with its 5 actions and 2 features. 1,828
+  actions, 2,801 features.
 - **v1.23** (2026-11-08, building sim v1's Crafting per OQ-2; to confirm) adds Crafting's 4 skilling slots (§3): 4
   actions, their 20 candidate features and 4 mask entries, and a crafting task. 1,713 actions, 2,650 features.
 - **v1.22** (2026-11-08, Caleb: OQ-40 (c), the pouches as the server gives them; to confirm) gives Enter the
@@ -154,9 +157,10 @@ option catalog.
 **As built** (`rlscape/envs/encoding.py`, 2026-10-30): E = 12 roles (weapons for melee, ranged and magic,
 ammunition, head, body, legs, shield, axe, pickaxe, fishing gear), R = 12 (the catalog's 11 regions and
 "elsewhere"), C = 18 slots (6 per combat class). The encoder's docstring lists how each part is scaled. With the
-catalog as built (1,713 actions, *V* = 279) the vector has 2,650 features (v1.12 dropped the quest part's 64; v1.13
+catalog as built (1,828 actions, *V* = 297) the vector has 2,801 features (v1.12 dropped the quest part's 64; v1.13
 added 7 buys and 27 items; v1.14 11 buys, 11 items and the potions part's 22; v1.16 2 buys, 2 items and the cape role;
-v1.17 64 buys and 63 items; v1.19 the home teleport's wait; v1.23 Crafting's slots and task).
+v1.17 64 buys and 63 items; v1.19 the home teleport's wait; v1.23 Crafting's slots and task; v1.24 25 buys and 18
+items).
 
 **Left out on purpose:** GE prices. They're frozen, so a price snapshot would be a constant.
 

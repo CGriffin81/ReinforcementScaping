@@ -345,7 +345,7 @@ With (a) and the decided scope, *V* gains about 89 items (all have a 2009 GE pri
 barbarian rod, which Caleb set at 1,000 gp (OQ-41), and the four pouches, which are untradeable):
 - Crafting (about 21): red and black dragonhide (green and blue are in *V*), needle, thread, wool, flax, chisel, the 9
   uncut gems not yet in *V* (5), soft and hard leather and the 4 dragon leathers (the tanned intermediates are
-  crafted from).
+  crafted from). As built (2026-11-08): those 18, and the GE buys all 25 inputs (`buying.CRAFTING_INPUTS`).
 - Herblore (about 40): the 4 grimy herbs not yet in *V*, the 15 clean herbs, about 15 secondaries and their whole
   ingredients, a pestle and mortar, vials (empty), and the 15 unfinished potions (they're bought and sold on the GE).
 - Runecrafting (about 26): rune and pure essence, the 8 talismans not yet in *V* (earth is), the body rune, the plain

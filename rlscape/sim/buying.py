@@ -43,6 +43,7 @@ import numpy as np
 
 from rlscape.combat.candidates import ANTI_DRAGON_SHIELD, DRAGONFIRE_PROTECTION
 from rlscape.gamedata import server as gd
+from rlscape.sim.crafting import inputs as craft_inputs
 from rlscape.sim.economy import (GE_TICKS, GE_TILE, STORE_TICKS, bank_notes, bank_trip, banked_or_noted,
                                  kept_on_deposit)
 from rlscape.sim.equipment import (
@@ -115,23 +116,30 @@ BOBS, NURMOFS, GERRANTS, LUMBRIDGE_STORE, ZEKES, LOWES, AUBURYS, ZAFFS, WYDINS =
 # gp (scripts/build_price_tables.py), so the agent needn't learn Draynor Manor. The accumulator outranks the attractor
 # and needs Ranged 50.
 
+# Crafting's inputs (sim v1; Caleb's Choices A (a) and I (a), 2026-11-08): what a crafting path uses, bought on the GE:
+# the uncut gems, the leathers, the hides tanned, wool and flax, thread, and the needle and chisel (tools, one each).
+CRAFTING_INPUTS = tuple(sorted(craft_inputs()))
+CRAFTING_TOOLS = (gd.NEEDLE, gd.CHISEL)
+
 # The anti-dragon shield (Caleb, 2026-11-06): on the GE, once Duke Horacio's alone. Fights against dragonfire monsters
 # put it on (equipment.wield_best's `protect`).
 GE_ITEMS = (AXES + PICKAXES + FISHING_TOOLS + BAIT_AND_FEATHERS + (HAMMER,) + SCIMITARS + ARMOUR + SHORTBOWS + ARROWS
             + RUNES + STAVES + FOOD_TIERS + PROCESSING_INPUTS + (KNIFE,) + FLETCHING_INPUTS + (ANTI_DRAGON_SHIELD,)
-            + DRAGON_WEAPONS + FREMENNIK_HELMS + ANTIPOISONS + COMBAT_POTIONS + AVAS_DEVICES + CROSSBOWS + BOLTS)
+            + DRAGON_WEAPONS + FREMENNIK_HELMS + ANTIPOISONS + COMBAT_POTIONS + AVAS_DEVICES + CROSSBOWS + BOLTS
+            + CRAFTING_INPUTS)
 SHOP_ITEMS = {**dict.fromkeys(AXES[:2], BOBS), **dict.fromkeys(PICKAXES, NURMOFS),
               **dict.fromkeys(FISHING_TOOLS + BAIT_AND_FEATHERS, GERRANTS), HAMMER: LUMBRIDGE_STORE,
               **dict.fromkeys(SCIMITARS[:3], ZEKES), **dict.fromkeys(SHORTBOWS + ARROWS, LOWES),
               **dict.fromkeys(RUNES[:7], AUBURYS), **dict.fromkeys(STAVES, ZAFFS), BREAD: WYDINS}
 LOTS = {**dict.fromkeys(ARROWS + BOLTS + RUNES, 100), **dict.fromkeys(BAIT_AND_FEATHERS, 200),
         **dict.fromkeys(FOOD_TIERS + (BREAD,), 100),
-        **dict.fromkeys(PROCESSING_INPUTS + FLETCHING_INPUTS, 1_000)}  # 1 for the rest
+        **dict.fromkeys(PROCESSING_INPUTS + FLETCHING_INPUTS
+                        + tuple(i for i in CRAFTING_INPUTS if i not in CRAFTING_TOOLS), 1_000)}  # 1 for the rest
 # role -> how the upgrade check compares; items without a role (consumables) have no upgrade check
 ROLES = {**dict.fromkeys(AXES, "axe"), **dict.fromkeys(PICKAXES, "pickaxe"),
          **dict.fromkeys(SCIMITARS + DRAGON_WEAPONS, "melee"), **dict.fromkeys(SHORTBOWS + CROSSBOWS, "ranged"),
          **dict.fromkeys(ARMOUR + FREMENNIK_HELMS, "armour"),
-         **dict.fromkeys(FISHING_TOOLS + (HAMMER, KNIFE, ANTI_DRAGON_SHIELD) + STAVES, "unique"),
+         **dict.fromkeys(FISHING_TOOLS + (HAMMER, KNIFE, ANTI_DRAGON_SHIELD) + STAVES + CRAFTING_TOOLS, "unique"),
          **dict.fromkeys(AVAS_DEVICES, "ava")}
 TOOL_CHAINS = {"axe": (HATCHET_PRIORITY, "woodcutting"), "pickaxe": (PICKAXE_PRIORITY, "mining")}
 GEAR_CLASSES = ("melee", "ranged", "magic")

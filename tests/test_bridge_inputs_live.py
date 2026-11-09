@@ -281,12 +281,22 @@ def test_safespots_beside_rocks_from_every_melee_aggressor(client, uid):
     assert client.safespots(uid, "Rocks", sorted(gd.rock_objects()[6]), 10) == []
 
 
+OGRE, OGRE_SPAWN = 3419, (2504, 2984, 0)  # data/ranged_safespots.csv: a range-7 tile that holds from all its wandering
+SETTLED_READINGS = 10  # readings back on the tile before a hit counts against it (a swing in flight lands within a few)
+
+
 def test_a_ranger_on_a_ranged_safespot_takes_no_hits(client, uid):
-    """The moss giant west of Ardougne (level 42, melee): ranged_safespots finds a tile its chase can't get next to
-    and no aggressive monster reaches (Caleb, 2026-11-07, OQ-27 (d)). A ranger on it, auto-retaliate off, attacking
-    only when the giant stands still where `npcs` says it holds, gains Ranged XP, takes no hits and never leaves the
-    tile. (Varrock sewers' giants have no such tile: other aggressive giants reach every one until aggression runs
-    out.)"""
+    """The ogre at (2504, 2984) (level 53, melee, aggressive): ranged_safespots finds a tile its chase can't get next
+    to from anywhere its wandering leaves it, and no other aggressive monster reaches (Caleb, OQ-27 (d) and OQ-36). A
+    ranger on it, auto-retaliate off, attacking only when the ogre stands still where `npcs` says it holds, gains
+    Ranged XP and takes no hit while it stands there.
+
+    The click lands a tick after the reading (the bridge serves a request a tick), and a person's does too. Now and
+    then the ogre steps out of shot first and the ranger walks after it; it then clicks back onto the tile, as a person
+    safespotting does (scripts/calibrate_combat.py). Until 2026-11-08 this was the moss giant at (2825, 3249), whose
+    best tile holds from only 51.5% of its wandering, under OQ-36's 80%: once a ranger was dragged off it, the giant
+    could reach it there, and it never walked back (a full run: 0 hitpoints of 59). (Varrock sewers' giants have no
+    such tile: other aggressive giants reach every one until aggression runs out.)"""
     shortbow, leather, bronze_arrow = 841, 1129, 882
     client.debug_set_levels(uid, {"ranged": 60, "hitpoints": 60})
     client.set_retaliate(uid, False)
@@ -296,29 +306,40 @@ def test_a_ranger_on_a_ranged_safespot_takes_no_hits(client, uid):
     for item, option in ((shortbow, "Wield"), (leather, "Wear"), (bronze_arrow, "Wield")):
         client.item_option(uid, item, option)
         client.wait(1)
-    client.debug_teleport(uid, 2825, 3249, 0)
+    client.debug_teleport(uid, *OGRE_SPAWN)
     client.wait(1)
-    spots = client.ranged_safespots(uid, "Moss giant", ids=[112], limit=1)["tiles"]
-    assert spots and not spots[0]["threats"], "no unthreatened safespot at the moss giant"
+    spots = client.ranged_safespots(uid, "Ogre", ids=[OGRE], limit=1)["tiles"]
+    assert spots and not spots[0]["threats"], "no unthreatened safespot at the ogre"
     tile = (spots[0]["tile"]["x"], spots[0]["tile"]["y"])
     held_by = {a["index"] for a in spots[0]["against"]}
     client.debug_teleport(uid, *tile, 0)
     client.wait(2)
     start = client.state(uid)
     xp = lambda s: next(k["xp"] for k in s["skills"] if k["name"].lower() == "ranged")  # noqa: E731
-    lowest, off = start["hitpoints"], 0
+    hitpoints, settled, off, hits_on_tile = start["hitpoints"], 0, 0, 0
     for t in range(400):
         s = client.state(uid)
-        lowest = min(lowest, s["hitpoints"])
-        off += (s["location"]["x"], s["location"]["y"]) != tile
-        if s["target"] is None and not s["moving"] and t % 2 == 0:
-            ready = [n for n in client.npcs(uid, "Moss giant", ids=[112], radius=20) if n["index"] in held_by
-                     and n["holds"] and (n["attacking_me"] or not (n["fighting"] or n["moving"]))]
-            if ready:
-                client.interact(uid, "Moss giant", "Attack", is_object=False, index=ready[0]["index"])
+        here = (s["location"]["x"], s["location"]["y"])
+        hits_on_tile += s["hitpoints"] < hitpoints and settled >= SETTLED_READINGS
+        hitpoints = s["hitpoints"]
+        if here != tile:
+            off, settled = off + 1, 0
+            client.walk_to(uid, *tile, packet=True)  # back onto it
+        else:
+            settled += 1
+            if s["target"] is None and not s["moving"] and t % 2 == 0:
+                ready = [n for n in client.npcs(uid, "Ogre", ids=[OGRE], radius=20) if n["index"] in held_by
+                         and n["holds"] and (n["attacking_me"] or not (n["fighting"] or n["moving"]))]
+                if ready:
+                    client.interact(uid, "Ogre", "Attack", is_object=False, index=ready[0]["index"])
         client.wait(1)
-    assert xp(client.state(uid)) > xp(start)
-    assert lowest == start["hitpoints"] and off == 0
+    for _ in range(10):  # a walk back under way at the last reading
+        end = client.state(uid)
+        if (end["location"]["x"], end["location"]["y"]) == tile:
+            break
+        client.wait(1)
+    assert xp(end) > xp(start) and (end["location"]["x"], end["location"]["y"]) == tile
+    assert hits_on_tile == 0, f"hit on the tile ({off} readings off it)"
 
 
 def _tick(client: BridgeClient, uid: int, *cmds: dict) -> dict:
@@ -499,7 +520,11 @@ def test_a_hand_cast_is_one_spell_and_casting_again_each_tick_keeps_the_autocast
     """`cast`, a client's spell-on-NPC packet: wind strike on a cow takes an air and a mind rune a cast and gives at
     least its 5.5 base XP. A hand cast is one spell: the combat pulse stops after it. Cast again each tick (the
     server refuses one within 3 ticks of the last), the spells land 5 ticks apart, the autocast rate the sim's magic
-    fights assume (rlscape.sim.combat)."""
+    fights assume (rlscape.sim.combat).
+
+    The cow is one at its full 8 hitpoints, so wind strike (at most 2 a hit at Magic 1) takes at least 4 casts to
+    kill it. A cow keeps the damage an earlier run left (it heals 1 a 100 ticks, only while someone is near), and
+    one at 1 or 2 died to the first cast: the flaky `assert 1 >= 3` (2026-11-08)."""
     client.set_retaliate(uid, False)  # retaliating would swing in melee between casts
     client.debug_set_levels(uid, {"hitpoints": 99})
     client.debug_give(uid, AIR_RUNE, 100)
@@ -507,9 +532,11 @@ def test_a_hand_cast_is_one_spell_and_casting_again_each_tick_keeps_the_autocast
     client.debug_teleport(uid, *COWS)
     client.wait(2)
     spell = gd.combat_spells()["wind_strike"].button
+    unhurt = [n for n in client.npcs(uid, "Cow", ids=[81]) if n["hitpoints"] == gd.npcs()[81].hitpoints]
+    assert unhurt, "no cow at full hitpoints in the field"
     start = client.state(uid)
     casts, stopped, minds = [], 0, held(client, uid, MIND_RUNE)  # before the first cast, which can land at once
-    index = client.cast(uid, spell, "Cow", ids=[81])["index"]
+    index = client.cast(uid, spell, "Cow", index=unhurt[0]["index"])["index"]
     for _ in range(60):
         step = client.schedule([[{"cmd": "state", "uid": uid},
                                  {"cmd": "npcs", "uid": uid, "name": "Cow", "ids": [81], "object": False}]])[0]
@@ -533,6 +560,23 @@ def test_a_hand_cast_is_one_spell_and_casting_again_each_tick_keeps_the_autocast
     assert runes(start, AIR_RUNE) - runes(end, AIR_RUNE) == cast and cast in (len(casts), len(casts) + 1)
     magic = lambda s: next(k["xp"] for k in s["skills"] if k["name"].lower() == "magic")
     assert magic(end) - magic(start) >= 5.5 * cast
+
+
+def test_the_monsters_in_the_regions_a_human_would_see_are_live(client, uid):
+    """An RL character keeps the regions in a client's view active, as a human's does (RLPlayer.update; Caleb,
+    2026-11-08): from (3257, 3270), in region (50, 51), the cows across the boundary at y = 3264 walk about. Before,
+    only the character's own region was active, and those cows stood frozen and couldn't be attacked."""
+    client.debug_teleport(uid, *COWS)
+    client.wait(2)
+    here = client.state(uid)["location"]
+    region = lambda n: (n["location"]["x"] >> 6, n["location"]["y"] >> 6)  # noqa: E731
+    elsewhere = lambda: {n["index"]: n["location"] for n in client.npcs(uid, "Cow", ids=[81], radius=30)  # noqa: E731
+                         if region(n) != (here["x"] >> 6, here["y"] >> 6)}
+    before = elsewhere()
+    assert before, "no cow outside the character's region"
+    client.wait(60)
+    after = elsewhere()
+    assert any(after.get(index) not in (None, tile) for index, tile in before.items()), (before, after)
 
 
 def test_the_walker_takes_the_crandor_passage_both_ways(client, uid):
