@@ -79,7 +79,9 @@ def test_a_long_guided_episode_trains_every_skill_without_loops():
     episode = play(env, ScriptedGuidePolicy(), seed=0)
     assert episode.decisions < 1_000  # the loops found while widening it ran to thousands
     levels = {s: env.sim.state.level(s) for s in SKILLS}
-    # every skill trained. Prayer, the slowest, ends at 3 (220 XP, 56 short of 4): its stints bury a third fewer bones
-    # since burying was measured at 3 ticks a bone, not 2 (2026-11-07; 342 XP before)
+    # every skill trained. Prayer can be the slowest (3 on some seeds: its stints bury a third fewer bones since burying
+    # was measured at 3 ticks a bone, not 2, 2026-11-07)
     assert levels["prayer"] >= 3 and min(v for s, v in levels.items() if s != "prayer") >= 4
-    assert levels["thieving"] >= 15 and levels["smithing"] >= 10
+    # Since walks are directional (OQ-64 (a), 2026-11-09) this seed is one of the few (3 in 30, before and after) whose
+    # Crafting stint spends hours on cows below Crafting 10; its Prayer is 22 from their bones, Thieving 11 (15 before)
+    assert levels["thieving"] >= 10 and levels["smithing"] >= 10

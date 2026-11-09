@@ -1,7 +1,17 @@
-# Environment Contract (v1.42, Signed off)
+# Environment Contract (v1.43)
 
-**Status:** v1.42, 2026-11-09. Caleb confirmed every version, to v1.42, on 2026-11-09: sim v1's contract is frozen. Any change needs Caleb's
-approval and is logged in `docs/decision-log.md`.
+**Status:** v1.43, 2026-11-09: OQ-64 (a), Caleb's choice; its wording is to confirm. Caleb confirmed every version, to
+v1.42, on 2026-11-09: sim v1's contract is frozen. Any change needs Caleb's approval and is logged in
+`docs/decision-log.md`.
+- **v1.43** (2026-11-09, Caleb, OQ-64 (a); sim v1.1) makes every walk directional, so an episode depends only on its
+  seed:
+  - **The rule:** the walk from a to b is the shortest walk from a to b on the server's collision map, which is
+    directed (a wall flagged on one side, a one-way crossing: 834,294 of its 5,127,219 edges).
+  - **What it fixes:** walks between two tiles off the travel places' table were cached under the pair, both ways, as
+    the first one asked found them. So an episode's walks, and its results, depended on what its process had played
+    before (found by the mask speed-up's proof: 1 of E1's 120 episodes). Walks from a place to a tile off the table,
+    the Abyss's walks and the combat pool's trips to the banks were also read backwards.
+  - The schema is unchanged (2,293 actions, 3,482 features). E1 is rerun on it.
 - **v1.42** (2026-11-09, Caleb; the choices of site, plan and ammunition Claude's, confirmed by Caleb on 2026-11-09) adds `kill_cows`,
   Crafting's gathering path for hides (option catalog §2): it fights cows with the plan that kills them fastest
   and whose ammunition lasts a load, keeps the hides and normal bones, buries the bones as the inventory fills, and
@@ -308,7 +318,8 @@ for every step.
     its hitpoints fall under twice that monster's max hit. Both backends: `ServerEnv` turns auto-retaliate off
     for gathering (the bridge's `set_retaliate`).
   - **travel** (Caleb, 2026-11-01; option catalog §4): every trip takes the fastest way the character can use
-    then, paying for it: walking on the server's collision map, the home teleport, teleport spells, jewellery,
+    then, paying for it: walking on the server's collision map (the walk from a to b, the map being directed:
+    v1.43), the home teleport, teleport spells, jewellery,
     tablets, the seed pod, ships and charters, and seven Agility shortcuts from their levels (v1.32:
     `rlscape/gamedata/shortcuts.py`). The home teleport can be cast once every 30 minutes (a fork change,
     counted in game ticks). A place nothing the character can use reaches is unreachable for it: its options are

@@ -73,3 +73,28 @@ def test_the_crandor_passage_joins_karamjas_volcano_rim_to_crandor():
     assert world.crossing_between(rim, crandor) is not None and world.crossing_between(crandor, rim) is not None
     assert 89 + CROSSINGS[492][1] <= world.steps(rim, crandor) <= 89 + CROSSINGS[492][1] + 2  # (and onto it)
     assert has_a_way(crandor) and has_a_way((2835, 3262, 0))  # a Crandor place, by its lesser demons
+
+
+def test_lengths_to_a_tile_are_the_walks_there_on_a_directed_map():
+    world = small({(1, 2): WALL_EAST})
+    to = world.lengths_to(world.node((1, 2)))
+    assert to[world.node((0, 2))] == world.steps((0, 2), (1, 2)) == 1
+    assert to[world.node((2, 2))] == world.steps((2, 2), (1, 2)) > 1  # not the walk back out, which is 1
+
+
+@pytest.mark.skipif(not (DATA / "collision.npz").exists(), reason="no exported map")
+@pytest.mark.parametrize("a, b", [((3125, 3831, 0), (3050, 3910, 0)),  # both off the places' table
+                                  ((2962, 3392, 0), (3085, 3910, 0))])  # a place, and a tile off the table
+def test_a_planned_walk_is_the_walk_from_its_start_whichever_was_asked_first(a, b):
+    """Caleb, 2026-11-09, OQ-64 (a): the map is directed (these Wilderness walks differ by 164 and 156 steps), and the
+    walk from a to b is the shortest walk from a to b, the same whatever was planned before: the pairs off the table
+    were cached both ways under the first asked, which made an episode depend on its worker's history."""
+    from rlscape.routes import Places, places
+    world, shared = surface(), places()
+    na, nb = world.anchor(a), world.anchor(b)
+    forward, back = world.steps(a, b), world.steps(b, a)
+    assert abs(forward - back) > 100
+    for first, second in (((na, nb), (nb, na)), ((nb, na), (na, nb))):
+        table = Places(world, shared.nodes, shared.table)  # nothing planned yet
+        table.steps(*first)
+        assert (table.steps(na, nb), table.steps(nb, na)) == (forward, back)

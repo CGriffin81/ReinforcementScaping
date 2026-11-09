@@ -6698,3 +6698,46 @@ than exp." `m002-oq61`.
 - **Written into:** CLAUDE.md, ROADMAP's finishing plan (with this mapping) and OQ-1's live text. The approved
   documents and the records keep the proposal's numbers. The report gives the mapping.
 - **E1 is unchanged** (PR #10). Nothing else has run.
+
+### Found: sim v1's walks depended on the process's history; decided: OQ-64 (a), directional walks (Caleb)
+- **Found** by the mask speed-up's proof (`scripts/trajectory_digest.py`: a SHA-256 over every decision's
+  observation, mask, action and info):
+  - 119 of E1's 120 episodes matched `main`; the guide's seed 21 didn't.
+  - **Not the speed-up:** seed 21 was identical, decision for decision, in a fresh process on both versions. After
+    guide seeds 0 to 20 in the same process, both versions gave the same other result.
+  - **Bisected** by clearing caches after that history: `rlscape.routes.Places.steps` cached the walk between two
+    tiles off the travel places' table under the pair, `(min, max)`, as the search from the first one asked found
+    it.
+  - **The map is directed:** 834,294 of its 5,127,219 edges are one-way (a wall flagged on one side, a one-way
+    crossing; `tests/test_routes.py` already tests one). For example, (3125, 3831) to (3050, 3910) is 279 steps and
+    115 back. So whichever direction any episode in a process asked first set both, for every later episode there.
+    E1's numbers depend on which worker played which episode.
+  - **Read backwards, history aside:**
+    - a place's walk to a tile off the table (the search from the tile: 686 steps from (2962, 3392) to (3085, 3910),
+      530 back);
+    - the Abyss's walks (`_abyss_steps`);
+    - the combat pool's trips to the banks (`travel_ticks_from_many`).
+- **Options** (asked in chat, 2026-11-09):
+  - **(a) Recommended, directional:** the walk from a to b is the shortest walk from a to b, cached by (a, b). It's
+    the same in any process, matches how the table is looked up already, and is how a character walks.
+  - **(b) Symmetric:** the same both ways, always searched from the lower node: history-independent, but the
+    direction arbitrary.
+  - **(c) Leave it, documented:** reproducible only with the same workers and the same order of episodes per
+    worker.
+- **Caleb: (a).** Env contract v1.43, sim v1.1:
+  - `Places.steps` searches each walk from its start: the pairs by `(a, b)`, a place to a tile off the table by a
+    search to the tile on the reversed graph (`Map.lengths_to`, cached as `Places.columns`);
+  - `_abyss_steps` and `travel_ticks_from_many` search to the target on the reversed map.
+- **Tests:**
+  - `tests/test_routes.py` gains two. `lengths_to` is the walks there on a one-way wall. A planned walk is the walk
+    from its start whichever was asked first: both Wilderness pairs above, asked in each order. The second failed
+    before the fix as found: (279, 279) and (530, 530).
+  - **The guide's 20-hour test on seed 0:** that seed is now one of the 3 in 30 whose Crafting stint spends hours on
+    cows below Crafting 10 (seeds 11, 15 and 28 were, before). Its Thieving is 11, so the test asks for 10, not 15.
+- **The effect** on the guide's 30 seeds:
+  - 28 change, by up to 35 total levels each way, as its stints shift;
+  - the means don't: total level 350.7 to 351.0, net worth 130.6k to 129.8k.
+- **History-independent now:**
+  - guide seed 21 gives the same digest fresh and after seeds 0 to 20;
+  - E1's 120 episodes give the same digests at different worker counts (the speed-up's PR).
+- **Next:** this sim change is its own PR (OQ-61). `sim-v1.1` is tagged on its merge, and E1 (PR #10) is rerun on it.

@@ -60,10 +60,10 @@ Claude writes the code; Caleb reviews and runs it. So:
 - Each experiment runs on its own branch, `experiment/<name>` (Caleb, 2026-11-09, OQ-61), the name its number
   and what it does (OQ-62, OQ-63: `e1-baselines`, `e2-ppo-sanity-ladder`, `e3-reward-weight-sweep`,
   `e4-rnd-exploration`, `e5-weight-conditioned-ppo`, `e6a-discount-sweep`, `e6b-pbrs-shaping`). It starts
-  from `main`, where the `sim-v1` tag marks the frozen sim, and holds only its config (`configs/<name>.yaml`),
-  the code only it uses, its committed summary (`results/summary/<name>/`) and its records. It never changes the
-  sim. It merges into `main` by its own PR once its run is checked. Tooling several experiments share goes into
-  `main` first, by its own PR.
+  from `main`, where the `sim-v1.1` tag marks the frozen sim (`sim-v1` with OQ-64's directional walks), and
+  holds only its config (`configs/<name>.yaml`), the code only it uses, its committed summary
+  (`results/summary/<name>/`) and its records. It never changes the sim. It merges into `main` by its own PR once
+  its run is checked. Tooling several experiments share goes into `main` first, by its own PR.
 
 ## AI interaction logging (mandatory)
 
