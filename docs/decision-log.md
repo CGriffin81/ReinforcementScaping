@@ -6741,3 +6741,32 @@ than exp." `m002-oq61`.
   - guide seed 21 gives the same digest fresh and after seeds 0 to 20;
   - E1's 120 episodes give the same digests at different worker counts (the speed-up's PR).
 - **Next:** this sim change is its own PR (OQ-61). `sim-v1.1` is tagged on its merge, and E1 (PR #10) is rerun on it.
+
+### Built: the mask speed-up, with no result changed (tooling, OQ-61)
+- **Where the time went** (cProfile, a random 20-hour episode after three to warm the caches):
+  - the action mask is 88% of a decision (13.3 of 15.0 s an episode, 31 ms a mask);
+  - in it, the skilling slots' ranking 7.3 s (with the aggression share's simulations 3.0 s), the combat slots'
+    ranking 3.2 s, route planning 4.2 s (25,439 routes planned an episode), and `nearest_bank` 2.4 s (19,371 calls).
+- **Changed** (every one returns what it did):
+  - **`movement.route` remembers its routes** by everything the plan reads from the state: the tile, the
+    destination, the coins carried, whether the home teleport is ready, the teleports it can use, and `boat_key`
+    (quests, which also waive the toll, the levels a boat needs, and whether it's armed, for Entrana). No boat needs
+    Magic, runes or an item; `boat_key` checks that and fails loudly if one ever does. Routes planned from scratch:
+    25,439 → 9,455 an episode.
+  - **The cheap checks first** in `FletchAtBank.available` and the crafting stations' `available`, as the other
+    paths already had them: the level, the tool and the inputs before the walk to the nearest bank.
+    `nearest_bank` calls: 19,371 → 556 an episode.
+- **Not changed:**
+  - the combat ranking, already vectorised (about 6 ms a call);
+  - the aggression share's simulations, whose cache misses come from the tolerance left;
+  - `deepcopy` in those (4% of an episode, and a hand-written copy risks a difference).
+
+  Those would take more than the day the plan gave.
+- **Speed:** E1's 120 episodes at 16 workers, on sim v1: 15,162 → 10,200 s of episodes (1.49×), 1,017 → 680 s of
+  wall time. By policy: random 1.00×, greedy XP 1.65×, greedy GP 1.54×, the guide 1.28×. Random gains nothing: its
+  time goes to the combat slots and the aggression shares. The baseline ran beside a few single-threaded profiles,
+  so the gain is if anything a little smaller.
+- **Proof:** `scripts/trajectory_digest.py` on E1's 120 episodes. Sim v1.1 at 16 workers and sim v1.1 with the
+  speed-up at 12 workers give the same digest for every episode: the speed-up changes nothing, and an episode
+  doesn't depend on its worker's schedule (OQ-64). `tests/test_mask_speedup.py`: the remembered route is the
+  planned one in every state of a played episode, and is planned again when what it reads changes.

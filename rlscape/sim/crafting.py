@@ -265,9 +265,10 @@ class AtStation(Option):
         return usable_station(state, self.station_kind)
 
     def available(self, state: CharacterState) -> bool:
+        if not (self.allowed(state) and self.held_units(state) > 0):
+            return False  # the cheap checks first: most states hold no inputs (the mask speed-up)
         bank = nearest_bank(state)
-        return (self.allowed(state) and self.held_units(state) > 0 and reachable(state, (bank.x, bank.y, bank.plane))
-                and self.station(state) is not None)
+        return reachable(state, (bank.x, bank.y, bank.plane)) and self.station(state) is not None
 
     def run(self, state: CharacterState, rng: np.random.Generator, budget: int) -> OptionResult:
         elapsed, detail = 0, {"path": self.id}

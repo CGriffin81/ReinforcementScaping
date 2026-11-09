@@ -88,6 +88,22 @@ def can_use(state: CharacterState, transport: Transport, origin: tuple[int, int,
 
 
 @cache
+def _boat_skills() -> tuple[str, ...]:
+    """The skills a boat needs a level in. No boat needs Magic, runes or an item (checked here, so a boat that did
+    would fail loudly rather than be missed by boat_key)."""
+    if any(b.magic or b.runes or b.items for b in boats()):
+        raise NotImplementedError("a boat needs Magic, runes or an item: add them to boat_key")
+    return tuple(sorted({skill for b in boats() for skill, _ in b.skills}))
+
+
+def boat_key(state: CharacterState) -> tuple:
+    """Everything but the coins that decides which boats the character can take (can_use): its quests, the levels a
+    boat needs, and whether it's armed (Entrana's monks)."""
+    return (state.progress.quests_complete, tuple(state.boosted(skill) for skill in _boat_skills()),
+            any(b.no_arms for b in boats()) and _armed(state))
+
+
+@cache
 def _teleport_skills() -> tuple[str, ...]:
     """The skills, Magic aside, a teleport needs a level in (its quest's own requirement)."""
     return tuple(sorted({skill for t in teleports() for skill, _ in t.skills}))
