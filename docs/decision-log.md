@@ -6626,5 +6626,147 @@ than exp." `m002-oq61`.
   first_seed, hours, activity_minutes, workers, out); one on the command line overrides the file, and an unknown key is
   refused. `config.json` records the command line, outside the hashed config: the hash names what was run, not how
   it was asked for. PyYAML (6.0.3) is a new dependency.
-- **Results:** unchanged. The harness's tables and hash are the same; `save` only takes an optional `extra` for
-  provenance.
+- **Provenance from the run's start:** `evaluate.py` takes the git SHAs and the dirty flag when the run begins and
+  `save` records those (`started`). Taken at the save, as before, a run started on a dirty tree that was committed
+  before the run ended would have been recorded clean, under a SHA that didn't run. Found while E1 ran, whose tree
+  stayed untouched and clean throughout, so E1's record holds.
+- **Results:** unchanged. The harness's tables and hash are the same; `save` only takes optional `extra` and
+  `started` provenance.
+
+### Decided: OQ-62 (a), the experiment branches named by number and what they do (Caleb)
+- **Raised:** 2026-11-09, by Caleb, mid-turn while E1 ran: "It may be smart to give a short description in the name
+  of the experiment branches." OQ-61 had named them `experiment/e1-baselines`, `experiment/ladder`,
+  `experiment/e2-weights`, `experiment/e3-rnd`, `experiment/e5-gamma`, `experiment/e5-pbrs` and
+  `experiment/rq3-conditioned`.
+- **Options:**
+  - **(a) Recommended:** the proposal's experiment number and a short description. The branches sort in the report's
+    order and a reviewer matches each to the proposal's table. The weight-conditioned PPO takes E4's number, as it
+    fills E4's place.
+  - **(b):** OQ-61's names, as they were.
+- **Caleb, 2026-11-09: "OQ-62 Option a".** Each name is `experiment/<name>`, and the config and the summary take the
+  same name (`configs/<name>.yaml`, `results/summary/<name>/`):
+
+  | Experiment | Branch, config and summary name |
+  |---|---|
+  | the sanity ladder | `e0-ppo-sanity-ladder` |
+  | E1, the baselines | `e1-baselines` |
+  | E2, the reward-weight sweep | `e2-reward-weight-sweep` |
+  | E3, PPO + RND | `e3-rnd-exploration` |
+  | the weight-conditioned PPO (in E4's place) | `e4-weight-conditioned-ppo` |
+  | E5's γ_hr sweep | `e5a-discount-sweep` |
+  | E5's PBRS | `e5b-pbrs-shaping` |
+
+- **E1 keeps its name.** Its branch, config and summary were already `e1-baselines`. OQ-61's other rules stand.
+  Records `m002-e1-baselines` and `m002-oq62`.
+
+### Decided: OQ-63, the experiments renumbered, the sanity ladder after E1 (Caleb)
+- **Raised and decided:** 2026-11-09, by Caleb: "Let's renumber the experiments so that E0, which requires E1 to
+  complete is numbered after E1." The ladder's second rung, PPO beating random, is judged against E1's random
+  baseline, so it comes after E1. Record `m002-oq63`.
+- **Options** (asked in chat):
+  - **(a) Recommended:** `e1b-ppo-sanity-ladder`, and E2 to E5 keep the proposal's numbers, so the report needs no
+    mapping.
+  - **(b) Shift everything after E1:** the ladder is E2 and each later experiment moves up one. The numbers run
+    straight through, but no longer match the proposal's, so the report maps them.
+  - **(c)** The ladder unnumbered (`ladder-ppo-sanity`), sorting after the numbered ones.
+- **Caleb: (b).** The experiments, their branches (`experiment/<name>`), configs and summaries:
+
+  | Experiment | Branch, config and summary name |
+  |---|---|
+  | E1, the baselines | `e1-baselines` |
+  | E2, the sanity ladder | `e2-ppo-sanity-ladder` |
+  | E3, the reward-weight sweep | `e3-reward-weight-sweep` |
+  | E4, PPO + RND | `e4-rnd-exploration` |
+  | E5, the weight-conditioned PPO | `e5-weight-conditioned-ppo` |
+  | E6a, the γ_hr sweep | `e6a-discount-sweep` |
+  | E6b, PBRS | `e6b-pbrs-shaping` |
+
+- **The proposal's numbers,** which every document and record before this one uses (the env contract, the option
+  catalog, the resources, ROADMAP's weeks 1 to 5, this log), map to these:
+
+  | The proposal's | Now (OQ-63) |
+  |---|---|
+  | E1, baselines | E1 |
+  | (none: the sanity ladder) | E2 |
+  | E2, the reward-weight sweep | E3 |
+  | E3, exploration (RND) | E4 |
+  | E4, the preference-conditioned agent (Envelope Q, now a weight-conditioned PPO) | E5 |
+  | E5, ablations (γ_hr, PBRS; granularity cut) | E6a, E6b |
+  | E6, real-server validation (cut; the calibration gate instead) | none |
+  | E7, the stretch (cut; RQ5 is OQ-1) | none |
+
+- **Written into:** CLAUDE.md, ROADMAP's finishing plan (with this mapping) and OQ-1's live text. The approved
+  documents and the records keep the proposal's numbers. The report gives the mapping.
+- **E1 is unchanged** (PR #10). Nothing else has run.
+
+### Found: sim v1's walks depended on the process's history; decided: OQ-64 (a), directional walks (Caleb)
+- **Found** by the mask speed-up's proof (`scripts/trajectory_digest.py`: a SHA-256 over every decision's
+  observation, mask, action and info):
+  - 119 of E1's 120 episodes matched `main`; the guide's seed 21 didn't.
+  - **Not the speed-up:** seed 21 was identical, decision for decision, in a fresh process on both versions. After
+    guide seeds 0 to 20 in the same process, both versions gave the same other result.
+  - **Bisected** by clearing caches after that history: `rlscape.routes.Places.steps` cached the walk between two
+    tiles off the travel places' table under the pair, `(min, max)`, as the search from the first one asked found
+    it.
+  - **The map is directed:** 834,294 of its 5,127,219 edges are one-way (a wall flagged on one side, a one-way
+    crossing; `tests/test_routes.py` already tests one). For example, (3125, 3831) to (3050, 3910) is 279 steps and
+    115 back. So whichever direction any episode in a process asked first set both, for every later episode there.
+    E1's numbers depend on which worker played which episode.
+  - **Read backwards, history aside:**
+    - a place's walk to a tile off the table (the search from the tile: 686 steps from (2962, 3392) to (3085, 3910),
+      530 back);
+    - the Abyss's walks (`_abyss_steps`);
+    - the combat pool's trips to the banks (`travel_ticks_from_many`).
+- **Options** (asked in chat, 2026-11-09):
+  - **(a) Recommended, directional:** the walk from a to b is the shortest walk from a to b, cached by (a, b). It's
+    the same in any process, matches how the table is looked up already, and is how a character walks.
+  - **(b) Symmetric:** the same both ways, always searched from the lower node: history-independent, but the
+    direction arbitrary.
+  - **(c) Leave it, documented:** reproducible only with the same workers and the same order of episodes per
+    worker.
+- **Caleb: (a).** Env contract v1.43, sim v1.1:
+  - `Places.steps` searches each walk from its start: the pairs by `(a, b)`, a place to a tile off the table by a
+    search to the tile on the reversed graph (`Map.lengths_to`, cached as `Places.columns`);
+  - `_abyss_steps` and `travel_ticks_from_many` search to the target on the reversed map.
+- **Tests:**
+  - `tests/test_routes.py` gains two. `lengths_to` is the walks there on a one-way wall. A planned walk is the walk
+    from its start whichever was asked first: both Wilderness pairs above, asked in each order. The second failed
+    before the fix as found: (279, 279) and (530, 530).
+  - **The guide's 20-hour test on seed 0:** that seed is now one of the 3 in 30 whose Crafting stint spends hours on
+    cows below Crafting 10 (seeds 11, 15 and 28 were, before). Its Thieving is 11, so the test asks for 10, not 15.
+- **The effect** on the guide's 30 seeds:
+  - 28 change, by up to 35 total levels each way, as its stints shift;
+  - the means don't: total level 350.7 to 351.0, net worth 130.6k to 129.8k.
+- **History-independent now:**
+  - guide seed 21 gives the same digest fresh and after seeds 0 to 20;
+  - E1's 120 episodes give the same digests at different worker counts (the speed-up's PR).
+- **Next:** this sim change is its own PR (OQ-61). `sim-v1.1` is tagged on its merge, and E1 (PR #10) is rerun on it.
+
+### Built: the mask speed-up, with no result changed (tooling, OQ-61)
+- **Where the time went** (cProfile, a random 20-hour episode after three to warm the caches):
+  - the action mask is 88% of a decision (13.3 of 15.0 s an episode, 31 ms a mask);
+  - in it, the skilling slots' ranking 7.3 s (with the aggression share's simulations 3.0 s), the combat slots'
+    ranking 3.2 s, route planning 4.2 s (25,439 routes planned an episode), and `nearest_bank` 2.4 s (19,371 calls).
+- **Changed** (every one returns what it did):
+  - **`movement.route` remembers its routes** by everything the plan reads from the state: the tile, the
+    destination, the coins carried, whether the home teleport is ready, the teleports it can use, and `boat_key`
+    (quests, which also waive the toll, the levels a boat needs, and whether it's armed, for Entrana). No boat needs
+    Magic, runes or an item; `boat_key` checks that and fails loudly if one ever does. Routes planned from scratch:
+    25,439 → 9,455 an episode.
+  - **The cheap checks first** in `FletchAtBank.available` and the crafting stations' `available`, as the other
+    paths already had them: the level, the tool and the inputs before the walk to the nearest bank.
+    `nearest_bank` calls: 19,371 → 556 an episode.
+- **Not changed:**
+  - the combat ranking, already vectorised (about 6 ms a call);
+  - the aggression share's simulations, whose cache misses come from the tolerance left;
+  - `deepcopy` in those (4% of an episode, and a hand-written copy risks a difference).
+
+  Those would take more than the day the plan gave.
+- **Speed:** E1's 120 episodes at 16 workers, on sim v1: 15,162 → 10,200 s of episodes (1.49×), 1,017 → 680 s of
+  wall time. By policy: random 1.00×, greedy XP 1.65×, greedy GP 1.54×, the guide 1.28×. Random gains nothing: its
+  time goes to the combat slots and the aggression shares. The baseline ran beside a few single-threaded profiles,
+  so the gain is if anything a little smaller.
+- **Proof:** `scripts/trajectory_digest.py` on E1's 120 episodes. Sim v1.1 at 16 workers and sim v1.1 with the
+  speed-up at 12 workers give the same digest for every episode: the speed-up changes nothing, and an episode
+  doesn't depend on its worker's schedule (OQ-64). `tests/test_mask_speedup.py`: the remembered route is the
+  planned one in every state of a played episode, and is planned again when what it reads changes.

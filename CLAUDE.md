@@ -11,7 +11,11 @@ simulator is checked option by option against a local 2009Scape server (the
 ±20% gate). Scope (Caleb, 2026-11-09, OQ-17 (a′)): every research question is
 answered (RQ5 per OQ-1), the peer review is kept simple (OQ-50), and
 `ServerEnv`, E6's replays, E4's Envelope Q and E7 are cut. The finishing plan
-is ROADMAP's weeks 6 to 8.
+is ROADMAP's weeks 6 to 8. Its experiments are renumbered (Caleb, OQ-63): E1 the
+baselines, E2 the sanity ladder, E3 the reward-weight sweep, E4 PPO + RND, E5 the
+weight-conditioned PPO, E6a the γ_hr sweep and E6b PBRS. Documents written before
+then, this paragraph's cuts among them, use the proposal's numbers (ROADMAP maps
+them).
 
 - The research plan is in `CS898BG_RL_Project_Proposal_2009Scape.pdf`. The
   course requirements are in `Requirements.md`.
@@ -53,10 +57,13 @@ Claude writes the code; Caleb reviews and runs it. So:
   changes what the report claims. Present options with a recommendation; don't
   decide these yourself.
 - Commit or push only when Caleb asks.
-- Each experiment runs on its own branch, `experiment/<name>` (Caleb, 2026-11-09, OQ-61). It starts from `main`,
-  where the `sim-v1` tag marks the frozen sim, and holds only its config, the code only it uses, its committed
-  summary (`results/summary/<name>/`) and its records. It never changes the sim. It merges into `main` by its
-  own PR once its run is checked. Tooling several experiments share goes into `main` first, by its own PR.
+- Each experiment runs on its own branch, `experiment/<name>` (Caleb, 2026-11-09, OQ-61), the name its number
+  and what it does (OQ-62, OQ-63: `e1-baselines`, `e2-ppo-sanity-ladder`, `e3-reward-weight-sweep`,
+  `e4-rnd-exploration`, `e5-weight-conditioned-ppo`, `e6a-discount-sweep`, `e6b-pbrs-shaping`). It starts
+  from `main`, where the `sim-v1.1` tag marks the frozen sim (`sim-v1` with OQ-64's directional walks), and
+  holds only its config (`configs/<name>.yaml`), the code only it uses, its committed summary
+  (`results/summary/<name>/`) and its records. It never changes the sim. It merges into `main` by its own PR once
+  its run is checked. Tooling several experiments share goes into `main` first, by its own PR.
 
 ## AI interaction logging (mandatory)
 

@@ -32,7 +32,7 @@ import numpy as np
 from rlscape.gamedata.transports import ABYSS_EXIT, GATE_NORTH, GATE_SOUTH, Transport, in_abyss, wilderness_level
 from rlscape.sim.energy import MAX_ENERGY, rest, restore_per_tick, walk_plan
 from rlscape.sim.state import COINS, CharacterState
-from rlscape.sim.transport import boats, can_use, home_ready, usable_teleports, use
+from rlscape.sim.transport import boat_key, boats, can_use, home_ready, usable_teleports, use
 from rlscape import travel
 from rlscape.travel import LEVEL_CHANGE_TICKS, UNDERGROUND_Y_OFFSET, Reach, on_foot, overhead, path, projected
 
@@ -195,12 +195,37 @@ def _by_transport(state: CharacterState, a: tuple[int, int, int], destination: t
     return found
 
 
+_ROUTES: dict[tuple, Route | None] = {}
+ROUTE_CACHE = 100_000
+
+
 def route(state: CharacterState, destination: tuple[int, int, int], elapsed: int = 0) -> Route | None:
     """The fastest way there the character can use `elapsed` ticks into the step (Caleb, 2026-11-01): the walk, or a
     teleport or boat and the walks around it, with what it pays on the way. None if none can be made (Caleb,
     2026-11-01): an island without a fare or a teleport, a place no way the model knows reaches, no coins for a
     Shantay pass. Upstairs or underground, where the map lacks the stairs and ladders, the walk keeps the
-    straight-line estimate."""
+    straight-line estimate.
+
+    Remembered by everything the plan reads from the state (`_route_key`), since a mask asks for the same routes
+    many times (the mask speed-up, 2026-11-09). A route is never changed once made, so callers share it."""
+    key = _route_key(state, destination, elapsed)
+    if key in _ROUTES:
+        return _ROUTES[key]
+    if len(_ROUTES) >= ROUTE_CACHE:
+        _ROUTES.clear()
+    planned = _ROUTES[key] = _plan(state, destination, elapsed)
+    return planned
+
+
+def _route_key(state: CharacterState, destination: tuple[int, int, int], elapsed: int) -> tuple:
+    """What `_plan` reads from the state: the tile, the coins carried (the Al Kharid toll, the Shantay pass, fares),
+    the teleports it can use and whether the home teleport is ready, and the boats it can take (boat_key: quests,
+    which also waive the toll, Agility, arms)."""
+    return (state.location, destination, state.inventory.get(COINS, 0), home_ready(state, elapsed),
+            usable_teleports(state), boat_key(state))
+
+
+def _plan(state: CharacterState, destination: tuple[int, int, int], elapsed: int) -> Route | None:
     a, coins = state.location, state.inventory.get(COINS, 0)
     walking = _walking(state, a, destination, coins)
     best = walking.estimate() if walking is not None and walking.on_foot else float("inf")
