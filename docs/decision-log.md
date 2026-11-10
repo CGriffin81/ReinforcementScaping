@@ -7061,3 +7061,50 @@ than exp." `m002-oq61`.
   - refusals;
   - the config keys;
   - 40 random options on the sim, each rewarded by the converted weights.
+
+### Decided: OQ-70, watching an agent: a replay page with a map, built early (Caleb)
+- **Raised and decided:** 2026-11-10, in chat. Caleb: "I would like to watch an agent's training session. Can we
+  build that easily or would it cost a lot of time to our already time starved project?"
+- **Options** (asked in chat):
+  - **(a) Recommended: TensorBoard and a replay page.**
+    - TensorBoard needs no build: every run already logs to it.
+    - The replay page plays one 20-hour episode from chosen checkpoints in the sim and writes one HTML page. That's
+      ROADMAP's demo (Nov 27 to 30) built early, about half a day.
+  - **(b) The replay page with a map:** the agent's route drawn on the collision map, about 2 to 3 hours more.
+  - **(c) TensorBoard only:** curves, not what the agent does.
+  - **(d) In the game client:** needs a ServerEnv-style driver, which was cut. 1.5 weeks or more.
+- **Caleb: (b).** It was built while E3 trained (below).
+
+### Built: the replay page (OQ-70)
+- **`scripts/replay.py <run dir>`** writes `results/replays/<experiment>_<variant>_seed<k>_episode<seed>.html`
+  (git-ignored).
+  - One episode on one seed for each of the run's chosen checkpoints: by default the first, the middle one and the
+    final model.
+  - Optionally, baselines beside them (`--also scripted_guide`).
+  - The env is made as the run was trained.
+- **`rlscape/eval/replay.py`:** `record` plays the episode the evaluation harness plays: the env and the policy reset
+  with the seed, and actions are sampled.
+  - For a trained policy, before each action it takes the masked distribution's five most likely options and the
+    critic's value. Neither draws a random number, so the sampled action is the evaluation's.
+  - Each decision keeps its game time, option, family, detail, why it ended, reward parts, total level, net worth,
+    every skill's level, and where it began and ended.
+  - The walk between those two places is rebuilt on the collision map. A trip inside an option, to a bank and back,
+    isn't drawn.
+- **`rlscape/eval/replay.html`:** one self-contained page with no network use and no libraries. It shows:
+  - a timeline of every replay's decisions over 20 game-hours, coloured by family;
+  - the map: the followed replay's route so far, its sites, and dungeons as rings;
+  - the decision: option, detail, time, why it ended, reward, value, and the five options the policy weighed;
+  - the 24 skills;
+  - total level and net worth over time;
+  - a table of every decision.
+
+  Play and the scrubber step through the decisions. The colours are the dataviz reference palette: families in a
+  fixed order with the commonest first, and lines as emphasis. It has light and dark themes.
+- **Checked:** E2's best run, seed 0, against the evaluation. The final model's replay is its evaluated episode
+  exactly (166 decisions, total level 338, 23,410 gp), and so is the guide's (368, 337, 130,826 gp). A replay with
+  three checkpoints and the guide takes about 1.5 minutes.
+- **Tests** (`tests/test_replay.py`, 4):
+  - a replay is the evaluation's episode, for the guide always and for E2's best model when it's present;
+  - the decisions run end to end, with levels summing to the total level and walks joining their ends;
+  - the page carries the data intact, and nothing in it can close the script;
+  - a trained replay's choices are ordered probabilities with a finite value.
