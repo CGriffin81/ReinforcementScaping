@@ -1,0 +1,65 @@
+{
+  "name": "e2-ppo-sanity-ladder",
+  "seed": 1,
+  "config": {
+    "seeds": [
+      0,
+      1
+    ],
+    "total_decisions": 1000000,
+    "n_envs": 4,
+    "vec_env": "subproc",
+    "device": "cpu",
+    "torch_threads": 2,
+    "env": {
+      "reward_weights": [
+        0.5,
+        0.5
+      ]
+    },
+    "ppo": {
+      "gamma_hr": 0.99,
+      "ent_coef": 0.01,
+      "n_steps": 256,
+      "batch_size": 1024,
+      "n_epochs": 4,
+      "policy_kwargs": {
+        "net_arch": [
+          256,
+          256
+        ]
+      },
+      "gae_lambda": 0.99,
+      "learning_rate": 0.0003
+    },
+    "checkpoint_every": 100000,
+    "decision_log": true,
+    "variant": "gae_lambda0.99_learning_rate0.0003"
+  },
+  "config_hash": "6a53e3e572c8",
+  "env_kwargs": {
+    "reward_weights": [
+      0.5,
+      0.5
+    ]
+  },
+  "git_sha": "e3719a3da39b90ff48cf0488d260c717f31fef6f",
+  "git_dirty": false,
+  "server_sha": "cad9743444626e56b9e758db1b78867e7fe75b86",
+  "created": "2026-11-10T07:00:26+00:00",
+  "python": "3.12.14",
+  "numpy": "2.5.4",
+  "pandas": "3.1.0",
+  "torch": "2.14.1+cu130",
+  "stable_baselines3": "2.9.2",
+  "sb3_contrib": "2.9.2",
+  "script": "scripts/train.py",
+  "argv": [
+    "--config",
+    "configs\\e2-ppo-sanity-ladder.yaml",
+    "--variant",
+    "gae_lambda0.99_learning_rate0.0003",
+    "--seed",
+    "1"
+  ]
+}

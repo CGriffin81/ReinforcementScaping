@@ -313,6 +313,13 @@ The old weeks 6 to 8 (E6 on the server, the stretch, a replay with the client) a
   3. the sweep at (.5, .5): GAE λ {0.95, 0.99} × learning rate {1e-4, 3e-4}, entropy 0.01, 2 seeds each, 1M
      decisions a run (2M for E3 to E6 if E2's curves still rise at 1M). OQ-66 replaced OQ-65's entropy factor with λ
      after rung 1 failed at λ 0.95 (70% of the optimum, under-investing).
+
+  *Run 2026-11-09 to 11-10:*
+  - **Rung 1:** at λ 0.99 and 2M decisions, 94.9% and 94.4% of the optimum. Whether that passes is OQ-68.
+  - **Rung 3, the sweep:** the best variant is λ 0.95 with learning rate 3e-4, still rising at 1M (OQ-69).
+  - **Rung 2 passes:** it beats random by +59 and +55 reward an episode, paired over E1's 30 seeds. It's 11 to 15
+    below the guide.
+  - **At (.5, .5) the agents learn skill only:** the wealth term's scale decides where E3's weights sit (OQ-67).
 - [x] The tooling E2 needs, shared by E3 to E6 (2026-11-09): sweeps in `train.py`, trained policies in the eval
   harness, and `scripts/publish_training.py`.
 

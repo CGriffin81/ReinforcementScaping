@@ -6906,3 +6906,40 @@ than exp." `m002-oq61`.
   `ent_coef` 0.01. Rung 1's config (`configs/e2-ppo-sanity-ladder-toy.yaml`) is λ 0.99 and 2M decisions, its 95% bar
   unchanged. OQ-65 (2)'s entropy factor is replaced. For the report, it's evidence for H1 and RQ4: credit for a
   delayed payoff is what decides whether the agent invests.
+
+### Found: E2's sweep and rung 2: PPO beats random; the best variant is GAE λ 0.95 with learning rate 3e-4
+- **The sweep** (`configs/e2-ppo-sanity-ladder.yaml`, OQ-66): 8 runs of 1M decisions at (.5, .5), all from a clean
+  `e3719a3`. Four at once took 2026-11-09 20:37 to 2026-11-10 04:51 CST, 3.8 to 4.4 hours a run. The summary is in
+  `results/summary/e2-ppo-sanity-ladder/training/`.
+- **Rung 2** (`configs/e2-ppo-sanity-ladder-eval.yaml`): every model on E1's 30 seeds with sampled actions, beside
+  random and the guide. Random and the guide match E1's numbers exactly. `scripts/e2_rung2.py` ranks the variants
+  and pairs each run with the baselines by seed (`.../rung2/`).
+
+  | Variant | Reward | Total level | Total XP | Net worth (gp) |
+  |---|---:|---:|---:|---:|
+  | λ 0.95, 3e-4 | 149.6 | 328 | 256,900 | 8,115 |
+  | λ 0.99, 3e-4 | 142.4 | 314 | 198,932 | 10,505 |
+  | λ 0.95, 1e-4 | 127.7 | 286 | 251,353 | 5,765 |
+  | λ 0.99, 1e-4 | 124.5 | 278 | 233,631 | 4,723 |
+  | random (E1) | 92.7 | 214 | 79,660 | 14,190 |
+  | the guide (E1) | 162.6 | 351 | 97,279 | 129,789 |
+
+  - **Rung 2 passes:** both runs of the best variant beat random by +59.1 [55.0, 63.4] and +54.7 [50.1, 59.2] reward
+    an episode (paired, 95% bootstrap CI over the 30 seeds), and by +119 and +110 total levels.
+  - **They're still below the guide:** −10.8 [−14.4, −6.8] and −15.1 [−18.6, −11.2] reward, and 18 and 27 levels.
+    They gain 2.2 and 3.0 times the guide's XP: more XP in fewer skills.
+  - **The best variant is λ 0.95,** the λ that under-invests on the toy env. The sim's skill reward mostly arrives
+    during the option that earns it, not dozens of decisions later. Its runs also take fewer, longer decisions (147
+    and 169 an episode, against 212 and 188 at λ 0.99 with 3e-4, and random's 381).
+  - **What they learned** (the best variant's last 25,000 training decisions):
+    - about half the game time in melee on the nearest monsters;
+    - half gathering (Fishing, Thieving, Woodcutting, Agility, tanning), cooking or burning what they gather;
+    - buying and selling about 2 to 3% of the time;
+    - dropping items in 13 to 14% of decisions.
+
+    Their wealth reward in the evaluation is 0.07 an episode (about 7,000 gp), against about 300 for skill (OQ-67).
+  - **The learning rate matters more than λ:** 3e-4 beats 1e-4 by 22 reward at λ 0.95 and 18 at λ 0.99. λ 0.95 beats
+    λ 0.99 by 7 at 3e-4 and 3 at 1e-4.
+- **Still rising at 1M:** over the last 30% of training, the best variant's training reward rose by 20.0 and 17.1,
+  and λ 0.99 with 3e-4 by 6.6 and 6.7. The 1e-4 runs rose by 0.9 to 2.9 (OQ-69).
+- **The sweep's winner is what E3 to E6 use** (OQ-65 (2)): λ 0.95, learning rate 3e-4, entropy 0.01.
