@@ -94,12 +94,32 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 tr.cur td { background: var(--wash); }
 tbody tr { cursor: pointer; }
 .note { color: var(--muted); font-size: 12px; margin: 8px 0 0; }
+.intro { margin-top: 12px; }
+.intro summary { color: var(--ink); font-weight: 600; }
+.intro p { margin: 8px 0 0; max-width: 88ch; color: var(--ink-2); }
+.intro ul { margin: 8px 0 0; padding-left: 18px; color: var(--ink-2); }
+.intro li b { color: var(--ink); font-weight: 600; }
 </style>
 </head>
 <body>
 <main>
   <h1 id="title">Agent replay</h1>
   <p class="sub" id="meta"></p>
+
+  <section class="card intro">
+    <details open>
+      <summary>How to read this</summary>
+      <p>Each replay is one <b>episode</b>: 20 game-hours played from a fresh level-3 character, all on the same seed.
+        A <b>decision</b> is the agent choosing its next activity, such as training Fishing at one spot, selling its
+        fish on the Grand Exchange, or banking. The game then plays that activity out, every catch and every step,
+        without asking the agent again: for up to 15 game-minutes, or a few seconds to drop an item or place an offer.
+        The counter below counts the decisions of one episode.</p>
+      <p>The trained replays are one agent at different points in its training, each named by how many practice
+        episodes it had played by then. Training is also measured in decisions, summed over all those episodes, which
+        is why it runs to a million or more.</p>
+      <ul id="about"></ul>
+    </details>
+  </section>
 
   <div class="controls">
     <div class="row" role="group" aria-label="Replay to follow" id="pick"></div>
@@ -109,7 +129,7 @@ tbody tr { cursor: pointer; }
         <option value="900">Slow</option><option value="400" selected>Normal</option>
         <option value="150">Fast</option><option value="40">Fastest</option>
       </select>
-      <input type="range" id="scrub" min="0" max="0" value="0" aria-label="Decision">
+      <input type="range" id="scrub" min="0" max="0" value="0" aria-label="Decision in the episode">
       <span class="readout" id="readout"></span>
     </div>
   </div>
@@ -202,9 +222,12 @@ const R = DATA.replays;
   const legend = $("famlegend");
   for (const f of DATA.families) { const s = el("span", {}, f); s.style.setProperty("--c", famColor(f)); legend.append(s); }
   R.forEach((r, i) => {
-    const b = el("button", { "aria-pressed": i === sel ? "true" : "false" }, r.label);
+    const b = el("button", { "aria-pressed": i === sel ? "true" : "false", title: r.about || "" }, r.label);
     b.addEventListener("click", () => select(i, 0));
     $("pick").append(b);
+    const li = el("li");
+    li.append(el("b", {}, r.label), document.createTextNode(`: ${r.about || ""} This episode: ${r.decisions.length} decisions.`));
+    $("about").append(li);
   });
 })();
 
@@ -223,7 +246,7 @@ const hideTip = () => { tip.style.display = "none"; };
 function decisionTip(r, d, i) {
   const nodes = [el("b", {}, pretty(d.option)), el("br")];
   const line = (k, v) => { const div = el("div"); div.append(el("span", { class: "k" }, k + ": "), document.createTextNode(v)); return div; };
-  nodes.push(line("replay", r.label), line("decision", `${i + 1} of ${r.decisions.length}`),
+  nodes.push(line("replay", r.label), line("decision", `${i + 1} of ${r.decisions.length} in the episode`),
     line("time", `${clock(d.t0)} to ${clock(d.t1)} (${Math.round((d.t1 - d.t0) / 100)} min)`),
     line("family", d.family), line("ended", d.end.replaceAll("_", " ")));
   const what = describe(d);
@@ -243,7 +266,7 @@ function describe(d) {
 }
 
 /* ---------- timeline ---------- */
-const TL = { left: 120, right: 8, rowH: 22, gap: 10, top: 18 };
+const TL = { left: 150, right: 8, rowH: 22, gap: 10, top: 18 };
 let tlWidth = 0;
 function drawTimeline() {
   const host = $("timeline");
@@ -258,7 +281,7 @@ function drawTimeline() {
   R.forEach((r, ri) => {
     const y = TL.top + ri * (TL.rowH + TL.gap);
     const label = svgEl("text", { x: 0, y: y + TL.rowH / 2 + 4, class: "rowlabel" + (ri === sel ? " sel" : "") });
-    label.textContent = r.label.length > 17 ? r.label.slice(0, 16) + "…" : r.label;
+    label.textContent = r.label.length > 22 ? r.label.slice(0, 21) + "…" : r.label;
     svg.append(label);
     r.decisions.forEach((d, i) => {
       const x0 = x(d.t0), x1 = x(d.t1), w = Math.max(0.5, x1 - x0 - (x1 - x0 > 3 ? 1 : 0));
@@ -296,7 +319,7 @@ function valueAt(pts, t) {
 }
 function niceMax(v) { if (v <= 0) return 1; const p = Math.pow(10, Math.floor(Math.log10(v))); for (const m of [1, 2, 2.5, 5, 10]) if (m * p >= v) return m * p; return 10 * p; }
 function drawChart(hostId, key, fmt) {
-  const host = $(hostId), W = Math.max(280, host.clientWidth), H = 220, m = { l: 48, r: 92, t: 10, b: 24 };
+  const host = $(hostId), W = Math.max(280, host.clientWidth), H = 220, m = { l: 48, r: 108, t: 10, b: 24 };
   const series = R.map((r) => stepSeries(r, key));
   const ymax = niceMax(Math.max(...series.flat().map((p) => p[1])));
   const X = (t) => m.l + (W - m.l - m.r) * t / (HOURS * TICKS_PER_HOUR), Y = (v) => H - m.b - (H - m.t - m.b) * v / ymax;
@@ -323,7 +346,8 @@ function drawChart(hostId, key, fmt) {
     const ly = Math.max(e.y, last + 13); last = ly;
     if (Math.abs(ly - e.y) > 1) svg.append(svgEl("line", { x1: W - m.r + 2, x2: W - m.r + 8, y1: e.y, y2: ly, stroke: "var(--axis)", "stroke-width": 1 }));
     const t = svgEl("text", { x: W - m.r + 10, y: ly + 4, class: "rowlabel" + (e.i === sel ? " sel" : "") });
-    t.textContent = R[e.i].label.length > 13 ? R[e.i].label.slice(0, 12) + "…" : R[e.i].label; svg.append(t);
+    const short = R[e.i].short || R[e.i].label;
+    t.textContent = short.length > 15 ? short.slice(0, 14) + "…" : short; svg.append(t);
   }
   const cross = svgEl("line", { y1: m.t, y2: H - m.b, stroke: "var(--muted)", "stroke-width": 1, visibility: "hidden" });
   const now = svgEl("line", { y1: m.t, y2: H - m.b, stroke: "var(--ink)", "stroke-width": 1.5, class: "nowline" });
@@ -470,7 +494,7 @@ function drawMap() {
 /* ---------- the decision, its choices, the skills ---------- */
 function drawDecision() {
   const r = R[sel], d = r.decisions[cur];
-  $("dtitle").textContent = `Decision ${cur + 1} of ${r.decisions.length}`;
+  $("dtitle").textContent = `Decision ${cur + 1} of ${r.decisions.length} in this episode`;
   const kv = $("dkv"); kv.replaceChildren();
   const add = (k, node) => { kv.append(el("dt", {}, k)); const dd = el("dd"); typeof node === "string" ? dd.textContent = node : dd.append(node); kv.append(dd); };
   const opt = el("span"); const sw = el("span", { class: "swatch" }); sw.style.background = famColor(d.family);
@@ -536,7 +560,7 @@ function select(ri, i, fromScrub) {
   document.querySelectorAll("#pick button").forEach((b, k) => b.setAttribute("aria-pressed", k === sel ? "true" : "false"));
   const scrub = $("scrub"); scrub.max = R[sel].decisions.length - 1; if (!fromScrub) scrub.value = cur;
   const d = R[sel].decisions[cur];
-  $("readout").textContent = `decision ${cur + 1} / ${R[sel].decisions.length} · ${clock(d.t0)}–${clock(d.t1)}`;
+  $("readout").textContent = `decision ${cur + 1} of ${R[sel].decisions.length} · ${clock(d.t0)}–${clock(d.t1)}`;
   if (changed) { drawTimeline(); drawChart("chart-level", "total_level", fmtLevel); drawChart("chart-worth", "net_worth", fmtWorth); fitView(true); if ($("tabledetails").open) drawTable(); }
   placeHair(); $("chart-level")._place(); $("chart-worth")._place();
   drawTiles(); drawDecision(); drawSkills(); drawMap();

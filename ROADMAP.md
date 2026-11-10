@@ -354,6 +354,8 @@ The old weeks 6 to 8 (E6 on the server, the stretch, a replay with the client) a
 *Nov 22–25: the draft and the copy to review*
 - [ ] The report answers RQ1 to RQ4 (and RQ5, depending on OQ-1), with a verdict on each of H1 to H3. Negative results
   get their supporting analysis.
+- [ ] Its wording (Caleb, OQ-71 (a)): a decision is one option chosen, defined once in the method. A run's
+  length is "training decisions" with its episodes beside it; an episode's count is "decisions per episode".
 - [ ] The peer review kept simple (Caleb; the form is OQ-50): a reviewer's guide, and the reviewed version tagged.
 
 *Nov 26: peer review (Thanksgiving week runs at half capacity). Nov 27–30: revisions, and the demo (sim replays of an

@@ -7108,3 +7108,45 @@ than exp." `m002-oq61`.
   - the decisions run end to end, with levels summing to the total level and walks joining their ends;
   - the page carries the data intact, and nothing in it can close the script;
   - a trained replay's choices are ordered probabilities with a finite value.
+
+### Changed: the replay page names a checkpoint by its practice episodes (2026-11-10)
+- **Why:** Caleb found the page confusing. Checkpoints were labelled by their training decisions ("final (1M
+  decisions)"), right beside the counter of one episode's decisions ("1 of 166"). The two counts read as the same kind
+  of number. They are the same unit (one decision is one option chosen), but one sums thousands of episodes and the
+  other counts one.
+- **Now:**
+  - A trained replay is named by the practice episodes it had played: "After 8,638 episodes". Its description gives
+    the training decisions, and the episode counter says "in this episode".
+  - The counts come from `episodes.parquet` once a run has finished. While it trains, they come from its decision
+    log, which knows them up to its last part written. The two sources agree at every checkpoint of E2's best run.
+  - A "How to read this" box at the top says what an episode and a decision are, and gives a line for each replay.
+    The baselines are described as untrained.
+- **Tests** (`tests/test_replay.py`, now 6): the two sources of episode counts agree, and a trained replay's name
+  holds its episodes, not its decisions.
+- **The project's unit is unchanged.** Training budgets are still counted in decisions (OQ-69's 2M) in the configs,
+  logs and docs. The report qualifies them (OQ-71 (a), below).
+
+### Decided: OQ-71, the report keeps "decision" as its one unit, defined once and always qualified (Caleb)
+- **Raised:** 2026-11-10, by Caleb on E2's replay page: "reusing the terminology is incredibly confusing to anybody who
+  is not deeply involved with the experiments." Record `m002-replay-terms`.
+- **Found:**
+  - "Decision" is one unit, one option chosen by the high-level policy (one SMDP step).
+  - A run's budget sums them over thousands of episodes: E2's best model trained on 1,000,448 decisions, which was
+    8,638 episodes.
+  - An episode's count is a few hundred: that model made 166 on seed 0, and the guide 368.
+  - The replay page now names checkpoints by episodes (decision log, 2026-11-10). The configs (`total_decisions`), the
+    logs and OQ-69's "2M decisions a run" use decisions.
+- **Options:**
+  - **(a) Recommended, chosen: keep "decision" as the one unit, defined once in the method.** Always qualify it: "training
+    decisions" for a run, "decisions per episode" for an episode. Give a run's length in episodes beside it, e.g.
+    "2M training decisions (about N episodes)". No code or config changes.
+  - **(b) Call the training measure "steps"** (SB3's timesteps) and keep "decisions" for an episode. That's familiar
+    to RL readers. But a reader of a game paper may take a step for a game tick, and the configs and docs would differ
+    from the report.
+  - **(c) Measure training in episodes throughout.** It's the most intuitive. But the budget was fixed in decisions
+    (OQ-69), and episodes vary from about 100 to 400 decisions between policies, so equal episodes aren't equal
+    training.
+- **Answer (Caleb, 2026-11-10):** "go with (a) for OQ-71". Record `m002-replay-terms`.
+- **So:** the report's method defines a decision once: one option chosen by the high-level policy, one SMDP
+  step. A run's length is "training decisions", with its episodes beside it ("2M training decisions, about N
+  episodes"). An episode's count is "decisions per episode". The configs, logs and docs stay as they are.

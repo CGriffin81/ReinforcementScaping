@@ -4,6 +4,7 @@ page carries it intact."""
 from __future__ import annotations
 
 import base64
+import importlib.util
 import io
 import json
 import math
@@ -70,6 +71,40 @@ def test_the_page_carries_the_data_and_the_map(guide):
     image = Image.open(io.BytesIO(base64.b64decode(data["map"]["png"])))
     assert image.size == (data["map"]["width"], data["map"]["height"])
     assert set(data["families"]) >= {d["family"] for d in guide["decisions"]}
+
+
+@pytest.fixture(scope="module")
+def script():
+    spec = importlib.util.spec_from_file_location("replay_script", REPO / "scripts" / "replay.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+@pytest.mark.skipif(not (BEST.parent / "episodes.parquet").exists(), reason="E2's run isn't here (runs/ is ignored)")
+def test_a_checkpoints_episodes_are_the_same_from_the_decision_log_as_from_the_finished_run(script, tmp_path):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    run = BEST.parent
+    n_envs = json.loads((run / "config.json").read_text(encoding="utf-8"))["config"]["n_envs"]
+    parts = sorted((run / "decisions").glob("part-*.parquet"))
+    (tmp_path / "decisions").mkdir()  # a run still training: its decision log, no episodes.parquet yet
+    pq.write_table(pa.concat_tables([pq.read_table(p, columns=["step", "done"]) for p in parts[:-1]]),
+                   tmp_path / "decisions" / "part-00000.parquet")
+    finished, training = script.episodes_by(run, n_envs), script.episodes_by(tmp_path, n_envs)
+    known = int(pq.read_table(parts[-2], columns=["step"])["step"].to_numpy().max()) + n_envs
+    steps = [n for n in script.checkpoints(run) if n <= known]
+    assert steps and all(training(n) == finished(n) for n in steps)
+    assert training(known + n_envs) is None and finished(known + n_envs) is not None  # past the log written so far
+    assert finished(json.loads((run / "run.json").read_text(encoding="utf-8"))["decisions"]) == json.loads(
+        (run / "run.json").read_text(encoding="utf-8"))["episodes"]
+
+
+def test_a_trained_replay_is_named_by_its_practice_episodes(script):
+    names = script.trained_names(1_000_448, 8_638, final=True)
+    assert names["label"] == "After 8,638 episodes" and "decisions" not in names["label"] + names["short"]
+    assert "1,000,448 decisions" in names["about"] and names["about"].startswith("The final model")
+    assert script.trained_names(100_000, None, final=False)["label"] == "Trained 100k decisions"
 
 
 @pytest.mark.skipif(not BEST.exists(), reason="E2's trained model isn't here (runs/ is git-ignored)")
