@@ -1,0 +1,18 @@
+# E2, rung 1 (OQ-65 (1)): SMDP MaskablePPO on the synthetic three-option env (rlscape/envs/toy.py), against its
+# exact optimum (22 trainings, then work, at gamma_hr 0.99). PPO's settings are the sweep's fixed ones, with the
+# grid's learning rate 3e-4 and entropy coefficient 0.01.
+#   uv run python scripts/e2_toy_rung.py --config configs/e2-ppo-sanity-ladder-toy.yaml
+seeds: [0, 1]
+total_decisions: 200_000
+n_envs: 8
+eval_episodes: 100   # per seed, sampled actions (OQ-65 (4)), torch seeded by the episode
+pass_share: 0.95     # the rung passes when every seed's mean discounted return is at least this share of the optimum
+ppo:
+  gamma_hr: 0.99
+  gae_lambda: 0.95
+  n_steps: 256
+  batch_size: 1024
+  n_epochs: 4
+  learning_rate: 3.0e-4
+  ent_coef: 0.01
+  policy_kwargs: {net_arch: [256, 256]}
