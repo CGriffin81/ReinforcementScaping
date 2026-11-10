@@ -9,11 +9,12 @@
   - The sweep ran from 2026-11-09 20:37:05 to 2026-11-10 04:50:45 CST, from its runs' `config.json` `created` and
     `run.json` `finished`.
   - Its evaluation finished at 04:55:50 CST, after 253 s.
-  - This record was written at about 05:15 CST on 2026-11-10 (estimated).
+  - This record was written at about 05:15 CST on 2026-11-10 (estimated), and updated after Caleb's answers.
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: SUCCESS. E2's three rungs have run and are published, and rung 2 passes. Two things wait on Caleb: rung 1's
-  verdict (OQ-68) and E3's setup (OQ-67, OQ-69).
+- Status: SUCCESS. E2's three rungs have run and are published. Rung 2 passes, and rung 1 passes by Caleb's verdict
+  (OQ-68). OQ-67 and OQ-69 set E3's design.
+  - Caleb answered OQ-67 to OQ-69 in chat at 2026-11-10 07:28:44 CST, by the session transcript's timestamp.
 - Commit: on branch `experiment/e2-ppo-sanity-ladder` (from `tooling/eval-training`):
   - `57a31ae`: E2's code and configs;
   - `32719ba`: OQ-66, keeping the λ 0.95 rung;
@@ -68,11 +69,14 @@
   - "Found: E2's rung 1 fails at GAE λ 0.95; decided: OQ-66, the sweep varies λ and the learning rate (Caleb)", with
     the diagnostics table and the options;
   - "Found: E2's sweep and rung 2: PPO beats random; the best variant is GAE λ 0.95 with learning rate 3e-4".
-- `docs/open-questions-log.md`:
+- `docs/open-questions-log.md`, then `docs/decision-log.md` once Caleb answered:
   - OQ-67 (where E3's weights sit, given the wealth scale);
   - OQ-68 (does rung 1 pass);
   - OQ-69 (1M or 2M decisions for E3 to E6).
-- `ROADMAP.md`: E2's sweep is λ × learning rate (OQ-66), and its results so far.
+- `ROADMAP.md`:
+  - E2's sweep is λ × learning rate (OQ-66);
+  - E2 is done, with its results;
+  - E3 uses normalised weights and 2M decisions.
 - `results/summary/e2-ppo-sanity-ladder/`:
   - the evaluation (`publish_summary.py`);
   - `training/` (`publish_training.py`);
@@ -116,12 +120,13 @@
 
 ## Decisions
 
-- **User decisions (Caleb):** OQ-65 (1) to (4) (record `m002-eval-training`); OQ-66 (a).
-- **Agent recommendations:**
-  - OQ-66 (a), which Caleb took;
-  - OQ-67 (a): normalised weights, no sim change;
-  - OQ-68 (a): rung 1 passes, reported with its numbers;
-  - OQ-69 (a): 2M decisions, as OQ-65 (3)'s rule says.
+- **User decisions (Caleb):**
+  - OQ-65 (1) to (4) (record `m002-eval-training`);
+  - OQ-66 (a);
+  - OQ-67 (a), "Normalised weights": E3 to E6 give weights in units of E1's best 20-hour gain, with no sim change;
+  - OQ-68 (a), "Pass, with its numbers";
+  - OQ-69 (a), "2M, as the rule says".
+- **Agent recommendations:** (a) on OQ-66 to OQ-69. Caleb took each.
 - **Agent choices:**
   - the toy's shape (pay 1 + √k, the cap at 40, idle's minute);
   - keeping the failed run as a finding, not overwriting it;
@@ -139,8 +144,7 @@
 
 ## Follow-Up
 
-- **Caleb:**
-  - OQ-68: does rung 1 pass at 94.4% to 94.9%?
-  - OQ-67 and OQ-69, before E3's configs (Nov 12);
-  - merge PRs #13 and #14, then E2's.
-- **Claude:** E3's configs once OQ-67 and OQ-69 are answered.
+- **Caleb:** merge PRs #13 and #14, then E2's (#15).
+- **Claude:**
+  - the normalised-weights helper (OQ-67), as its own tooling PR;
+  - then E3's configs at 2M decisions (OQ-69).
