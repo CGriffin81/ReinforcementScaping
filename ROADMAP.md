@@ -97,7 +97,7 @@ ReinforcementScaping/
 | **SMDP discounting** | Options run for different amounts of game time. SB3 applies one γ per decision, so a 2-min bank trip is discounted the same as a 40-min woodcutting trip. That's wrong under a game-time horizon and would confound the E5 discount ablation. | The env reports `info["duration"]`. Subclass sb3-contrib's `MaskableRolloutBuffer` (plus a small `collect_rollouts` override to store τ) so GAE uses γ^τ. Define γ **per game-hour** (e.g. γ_hr ∈ {0.5, 0.9, 0.99}). |
 | **PBRS in an SMDP** | Ng et al.'s policy-invariance guarantee only holds if shaping uses the agent's own discount. | F = γ^τ·Φ(s′) − Φ(s), with Φ(terminal) = 0. Candidate Φ: best GP/hr available from current unlocks, which directly encodes "investing pays off". |
 | **What counts as wealth** | If equipment doesn't count toward bank value, buying an axe looks like losing money. The agent is penalized for investing, which biases the H1 test. | Wealth = GP + (bank + inventory + equipped items) × the **fixed** price table, i.e. net worth. |
-| **Skill reward normalization** | Raw XP grows exponentially per level, so high-level XP would dominate. Total level is the reported metric. | Reward fractional level gained (level + progress toward the next level) to match the reported metric. Wealth reward = Δnet worth / a fixed scale (e.g. 100k GP). |
+| **Skill reward normalization** | Raw XP grows exponentially per level, so high-level XP would dominate. Total level is the reported metric. | Reward fractional level gained (level + progress toward the next level) to match the reported metric. Wealth reward = Δnet worth / a fixed scale (100k GP). E3 to E6 give their weights in units of E1's best 20-hour gain on each objective, converted by `rlscape/envs/weights.py` (OQ-67, 2026-11-10). |
 | **Valuation table** | Runs are only comparable if net worth is computed the same way every time. | **Done (Caleb's formula):** `data/prices_v2.csv` = max(high alchemy − nature rune, January 2009 GE price from the RuneScape Wiki), coins = 1. Fixed for the whole study. `prices_v1` (the 10-hour snapshot) is superseded but kept. |
 | **RND with masking** | Neither SB3 nor sb3-contrib includes RND. | v1: a VecEnv wrapper that adds a normalized, non-episodic intrinsic reward for MaskablePPO. v2, only if v1 results are ambiguous: dual value heads, using CleanRL's `ppo_rnd_envpool.py` as reference. |
 | **Masking in Envelope Q** | MORL-Baselines' Envelope Q-learning has no action-mask support out of the box. | Patch action selection and the target max to set invalid Q to −∞, and store the next-state mask in the replay buffer. *Cut (OQ-17 (a′), 2026-11-09): a weight-conditioned PPO replaces Envelope Q.* |
@@ -325,6 +325,8 @@ The old weeks 6 to 8 (E6 on the server, the stretch, a replay with the client) a
     normalised units, E1's best 20-hour gain on each objective (Caleb, OQ-67).
 - [x] The tooling E2 needs, shared by E3 to E6 (2026-11-09): sweeps in `train.py`, trained policies in the eval
   harness, and `scripts/publish_training.py`.
+- [x] Normalised reward weights for E3 to E6 (2026-11-10, OQ-67): `env.normalised_weights` in a config, converted to
+  SimEnv's by `rlscape/envs/weights.py`.
 
 *Nov 13–18: the experiments* (the runs overlap the building)
 - [ ] **E3, the reward-weight sweep** (RQ1 to RQ3): (1,0), (.75,.25), (.5,.5), (.25,.75) and (0,1) in normalised

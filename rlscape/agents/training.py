@@ -10,8 +10,10 @@ command per experiment).
 - `device`: torch's (`cpu`, `cuda`, `auto`). On the GPU a run isn't bit-for-bit repeatable;
 - `torch_threads`: torch's CPU threads in the run's own process (its envs are processes of their own). Several runs
   at once share the machine's 16 threads with their envs, so each wants a few;
-- `env`: SimEnv's settings. `reward_weights` [w_skill, w_wealth], `hours` (the horizon), `activity_minutes` (D)
-  and `preference_in_obs`; SimEnv's defaults where one is left out;
+- `env`: SimEnv's settings. `reward_weights` [w_skill, w_wealth] in SimEnv's units, or `normalised_weights`
+  [u_skill, u_wealth] summing to 1, in units of E1's best 20-hour gain on each objective (OQ-67,
+  rlscape.envs.weights; one or the other); `hours` (the horizon), `activity_minutes` (D) and `preference_in_obs`;
+  SimEnv's defaults where one is left out;
 - `ppo`: SMDPMaskablePPO's own arguments, passed as they are (`gamma_hr`, `n_steps`, `batch_size`, `n_epochs`,
   `learning_rate`, `ent_coef`, `policy_kwargs`, ...). Nothing here sets one: what isn't in the config is sb3's
   default;
@@ -59,6 +61,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv,
 from rlscape.agents.decision_log import DecisionLogger
 from rlscape.agents.ppo import SMDPMaskablePPO
 from rlscape.envs.sim_env import SimEnv
+from rlscape.envs.weights import env_weights
 from rlscape.eval.harness import REPO, config_hash, provenance
 from rlscape.sim.engine import TICKS_PER_HOUR
 
@@ -66,7 +69,7 @@ KEYS = {"seeds", "total_decisions", "n_envs", "vec_env", "device", "torch_thread
         "decision_log", "out", "sweep", "variant"}
 UNSWEPT = {"seeds", "out", "sweep", "variant"}  # a sweep can't vary these
 REQUIRED = {"seeds", "total_decisions", "n_envs", "ppo"}
-ENV_KEYS = {"reward_weights", "hours", "activity_minutes", "preference_in_obs"}
+ENV_KEYS = {"reward_weights", "normalised_weights", "hours", "activity_minutes", "preference_in_obs"}
 
 
 def load_config(path: Path) -> dict:
@@ -78,9 +81,14 @@ def check_config(config: dict) -> dict:
     unknown, missing = sorted(set(config) - KEYS), sorted(REQUIRED - set(config))
     if unknown or missing:
         raise ValueError(f"config: unknown keys {unknown}, missing {missing}")
-    unknown_env = sorted(set(config.get("env") or {}) - ENV_KEYS)
+    env = config.get("env") or {}
+    unknown_env = sorted(set(env) - ENV_KEYS)
     if unknown_env:
         raise ValueError(f"config: unknown env keys {unknown_env}; known: {sorted(ENV_KEYS)}")
+    if "reward_weights" in env and "normalised_weights" in env:
+        raise ValueError("config: env gives reward_weights or normalised_weights, not both")
+    if "normalised_weights" in env:
+        env_weights(env["normalised_weights"])  # refuses weights that aren't two non-negatives summing to 1
     for key, value in (config["ppo"] or {}).items():
         if isinstance(value, str):
             try:
@@ -132,6 +140,8 @@ def env_kwargs(config: dict) -> dict:
     env, out = dict(config.get("env") or {}), {}
     if "reward_weights" in env:
         out["reward_weights"] = tuple(float(w) for w in env["reward_weights"])
+    if "normalised_weights" in env:
+        out["reward_weights"] = env_weights(env["normalised_weights"])
     if "hours" in env:
         out["horizon_ticks"] = round(float(env["hours"]) * TICKS_PER_HOUR)
     if "activity_minutes" in env:
