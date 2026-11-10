@@ -46,7 +46,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--config", type=Path, default=None, help="a YAML file of these options (configs/<name>.yaml)")
     parser.add_argument("--policies", nargs="+", default=["random", "greedy_xp", "greedy_wealth"],
-                        choices=sorted(POLICIES))
+                        help=f"baselines ({', '.join(sorted(POLICIES))}) or trained models: [label=]ppo:<model.zip>")
     parser.add_argument("--seeds", type=int, default=10, help="seeds 0 .. N-1")
     parser.add_argument("--first-seed", type=int, default=0)
     parser.add_argument("--hours", type=float, default=20.0, help="the horizon in game-hours")
