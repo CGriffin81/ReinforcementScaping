@@ -310,8 +310,9 @@ The old weeks 6 to 8 (E6 on the server, the stretch, a replay with the client) a
   1. a synthetic 3-option env (work, train, idle) with its optimum computed exactly;
   2. PPO beats random on the full catalog, answered by the sweep's best variant, evaluated with sampled actions on
      E1's 30 seeds;
-  3. the sweep at (.5, .5): learning rate {1e-4, 3e-4} × entropy coefficient {0, 0.01}, 2 seeds each, 1M decisions a
-     run (2M for E3 to E6 if E2's curves still rise at 1M).
+  3. the sweep at (.5, .5): GAE λ {0.95, 0.99} × learning rate {1e-4, 3e-4}, entropy 0.01, 2 seeds each, 1M
+     decisions a run (2M for E3 to E6 if E2's curves still rise at 1M). OQ-66 replaced OQ-65's entropy factor with λ
+     after rung 1 failed at λ 0.95 (70% of the optimum, under-investing).
 - [x] The tooling E2 needs, shared by E3 to E6 (2026-11-09): sweeps in `train.py`, trained policies in the eval
   harness, and `scripts/publish_training.py`.
 

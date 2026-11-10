@@ -1,4 +1,5 @@
-# E2, the sanity ladder (OQ-65, Caleb, 2026-11-09), rung 3: the sweep at weights (.5, .5). Its best variant by
+# E2, the sanity ladder (OQ-65 and OQ-66, Caleb, 2026-11-09), rung 3: the sweep at weights (.5, .5), GAE lambda by
+# learning rate (OQ-66: rung 1 found lambda 0.95 under-invests), entropy 0.01. Its best variant by
 # evaluated reward on E1's seeds answers rung 2, PPO against random (configs/e2-ppo-sanity-ladder-eval.yaml), and is
 # what E3 to E6 use. Four runs of 4 envs at once make about 1M decisions an hour in all.
 #   uv run python scripts/train.py --config configs/e2-ppo-sanity-ladder.yaml --jobs 4
@@ -12,13 +13,13 @@ torch_threads: 2
 env: {reward_weights: [0.5, 0.5]}
 ppo:
   gamma_hr: 0.99
-  gae_lambda: 0.95
+  ent_coef: 0.01
   n_steps: 256
   batch_size: 1024
   n_epochs: 4
   policy_kwargs: {net_arch: [256, 256]}
 sweep:
+  ppo.gae_lambda: [0.95, 0.99]
   ppo.learning_rate: [1.0e-4, 3.0e-4]
-  ppo.ent_coef: [0.0, 0.01]
 checkpoint_every: 100_000
 decision_log: true

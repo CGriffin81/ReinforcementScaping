@@ -1,18 +1,19 @@
-# E2, rung 2 (OQ-65 (2), (4)): the sweep's eight models on E1's 30 seeds, with sampled actions, beside random and the
-# guide on the same seeds (E1 has the greedy baselines on the same sim and seeds). Run after the sweep has trained.
+# E2, rung 2 (OQ-65 (2), (4); OQ-66): the sweep's eight models on E1's 30 seeds, with sampled actions, beside
+# random and the guide on the same seeds (E1 has the greedy baselines on the same sim and seeds). Run after the
+# sweep has trained.
 #   uv run python scripts/evaluate.py --config configs/e2-ppo-sanity-ladder-eval.yaml
 #   uv run python scripts/publish_summary.py results/eval/e2-ppo-sanity-ladder e2-ppo-sanity-ladder
 policies:
   - random
   - scripted_guide
-  - learning_rate0.0001_ent_coef0/seed0=ppo:runs/e2-ppo-sanity-ladder/learning_rate0.0001_ent_coef0/seed0/model.zip
-  - learning_rate0.0001_ent_coef0/seed1=ppo:runs/e2-ppo-sanity-ladder/learning_rate0.0001_ent_coef0/seed1/model.zip
-  - learning_rate0.0001_ent_coef0.01/seed0=ppo:runs/e2-ppo-sanity-ladder/learning_rate0.0001_ent_coef0.01/seed0/model.zip
-  - learning_rate0.0001_ent_coef0.01/seed1=ppo:runs/e2-ppo-sanity-ladder/learning_rate0.0001_ent_coef0.01/seed1/model.zip
-  - learning_rate0.0003_ent_coef0/seed0=ppo:runs/e2-ppo-sanity-ladder/learning_rate0.0003_ent_coef0/seed0/model.zip
-  - learning_rate0.0003_ent_coef0/seed1=ppo:runs/e2-ppo-sanity-ladder/learning_rate0.0003_ent_coef0/seed1/model.zip
-  - learning_rate0.0003_ent_coef0.01/seed0=ppo:runs/e2-ppo-sanity-ladder/learning_rate0.0003_ent_coef0.01/seed0/model.zip
-  - learning_rate0.0003_ent_coef0.01/seed1=ppo:runs/e2-ppo-sanity-ladder/learning_rate0.0003_ent_coef0.01/seed1/model.zip
+  - gae_lambda0.95_learning_rate0.0001/seed0=ppo:runs/e2-ppo-sanity-ladder/gae_lambda0.95_learning_rate0.0001/seed0/model.zip
+  - gae_lambda0.95_learning_rate0.0001/seed1=ppo:runs/e2-ppo-sanity-ladder/gae_lambda0.95_learning_rate0.0001/seed1/model.zip
+  - gae_lambda0.95_learning_rate0.0003/seed0=ppo:runs/e2-ppo-sanity-ladder/gae_lambda0.95_learning_rate0.0003/seed0/model.zip
+  - gae_lambda0.95_learning_rate0.0003/seed1=ppo:runs/e2-ppo-sanity-ladder/gae_lambda0.95_learning_rate0.0003/seed1/model.zip
+  - gae_lambda0.99_learning_rate0.0001/seed0=ppo:runs/e2-ppo-sanity-ladder/gae_lambda0.99_learning_rate0.0001/seed0/model.zip
+  - gae_lambda0.99_learning_rate0.0001/seed1=ppo:runs/e2-ppo-sanity-ladder/gae_lambda0.99_learning_rate0.0001/seed1/model.zip
+  - gae_lambda0.99_learning_rate0.0003/seed0=ppo:runs/e2-ppo-sanity-ladder/gae_lambda0.99_learning_rate0.0003/seed0/model.zip
+  - gae_lambda0.99_learning_rate0.0003/seed1=ppo:runs/e2-ppo-sanity-ladder/gae_lambda0.99_learning_rate0.0003/seed1/model.zip
 seeds: 30
 hours: 20
 workers: 16

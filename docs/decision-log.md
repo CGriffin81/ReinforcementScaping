@@ -6867,3 +6867,42 @@ than exp." `m002-oq61`.
   `results/summary/<name>/training/` gets `runs.csv`, `learning_curves.csv`, each run's config.json and a README.
   Runs from a dirty tree and an existing training summary are refused. `publish` (an evaluation's summary) now
   replaces only its own files, so the two share an experiment's folder.
+
+### Found: E2's rung 1 fails at GAE λ 0.95; decided: OQ-66, the sweep varies λ and the learning rate (Caleb)
+- **Rung 1 as configured** (`configs/e2-ppo-sanity-ladder-toy-lambda0.95.yaml`, run from `57a31ae`): 200k
+  decisions, GAE λ 0.95, learning rate 3e-4, entropy 0.01, two seeds.
+  - **Result:** 70.1% and 70.0% of the optimum's discounted return, about 7.5 trainings where the optimum trains 22.
+    The rung fails: it asks for 95% on every seed.
+  - **How it fails:** PPO learns to work early and under-invests. A 20k-decision dry run trained about 20 times
+    before it drifted down.
+  - The summary stays in `results/summary/e2-ppo-sanity-ladder/toy-lambda0.95/`.
+- **Diagnosed** with one setting changed at a time (600k toy decisions, one seed; share of the optimum, trainings and
+  idles at the end, evaluated as the rung does):
+
+  | Change | Share | Trainings | Idles |
+  |---|---:|---:|---:|
+  | none (λ 0.95) | 75% | 6.9 | 0.7 |
+  | learning rate 1e-4 | 71% | 8.4 | 1.7 |
+  | entropy 0.05 | 79% | 9.7 | 5.0 |
+  | λ 0.98 | 81% | 12.4 | 5.5 |
+  | λ 0.99 | 84% | 15.7 | 10.9 |
+  | λ 1 | 83% | 19.1 | 21.4 |
+  | λ 1, entropy 0 | 83% | 15.9 | 14.8 |
+  | the horizon as a true end (terminated) | 62% (unstable) | 11.8 | 232 |
+
+  - **λ 0.99 for 1.2M decisions** reaches 94% (17.9 trainings, 7.7 idles), still rising.
+  - **The SMDP machinery works:** with λ near 1, PPO finds the investment.
+  - **λ 0.95, applied once a decision (`rlscape/agents/smdp.py`), cuts the credit** for a payoff that comes 50 to 60
+    decisions later (0.95^58 ≈ 0.05). That credit has to come through the critic, which undervalues the trainings.
+  - **The price of a λ near 1 is variance:** its advantages can't tell that idling wastes time.
+  - **The sim's episodes are 177 to 400 decisions,** so λ matters more there.
+- **Options** (asked in chat, 2026-11-09):
+  - **(a) Recommended:** sweep λ {0.95, 0.99} × learning rate {1e-4, 3e-4}, with entropy fixed at 0.01. Still 8
+    runs. Rung 1 is rerun at λ 0.99 with 2M toy decisions, and λ 0.95's failure stays in E2's summary as a finding.
+  - **(b)** Fix λ at 0.99 and keep the learning rate × entropy grid.
+  - **(c)** λ as a third factor: 16 runs, about 18 hours.
+  - **(d)** Keep OQ-65 as decided, and report rung 1 as failed.
+- **Caleb: (a).** `configs/e2-ppo-sanity-ladder.yaml` sweeps `ppo.gae_lambda` and `ppo.learning_rate`, with
+  `ent_coef` 0.01. Rung 1's config (`configs/e2-ppo-sanity-ladder-toy.yaml`) is λ 0.99 and 2M decisions, its 95% bar
+  unchanged. OQ-65 (2)'s entropy factor is replaced. For the report, it's evidence for H1 and RQ4: credit for a
+  delayed payoff is what decides whether the agent invests.

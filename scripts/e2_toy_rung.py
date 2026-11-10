@@ -2,12 +2,14 @@
 
 For each seed: train, then play `eval_episodes` episodes with sampled actions (torch seeded by the episode), and score
 each by its discounted return (γ_hr, what PPO maximises), its undiscounted return and its trainings. Writes the models
-to runs/e2-ppo-sanity-ladder/toy/seed<k>/ (git-ignored) and the results to
-results/summary/e2-ppo-sanity-ladder/toy/ (results.csv, config.json with the provenance and the optimum, README),
-refusing a dirty tree unless --allow-dirty.
+to runs/e2-ppo-sanity-ladder/<part>/seed<k>/ (git-ignored) and the results to
+results/summary/e2-ppo-sanity-ladder/<part>/ (results.csv, config.json with the provenance and the optimum, README),
+<part> being the config's name after `e2-ppo-sanity-ladder-` (`toy`, `toy-lambda0.95`). Refuses a dirty tree unless
+--allow-dirty.
 
 Usage:
     uv run python scripts/e2_toy_rung.py --config configs/e2-ppo-sanity-ladder-toy.yaml
+    uv run python scripts/e2_toy_rung.py --config configs/e2-ppo-sanity-ladder-toy-lambda0.95.yaml   # the first, failed
 """
 
 from __future__ import annotations
@@ -28,8 +30,7 @@ from rlscape.agents.ppo import SMDPMaskablePPO
 from rlscape.envs.toy import HORIZON, OPTIONS, ToyEnv, optimum, returns_of
 from rlscape.eval.harness import REPO, config_hash, provenance
 
-RUNS = REPO / "runs" / "e2-ppo-sanity-ladder" / "toy"
-SUMMARY = REPO / "results" / "summary" / "e2-ppo-sanity-ladder" / "toy"
+EXPERIMENT = "e2-ppo-sanity-ladder"
 
 
 def evaluate(model: SMDPMaskablePPO, episodes: int, gamma_hr: float) -> list[dict]:
@@ -48,11 +49,12 @@ def evaluate(model: SMDPMaskablePPO, episodes: int, gamma_hr: float) -> list[dic
     return rows
 
 
-def readme(config: dict, meta: dict, best: dict, results: pd.DataFrame) -> str:
-    lines = ["# e2-ppo-sanity-ladder: rung 1, the toy env", "",
+def readme(config: dict, meta: dict, best: dict, results: pd.DataFrame, config_path: str) -> str:
+    lines = [f"# {EXPERIMENT}: rung 1, the toy env", "",
              "SMDP MaskablePPO on the synthetic three-option env (`rlscape/envs/toy.py`, OQ-65 (1)) against its exact "
-             f"optimum, {config['eval_episodes']} sampled episodes a seed. Run by `scripts/e2_toy_rung.py --config "
-             "configs/e2-ppo-sanity-ladder-toy.yaml`.", "",
+             f"optimum, {config['eval_episodes']} sampled episodes a seed, after {config['total_decisions']:,} "
+             f"decisions at GAE λ {config['ppo']['gae_lambda']}. Run by `scripts/e2_toy_rung.py --config "
+             f"{config_path}`.", "",
              f"Git `{meta['git_sha']}`" + (" (uncommitted changes)" if meta["git_dirty"] else "")
              + f", config hash `{meta['config_hash']}`.", "",
              f"**The optimum** (γ_hr {config['ppo']['gamma_hr']}): {best['trainings']} trainings, then work; "
@@ -76,6 +78,8 @@ def main() -> None:
     parser.add_argument("--allow-dirty", action="store_true")
     args = parser.parse_args()
     config = yaml.safe_load(args.config.read_text(encoding="utf-8"))
+    part = args.config.stem.removeprefix(f"{EXPERIMENT}-")
+    runs_dir, summary = REPO / "runs" / EXPERIMENT / part, REPO / "results" / "summary" / EXPERIMENT / part
     meta = {"config": config, "config_hash": config_hash(config), **provenance(), "torch": th.__version__,
             "script": "scripts/e2_toy_rung.py", "argv": sys.argv[1:]}
     if meta["git_dirty"] and not args.allow_dirty:
@@ -88,22 +92,23 @@ def main() -> None:
         vec = VecMonitor(DummyVecEnv([ToyEnv for _ in range(config["n_envs"])]))
         model = SMDPMaskablePPO("MlpPolicy", vec, seed=seed, device="cpu", verbose=0, **config["ppo"])
         model.learn(total_timesteps=int(config["total_decisions"]))
-        run = RUNS / f"seed{seed}"
+        run = runs_dir / f"seed{seed}"
         run.mkdir(parents=True, exist_ok=True)
         model.save(run / "model.zip")
         rows += [{"seed": seed, **r} for r in evaluate(model, config["eval_episodes"], gamma_hr)]
         print(f"seed {seed}: trained and evaluated in {time.perf_counter() - started:.0f}s", flush=True)
     results = pd.DataFrame(rows)
-    if SUMMARY.exists():
-        shutil.rmtree(SUMMARY)
-    SUMMARY.mkdir(parents=True)
-    results.to_csv(SUMMARY / "results.csv", index=False, lineterminator="\n")
-    (SUMMARY / "config.json").write_text(json.dumps({**meta, "optimum": best, "horizon_ticks": HORIZON}, indent=2,
+    if summary.exists():
+        shutil.rmtree(summary)
+    summary.mkdir(parents=True)
+    results.to_csv(summary / "results.csv", index=False, lineterminator="\n")
+    (summary / "config.json").write_text(json.dumps({**meta, "optimum": best, "horizon_ticks": HORIZON}, indent=2,
                                                     default=str), encoding="utf-8")
-    (SUMMARY / "README.md").write_text(readme(config, meta, best, results), encoding="utf-8", newline="\n")
+    shown = args.config.as_posix() if not args.config.is_absolute() else args.config.name
+    (summary / "README.md").write_text(readme(config, meta, best, results, shown), encoding="utf-8", newline="\n")
     for seed, group in results.groupby("seed"):
         print(f"seed {seed}: {group.discounted.mean() / best['discounted']:.1%} of the optimum, "
-              f"{group.trainings.mean():.1f} trainings (optimum {best['trainings']}) -> {SUMMARY}")
+              f"{group.trainings.mean():.1f} trainings (optimum {best['trainings']}) -> {summary}")
 
 
 if __name__ == "__main__":
