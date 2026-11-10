@@ -6770,3 +6770,45 @@ than exp." `m002-oq61`.
   speed-up at 12 workers give the same digest for every episode: the speed-up changes nothing, and an episode
   doesn't depend on its worker's schedule (OQ-64). `tests/test_mask_speedup.py`: the remembered route is the
   planned one in every state of a played episode, and is planned again when what it reads changes.
+
+### Built: `scripts/train.py` and the decision logger (tooling, OQ-61); training's throughput measured
+- **`scripts/train.py --config configs/<name>.yaml [--seed k] [--jobs N]`** (`rlscape/agents/training.py`):
+  - **What it trains:** SMDP MaskablePPO on the sim, one run per seed, in `runs/<name>/seed<k>/` (git-ignored).
+  - **The config:** `seeds`, `total_decisions`, `n_envs`, `vec_env`, `device`, `torch_threads`, `env` (the
+    weights, the horizon, D, the preference features), `ppo`, `checkpoint_every`, `decision_log` and `out`.
+    - Its `ppo` section goes to SMDPMaskablePPO as it is, so the trainer sets no hyperparameter of its own: what
+      the config leaves out is sb3's default.
+    - An unknown key is refused, and so is a number YAML reads as text (`3e-4`; it wants `3.0e-4`).
+  - **What a run writes:**
+    - `config.json`: the config, its hash, the provenance taken at the start, and the command line;
+    - `options.json`: the catalog;
+    - checkpoints, `model.zip`, and TensorBoard (sb3's curves, and `sim/*`: the rollout's finished episodes'
+      means);
+    - `episodes.parquet`: the learning curve, a row per finished episode;
+    - the decision log;
+    - `run.json`.
+  - **Repeatable:** the same config and seed give the same run on the CPU (tested).
+- **The decision log** (`rlscape/agents/decision_log.py`; CLAUDE.md's rule), a row per decision of every env:
+  - the observation (float32, the mask part included), the packed mask, the action, and the policy's probability of
+    each available action in the mask's order;
+  - the chosen action's log-probability and the state's value;
+  - the reward and its components, the duration, the termination and the info's option record (JSON);
+  - after the step: the metrics and whether the episode ended.
+
+  It's written in zstd parquet parts: about 560 bytes a decision, so about 0.6 GB for a 1M-decision run (an
+  observation has about 217 non-zero features of 3,482). It needs one more pass of the policy a step, which draws
+  no random numbers, and it isn't saved with the model. OQ-60's check (the free slots when a gathering option starts)
+  reads it: the observation holds `free_slots`, and options.json gives each action's family.
+- **Throughput** (2026-11-09, sim v1.1 with the speed-up, the CPU):
+  - **One run of 16 envs:** the envs alone make 136 decisions a second after 4,800 decisions and 226 after 16,000.
+    The caches take that long to warm up.
+  - **Four runs of 4 envs:** 117 a second each, 467 in all (warm, the envs alone). A run's envs step together, so
+    each step waits for the slowest, and four small runs wait less than one big one.
+  - **Training four seeds at once** (`--jobs 4`, 4 envs, `torch_threads` 2, 40,960 decisions each): 60 a second each
+    over the run, warm-up included, and about 70 by its end. That's about 240 to 280 in all, about 1M decisions an
+    hour: the finishing plan's estimate (60 to 70 runs in 2.5 to 6 days at 1M to 2M decisions a run) holds when an
+    experiment's seeds run four at a time.
+- **The smoke runs' policy** (an untuned config, not a result):
+  - every episode ran to the 20-hour horizon, in about 177 decisions (random takes about 380): PPO soon picks long
+    options, mostly woodcutting, melee and Agility;
+  - after about 230 episodes on a seed, total level averaged 267: above random's 214, below the guide's 351.

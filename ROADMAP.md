@@ -295,11 +295,12 @@ The old weeks 6 to 8 (E6 on the server, the stretch, a replay with the client) a
   refused) and `evaluate.py --config configs/<name>.yaml` (tooling PR, 2026-11-09).
 - [x] Speed up the action mask without changing its results (2026-11-09): routes remembered and the cheap checks
   first, 1.49× on E1's episodes (the mask was 88% of a decision), every digest of E1's 120 episodes unchanged.
-- [ ] `scripts/train.py`:
-  - one config file per experiment (`configs/`);
-  - periodic checkpoints and TensorBoard;
-  - the decision logger;
-  - each run's config, its hash and the git SHA.
+- [x] `scripts/train.py` (2026-11-09):
+  - one config file per experiment (`configs/`), its `ppo` section passed to SMDPMaskablePPO as it is;
+  - periodic checkpoints, TensorBoard and a per-episode learning curve;
+  - the decision logger (about 0.6 GB a 1M-decision run);
+  - each run's config, its hash and the provenance taken at the start;
+  - `--jobs N`, seeds in parallel: four runs of 4 envs make about 1M decisions an hour in all.
 
 *Nov 11–12: does PPO learn?*
 - [x] **E1** rerun on sim v1: random, greedy XP/hr, greedy GP/hr and the scripted guide, 30 seeds (run 2026-11-09,

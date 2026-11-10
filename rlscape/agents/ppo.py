@@ -8,6 +8,9 @@
   τ from the step's infos into the buffer, and a time limit's bootstrap (sb3's `TimeLimit.truncated`, the episode's
   20 game-hours, env contract §1) is discounted by γ_hr^τ, not by one γ a decision. sb3's per-decision `gamma` is set
   to 1 and unused.
+- `decision_logger` (rlscape.agents.decision_log), when set, gets every step of the rollout: what the policy saw,
+  its whole action distribution (one more pass of the policy, which draws no random numbers, so the run is the same
+  with or without it), its value, and what the env returned. It isn't saved with the model.
 """
 
 from __future__ import annotations
@@ -25,6 +28,7 @@ from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.utils import obs_as_tensor
 from stable_baselines3.common.vec_env import VecEnv
 
+from rlscape.agents.decision_log import DecisionLogger
 from rlscape.agents.smdp import option_discounts, smdp_gae
 
 
@@ -64,9 +68,13 @@ class SMDPMaskablePPO(MaskablePPO):
         if "gamma" in kwargs:
             raise ValueError("SMDPMaskablePPO discounts by gamma_hr per game-hour; sb3's per-decision gamma is unused")
         self.gamma_hr = gamma_hr
+        self.decision_logger: DecisionLogger | None = None
         kwargs.setdefault("rollout_buffer_class", SMDPMaskableRolloutBuffer)
         kwargs["rollout_buffer_kwargs"] = {**(kwargs.get("rollout_buffer_kwargs") or {}), "gamma_hr": gamma_hr}
         super().__init__(policy, env, gamma=1.0, **kwargs)
+
+    def _excluded_save_params(self) -> list[str]:
+        return [*super()._excluded_save_params(), "decision_logger"]
 
     def collect_rollouts(self, env: VecEnv, callback: BaseCallback, rollout_buffer: RolloutBuffer,
                          n_rollout_steps: int, use_masking: bool = True) -> bool:
@@ -86,8 +94,17 @@ class SMDPMaskablePPO(MaskablePPO):
                 if use_masking:
                     action_masks = get_action_masks(env)
                 actions, values, log_probs = self.policy(obs_tensor, action_masks=action_masks)
+                probs = None
+                if self.decision_logger is not None:
+                    probs = self.policy.get_distribution(obs_tensor, action_masks=action_masks).distribution.probs
             actions = actions.cpu().numpy()
             new_obs, rewards, dones, infos = env.step(actions)
+            if self.decision_logger is not None:
+                if action_masks is None:
+                    raise ValueError("the decision logger records the mask: train with masking")
+                self.decision_logger.record(self.num_timesteps, self._last_obs, action_masks, actions,
+                                            probs.cpu().numpy(), log_probs.cpu().numpy(),
+                                            values.cpu().numpy().flatten(), rewards, dones, infos)
             self.num_timesteps += env.num_envs
             callback.update_locals(locals())
             if not callback.on_step():
