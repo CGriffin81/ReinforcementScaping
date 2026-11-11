@@ -1,8 +1,13 @@
 """E5's weight-conditioned agent (rlscape/agents/conditioned.py, the trainer and rlscape/eval/trained.py): each
 episode draws a weighting, is rewarded by it and shows it; a run is repeatable; a trained agent is evaluated at any
-weighting by the harness. Real sim episodes throughout."""
+weighting by the harness, and replayed at any (scripts/replay.py). Real sim episodes throughout."""
 
 from __future__ import annotations
+
+import importlib.util
+import json
+import math
+import sys
 
 import numpy as np
 import pytest
@@ -17,6 +22,7 @@ from rlscape.agents.decision_log import read_decisions  # noqa: E402
 from rlscape.agents.training import check_config, train  # noqa: E402
 from rlscape.envs.sim_env import SimEnv  # noqa: E402
 from rlscape.envs.weights import WEALTH_FACTOR, env_weights  # noqa: E402
+from rlscape.eval.harness import REPO  # noqa: E402
 from rlscape.eval.harness import run as evaluate  # noqa: E402
 from rlscape.eval.trained import TrainedPolicy, preference, split  # noqa: E402
 
@@ -81,3 +87,54 @@ def test_a_conditioned_config_sets_no_weights_of_its_own():
         check_config({**CONFIG, "env": {"normalised_weights": [0.5, 0.5]}})
     with pytest.raises(ValueError, match="conditioned.weights"):
         check_config({**CONFIG, "conditioned": {"weights": "dirichlet"}})
+
+
+@pytest.fixture(scope="module")
+def replay():
+    spec = importlib.util.spec_from_file_location("replay_script", REPO / "scripts" / "replay.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def replayed(replay, monkeypatch, *argv: str) -> None:
+    monkeypatch.setattr(sys, "argv", ["replay.py", *argv])
+    replay.main()
+
+
+def test_a_replay_plays_the_agent_at_each_weighting_as_the_evaluation_does(runs, replay, monkeypatch, tmp_path):
+    run, out = runs[0], tmp_path / "e5.html"
+    replayed(replay, monkeypatch, str(run), "--weightings", "1", "0.25", "--also", "random", "--out", str(out))
+    html = out.read_text(encoding="utf-8")
+    start = html.index("const DATA = ") + len("const DATA = ")
+    shown = json.loads(html[start:html.index("const TICKS_PER_HOUR")].rstrip().rstrip(";"))["replays"]
+    assert [r["label"] for r in shown] == ["Skill share 1", "Skill share 0.25", "random"]
+    assert [r.get("preference") for r in shown] == [[1.0, 0.0], [0.25, 0.75], None]
+    model = run / "model.zip"
+    _, episodes = evaluate([f"a=ppo:{model}@1", f"b=ppo:{model}@0.25"], [0], {"horizon_ticks": 1_500}, workers=1)
+    for r, row in zip(shown, episodes.itertuples()):
+        assert len(r["decisions"]) == row.decisions  # the evaluation's episode at that weighting
+        assert (r["final"]["total_level"], r["final"]["net_worth"]) == (row.total_level, row.net_worth)
+        u = r["preference"][0]
+        counted = sum(u * d["r_skill"] + (1 - u) * WEALTH_FACTOR * d["r_wealth"] for d in r["decisions"])
+        assert r["reward"] == pytest.approx(counted, abs=1e-3)  # rewarded by its own weighting
+        assert all(d["top"] and math.isfinite(d["value"]) for d in r["decisions"])  # read with its weighting seen
+    u = 0.5  # the baseline, rewarded at the normalised (.5, .5)
+    counted = sum(u * d["r_skill"] + (1 - u) * WEALTH_FACTOR * d["r_wealth"] for d in shown[2]["decisions"])
+    assert shown[2]["reward"] == pytest.approx(counted, abs=1e-3)
+
+
+def test_only_a_conditioned_run_takes_weightings_and_each_is_a_share(runs, replay, monkeypatch, tmp_path, capsys):
+    meta = json.loads((runs[0] / "config.json").read_text(encoding="utf-8"))
+    del meta["config"]["conditioned"]
+    (tmp_path / "plain").mkdir()
+    (tmp_path / "plain" / "config.json").write_text(json.dumps(meta), encoding="utf-8")
+    with pytest.raises(SystemExit):
+        replayed(replay, monkeypatch, str(tmp_path / "plain"), "--weightings", "0.5")
+    assert "weight-conditioned run" in capsys.readouterr().err
+    with pytest.raises(SystemExit):
+        replayed(replay, monkeypatch, str(runs[0]), "--weightings", "1.5")
+    assert "skill share is in [0, 1]" in capsys.readouterr().err
+    assert replay.latest(runs[0]) == ["final"]
+    names = replay.weighted_names(replay.trained_names(1_000_448, 8_638, final=True), 0.75, several_checkpoints=True)
+    assert names["label"].startswith("Skill 0.75, after 8,638") and names["short"].startswith("skill 0.75")

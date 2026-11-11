@@ -12,6 +12,15 @@ Usage:
 By default the checkpoints are the first, the one nearest the middle, and the final model. The page names each by the
 practice episodes it had played (its training's decisions are in its description). The page goes to
 results/replays/<experiment>_<variant>_seed<k>_episode<seed>.html (git-ignored) unless --out says where.
+
+**E5's weight-conditioned runs** (rlscape.agents.conditioned) are played at the weightings --weightings gives, each a
+skill share u in [0, 1] (the wealth share is 1 − u, in normalised units, OQ-67). By default the final model (or, while
+the run trains, its latest checkpoint) is played at 1, 0.5 and 0: one policy, asked for skill, a balance, then wealth.
+A replay is each chosen checkpoint at each weighting, named by its weighting first. Its agent sees that weighting
+(the evaluation's `<label>=ppo:<model.zip>@<u>`), and its env rewards by it, so its reward is the one it was asked to
+earn. The baselines beside it are rewarded at the normalised (.5, .5). Only a conditioned run takes --weightings.
+
+    uv run python scripts/replay.py runs/e5-weight-conditioned-ppo/seed0 --weightings 1 0.75 0.5 0.25 0
 """
 
 from __future__ import annotations
@@ -29,10 +38,13 @@ import pandas as pd
 import pyarrow.parquet as pq
 
 from rlscape.envs.sim_env import SimEnv
+from rlscape.envs.weights import env_weights
 from rlscape.eval.harness import POLICIES, REPO, make_policy
 from rlscape.eval.replay import Walks, page, record
 
 CHECKPOINT = re.compile(r"^ppo_(\d+)_steps\.zip$")
+WEIGHTINGS = (1.0, 0.5, 0.0)  # a conditioned run's default skill shares: skill, a balance, wealth
+BASELINE_WEIGHTING = 0.5      # the normalised (.5, .5) the baselines are rewarded at beside a conditioned run
 
 
 def checkpoints(run: Path) -> dict[int, Path]:
@@ -119,11 +131,34 @@ BASELINES = {  # E1's baselines, untrained (rlscape/baselines)
 }
 
 
-def env_from(meta: dict) -> SimEnv:
+def weighted_names(names: dict, u: float, several_checkpoints: bool) -> dict:
+    """A conditioned replay's names: its weighting first (the page cuts a label at 22 characters on the timeline and
+    15 at a chart line's end), then its checkpoint where there are several."""
+    if several_checkpoints:
+        label, short = f"Skill {u:g}, {names['label'][0].lower()}{names['label'][1:]}", f"skill {u:g}, {names['short']}"
+    else:
+        label, short = f"Skill share {u:g}", f"skill {u:g}"
+    return {"label": label, "short": short, "preference": [u, 1.0 - u],
+            "about": f"{names['about']} Asked for a skill share of {u:g} and a wealth share of {1.0 - u:g} (normalised, "
+                     "OQ-67): the weighting it sees, and the one its reward here is counted by."}
+
+
+def env_from(meta: dict, u: float | None = None) -> SimEnv:
+    """The env as the run was trained; for a conditioned run, rewarding by the skill share u."""
     kwargs = dict(meta.get("env_kwargs") or {})
     if "reward_weights" in kwargs:
         kwargs["reward_weights"] = tuple(kwargs["reward_weights"])
+    if u is not None:
+        kwargs["reward_weights"] = env_weights((u, 1.0 - u))
     return SimEnv(**kwargs)
+
+
+def latest(run: Path) -> list[str]:
+    """A conditioned run's default checkpoint: the final model, or while it trains, its latest checkpoint."""
+    if (run / "model.zip").exists():
+        return ["final"]
+    saved = checkpoints(run)
+    return [str(max(saved))] if saved else []
 
 
 def main() -> None:
@@ -132,33 +167,55 @@ def main() -> None:
     parser.add_argument("--checkpoints", nargs="+", help="decisions of saved checkpoints, or final")
     parser.add_argument("--also", nargs="+", default=[], choices=sorted(POLICIES), help="baselines to replay beside it")
     parser.add_argument("--seed", type=int, default=0, help="the episode's seed (E1's evaluation seeds are 0 to 29)")
+    parser.add_argument("--weightings", nargs="+", type=float,
+                        help="a weight-conditioned run's skill shares in [0, 1] (default: "
+                             f"{' '.join(f'{u:g}' for u in WEIGHTINGS)})")
     parser.add_argument("--out", type=Path)
     args = parser.parse_args()
     run = args.run.resolve()
     meta = json.loads((run / "config.json").read_text(encoding="utf-8"))
     config = meta["config"]
+    conditioned = bool(config.get("conditioned"))
+    if args.weightings and not conditioned:
+        parser.error("--weightings is for a weight-conditioned run (E5); this run was trained at one weighting")
+    if any(not 0.0 <= u <= 1.0 for u in args.weightings or ()):
+        parser.error("a skill share is in [0, 1]")
     parts = run.relative_to(REPO / "runs").parts if run.is_relative_to(REPO / "runs") else run.parts[-3:]
     name = "_".join(parts)
     out = args.out or REPO / "results" / "replays" / f"{name}_episode{args.seed}.html"
 
-    env, walks, replays = env_from(meta), Walks(), []
-    specs = [(names, f"{names['label']}=ppo:{path}") for names, path in chosen(run, args.checkpoints, config["n_envs"])]
+    walks, replays, envs = Walks(), [], {}
+    trained = chosen(run, args.checkpoints or (latest(run) if conditioned else None), config["n_envs"])
+    specs = []  # (names, policy spec, the skill share its env rewards by, or None for the run's own weights)
+    for names, path in trained:
+        if not conditioned:
+            specs.append((names, f"{names['label']}=ppo:{path}", None))
+            continue
+        for u in dict.fromkeys(args.weightings or WEIGHTINGS):
+            named = weighted_names(names, u, len(trained) > 1)
+            specs.append((named, f"{named['label']}=ppo:{path}@{u!r}", u))  # the exact share the env rewards by
     for b in args.also:
         name = b.replace("_", " ")
-        specs.append(({"label": name, "short": name, "about": BASELINES.get(b, "An E1 baseline.")}, b))
-    for names, spec in specs:
+        about = BASELINES.get(b, "An E1 baseline.") + (" Rewarded at the normalised (.5, .5)." if conditioned else "")
+        specs.append(({"label": name, "short": name, "about": about}, b, BASELINE_WEIGHTING if conditioned else None))
+    for names, spec, u in specs:
         started = time.perf_counter()
-        replays.append(record(env, make_policy(spec), args.seed, names["label"], walks) | names)
+        if u not in envs:
+            envs[u] = env_from(meta, u)
+        replays.append(record(envs[u], make_policy(spec), args.seed, names["label"], walks) | names)
         r = replays[-1]
         print(f"{names['label']}: {len(r['decisions'])} decisions in the episode, total level "
               f"{r['final']['total_level']}, net worth {r['final']['net_worth']:,} gp "
               f"({time.perf_counter() - started:.0f}s)", flush=True)
 
     env_section = config.get("env") or {}
-    weights = (f"normalised weights {tuple(env_section['normalised_weights'])}, the env's "
-               f"({meta['env_kwargs']['reward_weights'][0]:g}, {meta['env_kwargs']['reward_weights'][1]:.3g})"
-               if "normalised_weights" in env_section else
-               f"weights {tuple(meta.get('env_kwargs', {}).get('reward_weights', (0.5, 0.5)))}")
+    if conditioned:
+        weights = "weight-conditioned: each replay is asked for, and rewarded by, its own weighting"
+    elif "normalised_weights" in env_section:
+        weights = (f"normalised weights {tuple(env_section['normalised_weights'])}, the env's "
+                   f"({meta['env_kwargs']['reward_weights'][0]:g}, {meta['env_kwargs']['reward_weights'][1]:.3g})")
+    else:
+        weights = f"weights {tuple(meta.get('env_kwargs', {}).get('reward_weights', (0.5, 0.5)))}"
     info = {"title": f"Replay: {' / '.join(parts)}",
             "subtitle": f"Episode seed {args.seed} · {weights} · git {meta['git_sha'][:7]}"
                         + (" (dirty)" if meta.get("git_dirty") else "")
