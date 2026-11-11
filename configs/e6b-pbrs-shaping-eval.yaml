@@ -1,0 +1,20 @@
+# E6b's evaluation: the 5 PPO + PBRS models on E1's 30 seeds with sampled actions (OQ-65 (4)), beside E1's four
+# baselines on the same seeds. Run after training. Without shaping, the same agent is E3's (.5, .5)
+# (normalised_weights0.5-0.5/seed<k> in E3's summary): an episode depends only on the policy and the seed (OQ-64,
+# OQ-65 (4)), so E3's evaluated episodes pair with these seed for seed. The shaping plays no part in an evaluation.
+#   uv run python scripts/evaluate.py --config configs/e6b-pbrs-shaping-eval.yaml
+#   uv run python scripts/publish_summary.py results/eval/e6b-pbrs-shaping e6b-pbrs-shaping
+policies:
+  - random
+  - greedy_xp
+  - greedy_wealth
+  - scripted_guide
+  - pbrs/seed0=ppo:runs/e6b-pbrs-shaping/seed0/model.zip
+  - pbrs/seed1=ppo:runs/e6b-pbrs-shaping/seed1/model.zip
+  - pbrs/seed2=ppo:runs/e6b-pbrs-shaping/seed2/model.zip
+  - pbrs/seed3=ppo:runs/e6b-pbrs-shaping/seed3/model.zip
+  - pbrs/seed4=ppo:runs/e6b-pbrs-shaping/seed4/model.zip
+seeds: 30
+hours: 20
+workers: 16
+out: results/eval/e6b-pbrs-shaping

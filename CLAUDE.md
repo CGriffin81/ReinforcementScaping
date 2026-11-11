@@ -175,7 +175,8 @@ work.
   hour in all, twice one run of 16. Evaluate a trained model with `scripts/evaluate.py --policies random
   <label>=ppo:<model.zip>` (sampled actions, OQ-65), and publish the runs with `uv run python
   scripts/publish_training.py runs/<name> <name>`. E3 to E6 give their reward weights as `env.normalised_weights`, in
-  units of E1's best 20-hour gain on each objective (OQ-67, `rlscape/envs/weights.py`). Watch a run: TensorBoard on
+  units of E1's best 20-hour gain on each objective (OQ-67, `rlscape/envs/weights.py`). E6b adds a `pbrs:` section,
+  potential-based shaping (OQ-73, `rlscape/agents/pbrs.py`). Watch a run: TensorBoard on
   `runs/<name>`, or `uv run python scripts/replay.py <run dir> [--also scripted_guide] [--seed k]`, which writes one
   HTML page to `results/replays/` (OQ-70).
 - More servers at once (Caleb, 2026-11-06): `uv run python
