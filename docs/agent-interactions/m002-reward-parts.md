@@ -3,8 +3,7 @@
 ## Metadata
 
 - Interaction ID: m002-reward-parts
-- Timestamp CST: 2026-11-10 22:40:00 CST (estimated): Caleb's "Yes, carry on with E6b". The exact time is in the
-  record `m002-e6b-pbrs`, from the session transcript (UTC−06:00).
+- Timestamp CST: 2026-11-10 22:27:42 CST, the prompt's timestamp in the session transcript (UTC−06:00).
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS. Built and tested; its PR is stacked on #17.
