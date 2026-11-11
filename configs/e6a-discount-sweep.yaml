@@ -3,7 +3,7 @@
 # so over a 15-minute option 0.5 is 0.84, 0.9 is 0.974 and 0.99 is 0.9975.
 # - The third value, 0.99 (ROADMAP §3's set), is E3's (.5, .5): every other setting here is E3's, so E3's runs at
 #   (.5, .5) are this sweep's 0.99 arm, seed for seed, and aren't trained again.
-# - The weights are in normalised units (OQ-67): (.5, .5) is SimEnv's (.5, 8.57).
+# - The weights are in normalised units (OQ-67): (.5, .5) is SimEnv's (.5, 9.18) on sim v1.2.
 # - 2M decisions a run (OQ-69). E2's winner (OQ-65 (2)): GAE lambda 0.95, learning rate 3e-4, entropy 0.01.
 # 10 runs: about 22 hours four at a time.
 #   uv run python scripts/train.py --config configs/e6a-discount-sweep.yaml --jobs 4
