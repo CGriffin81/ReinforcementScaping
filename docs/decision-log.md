@@ -7325,3 +7325,20 @@ Asked together after Caleb's question "Why don't any of the runs do anything wit
 
   So `WEALTH_FACTOR` goes from 17.13 to 18.36, and the normalised (.5, .5) is env (.5, 9.18). Updated with the
   tooling (`rlscape/envs/weights.py`), which E3 to E6 merge before they train again.
+
+### Changed: OQ-67's units on sim v1.2, and E3 to E6 restart from one queue (2026-11-11)
+- **The units** (`rlscape/envs/weights.py`), from E1 on v1.2 by OQ-67's rule:
+  - `SKILL_UNIT` 323.866 levels, unchanged;
+  - `WEALTH_UNIT` 17.639 (1.76M gp), was 18.901;
+  - `WEALTH_FACTOR` 18.36, was 17.13. The normalised (.5, .5) is env (.5, 9.18), was (.5, 8.57).
+
+  E3 to E6's configs give normalised weights, so they're unchanged; what they stand for moves with E1.
+  `tests/test_weights.py` checks the units against E1's published summary.
+- **The branches:** `tooling/units-v1.2` is the tooling stack with sim v1.2 (`sim/v1.2-fletching-slot`, PR #22) and
+  E1's rerun merged in, and these units. E3's, E4's, E5's, E6a's and E6b's branches merge it.
+  - E5's test gets the observation's new size (3,488).
+  - E3 also gets the tooling it lacked since `801405c`: the replay, the reward parts, the queue and the analysis data.
+- **The queue** (`scripts/train_queue.py`, OQ-61's worktrees) trains all 50 runs, E3 included, by seeds: seed 0 of
+  every experiment first. Each run takes about 8.7 hours four at a time, so about 110 hours: done around Nov 16 to 17.
+- **E3's 13 finished v1.1 runs and 4 partial ones** are kept aside in its worktree
+  (`runs/e3-reward-weight-sweep-sim-v1.1`). They aren't used.
