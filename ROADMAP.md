@@ -329,12 +329,17 @@ The old weeks 6 to 8 (E6 on the server, the stretch, a replay with the client) a
   SimEnv's by `rlscape/envs/weights.py`.
 - [x] The replay page (2026-11-10, OQ-70): `scripts/replay.py <run dir>` plays a run's checkpoints on one seed and writes
   one HTML page, with a timeline, a map, the policy's choices, the skills and the curves. It's the demo, built early.
-- [x] The training queue (2026-11-11): `scripts/train_queue.py` trains E6a's, E4's, E6b's and E5's 25 runs from one
-  queue, each in its experiment's worktree, taking E3's slots as they free (`--jobs` counts every training run on
-  the machine), seed 0 of every experiment first. The worktrees `D:\ReinforcementScaping-e4`, `-e6b` and `-e5` are set
-  up like E6a's.
+- [x] The training queue (2026-11-11): `scripts/train_queue.py` trains several experiments' runs from one queue, each
+  in its experiment's worktree (`--jobs` counts every training run on the machine), seed 0 of every experiment
+  first. Since the restart on sim v1.2 it trains E3's to E6's 50 runs. The worktrees `D:\ReinforcementScaping-e4`,
+  `-e6b` and `-e5` are set up like E6a's.
 
 *Nov 13–18: the experiments* (the runs overlap the building)
+
+*Restarted on sim v1.2 (2026-11-11, OQ-75 (c), Caleb):* woodcutting's fletch slot, so Fletching can be trained. E3
+was stopped with 13 of its 25 runs done on v1.1, which are kept aside (`runs/e3-reward-weight-sweep-sim-v1.1` in its
+worktree). E1 was rerun on v1.2 and OQ-67's units recomputed from it. E3 to E6 train again from one queue, all 50
+runs, seed 0 of every experiment first: about 110 hours, so done around Nov 16 to 17. E2 stays on v1.1.
 - [ ] **E3, the reward-weight sweep** (RQ1 to RQ3): (1,0), (.75,.25), (.5,.5), (.25,.75) and (0,1) in normalised
   units (OQ-67), 5 seeds each, 2M decisions a run (OQ-69), with E2's winner: λ 0.95, learning rate 3e-4, entropy 0.01.
 - [ ] **E4, PPO + RND** (RQ2, RQ4, H3): the RND wrapper, then PPO + RND at (.5,.5), 5 seeds, against E3's (.5,.5).
