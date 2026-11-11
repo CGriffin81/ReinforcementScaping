@@ -178,6 +178,10 @@ work.
   units of E1's best 20-hour gain on each objective (OQ-67, `rlscape/envs/weights.py`). Watch a run: TensorBoard on
   `runs/<name>`, or `uv run python scripts/replay.py <run dir> [--also scripted_guide] [--seed k]`, which writes one
   HTML page to `results/replays/` (OQ-70).
+- Several experiments from one queue: `uv run python scripts/train_queue.py --jobs 4 <worktree>/configs/<name>.yaml
+  ...` trains each run in its own experiment's worktree (its own `train.py`, venv and provenance), seed 0 of every
+  experiment first. `--jobs` counts every training run on the machine, so it fills another launcher's slots as they
+  free. `--dry-run` shows each run's state (waiting, training, partial, done), and is safe while a queue trains.
 - More servers at once (Caleb, 2026-11-06): `uv run python
   scripts/server_instances.py 2 3` writes `results/servers/rl-<n>.conf`
   (world n, bridge port 43610 + n - 1, its own GE under
