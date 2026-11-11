@@ -7210,3 +7210,15 @@ than exp." `m002-oq61`.
   - a centred bonus averages about zero, and Burda's is positive;
   - bad `rnd` sections are refused.
   The trainer's own tests still pass (8).
+### Built: reward parts kept apart in the learning curve and the decision log (tooling, E4 and E6b)
+- **Why:** E4's RND and E6b's PBRS each add to the env's reward during training. Their curves must still report the
+  env's own reward, to compare with E3's, and the additions must be logged with every decision (CLAUDE.md's reward
+  components).
+- **How:** a training wrapper puts the env's reward in its step's info as `reward_extrinsic` and its addition as
+  `r_intrinsic` (RND) or `r_shaping` (PBRS). These two are `REWARD_PARTS` in `rlscape/agents/training.py`.
+  - `episodes.parquet` and TensorBoard's `sim/*`: `reward` is the env's, and each part is summed beside it.
+  - The decision log has `r_intrinsic` and `r_shaping` columns. Its `reward` is what PPO learned from.
+  - Without a wrapper both are 0, and a run is as before.
+- **Shared tooling:** it goes to `main` first by its own PR (CLAUDE.md). E4's branch merges it, and E6b's starts from
+  it.
+- **Tests:** `tests/test_training.py`, 5 passed. Without a wrapper the parts are 0, and the logged reward is the env's.
