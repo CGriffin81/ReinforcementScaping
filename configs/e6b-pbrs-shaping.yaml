@@ -1,8 +1,8 @@
 # E6b, PBRS (RQ4; ROADMAP's finishing plan): PPO with potential-based reward shaping at the normalised (.5, .5),
 # 5 seeds, against E3's (.5, .5), which is the same config without shaping (raw reward).
 # - Every setting but `pbrs` is E3's (.5, .5): seeds 0 to 4, 2M decisions (OQ-69), E2's winner (OQ-65 (2)), the
-#   normalised weights (OQ-67; SimEnv's (.5, 8.57)), gamma_hr 0.99. So E3's runs at (.5, .5) are E6b's baseline, seed
-#   for seed.
+#   normalised weights (OQ-67; SimEnv's (.5, 9.18) on sim v1.2), gamma_hr 0.99. So E3's runs at (.5, .5) are E6b's
+#   baseline, seed for seed.
 # - The potential (rlscape/agents/pbrs.py; Caleb, 2026-11-10, OQ-73): the discounted wealth reward that the best
 #   gathering income the character's levels and unlocks allow would earn in the time left. The shaping
 #   F = gamma_hr^tau Phi(s') - Phi(s) uses the agent's own gamma_hr, so the best policy is the unshaped one's.
