@@ -7278,3 +7278,25 @@ Asked together after Caleb's question "Why don't any of the runs do anything wit
   - (c) a step function against a smooth logistic fit, by BIC.
 
   **Caleb: (a).**
+
+### Built: sim v1.2, woodcutting's fletch slot (Caleb, 2026-11-11, OQ-75 (c))
+- **Why:** no run trained Fletching (`m002-fletching-unused`). Its own slots open only while logs and a knife are
+  held, and chop-and-burn won both of woodcutting's XP slots at every level the agents reached: E2's and E3's agents
+  ran only `wc_*_burn` paths, and Fletching stayed at 1 while the guide reached 11. Caleb chose to change the sim and
+  restart E3 to E6 (OQ-75 (c)), and took the recommendations on the rest (2026-11-11): one new slot, the knife taken
+  on the way, E3 stopped at once, E1 rerun with E2 kept on v1.1, and the gem trade kept.
+- **Built** (`rlscape/sim/skilling.py`, `rlscape/envs/encoding.py`; env contract v1.44, option catalog §2):
+  - `skill_woodcutting_fletch`: the best open chop-and-fletch path by XP/hr, filled before woodcutting's XP and gp
+    slots, which rank the rest (no path in two slots). `EXTRA_SLOTS` and `slot_names` give a skill's slots in order.
+  - A chop-and-fletch path without a knife carried takes one from the nearest reachable spawn on its way
+    (`knife_spawn`, `TakeSpawn`), and its rate counts the detour. It's open when a knife is carried or can be taken.
+  - The observation carries the slot's 5 rate features: 2,294 actions and 3,488 features (one more mask bit).
+- **Seen:** a fresh character's fletch slot is open; run for 15 game-minutes it takes the knife and makes 1,095 arrow
+  shafts, 365 Fletching XP and 2,025 Woodcutting XP. Random episodes run at the same speed (64 decisions a second on
+  v1.2, 61 on v1.1).
+- **Tests:** the full suite, 436 passed, 75 skipped (the live tests; the server was down). New: the fletch slot holds
+  the best chop-and-fletch path and the XP slots rank the rest; a path takes a knife on its way and counts the
+  detour. Updated: a fresh character's open paths and slots, and the schema's sizes.
+- **What follows:** E1 is rerun on v1.2, and OQ-67's units come from it. E2 stays on v1.1, the sanity ladder it was.
+  E3's 13 v1.1 runs are kept aside as a record. E3 to E6 train again on v1.2. Models trained on v1.1 (E2's) don't
+  load on v1.2, whose observation is 6 features longer, so they're replayed from E2's branch.

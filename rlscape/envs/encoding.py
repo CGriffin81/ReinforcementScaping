@@ -20,7 +20,7 @@ Parts, in order (sizes for vocabulary V, A access rules, N actions):
 | equipment | 12 | tier / top tier of the best item carried (worn or in the inventory) per role, 0 for none |
 | region | 12 | one-hot: the catalog's 11 regions, or elsewhere |
 | combat_candidates | 18 × 5 | per slot: XP/hr, gp/hr, damage per hour vs HP and food, travel, open |
-| skilling_candidates | 20 × 5 | per slot: the slot's skill's XP/hr, its processing counterpart's XP/hr, gp/hr, travel, open |
+| skilling_candidates | 37 × 5 | per slot (v1.44: woodcutting's fletch too): skill XP/hr, counterpart XP/hr, gp/hr, travel, open |
 | loot_mode | 4 | one-hot |
 | task | 18 | one-hot: the last activity's task, which decides what bank_deposit keeps (rlscape.sim.kits) |
 | potions | 11 × 2 | each potion's doses in the inventory and the bank, log1p-scaled (four-dose potions alone are in V) |
@@ -65,7 +65,7 @@ from rlscape.sim.health import food_healing_held, poison_cover
 from rlscape.sim.potions import ALL_POTIONS, antifire_cover, doses_held
 from rlscape.sim.mining import PICKAXE_PRIORITY
 from rlscape.sim.options import Option
-from rlscape.sim.skilling import K_GP, K_XP, SkillSlot
+from rlscape.sim.skilling import SkillSlot, slot_names
 from rlscape.sim.skilling import SKILLS as SKILLING_SKILLS
 from rlscape.sim.skills import MAX_LEVEL, SKILL_INDEX, SKILLS, XP_FOR_LEVEL, level_for_xp
 from rlscape.sim.slots import K, FightSlot
@@ -328,12 +328,12 @@ class ObsEncoder:
         return out
 
     def _skilling(self, state: CharacterState) -> list[float]:
-        out = [0.0] * (len(SKILLING_SKILLS) * (K_XP + K_GP) * len(SKILLING_FEATURES))
+        out = [0.0] * (sum(len(slot_names(skill)) for skill in SKILLING_SKILLS) * len(SKILLING_FEATURES))
         if self.skilling is None:
             return out
         n = 0
         for skill in SKILLING_SKILLS:
-            for index in range(K_XP + K_GP):
+            for index in range(len(slot_names(skill))):  # the catalog's order (rlscape.sim.skilling)
                 candidate = self.skilling.candidate(state, skill, index)
                 if candidate is not None:
                     rate = candidate.rate

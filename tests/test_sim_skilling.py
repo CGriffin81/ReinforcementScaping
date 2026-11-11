@@ -7,7 +7,11 @@ import pytest
 
 from rlscape.gamedata import server as gd
 from rlscape.sim import Simulator, build_catalog
-from rlscape.sim.skilling import (K_GP, K_XP, SKILLS, SkillingSlots, _unit, path_options, path_rate, slot_holding)
+from rlscape.sim.economy import PICKUP_TICKS
+from rlscape.sim.skilling import (K_GP, K_XP, SKILLS, SkillingSlots, _site, _unit, knife_spawn, path_options,
+                                   path_rate, slot_holding, slot_names)
+from rlscape.sim.transport import home_ready
+from rlscape.travel import travel_ticks
 from rlscape.sim.skills import SKILL_INDEX, XP_FOR_LEVEL
 from rlscape.sim.state import CharacterState
 
@@ -92,19 +96,53 @@ def test_slots_hold_the_best_two_by_xp_then_the_best_two_others_by_gp():
                       woodcutting=35, firemaking=35, mining=35, smithing=20, fishing=35, cooking=30, thieving=40)
     slots = SkillingSlots()
     for skill in SKILLS:
-        held = [slots.candidate(state, skill, i) for i in range(K_XP + K_GP)]
+        held = [slots.candidate(state, skill, i) for i in range(len(slot_names(skill)))]
         filled = [c for c in held if c is not None]
         assert len({c.path.id for c in filled}) == len(filled)  # no path in two slots
-        xp, gp = held[:K_XP], held[K_XP:]
+        xp, gp, extra = held[:K_XP], held[K_XP:K_XP + K_GP], held[K_XP + K_GP:]
         if xp[0] is None:
             continue  # nothing open (no fletching inputs held here)
-        rest = [p for p in path_options() if p.skill == skill and p.available(state)
-                and p.id not in {c.path.id for c in xp if c is not None}]
+        ranked = [p for p in path_options() if p.skill == skill and p.available(state)
+                  and p.id not in {c.path.id for c in extra if c is not None}]  # the extra slots are filled first
+        rest = [p for p in ranked if p.id not in {c.path.id for c in xp if c is not None}]
         assert [c.rate.xp for c in xp if c] == sorted((c.rate.xp for c in xp if c), reverse=True)
-        best_xp = max((path_rate(p, state).xp for p in path_options() if p.skill == skill and p.available(state)))
-        assert xp[0].rate.xp == pytest.approx(best_xp)
+        assert xp[0].rate.xp == pytest.approx(max(path_rate(p, state).xp for p in ranked))
         if gp[0] is not None:
             assert gp[0].rate.gp == pytest.approx(max(path_rate(p, state).gp for p in rest))
+
+
+@needs_server
+def test_woodcuttings_fletch_slot_holds_the_best_chop_and_fletch_path_and_the_xp_slots_rank_the_rest():
+    # sim v1.2 (Caleb, OQ-75): chop-and-burn won both XP slots, so no agent fletched; now chop-and-fletch has a slot
+    state = character({STEEL_AXE: 1, TINDERBOX: 1, gd.KNIFE: 1}, woodcutting=35, firemaking=35, fletching=20)
+    slots = SkillingSlots()
+    assert slot_names("woodcutting") == ("xp1", "xp2", "gp1", "gp2", "fletch") and slot_names("fishing")[-1] == "gp2"
+    fletch = slots.candidate(state, "woodcutting", 4)
+    fletching = [p for p in path_options()
+                 if p.id.startswith("wc_") and p.id.endswith("_fletch") and p.available(state)]
+    assert fletch.path.id.endswith("_fletch")
+    assert fletch.rate.xp == pytest.approx(max(path_rate(p, state).xp for p in fletching))
+    xp = [slots.candidate(state, "woodcutting", i) for i in range(K_XP)]
+    assert all(c.path.id.endswith("_burn") for c in xp) and fletch.path.id not in {c.path.id for c in xp}
+
+
+@needs_server
+def test_a_chop_and_fletch_path_takes_a_knife_on_its_way_and_counts_the_detour():
+    fresh = CharacterState.fresh()
+    assert fresh.inventory.get(gd.KNIFE, 0) == 0 and knife_spawn(fresh) is not None
+    path = paths()["wc_logs_fletch"]
+    assert path.available(fresh)  # no knife carried: one is taken on the way
+    with_knife = CharacterState.fresh()
+    with_knife.add(gd.KNIFE)
+    detour, direct = path_rate(path, fresh), path_rate(path, with_knife)
+    assert detour.travel > direct.travel and detour.xp < direct.xp  # the walk to the knife costs time
+    spawn, site = knife_spawn(fresh), _site(path.gather)
+    expected = travel_ticks(fresh.location, spawn, home_ready(fresh)) + PICKUP_TICKS + travel_ticks(spawn, site)
+    assert detour.travel == pytest.approx(expected)
+    result = path.run(fresh, np.random.default_rng(0), 1_500)
+    assert result.detail == {"path": "wc_logs_fletch", "took_knife": True} and fresh.inventory[gd.KNIFE] == 1
+    assert fresh.xp[SKILL_INDEX["fletching"]] > 0 and fresh.inventory.get(52, 0) > 0  # arrow shafts
+    assert not path.available(character({LOGS: 28}))  # no knife and no room to take one: not open
 
 
 @needs_server
