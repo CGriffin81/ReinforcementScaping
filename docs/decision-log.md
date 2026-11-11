@@ -7205,3 +7205,34 @@ than exp." `m002-oq61`.
 - **A smoke run with subprocess envs:** each env drew its own weighting every episode.
 - **Not yet:** `scripts/replay.py` plays a conditioned model without its weighting. It needs `@<u>` before it can show
   E5's runs.
+
+### Built: E5's agents replayed at any weighting (2026-11-11)
+- **Why:** E5's entry above left `scripts/replay.py` unable to play a conditioned agent: the model expects its
+  weighting appended to what it sees. The replay page is the demo (OQ-70), and E5's point is one agent for every
+  weighting, so its page shows one agent asked for different things.
+- **How:**
+  - `TrainedPolicy.observation(obs)` gives the observation as the model sees it, its weighting appended (E5) or not.
+    The policy acts on it, and the replay reads the model's top choices and value from it.
+  - `scripts/replay.py --weightings u ...` plays each chosen checkpoint at each skill share u, by the evaluation's
+    spec (`<label>=ppo:<model.zip>@<u>`). Each replay's env rewards by its own weighting, so its reward is the one
+    it was asked to earn.
+  - For a conditioned run, the defaults are the final model (its latest checkpoint while it trains) at 1, 0.5 and 0:
+    skill, a balance, then wealth.
+  - A replay is named by its weighting first ("Skill share 0.5"), since the page cuts labels at 22 characters on the
+    timeline. With several checkpoints, the checkpoint follows ("Skill 0.75, after 8,638 episodes").
+  - Baselines beside a conditioned run are rewarded at the normalised (.5, .5), and their descriptions say so.
+  - Only a conditioned run takes `--weightings`.
+- **Where:** a branch from E5's, `e5/replay-weightings`, merged into E5's by its own PR. E5's own branch stays where
+  its runs record it (`e22a0f7`) until they've started. It's E5's code: no other experiment has a weighting to give.
+- **Tests** (`tests/test_conditioned.py`, now 6; with `tests/test_replay.py`, 12 passed):
+  - A replay at u = 1 and 0.25 is the evaluation's episode at `@1` and `@0.25` (decisions, level, net worth).
+  - Its reward is counted by its own weighting, and the model's choices are read with the weighting seen.
+  - A baseline beside it is rewarded at (.5, .5).
+  - A plain run refuses `--weightings`, and a share outside [0, 1] is refused.
+  - E2's trained replays are unchanged (the two tests on E2's run, run against it).
+- **Seen on a smoke run** (E5's config, 2,000 decisions, one process): the page shows the three weightings beside the
+  scripted guide.
+  - The critic's value differs at every one of the 359 decisions, and the reward follows the weighting (189, 95 and
+    1.2).
+  - The three episodes are the same: after 2,000 decisions the policy is still close to uniform (its top option
+    about 1%), so the weighting doesn't yet change a sampled action.

@@ -71,8 +71,12 @@ class TrainedPolicy:
     def reset(self, seed: int | None) -> None:
         th.manual_seed(0 if seed is None else seed)
 
+    def observation(self, obs: np.ndarray) -> np.ndarray:
+        """The observation as the model sees it: a weight-conditioned agent's has its weighting appended, as
+        rlscape.agents.conditioned.with_preference appends it in training. The replay reads the model's choices
+        through this too."""
+        return obs if self.preference is None else np.concatenate([obs, self.preference])
+
     def act(self, env, obs: np.ndarray) -> int:
-        if self.preference is not None:
-            obs = np.concatenate([obs, self.preference])  # as rlscape.agents.conditioned.with_preference
-        action, _ = self.model.predict(obs, action_masks=env.action_masks(), deterministic=False)
+        action, _ = self.model.predict(self.observation(obs), action_masks=env.action_masks(), deterministic=False)
         return int(action)

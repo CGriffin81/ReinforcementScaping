@@ -4,8 +4,9 @@ sure it was, written as one self-contained HTML page (`replay.html` beside this 
 `record(env, policy, seed, label)` plays the episode the evaluation harness would play for that policy and seed
 (`rlscape/eval/rollout.py`'s `play`: the env and the policy both reset with the seed), so a replay's final numbers are
 its row in the evaluation's `episodes.csv`. For a trained policy it also takes, before each action, the masked
-distribution's five most likely options and the critic's value. Neither draws a random number, so the sampled action
-is the one the evaluation sampled. Each decision keeps:
+distribution's five most likely options and the critic's value, from the observation as the model sees it (E5's
+weight-conditioned agent sees its weighting appended: `TrainedPolicy.observation`). Neither draws a random number, so
+the sampled action is the one the evaluation sampled. Each decision keeps:
 - its game time (start and end ticks), option, family and the option's own detail (target, recipe, site);
 - why it ended (completed, inventory full, out of food, died, ...);
 - its reward parts, total level, net worth and coins after it, and every skill's level;
@@ -93,6 +94,7 @@ def record(env, policy, seed: int, label: str, walks: Walks | None = None, max_d
     catalog = env.option_catalog()
     ids, families = [o.id for o in catalog], [o.family for o in catalog]
     model = getattr(policy, "model", None)
+    seen = getattr(policy, "observation", lambda o: o)  # the observation as the model sees it
     obs, info = env.reset(seed=seed)
     policy.reset(seed)
     state = env.sim.state
@@ -101,7 +103,7 @@ def record(env, policy, seed: int, label: str, walks: Walks | None = None, max_d
     decisions, reward = [], 0.0
     for _ in range(max_decisions):
         mask = env.action_masks()
-        top, value = _insight(model, obs, mask, ids, families) if model is not None else (None, None)
+        top, value = _insight(model, seen(obs), mask, ids, families) if model is not None else (None, None)
         where, tick = tuple(state.location), state.tick
         action = int(policy.act(env, obs))
         obs, step_reward, terminated, truncated, info = env.step(action)

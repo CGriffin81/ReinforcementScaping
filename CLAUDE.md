@@ -175,10 +175,11 @@ work.
   hour in all, twice one run of 16. Evaluate a trained model with `scripts/evaluate.py --policies random
   <label>=ppo:<model.zip>` (sampled actions, OQ-65), and publish the runs with `uv run python
   scripts/publish_training.py runs/<name> <name>`. E3 to E6 give their reward weights as `env.normalised_weights`, in
-  units of E1's best 20-hour gain on each objective (OQ-67, `rlscape/envs/weights.py`). E5 has a `conditioned:` section instead
-  (OQ-74, `rlscape/agents/conditioned.py`), and its agents are evaluated at a weighting, `ppo:<model.zip>@<u>`. Watch a run: TensorBoard on
-  `runs/<name>`, or `uv run python scripts/replay.py <run dir> [--also scripted_guide] [--seed k]`, which writes one
-  HTML page to `results/replays/` (OQ-70).
+  units of E1's best 20-hour gain on each objective (OQ-67, `rlscape/envs/weights.py`). E5 has a `conditioned:`
+  section instead (OQ-74, `rlscape/agents/conditioned.py`), and its agents are evaluated at a weighting,
+  `ppo:<model.zip>@<u>`. Watch a run: TensorBoard on `runs/<name>`, or `uv run python scripts/replay.py <run dir>
+  [--also scripted_guide] [--seed k]`, which writes one HTML page to `results/replays/` (OQ-70). An E5 run is
+  replayed at `--weightings` (skill shares; default 1, 0.5 and 0).
 - More servers at once (Caleb, 2026-11-06): `uv run python
   scripts/server_instances.py 2 3` writes `results/servers/rl-<n>.conf`
   (world n, bridge port 43610 + n - 1, its own GE under
