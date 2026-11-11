@@ -7163,3 +7163,45 @@ than exp." `m002-oq61`.
 - **Shared tooling:** it goes to `main` first by its own PR (CLAUDE.md). E4's branch merges it, and E6b's starts from
   it.
 - **Tests:** `tests/test_training.py`, 5 passed. Without a wrapper the parts are 0, and the logged reward is the env's.
+
+### Decided: OQ-74, E5's design: uniform weightings, 2M decisions a run, evaluated at 13 weightings (Caleb)
+- **Raised:** 2026-11-10, before building E5 (RQ3's second half: can a single preference-conditioned agent match a
+  set of separately trained agents?). Record `m002-e5-conditioned`.
+- **(a) How each training episode's weighting is drawn** (normalised units, OQ-67):
+  - **Uniform u in [0, 1] (recommended, chosen).** Continuous, the usual choice for preference-conditioned agents. It
+    covers the front between E3's points.
+  - **E3's five points only.** The closest match to E3, but nothing between them.
+- **(b) The budget per run** (5 seeds):
+  - **2M (recommended, chosen).** One E3 agent's budget, a fifth of E3's five weightings at a seed. About 11
+    machine-hours.
+  - **4M.** Two-fifths of E3's. About 22 machine-hours.
+  - **10M.** Equal to E3's five together. About 85 machine-hours (four runs, then the fifth alone): done about Nov 18
+    at best.
+- **(c) Where the trained agents are evaluated** (30 episode seeds each):
+  - **E3's five and every 0.1, 13 points (recommended, chosen).** Paired with E3 at its five, plus the front between.
+    About 1,950 episodes.
+  - **E3's five only.** 750 episodes.
+- **Answer (Caleb, 2026-11-10 23:41 CST):** (a) uniform, (b) 2M, (c) 13 points.
+
+### Built: E5's weight-conditioned agent (rlscape/agents/conditioned.py), and E5's configs
+- **`WeightConditioned`, a gym wrapper on each training SimEnv:**
+  - At each episode's start it draws u from U[0, 1], resets the env with `env_weights((u, 1 − u))`, and appends
+    (u, 1 − u) to every observation (3,484 features).
+  - Its draws come from a generator seeded by the env's first reset, so a run is repeatable.
+  - SimEnv's own `preference_in_obs` stays off. It would show the raw reward weights (up to 17.1), and changing its
+    encoder would change the frozen env.
+- **Evaluation:** `TrainedPolicy` takes a weighting, `<label>=ppo:<model.zip>@<u>`, and appends the same two features
+  to a plain SimEnv's observation (`rlscape/eval/trained.py`). The harness finds the model's path through it.
+- **The trainer:** a `conditioned:` section (`weights: uniform`). Its env sets no weights of its own (checked).
+- **`configs/e5-weight-conditioned-ppo.yaml`:** E3's settings but the weights (checked). The eval config has the 5
+  models at 13 weightings (65 specs) and E1's baselines on the 30 seeds.
+- **Tests** (`tests/test_conditioned.py`, 4), on real episodes:
+  - a weighting each episode, rewarded by it (the env's reward with those weights) and shown throughout;
+  - fresh draws, and the same ones from the same seed;
+  - a short run logs each decision's weighting in its observation, rewarded by it, and is repeatable;
+  - the harness evaluates the trained agent at u = 0.25 and 1;
+  - bad sections are refused.
+  The trainer's and harness's own tests still pass (8).
+- **A smoke run with subprocess envs:** each env drew its own weighting every episode.
+- **Not yet:** `scripts/replay.py` plays a conditioned model without its weighting. It needs `@<u>` before it can show
+  E5's runs.

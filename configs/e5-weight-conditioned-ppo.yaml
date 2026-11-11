@@ -1,0 +1,30 @@
+# E5, the weight-conditioned PPO (RQ3's second half: can one preference-conditioned agent match a set of separately
+# trained ones?; ROADMAP's finishing plan; Caleb, 2026-11-10, OQ-74). One agent per seed, 5 seeds.
+# - Each episode draws its weighting in normalised units (OQ-67), the skill share u from U[0, 1] and the wealth share
+#   1 - u (OQ-74 (a)), is rewarded by it, and has (u, 1 - u) appended to its observation
+#   (rlscape/agents/conditioned.py).
+# - 2M decisions a run (OQ-74 (b)): one E3 agent's budget, a fifth of E3's five weightings at a seed together. The
+#   checkpoints show coverage against training decisions.
+# - Every other setting is E3's: seeds 0 to 4, E2's winner (OQ-65 (2)), gamma_hr 0.99.
+# 5 runs, four at once: about 17 hours.
+#   uv run python scripts/train.py --config configs/e5-weight-conditioned-ppo.yaml --jobs 4
+#   uv run python scripts/publish_training.py runs/e5-weight-conditioned-ppo e5-weight-conditioned-ppo
+seeds: [0, 1, 2, 3, 4]
+total_decisions: 2_000_000
+n_envs: 4
+vec_env: subproc
+device: cpu
+torch_threads: 2
+conditioned:
+  weights: uniform
+ppo:
+  gamma_hr: 0.99
+  gae_lambda: 0.95
+  learning_rate: 3.0e-4
+  ent_coef: 0.01
+  n_steps: 256
+  batch_size: 1024
+  n_epochs: 4
+  policy_kwargs: {net_arch: [256, 256]}
+checkpoint_every: 100_000
+decision_log: true
