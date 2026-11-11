@@ -20,7 +20,7 @@ from rlscape.envs.weights import WEALTH_FACTOR, env_weights  # noqa: E402
 from rlscape.eval.harness import run as evaluate  # noqa: E402
 from rlscape.eval.trained import TrainedPolicy, preference, split  # noqa: E402
 
-N_OBS = 3_482
+N_OBS = 3_488  # sim v1.2 (env contract v1.44)
 CONFIG = {"seeds": [0], "total_decisions": 48, "n_envs": 2, "vec_env": "dummy", "device": "cpu",
           "env": {"hours": 0.25}, "conditioned": {"weights": "uniform"},
           "ppo": {"gamma_hr": 0.9, "n_steps": 8, "batch_size": 8, "n_epochs": 1},
