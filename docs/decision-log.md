@@ -7300,3 +7300,28 @@ Asked together after Caleb's question "Why don't any of the runs do anything wit
 - **What follows:** E1 is rerun on v1.2, and OQ-67's units come from it. E2 stays on v1.1, the sanity ladder it was.
   E3's 13 v1.1 runs are kept aside as a record. E3 to E6 train again on v1.2. Models trained on v1.1 (E2's) don't
   load on v1.2, whose observation is 6 features longer, so they're replayed from E2's branch.
+
+### Rerun: E1 on sim v1.2 (Caleb, 2026-11-11, after OQ-75)
+- **Why:** sim v1.2 adds woodcutting's fletch slot (OQ-75 (c)), and Caleb chose to rerun E1 on it (E2 stays on
+  v1.1). E1 is RQ1's bar and the source of the normalised weights' units (OQ-67).
+- **Run:** `scripts/evaluate.py --config configs/e1-baselines.yaml` on `fc55a14`, the same 4 baselines on seeds 0 to
+  29, 16 workers, 799 s. Published over the v1.1 summary (`results/summary/e1-baselines/`); v1.1's is in git
+  history and its run in `results/eval/e1-baselines-sim-v1.1` (git-ignored).
+- **At hour 20** (mean [95% CI]), against v1.1:
+
+  | Baseline | Total level | Net worth (gp) | v1.1 total level | v1.1 net worth |
+  |---|---:|---:|---:|---:|
+  | random | 214 [206, 223] | 16,563 [11,766, 21,834] | 214 | 14,190 |
+  | greedy XP/hr | 157 [157, 157] | 1,111 | 157 | 1,160 |
+  | greedy GP/hr | 79 [69, 89] | 1,764,896 [1,671,363, 1,849,582] | 40 | 1,891,142 |
+  | scripted guide | 351 [344, 357] | 129,789 [123,945, 135,909] | 351 | 129,789 |
+
+  - The scripted guide's episodes are the same: it takes its own knife and picks its own paths.
+  - Greedy GP/hr takes the fletch slot at times (arrow shafts add net worth at once). It gains 39 more levels and
+    126,000 gp less.
+- **OQ-67's units,** by its rule (the best mean 20-hour gain on each objective):
+  - skill: the guide's 323.866 levels, unchanged;
+  - wealth: greedy GP/hr's 17.639 in r_wealth (1.76M gp), down from 18.901.
+
+  So `WEALTH_FACTOR` goes from 17.13 to 18.36, and the normalised (.5, .5) is env (.5, 9.18). Updated with the
+  tooling (`rlscape/envs/weights.py`), which E3 to E6 merge before they train again.
