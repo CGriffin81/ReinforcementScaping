@@ -7201,3 +7201,39 @@ than exp." `m002-oq61`.
     a run stopped part-way, and with `--restart-partial` trains it again.
 - **Dry run** over the four experiments: 25 runs, every config accepted by its own branch's trainer, E3's four runs
   counted.
+
+### Built: the analysis's data, every evaluation episode's trace and each training run's behaviour (tooling, 2026-11-11)
+- **Why:** the proposal's §6 measures two things the summaries didn't keep.
+  - Time allocation per activity and the game time to reach milestones need each evaluation episode's decisions. The
+    harness kept only checkpoints and totals.
+  - The time-allocation plot across training, the first-discovery timeline and the action entropy need the training
+    decision logs, which are git-ignored at about 1.2 GB a run.
+
+  E3 is evaluated when it finishes (about Nov 12). After that, a missing table would mean evaluating again while the
+  training queue holds the machine. So the data comes first, kept general enough that the analysis's definitions
+  (what an activity is, what counts as taking one up, which milestones) can still be chosen afterwards.
+- **Evaluation traces:**
+  - `rlscape/eval/rollout.py`: an episode keeps a row per decision: its number, the tick it ended at, its option,
+    why it ended, and the total level and net worth after it.
+  - `harness.run_tables` returns them as a third table, `decisions`. `run` keeps its two tables, so its callers (E5's
+    tests among them) are unchanged.
+  - `scripts/evaluate.py` saves `decisions.parquet`, and `publish_summary` writes it as `decisions.csv.gz`. The gzip
+    is written without a timestamp, so republishing the same run gives the same bytes.
+  - About 300 decisions an episode: E3's evaluation (29 policies × 30 seeds) should come to a few MB.
+- **Training behaviour** (`rlscape/eval/behaviour.py`, read by `publish_training` for each run with a decision log).
+  A bin is the run's checkpoint interval, 100,000 decisions:
+  - `behaviour_bins.csv`: a row per bin: its decisions, game ticks and episodes, and the policy's mean entropy over
+    the options open;
+  - `behaviour_options.csv.gz`: a row per (bin, option chosen in it): decisions, game ticks, episodes that chose it;
+  - `first_choices.csv.gz`: when each option was first chosen.
+- **On E2's best run** (1M decisions): 7.8 s, and the bins add up to the run's 1,000,448 decisions and 8,638
+  episodes. 1,000 of the 2,293 options were tried at least once, the last at decision 999,788. So "first chosen"
+  can't be what discovery means. That definition is for Caleb, with the figures.
+- **Tests** (`tests/test_analysis_data.py`, 5; with the harness and publish tests, 15 passed):
+  - a trace is every decision and ends where its episode does;
+  - it's the same whatever the number of workers;
+  - it's published byte for byte the same each time;
+  - a run's behaviour tables add up to its decision log, including each decision's entropy recomputed by hand;
+  - `publish_training` writes the three tables.
+- **Using it for E3:** E3's worktree is at `801405c`, before this tooling. Once E3's runs have all trained, its
+  branch merges the tooling before it's evaluated, so its evaluation keeps the traces.
