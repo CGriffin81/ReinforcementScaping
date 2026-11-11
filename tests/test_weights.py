@@ -22,7 +22,7 @@ def test_the_units_are_e1s_best_20_hour_gains():
 
 def test_the_conversion_keeps_a_level_worth_u_s_and_round_trips():
     assert env_weights([1, 0]) == (1.0, 0.0)
-    assert env_weights([0.5, 0.5]) == pytest.approx((0.5, 8.5674), abs=1e-4)
+    assert env_weights([0.5, 0.5]) == pytest.approx((0.5, 9.1806), abs=1e-4)  # sim v1.2 (8.5674 on v1.1)
     assert env_weights([0, 1]) == pytest.approx((0.0, WEALTH_FACTOR))
     for u in ([1, 0], [0.75, 0.25], [0.5, 0.5], [0.25, 0.75], [0, 1]):
         assert normalised_weights(env_weights(u)) == pytest.approx(tuple(u))
