@@ -329,6 +329,10 @@ The old weeks 6 to 8 (E6 on the server, the stretch, a replay with the client) a
   SimEnv's by `rlscape/envs/weights.py`.
 - [x] The replay page (2026-11-10, OQ-70): `scripts/replay.py <run dir>` plays a run's checkpoints on one seed and writes
   one HTML page, with a timeline, a map, the policy's choices, the skills and the curves. It's the demo, built early.
+- [x] The training queue (2026-11-11): `scripts/train_queue.py` trains E6a's, E4's, E6b's and E5's 25 runs from one
+  queue, each in its experiment's worktree, taking E3's slots as they free (`--jobs` counts every training run on
+  the machine), seed 0 of every experiment first. The worktrees `D:\ReinforcementScaping-e4`, `-e6b` and `-e5` are set
+  up like E6a's.
 
 *Nov 13–18: the experiments* (the runs overlap the building)
 - [ ] **E3, the reward-weight sweep** (RQ1 to RQ3): (1,0), (.75,.25), (.5,.5), (.25,.75) and (0,1) in normalised
@@ -353,6 +357,9 @@ The old weeks 6 to 8 (E6 on the server, the stretch, a replay with the client) a
   - the sim-to-real table from the calibration gate;
   - RQ5 (OQ-1).
 - [ ] Every figure and table is rebuilt by one script from small summaries committed to `results/summary/`.
+- [x] The data the figures need (2026-11-11): each evaluation episode's trace (`decisions.csv.gz` in an experiment's
+  summary) and each training run's behaviour from its decision log (`behaviour_bins.csv`, `behaviour_options.csv.gz`,
+  `first_choices.csv.gz` in its training summary).
 
 *Nov 22–25: the draft and the copy to review*
 - [ ] The report answers RQ1 to RQ4 (and RQ5, depending on OQ-1), with a verdict on each of H1 to H3. Negative results

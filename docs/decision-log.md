@@ -7204,3 +7204,140 @@ than exp." `m002-oq61`.
   - a bad section is refused.
 - **A smoke run with subprocess envs:** each 15-minute decision charged about −1.9, short ones about 0, and every
   logged reward is the env's plus F.
+
+### Built: the training queue, one queue for several experiments' runs (tooling, 2026-11-11)
+- **Why:** E6a, E4, E6b and E5 are 25 runs on four branches. `train.py --jobs` trains one experiment at a time, and
+  each run must train in its own experiment's worktree, so it records that branch's provenance (OQ-61). Run by hand,
+  one experiment after another, the machine would sit partly idle between them. From about Nov 12 12:30, E3's last
+  run trains alone, leaving three slots free.
+- **How:** `scripts/train_queue.py --jobs 4 <config> ...`, each config in its own worktree.
+  - Each run trains in its worktree, by that worktree's own `scripts/train.py` and venv, as `train.py --jobs` would
+    train it. Its log goes beside its directory.
+  - `--jobs` counts every training run on the machine, E3's included. A training run is a process running
+    `scripts/train.py` with `--seed`; the queue reads the process table every minute. A slot must stay free for 30 s
+    before the queue takes it, so E3's launcher, which looks every 5 s, keeps its own slots.
+  - **Order** (`--order seeds`, the default): seed 0 of every experiment and variant, then seed 1, and so on. Every
+    experiment has its first seeds early, and about as many seeds as the others if the machine is needed before the
+    end. `--order experiments` trains them in turn.
+  - **Resuming:** a run that's done (run.json) is skipped, and a run already training is left to finish. If a run was
+    stopped part-way, the queue refuses to start, unless `--restart-partial`, which trains that run again from the
+    start.
+  - **Checks first:** each worktree lists its runs with its own trainer. That checks its config by its branch's rules
+    and builds its venv. The queue refuses a worktree with uncommitted changes (unless `--allow-dirty`), since
+    `publish_training` would refuse its runs. It also refuses worktrees on different server commits.
+  - `--dry-run` prints the plan and each run's state. It's safe to run while a queue trains.
+- **The worktrees:** `D:\ReinforcementScaping-e4`, `-e6b` and `-e5`, set up like E6a's:
+  - the branch checked out;
+  - the server cloned from this checkout's submodule at `cad9743`, without the game cache's LFS files (only the
+    running server reads them; E3's worktree was made the same way);
+  - `wheels/` linked;
+  - the travel map's `places.npz` copied, with the same SHA-256 as E3's.
+
+  Each has its own venv, about 2.5 minutes to build.
+- **Tests** (`tests/test_train_queue.py`, 4 passed):
+  - the command lines the process table showed for E3's runs;
+  - the two orders;
+  - a live queue of two tiny runs with `--jobs 1`. It waits for another experiment's run to leave its slot, then
+    trains its own runs one at a time, each recording the worktree's provenance. Run again, it skips them. It refuses
+    a run stopped part-way, and with `--restart-partial` trains it again.
+- **Dry run** over the four experiments: 25 runs, every config accepted by its own branch's trainer, E3's four runs
+  counted.
+
+### Built: the analysis's data, every evaluation episode's trace and each training run's behaviour (tooling, 2026-11-11)
+- **Why:** the proposal's §6 measures two things the summaries didn't keep.
+  - Time allocation per activity and the game time to reach milestones need each evaluation episode's decisions. The
+    harness kept only checkpoints and totals.
+  - The time-allocation plot across training, the first-discovery timeline and the action entropy need the training
+    decision logs, which are git-ignored at about 1.2 GB a run.
+
+  E3 is evaluated when it finishes (about Nov 12). After that, a missing table would mean evaluating again while the
+  training queue holds the machine. So the data comes first, kept general enough that the analysis's definitions
+  (what an activity is, what counts as taking one up, which milestones) can still be chosen afterwards.
+- **Evaluation traces:**
+  - `rlscape/eval/rollout.py`: an episode keeps a row per decision: its number, the tick it ended at, its option,
+    why it ended, and the total level and net worth after it.
+  - `harness.run_tables` returns them as a third table, `decisions`. `run` keeps its two tables, so its callers (E5's
+    tests among them) are unchanged.
+  - `scripts/evaluate.py` saves `decisions.parquet`, and `publish_summary` writes it as `decisions.csv.gz`. The gzip
+    is written without a timestamp, so republishing the same run gives the same bytes.
+  - About 300 decisions an episode: E3's evaluation (29 policies × 30 seeds) should come to a few MB.
+- **Training behaviour** (`rlscape/eval/behaviour.py`, read by `publish_training` for each run with a decision log).
+  A bin is the run's checkpoint interval, 100,000 decisions:
+  - `behaviour_bins.csv`: a row per bin: its decisions, game ticks and episodes, and the policy's mean entropy over
+    the options open;
+  - `behaviour_options.csv.gz`: a row per (bin, option chosen in it): decisions, game ticks, episodes that chose it;
+  - `first_choices.csv.gz`: when each option was first chosen.
+- **On E2's best run** (1M decisions): 7.8 s, and the bins add up to the run's 1,000,448 decisions and 8,638
+  episodes. 1,000 of the 2,293 options were tried at least once, the last at decision 999,788. So "first chosen"
+  can't be what discovery means. That definition is for Caleb, with the figures.
+- **Tests** (`tests/test_analysis_data.py`, 5; with the harness and publish tests, 15 passed):
+  - a trace is every decision and ends where its episode does;
+  - it's the same whatever the number of workers;
+  - it's published byte for byte the same each time;
+  - a run's behaviour tables add up to its decision log, including each decision's entropy recomputed by hand;
+  - `publish_training` writes the three tables.
+- **Using it for E3:** E3's worktree is at `801405c`, before this tooling. Once E3's runs have all trained, its
+  branch merges the tooling before it's evaluated, so its evaluation keeps the traces.
+
+### Decided: OQ-75 (the sim changes for Fletching), OQ-76 to OQ-78 (the analysis's definitions) (Caleb, 2026-11-11)
+Asked together after Caleb's question "Why don't any of the runs do anything with fletching?"
+(`m002-fletching-unused`) and the analysis data (`m002-analysis-data`).
+
+- **OQ-75, Fletching.** No run trains it. Fletching's own options open only while logs (or other inputs) and a knife
+  are held, which the agents rarely arrange. Woodcutting's two XP slots are won by chop-and-burn, which out-earns
+  chop-and-fletch counting the processing's XP. Fletching stays at 1, while the guide reaches 11. Options:
+  - (a) report it as an RQ2 finding and a post-project gap, the sim kept (recommended);
+  - (b) report it only;
+  - (c) change the sim: a sim-v1.2 offering chop-and-fletch in a slot of its own, restarting E3 (half trained) and
+    the queue's 25 runs, about 100 machine-hours.
+
+  **Caleb: (c).** The training queue was stopped at once (PIDs 8436, 5984, 21288; it had started nothing), so
+  that no v1.1 run starts in a slot E3 leaves. E3 keeps training on v1.1 until its fate is decided. The slot's
+  design, the knife, and what reruns follow are asked next.
+- **OQ-76, discovery** (RQ2, H3). "First chosen" can't be it: E2's agent tried 1,000 of the 2,293 options, the last
+  at decision 999,788 of 1M. Activities are about 20 groups: each gathering skill, each combat style, smithing,
+  cooking, firemaking, prayer, selling, buying, alchemy, banking. Options:
+  - (a) the first 100,000-decision bin in which the activity takes at least 5% of the training episodes' game time
+    (recommended);
+  - (b) the same, but only if it stays at 5% or more in every later bin;
+  - (c) the first bin in which at least half the bin's episodes choose it.
+
+  **Caleb: (a).**
+- **OQ-77, the hypervolume** (RQ3). The front is each policy's mean 20-hour gain over the fresh character in
+  normalised units (OQ-67). Options for its reference point:
+  - (a) the fresh character, (0, 0) gain, computed per training seed (E3: seed k at each weighting; E5: seed k at
+    its weightings) and reported as the mean and 95% CI over the 5 (recommended);
+  - (b) E1's random policy's mean gain;
+  - (c) the nadir of every policy evaluated.
+
+  **Caleb: (a).**
+- **OQ-78, sudden or gradual** (RQ2). Options:
+  - (a) changepoints (ruptures, PELT) on each run's learning curve as mean reward per 20,000 decisions. A run learns
+    "suddenly" if one changepoint's jump is at least half its total gain, and the curves are annotated (recommended;
+    adds ruptures);
+  - (b) annotate the changepoints only;
+  - (c) a step function against a smooth logistic fit, by BIC.
+
+  **Caleb: (a).**
+
+### Built: sim v1.2, woodcutting's fletch slot (Caleb, 2026-11-11, OQ-75 (c))
+- **Why:** no run trained Fletching (`m002-fletching-unused`). Its own slots open only while logs and a knife are
+  held, and chop-and-burn won both of woodcutting's XP slots at every level the agents reached: E2's and E3's agents
+  ran only `wc_*_burn` paths, and Fletching stayed at 1 while the guide reached 11. Caleb chose to change the sim and
+  restart E3 to E6 (OQ-75 (c)), and took the recommendations on the rest (2026-11-11): one new slot, the knife taken
+  on the way, E3 stopped at once, E1 rerun with E2 kept on v1.1, and the gem trade kept.
+- **Built** (`rlscape/sim/skilling.py`, `rlscape/envs/encoding.py`; env contract v1.44, option catalog §2):
+  - `skill_woodcutting_fletch`: the best open chop-and-fletch path by XP/hr, filled before woodcutting's XP and gp
+    slots, which rank the rest (no path in two slots). `EXTRA_SLOTS` and `slot_names` give a skill's slots in order.
+  - A chop-and-fletch path without a knife carried takes one from the nearest reachable spawn on its way
+    (`knife_spawn`, `TakeSpawn`), and its rate counts the detour. It's open when a knife is carried or can be taken.
+  - The observation carries the slot's 5 rate features: 2,294 actions and 3,488 features (one more mask bit).
+- **Seen:** a fresh character's fletch slot is open; run for 15 game-minutes it takes the knife and makes 1,095 arrow
+  shafts, 365 Fletching XP and 2,025 Woodcutting XP. Random episodes run at the same speed (64 decisions a second on
+  v1.2, 61 on v1.1).
+- **Tests:** the full suite, 436 passed, 75 skipped (the live tests; the server was down). New: the fletch slot holds
+  the best chop-and-fletch path and the XP slots rank the rest; a path takes a knife on its way and counts the
+  detour. Updated: a fresh character's open paths and slots, and the schema's sizes.
+- **What follows:** E1 is rerun on v1.2, and OQ-67's units come from it. E2 stays on v1.1, the sanity ladder it was.
+  E3's 13 v1.1 runs are kept aside as a record. E3 to E6 train again on v1.2. Models trained on v1.1 (E2's) don't
+  load on v1.2, whose observation is 6 features longer, so they're replayed from E2's branch.

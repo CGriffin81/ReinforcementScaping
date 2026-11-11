@@ -155,12 +155,14 @@ def test_fresh_character_can_chop_mine_copper_and_tin_net_shrimp_and_pickpocket(
     sim = Simulator(build_catalog())
     sim.reset(seed=0)
     paths = {p.id for p in path_options() if p.available(sim.state)}
-    assert paths == {"wc_logs", "wc_logs_burn", "mine_copper", "mine_tin", "fish_shrimp", "fish_shrimp_cook",
+    assert paths == {"wc_logs", "wc_logs_burn", "wc_logs_fletch",  # v1.44: the knife taken on the way
+                     "mine_copper", "mine_tin", "fish_shrimp", "fish_shrimp_cook",
                      "fish_shrimp_swamp", "fish_shrimp_swamp_cook", "pickpocket_men", "pick_flax",
                      "agility_gnome",  # the Gnome Stronghold's course, Agility 1
                      "kill_cows"}  # cows for Crafting's hides (Caleb, 2026-11-09)
     slots = {o.id for o, ok in zip(sim.options, sim.action_mask()) if ok and o.family == "gathering"}
     assert slots == {f"skill_{s}_xp{n}" for s in ("woodcutting", "fishing", "mining") for n in (1, 2)} | {
         "skill_thieving_xp1", "skill_fishing_gp1", "skill_fishing_gp2",
-        "skill_crafting_gp1", "skill_crafting_gp2", "skill_agility_xp1"}  # two shrimp sites: four fishing paths; flax and cows, no XP:
-    # the gp slots; the Gnome course
+        "skill_crafting_gp1", "skill_crafting_gp2", "skill_agility_xp1",
+        "skill_woodcutting_fletch"}  # two shrimp sites: four fishing paths; flax and cows, no XP:
+    # the gp slots; the Gnome course; v1.44: chop-and-fletch's own slot, the knife taken on the way

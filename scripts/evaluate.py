@@ -1,7 +1,8 @@
 """Evaluate policies on the simulator over many seeds (the eval harness, rlscape/eval/harness.py).
 
-Writes checkpoints.parquet, episodes.parquet, summary.parquet and config.json to the output directory, and prints
-each policy's metrics at the last checkpoint with bootstrap 95% CIs.
+Writes checkpoints.parquet, episodes.parquet, summary.parquet, decisions.parquet (every episode's trace, a row per
+decision) and config.json to the output directory, and prints each policy's metrics at the last checkpoint with
+bootstrap 95% CIs.
 
 An experiment's settings live in a YAML file (configs/<name>.yaml, OQ-61) whose keys are the options below without
 their dashes (policies, seeds, first_seed, hours, activity_minutes, workers, out); an option given on the command
@@ -24,7 +25,7 @@ from pathlib import Path
 import yaml
 
 from rlscape.envs.sim_env import DEFAULT_REWARD_WEIGHTS
-from rlscape.eval.harness import POLICIES, REPO, provenance, run, save, summarize
+from rlscape.eval.harness import POLICIES, REPO, provenance, run_tables, save, summarize
 from rlscape.sim.engine import ACTIVITY_TICKS, TICKS_PER_HOUR
 
 
@@ -63,10 +64,10 @@ def main() -> None:
     out = args.out or REPO / "results" / "eval" / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
     started, at_start = time.perf_counter(), provenance()  # the tree the run starts from, not the one it ends in
-    checkpoints, episodes = run(args.policies, seeds, env_kwargs, args.workers)
+    checkpoints, episodes, decisions = run_tables(args.policies, seeds, env_kwargs, args.workers)
     summary = summarize(checkpoints)
     save(out, config, checkpoints, episodes, summary, extra={"script": "scripts/evaluate.py", "argv": sys.argv[1:]},
-         started=at_start)
+         started=at_start, decisions=decisions)
     print(f"{len(episodes)} episodes in {time.perf_counter() - started:.0f}s -> {out}", file=sys.stderr)
 
     last = summary[summary.hour == summary.hour.max()]
