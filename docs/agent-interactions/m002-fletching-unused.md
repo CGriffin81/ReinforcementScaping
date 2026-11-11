@@ -7,7 +7,8 @@
   while the analysis data was being built (`m002-analysis-data.md`).
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: ANSWERED. What to do about it is Caleb's decision, asked after this.
+- Status: ANSWERED; Caleb decided to change the sim (OQ-75 (c), 17:02:13 CST). The change itself isn't made yet:
+  its design and the reruns are asked next.
 - Commit: on `tooling/analysis-data`, with `m002-analysis-data`. No code changed.
 
 ## Full Prompt
@@ -59,15 +60,17 @@ skill-only agent leaves cheap Fletching levels unused.
 
 ## Infrastructure Changes
 
-- None. E2's and E3's decision logs and E2's replay page were only read. Nothing in E3's worktree changed.
+- E2's and E3's decision logs and E2's replay page were only read. Nothing in E3's worktree changed.
+- The training queue was stopped after OQ-75 (see Follow-Up).
 
 ## Decisions
 
-- **Agent recommendation:** keep the sim as it is (frozen at `sim-v1.1`, with E3 half trained), and report it:
+- **User decision (Caleb), OQ-75: (c), change the sim:** a sim-v1.2 offering chop-and-fletch in a slot of its own,
+  restarting E3 and the queue's runs.
+- **Agent recommendation, not taken:** keep the sim as it is (frozen at `sim-v1.1`, with E3 half trained), and report it:
   - as a finding: the agents never learn get-logs-then-fletch;
   - as a gap in `docs/post-project-gaps.md`: an option that buys a recipe's inputs and crafts them, or woodcutting
     slots that always offer each counterpart (burn, fletch).
-- **User decision:** pending.
 
 ## Validation
 
@@ -78,4 +81,6 @@ skill-only agent leaves cheap Fletching levels unused.
 
 ## Follow-Up
 
-- **Caleb:** decide whether to keep it as a finding and a post-project gap (recommended), or change the sim.
+- **Done at once:** the training queue stopped (PIDs 8436, 5984, 21288; it had started nothing), so no v1.1 run
+  starts in a slot E3 leaves.
+- **Caleb:** the slot's design, the knife, whether E3 stops now, and which experiments are rerun on v1.2.

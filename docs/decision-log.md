@@ -7237,3 +7237,44 @@ than exp." `m002-oq61`.
   - `publish_training` writes the three tables.
 - **Using it for E3:** E3's worktree is at `801405c`, before this tooling. Once E3's runs have all trained, its
   branch merges the tooling before it's evaluated, so its evaluation keeps the traces.
+
+### Decided: OQ-75 (the sim changes for Fletching), OQ-76 to OQ-78 (the analysis's definitions) (Caleb, 2026-11-11)
+Asked together after Caleb's question "Why don't any of the runs do anything with fletching?"
+(`m002-fletching-unused`) and the analysis data (`m002-analysis-data`).
+
+- **OQ-75, Fletching.** No run trains it. Fletching's own options open only while logs (or other inputs) and a knife
+  are held, which the agents rarely arrange. Woodcutting's two XP slots are won by chop-and-burn, which out-earns
+  chop-and-fletch counting the processing's XP. Fletching stays at 1, while the guide reaches 11. Options:
+  - (a) report it as an RQ2 finding and a post-project gap, the sim kept (recommended);
+  - (b) report it only;
+  - (c) change the sim: a sim-v1.2 offering chop-and-fletch in a slot of its own, restarting E3 (half trained) and
+    the queue's 25 runs, about 100 machine-hours.
+
+  **Caleb: (c).** The training queue was stopped at once (PIDs 8436, 5984, 21288; it had started nothing), so
+  that no v1.1 run starts in a slot E3 leaves. E3 keeps training on v1.1 until its fate is decided. The slot's
+  design, the knife, and what reruns follow are asked next.
+- **OQ-76, discovery** (RQ2, H3). "First chosen" can't be it: E2's agent tried 1,000 of the 2,293 options, the last
+  at decision 999,788 of 1M. Activities are about 20 groups: each gathering skill, each combat style, smithing,
+  cooking, firemaking, prayer, selling, buying, alchemy, banking. Options:
+  - (a) the first 100,000-decision bin in which the activity takes at least 5% of the training episodes' game time
+    (recommended);
+  - (b) the same, but only if it stays at 5% or more in every later bin;
+  - (c) the first bin in which at least half the bin's episodes choose it.
+
+  **Caleb: (a).**
+- **OQ-77, the hypervolume** (RQ3). The front is each policy's mean 20-hour gain over the fresh character in
+  normalised units (OQ-67). Options for its reference point:
+  - (a) the fresh character, (0, 0) gain, computed per training seed (E3: seed k at each weighting; E5: seed k at
+    its weightings) and reported as the mean and 95% CI over the 5 (recommended);
+  - (b) E1's random policy's mean gain;
+  - (c) the nadir of every policy evaluated.
+
+  **Caleb: (a).**
+- **OQ-78, sudden or gradual** (RQ2). Options:
+  - (a) changepoints (ruptures, PELT) on each run's learning curve as mean reward per 20,000 decisions. A run learns
+    "suddenly" if one changepoint's jump is at least half its total gain, and the curves are annotated (recommended;
+    adds ruptures);
+  - (b) annotate the changepoints only;
+  - (c) a step function against a smooth logistic fit, by BIC.
+
+  **Caleb: (a).**
