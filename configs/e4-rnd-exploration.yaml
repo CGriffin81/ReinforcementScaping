@@ -1,7 +1,8 @@
 # E4, PPO + RND (RQ2, RQ4, H3; ROADMAP's finishing plan): PPO with random network distillation's exploration bonus
 # at the normalised (.5, .5), 5 seeds, against E3's (.5, .5), which is the same config without RND.
 # - Every setting but `rnd` is E3's (.5, .5): seeds 0 to 4, 2M decisions (OQ-69), E2's winner (OQ-65 (2)), the
-#   normalised weights (OQ-67; SimEnv's (.5, 8.57)). So E3's runs at (.5, .5) are E4's baseline, seed for seed.
+#   normalised weights (OQ-67; SimEnv's (.5, 9.18) on sim v1.2). So E3's runs at (.5, .5) are E4's baseline,
+#   seed for seed.
 # - RND (rlscape/agents/rnd.py; Caleb, 2026-11-10, OQ-72): the bonus's spread is 0.75, half the env's reward's per
 #   decision (about 1.5 at (.5, .5)), Burda et al.'s intrinsic-to-extrinsic ratio of 1 to 2 (a); centred, so it
 #   averages zero per decision (b); it reads the character's state, 917 of the observation's 3,482 features (c).
