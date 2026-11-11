@@ -1,7 +1,7 @@
 # E3, the reward-weight sweep (RQ1 to RQ3; ROADMAP's finishing plan): PPO at five weightings, 5 seeds each.
 # - The weights are in normalised units (OQ-67, Caleb, 2026-11-10): E1's best 20-hour gain on each objective, the
 #   guide's 323.87 levels and greedy GP/hr's 1.89M gp, converted to SimEnv's by rlscape/envs/weights.py. The
-#   normalised (.5, .5) is SimEnv's (.5, 8.57).
+#   normalised (.5, .5) is SimEnv's (.5, 9.18) on sim v1.2.
 # - 2M decisions a run (OQ-69).
 # - E2's winner (OQ-65 (2)): GAE lambda 0.95, learning rate 3e-4, entropy 0.01.
 # 25 runs, four at once: about 50 hours. Every run keeps its 1M checkpoint (checkpoint_every).
