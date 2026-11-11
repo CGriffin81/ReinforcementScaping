@@ -18,7 +18,7 @@ from rlscape.agents.decision_log import read_decisions, unpack_mask  # noqa: E40
 from rlscape.agents.ppo import SMDPMaskablePPO  # noqa: E402
 from rlscape.agents.training import check_config, train  # noqa: E402
 
-N_ACTIONS = 2_293
+N_ACTIONS = 2_294  # sim v1.2 (env contract v1.44): woodcutting's fletch slot
 CONFIG = {"seeds": [0], "total_decisions": 32, "n_envs": 2, "vec_env": "dummy", "device": "cpu",
           "env": {"hours": 0.5, "reward_weights": [0.5, 0.5]},
           "ppo": {"gamma_hr": 0.9, "n_steps": 8, "batch_size": 8, "n_epochs": 1},
@@ -54,7 +54,7 @@ def test_every_decision_is_logged_with_what_the_policy_saw_and_chose(runs):
         assert mask[row.action] and len(row.probs) == len(available) == mask.sum()
         assert sum(row.probs) == pytest.approx(1.0, abs=1e-5)
         assert row.probs[int(np.searchsorted(available, row.action))] == pytest.approx(np.exp(row.log_prob), rel=1e-4)
-        assert len(row.obs) == 3_482 and np.isfinite(row.value) and row.duration >= 0
+        assert len(row.obs) == 3_488 and np.isfinite(row.value) and row.duration >= 0
         assert json.loads(row.option)["action"] == row.action
     for _, env in log.groupby("env"):  # each env's decisions are numbered within its episodes
         starts = np.r_[0, np.flatnonzero(env.done.to_numpy()[:-1]) + 1]
@@ -70,6 +70,10 @@ def test_the_learning_curve_matches_the_decision_log(runs):
     rows = log[(log.env == first.env) & (log.episode == 0)]
     assert first.decisions == len(rows) and first.r_skill == pytest.approx(rows.r_skill.sum(), rel=1e-5)
     assert first.game_ticks == 3_000  # the half-hour horizon
+    # without a training wrapper, nothing is added to the env's reward (rlscape.agents.training's REWARD_PARTS)
+    assert (log.r_intrinsic == 0).all() and (log.r_shaping == 0).all()
+    assert (episodes.r_intrinsic == 0).all() and (episodes.r_shaping == 0).all()
+    assert np.allclose(log.reward, 0.5 * log.r_skill + 0.5 * log.r_wealth, atol=1e-6)
 
 
 def test_the_same_config_and_seed_give_the_same_run(runs):

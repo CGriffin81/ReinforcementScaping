@@ -15,7 +15,9 @@ The columns:
   - `probs`: the policy's probability of each available action, in the mask's order, summing to 1;
   - `log_prob` of the action and `value` of the state, the policy's at that moment.
 - **What happened:**
-  - `reward` (weighted), `r_skill` and `r_wealth` (info["reward_vec"]);
+  - `reward`, the reward PPO learned from: the env's weighted reward, plus what a training wrapper adds; `r_skill`
+    and `r_wealth` (info["reward_vec"]); `r_intrinsic` (E4's RND bonus) and `r_shaping` (E6b's PBRS), 0 without
+    them (rlscape.agents.training's REWARD_PARTS);
   - `duration` in ticks;
   - `termination`;
   - `option`, the info's option record as JSON (the path a slot ran, the target and style of a fight).
@@ -36,7 +38,8 @@ import pyarrow.parquet as pq
 SCALARS = {
     "step": pa.int64(), "env": pa.int16(), "episode": pa.int32(), "decision": pa.int32(), "action": pa.int16(),
     "log_prob": pa.float32(), "value": pa.float32(), "reward": pa.float32(), "r_skill": pa.float32(),
-    "r_wealth": pa.float32(), "duration": pa.int32(), "termination": pa.string(), "option": pa.string(),
+    "r_wealth": pa.float32(), "r_intrinsic": pa.float32(), "r_shaping": pa.float32(), "duration": pa.int32(),
+    "termination": pa.string(), "option": pa.string(),
     "game_ticks": pa.int32(), "total_level": pa.int16(), "total_xp": pa.float64(), "net_worth": pa.float64(),
     "coins": pa.int64(), "done": pa.bool_(),
 }
@@ -75,6 +78,8 @@ class DecisionLogger:
             c["reward"].append(float(rewards[i]))
             c["r_skill"].append(float(info["reward_vec"][0]))
             c["r_wealth"].append(float(info["reward_vec"][1]))
+            c["r_intrinsic"].append(float(info.get("r_intrinsic", 0.0)))
+            c["r_shaping"].append(float(info.get("r_shaping", 0.0)))
             c["duration"].append(int(info["duration"]))
             c["termination"].append(str(info["termination"]))
             c["option"].append(json.dumps(info["option"], default=str))

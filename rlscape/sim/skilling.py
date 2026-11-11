@@ -17,8 +17,17 @@ processing freed room (burning does, and so does cutting arrow shafts, which sta
 so those paths end at a full inventory; smelting iron frees about half).
 
 Each skill has K_XP slots ranked by XP/hr and K_GP by gp/hr. A path in an XP slot doesn't also fill a gp slot; the
-next best takes its place, as in combat. Rates are an analytic model of the same mechanics the paths run (the
-gathering, thieving and processing modules), over an option of D ticks, the way the combat ranker values fights:
+next best takes its place, as in combat.
+
+Woodcutting has a fifth slot, `skill_woodcutting_fletch` (sim v1.2; Caleb, 2026-11-11, OQ-75): the best chop-and-fletch
+path by XP/hr. It's filled before the XP and gp slots, which rank the rest, so no path is offered twice. Without it,
+chop-and-burn won both XP slots at every level the agents reached (it out-earns chop-and-fletch counting the
+processing's XP), and no run trained Fletching. A chop-and-fletch path also takes a knife on its way when none is
+carried, from the nearest reachable spawn (the Lumbridge Castle knives, rlscape.sim.economy.TakeSpawn), and its rate
+counts the detour; before v1.2 it waited for the agent to take one (`take_knife`).
+
+Rates are an analytic model of the same mechanics the paths run (the gathering, thieving and processing modules),
+over an option of D ticks, the way the combat ranker values fights:
 - at the site: the time per unit (log, ore, fish, success), its XP and its value (data/prices_v2.csv), and the
   processing's time, XP and value;
 - the inventory cycle: units per trip (the slots a deposit leaves after keeping the task's kit, over the slots a
@@ -45,7 +54,7 @@ from rlscape.sim.fishing import ATTEMPT_TICKS as FISH_TICKS
 from rlscape.sim.crafting import (FLAX, FLAX_RESPAWN, PICK_TICKS, TAN_TICKS, THREAD_CHARGES, AtStation, CraftAtBank,
                                    PickFlax, SpinAtWheel, SpinFlaxAtWheel, TanAtTanner, craft_ticks, crafting_paths,
                                    mean_flax_picks, spin_ticks, station_paths, usable_station)
-from rlscape.sim.economy import nearest_bank
+from rlscape.sim.economy import PICKUP_TICKS, TakeSpawn, nearest_bank
 from rlscape.sim.fishing import Fishing, fishing_options
 from rlscape.sim.fletching import FIRST_TICK as FLETCH_FIRST
 from rlscape.sim.fletching import FletchAtBank, FletchLogs, fletching_paths
@@ -60,6 +69,7 @@ from rlscape.sim.gathering import respawn_ticks, site_offsets
 from rlscape.sim.kits import kit
 from rlscape.sim.mining import ATTEMPT_TICKS as MINE_TICKS
 from rlscape.sim.mining import Mining, best_pickaxe, mine_chance, mining_options
+from rlscape.sim.movement import reachable
 from rlscape.sim.options import COMPLETED, INVENTORY_FULL, Option, OptionResult
 from rlscape.sim.processing import (CHAIN_TICKS, FIRST_TICK, LIGHT_TICKS, RANGE_TICKS, SMELT_TICKS, TINDERBOX,
                                     BurnLogs, Cook, Smelt, light_chance)
@@ -76,6 +86,21 @@ SKILLS = ("woodcutting", "fishing", "mining", "thieving", "fletching", "crafting
           "agility")
 PROCESSED_BY = {"woodcutting": "firemaking", "fishing": "cooking", "mining": "smithing"}
 K_XP = K_GP = 2  # Caleb, 2026-10-31: 2 by XP + 2 by gp per skill
+EXTRA_SLOTS = {"woodcutting": ("fletch",)}  # sim v1.2 (Caleb, 2026-11-11, OQ-75): chop-and-fletch's own slot
+TAKE_KNIFE = TakeSpawn(gd.KNIFE, "knife")
+
+
+def slot_names(skill: str) -> tuple[str, ...]:
+    """A skill's slots in order: xp1..xpK_XP, gp1..gpK_GP, then its extra slots."""
+    return (*(f"xp{n + 1}" for n in range(K_XP)), *(f"gp{n + 1}" for n in range(K_GP)), *EXTRA_SLOTS.get(skill, ()))
+
+
+def knife_spawn(state: CharacterState) -> tuple[int, int, int] | None:
+    """Where a chop-and-fletch path takes its knife when none is carried: the nearest reachable spawn, or None."""
+    if state.free_slots() == 0:
+        return None
+    tiles = [tile for tile, _ in gd.ground_spawns(gd.KNIFE) if reachable(state, tile)]
+    return min(tiles, key=lambda tile: travel_ticks(state.location, tile), default=None)
 TICKS_PER_HOUR = 6000
 IRON_ORE, IRON_SMELT_SUCCESS = 440, 0.5  # SmeltingPulse: iron succeeds on nextBool()
 
@@ -96,8 +121,9 @@ class Path(Option):
     def _can_process(self, state: CharacterState) -> bool:
         if isinstance(self.process, BurnLogs):
             return state.holds(TINDERBOX) and state.level("firemaking") >= gd.log_types()[self.gather.tree.reward][0]
-        if isinstance(self.process, FletchLogs):
-            return state.inventory.get(gd.KNIFE, 0) > 0 and self.process.recipe(state) is not None
+        if isinstance(self.process, FletchLogs):  # a knife carried, or one taken on the way (sim v1.2)
+            return self.process.recipe(state) is not None and (state.inventory.get(gd.KNIFE, 0) > 0
+                                                                 or knife_spawn(state) is not None)
         if isinstance(self.process, Cook):
             return bool(_cookable_fish(self.gather, state)) and nearest(state.progress, "range",
                                                                          _site(self.gather)) is not None
@@ -111,7 +137,13 @@ class Path(Option):
         if self.process is None:
             result = self.gather.run(state, rng, budget)
             return replace(result, detail={**(result.detail or {}), "path": self.id})
-        elapsed, termination = 0, COMPLETED
+        elapsed, termination, detail = 0, COMPLETED, {"path": self.id}
+        if isinstance(self.process, FletchLogs) and state.inventory.get(gd.KNIFE, 0) == 0:
+            taken = TAKE_KNIFE.run(state, rng, budget)  # sim v1.2: the knife on the way
+            elapsed += taken.ticks
+            if state.inventory.get(gd.KNIFE, 0) == 0:
+                return OptionResult(min(elapsed, budget), COMPLETED, detail=detail)
+            detail["took_knife"] = True
         while elapsed < budget:
             gathered = self.gather.run(state, rng, budget - elapsed)
             elapsed += gathered.ticks
@@ -123,8 +155,7 @@ class Path(Option):
             termination = INVENTORY_FULL if elapsed < budget else COMPLETED
             if state.free_slots() == 0 or not self.gather.available(state):
                 break
-        return OptionResult(min(elapsed, budget), termination if elapsed < budget else COMPLETED,
-                            detail={"path": self.id})
+        return OptionResult(min(elapsed, budget), termination if elapsed < budget else COMPLETED, detail=detail)
 
 
 def _site(gather: Option) -> tuple[int, int, int]:
@@ -441,6 +472,11 @@ def path_rate(path: Path, state: CharacterState, duration_ticks: int = ACTIVITY_
         return None
     site = _site(path.gather)
     travel = travel_ticks(state.location, site, home_ready(state))
+    if isinstance(path.process, FletchLogs) and state.inventory.get(gd.KNIFE, 0) == 0:
+        spawn = knife_spawn(state)  # sim v1.2: the knife on the way
+        if spawn is None:
+            return None
+        travel = travel_ticks(state.location, spawn, home_ready(state)) + PICKUP_TICKS + travel_ticks(spawn, site)
     bank_trip = 2 * _nearest_bank_ticks(site) + BANKING_TICKS
     if path.process is None:
         if unit.slots > 0:  # the inventory fills: a bank trip per load
@@ -476,7 +512,8 @@ class SkillingSlots:
         self._slots: dict[str, list[SkillCandidate | None]] = {}
 
     def candidate(self, state: CharacterState, skill: str, index: int) -> SkillCandidate | None:
-        """Slot `index` of a skill: 0..K_XP-1 by XP/hr, then K_GP by gp/hr; None if empty."""
+        """Slot `index` of a skill (slot_names' order): K_XP by XP/hr, K_GP by gp/hr, then its extra slots; None if
+        empty."""
         key = _fingerprint(state)
         if key != self._key:
             self._rank(state)
@@ -488,22 +525,33 @@ class SkillingSlots:
         for skill in SKILLS:
             open_ = [SkillCandidate(p, r) for p in self.paths if p.skill == skill and p.available(state)
                      and (r := path_rate(p, state, self.duration_ticks)) is not None]
-            by_xp = sorted((c for c in open_ if c.rate.xp > 0), key=lambda c: -c.rate.xp)[:K_XP]  # XP-less paths: gp only
-            taken = {c.path.id for c in by_xp}
+            extras = [EXTRA_RANKERS[name](open_) for name in EXTRA_SLOTS.get(skill, ())]  # filled first (sim v1.2)
+            taken = {c.path.id for c in extras if c is not None}
+            by_xp = sorted((c for c in open_ if c.rate.xp > 0 and c.path.id not in taken),
+                           key=lambda c: -c.rate.xp)[:K_XP]  # XP-less paths: gp only
+            taken |= {c.path.id for c in by_xp}
             by_gp = [c for c in sorted(open_, key=lambda c: -c.rate.gp) if c.path.id not in taken][:K_GP]
             self._slots[skill] = ([*by_xp, *[None] * (K_XP - len(by_xp))]
-                                  + [*by_gp, *[None] * (K_GP - len(by_gp))])
+                                  + [*by_gp, *[None] * (K_GP - len(by_gp))] + extras)
+
+
+def _best_fletch(open_: list[SkillCandidate]) -> SkillCandidate | None:
+    """Woodcutting's fletch slot: the open chop-and-fletch path with the most XP/hr."""
+    return max((c for c in open_ if isinstance(c.path.process, FletchLogs) and c.rate.xp > 0),
+               key=lambda c: c.rate.xp, default=None)
+
+
+EXTRA_RANKERS = {"fletch": _best_fletch}  # an extra slot's name: what fills it
 
 
 class SkillSlot(Option):
-    """skill_<skill>_xp<n> / _gp<n>: run the path the slot holds now."""
+    """skill_<skill>_xp<n> / _gp<n> / an extra slot's (`skill_woodcutting_fletch`): run the path the slot holds now."""
 
     family = "gathering"
 
     def __init__(self, slots: SkillingSlots, skill: str, index: int):
         self.slots, self.skill, self.index = slots, skill, index
-        kind, n = ("xp", index + 1) if index < K_XP else ("gp", index - K_XP + 1)
-        self.id = f"skill_{skill}_{kind}{n}"
+        self.id = f"skill_{skill}_{slot_names(skill)[index]}"
         self.task: str | None = None  # the path's, once one has run (the engine records it after `run`)
 
     def available(self, state: CharacterState) -> bool:
@@ -516,9 +564,9 @@ class SkillSlot(Option):
 
 
 def skilling_options(duration_ticks: int = ACTIVITY_TICKS) -> list[SkillSlot]:
-    """Catalog §2: each skill in SKILLS × (K_XP + K_GP) slots."""
+    """Catalog §2: each skill in SKILLS × (K_XP + K_GP) slots, and its extra slots (woodcutting's fletch)."""
     slots = SkillingSlots(duration_ticks)
-    return [SkillSlot(slots, skill, i) for skill in SKILLS for i in range(K_XP + K_GP)]
+    return [SkillSlot(slots, skill, i) for skill in SKILLS for i in range(len(slot_names(skill)))]
 
 
 def slot_holding(options: list[Option], state: CharacterState, path_id: str) -> str | None:

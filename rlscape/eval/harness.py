@@ -1,17 +1,22 @@
 """The eval harness (ROADMAP week 2): any policy × N seeds gives metrics at every 2-hour checkpoint, written to
 parquet with bootstrap 95% confidence intervals.
 
-- `run(policies, seeds, env_kwargs, workers)` plays every (policy, seed) episode, in worker processes when
-  `workers` > 1 (each builds its env once), and returns two tables:
+- `run_tables(policies, seeds, env_kwargs, workers)` plays every (policy, seed) episode, in worker processes when
+  `workers` > 1 (each builds its env once), and returns three tables:
   - **checkpoints:** one row per (policy, seed, hour) with total level, total XP and net worth (env contract §4).
     Hour 0 is the fresh character; then every checkpoint the episode crossed (2, 4, …, 20).
   - **episodes:** one row per (policy, seed): decisions, game ticks, the undiscounted reward sums, final metrics,
     deaths, the most chosen options, and wall time.
+  - **decisions:** one row per decision of every episode, its trace (rlscape/eval/rollout.py's TRACE): the game
+    tick it ended at, its option, why it ended, and the total level and net worth after it. The analysis reads time
+    allocation and milestones from it.
+- `run(...)` is `run_tables` without the decisions.
 - `summarize(checkpoints)`: per (policy, hour, metric), the mean over seeds with a percentile-bootstrap 95% CI.
 - `paired_difference(checkpoints, a, b, metric)`: per hour, policy a minus policy b on the same seeds. Episodes with
   the same seed start the same way, so the difference is paired; its CI is a bootstrap over seeds too.
-- `save(out_dir, ...)` writes the tables as parquet, plus `config.json`: the run's config, its hash, the git SHAs of
-  this repo and the server submodule (and whether the tree had uncommitted changes), package versions, and any
+- `save(out_dir, ...)` writes the tables as parquet (the decisions too, when given), plus `config.json`: the run's
+  config, its hash, the git SHAs of this repo and the server submodule (and whether the tree had uncommitted changes),
+  package versions, and any
   `extra` provenance (scripts/evaluate.py adds its command line). `extra` isn't hashed: the hash names what was run,
   not how it was asked for. `started` is `provenance()` taken when the run began (evaluate.py takes it), so a tree
   changed or committed during a long run doesn't change what's recorded; without it, it's taken at the save.
@@ -40,7 +45,7 @@ import pandas as pd
 from rlscape.baselines import GreedyPolicy, Policy, RandomPolicy
 from rlscape.baselines.guide import ScriptedGuidePolicy
 from rlscape.envs.sim_env import SimEnv
-from rlscape.eval.rollout import play
+from rlscape.eval.rollout import TRACE, play
 
 REPO = Path(__file__).resolve().parents[2]
 METRICS = ("total_level", "total_xp", "net_worth")
@@ -78,7 +83,7 @@ def policy_label(spec: str) -> str:
     return split(spec)[0]
 
 
-def _episode(policy_spec: str, seed: int) -> tuple[list[dict], dict]:
+def _episode(policy_spec: str, seed: int) -> tuple[list[dict], dict, list[tuple]]:
     started = time.perf_counter()
     policy = make_policy(policy_spec)
     episode = play(_env, policy, seed)
@@ -94,12 +99,19 @@ def _episode(policy_spec: str, seed: int) -> tuple[list[dict], dict]:
         "top_options": "; ".join(f"{o} {n}" for o, n in episode.options.most_common(5)),
         "wall_seconds": time.perf_counter() - started,
     }
-    return rows, summary
+    return rows, summary, [(label, seed, *row) for row in episode.trace]
 
 
 def run(policies: Sequence[str], seeds: Iterable[int], env_kwargs: dict | None = None,
         workers: int = 1) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Play every (policy, seed) episode; returns (checkpoints, episodes), sorted by policy then seed."""
+    return run_tables(policies, seeds, env_kwargs, workers)[:2]
+
+
+def run_tables(policies: Sequence[str], seeds: Iterable[int], env_kwargs: dict | None = None,
+               workers: int = 1) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Play every (policy, seed) episode; returns (checkpoints, episodes, decisions), sorted by policy then seed
+    (then hour, or decision)."""
     unknown = [p for p in policies if p not in POLICIES and not _trained_spec(p)]
     if unknown:
         raise ValueError(f"unknown policies {unknown}; known: {sorted(POLICIES)} or [label=]ppo:<model.zip>")
@@ -117,10 +129,12 @@ def run(policies: Sequence[str], seeds: Iterable[int], env_kwargs: dict | None =
     else:
         with ProcessPoolExecutor(workers, initializer=_init, initargs=(env_kwargs,)) as pool:
             results = list(pool.map(_episode, *zip(*tasks)))
-    checkpoints = pd.DataFrame([row for rows, _ in results for row in rows])
-    episodes = pd.DataFrame([summary for _, summary in results])
+    checkpoints = pd.DataFrame([row for rows, _, _ in results for row in rows])
+    episodes = pd.DataFrame([summary for _, summary, _ in results])
+    decisions = pd.DataFrame([row for _, _, trace in results for row in trace], columns=["policy", "seed", *TRACE])
     return (_in_order(checkpoints, labels, ["policy", "seed", "hour"]),
-            _in_order(episodes, labels, ["policy", "seed"]))
+            _in_order(episodes, labels, ["policy", "seed"]),
+            _in_order(decisions, labels, ["policy", "seed", "decision"]))
 
 
 def _trained_spec(spec: str) -> bool:
@@ -196,12 +210,15 @@ def config_hash(config: dict) -> str:
 
 
 def save(out_dir: Path, config: dict, checkpoints: pd.DataFrame, episodes: pd.DataFrame,
-         summary: pd.DataFrame, extra: dict | None = None, started: dict | None = None) -> Path:
+         summary: pd.DataFrame, extra: dict | None = None, started: dict | None = None,
+         decisions: pd.DataFrame | None = None) -> Path:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     checkpoints.to_parquet(out_dir / "checkpoints.parquet", index=False)
     episodes.to_parquet(out_dir / "episodes.parquet", index=False)
     summary.to_parquet(out_dir / "summary.parquet", index=False)
+    if decisions is not None:
+        decisions.to_parquet(out_dir / "decisions.parquet", index=False)
     meta = {"config": config, "config_hash": config_hash(config), **(started or provenance()), **(extra or {})}
     (out_dir / "config.json").write_text(json.dumps(meta, indent=2, default=str), encoding="utf-8")
     return out_dir
