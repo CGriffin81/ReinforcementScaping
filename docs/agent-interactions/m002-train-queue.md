@@ -3,15 +3,20 @@
 ## Metadata
 
 - Interaction ID: m002-train-queue
-- Timestamp CST: 2026-11-11 06:39:28 CST, the prompt's timestamp in the session transcript (UTC−06:00).
+- Timestamp CST: 2026-11-11 06:39:28 CST, the prompt's timestamp in the session transcript (UTC−06:00). Caleb's
+  go-ahead to launch came at 15:29:45 CST.
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: COMPLETE for the build. The queue isn't launched: that waits for Caleb's go-ahead.
+- Status: COMPLETE. Built, then launched on Caleb's word at 15:30 CST (PID 8436). It waits for E3's slots.
 - Commit: on `tooling/train-queue`, from `tooling/reward-parts` (PR #18).
 
 ## Full Prompt
 
 > Yes, carry on with the queue launcher
+
+After the report, at 15:29:45 CST:
+
+> Yes, launch the queue now
 
 ## Response Summary
 
@@ -32,6 +37,11 @@
   - Checks first: each config by its own branch's trainer, clean worktrees, one server commit.
   - `--dry-run` shows the plan and each run's state.
 - **Set up the worktrees** for E4, E6b and E5, like E6a's, and built their venvs through the dry run.
+- **Launched the queue** (second prompt), detached like E3, from the main checkout:
+  `uv run --frozen python scripts/train_queue.py --jobs 4` with E6a's, E4's, E6b's and E5's configs, its log in
+  `runs/train-queue.log` (git-ignored). It listed the 25 runs and found the machine full with E3's 4 (E3: 12 of 25
+  done, its fourth wave from about 10:00), so its first runs start when E3's last wave leaves slots, about Nov 12
+  12:15 to 12:45.
 
 ## Documentation Changes
 
@@ -57,10 +67,12 @@
 - **The main checkout** moved from `experiment/e5-weight-conditioned-ppo` to `tooling/train-queue`, which freed E5's
   branch for its worktree.
 - **E3's worktree** (`D:\ReinforcementScaping-runs`) wasn't touched.
+- **The queue** runs detached: PID 8436 (uv), started 2026-11-11 15:30:02 CST. While it trains, the four experiment
+  worktrees must stay unchanged, since each run records its worktree's state.
 
 ## Decisions
 
-- **User decision (Caleb):** build the queue launcher (this prompt).
+- **User decisions (Caleb):** build the queue launcher (the first prompt), and launch it now (the second).
 - **Agent choices:**
   - `--jobs` counts the machine's training runs from the process table, rather than waiting for E3 to end.
   - The order is by seeds across experiments by default, so every experiment has its first seeds early. This is a
@@ -84,9 +96,9 @@
 ## Follow-Up
 
 - **Caleb:**
-  - say whether to launch the queue now: it waits for E3's slots and starts about Nov 12 12:30;
   - review PR stack #13 to #18, then this one.
 - **Claude:**
   - when E3 finishes, evaluate and publish it;
+  - check the queue's first starts (about Nov 12 12:30) and its runs as they finish;
   - `scripts/replay.py` support for E5's `@<u>`;
   - the analysis scripts.
