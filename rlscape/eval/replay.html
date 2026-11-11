@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Replay</title>
+<!-- The replay page (rlscape/eval/replay.py fills in the data; Caleb, 2026-11-10, OQ-70). One self-contained file:
+     no network, no libraries. Colours follow the dataviz reference palette: families take the categorical slots in
+     a fixed order, lines are emphasis (the selected replay in ink, the others muted), text wears text tokens. -->
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10); --wash: rgba(11,11,11,0.04);
+  --map-void: #e9e8e3; --map-ground: #fcfcfb;
+  --f1: #2a78d6; --f2: #eb6834; --f3: #1baf7a; --f4: #eda100; --f5: #e87ba4; --f6: #008300; --f7: #6250d6; --f8: #e34948;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10); --wash: rgba(255,255,255,0.05);
+    --map-void: #121211; --map-ground: #2a2a28;
+    --f1: #3987e5; --f2: #d95926; --f3: #199e70; --f4: #c98500; --f5: #d55181; --f6: #008300; --f7: #9085e9; --f8: #e66767;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10); --wash: rgba(255,255,255,0.05);
+  --map-void: #121211; --map-ground: #2a2a28;
+  --f1: #3987e5; --f2: #d95926; --f3: #199e70; --f4: #c98500; --f5: #d55181; --f6: #008300; --f7: #9085e9; --f8: #e66767;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 1280px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: 20px; font-weight: 600; margin: 0 0 2px; }
+h2 { font-size: 14px; font-weight: 600; margin: 0 0 10px; }
+.sub { color: var(--ink-2); margin: 0; }
+.muted { color: var(--muted); }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; min-width: 0; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.controls { position: sticky; top: 0; z-index: 5; background: var(--page); padding: 10px 0; margin: 12px 0 4px; border-bottom: 1px solid var(--border); }
+button, select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+button[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--f1); outline-offset: 2px; }
+input[type="range"] { flex: 1 1 260px; min-width: 160px; accent-color: var(--ink); }
+.readout { font-variant-numeric: tabular-nums; color: var(--ink-2); min-width: 210px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 12px 0; }
+.tile .label { color: var(--ink-2); font-size: 12px; }
+.tile .value { font-size: 22px; font-weight: 600; }
+.tile .delta { color: var(--muted); font-size: 12px; }
+.grid2 { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 12px; margin-top: 12px; }
+.grid2b { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin-top: 12px; }
+@media (max-width: 900px) { .grid2, .grid2b { grid-template-columns: minmax(0, 1fr); } }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0 0 8px; color: var(--ink-2); font-size: 12px; }
+.legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; background: var(--c); }
+svg { display: block; width: 100%; overflow: visible; }
+svg text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+svg .rowlabel { fill: var(--ink-2); font-size: 12px; }
+svg .rowlabel.sel { fill: var(--ink); font-weight: 600; }
+.seg { cursor: pointer; }
+.seg:hover { opacity: 0.8; }
+.tip { position: fixed; pointer-events: none; z-index: 20; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); max-width: 320px; font-size: 12px; display: none; }
+.tip b { font-size: 13px; color: var(--ink); }
+.tip .k { color: var(--ink-2); }
+.tip .line { display: inline-block; width: 12px; height: 2px; margin-right: 6px; vertical-align: 3px; background: var(--c); }
+#map { width: 100%; height: 440px; border-radius: 8px; background: var(--map-void); cursor: grab; touch-action: none; }
+#map.drag { cursor: grabbing; }
+.mapbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+dl.kv { display: grid; grid-template-columns: max-content 1fr; gap: 3px 12px; margin: 0 0 12px; }
+dl.kv dt { color: var(--ink-2); }
+dl.kv dd { margin: 0; overflow-wrap: anywhere; }
+.opt { font-weight: 600; }
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.choice { display: grid; grid-template-columns: minmax(0, 1fr) 120px 48px; gap: 8px; align-items: center; margin: 3px 0; font-size: 12px; }
+.choice .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.choice .track { display: block; }
+.choice .bar { display: block; height: 8px; border-radius: 0 4px 4px 0; background: var(--c); min-width: 1px; }
+.choice .p { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.choice.chosen .name { font-weight: 600; }
+.skills { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 6px; }
+.skill { border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; display: flex; justify-content: space-between; gap: 6px; font-size: 12px; }
+.skill .lv { font-weight: 600; font-variant-numeric: tabular-nums; }
+.skill .gain { color: var(--muted); font-variant-numeric: tabular-nums; }
+.skill.now { background: var(--wash); border-color: var(--ink-2); }
+details { margin-top: 12px; }
+summary { cursor: pointer; color: var(--ink-2); }
+.tablewrap { max-height: 420px; overflow: auto; margin-top: 8px; border: 1px solid var(--border); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; font-size: 12px; }
+th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+th { position: sticky; top: 0; background: var(--surface); color: var(--ink-2); font-weight: 600; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+tr.cur td { background: var(--wash); }
+tbody tr { cursor: pointer; }
+.note { color: var(--muted); font-size: 12px; margin: 8px 0 0; }
+.intro { margin-top: 12px; }
+.intro summary { color: var(--ink); font-weight: 600; }
+.intro p { margin: 8px 0 0; max-width: 88ch; color: var(--ink-2); }
+.intro ul { margin: 8px 0 0; padding-left: 18px; color: var(--ink-2); }
+.intro li b { color: var(--ink); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+  <h1 id="title">Agent replay</h1>
+  <p class="sub" id="meta"></p>
+
+  <section class="card intro">
+    <details open>
+      <summary>How to read this</summary>
+      <p>Each replay is one <b>episode</b>: 20 game-hours played from a fresh level-3 character, all on the same seed.
+        A <b>decision</b> is the agent choosing its next activity, such as training Fishing at one spot, selling its
+        fish on the Grand Exchange, or banking. The game then plays that activity out, every catch and every step,
+        without asking the agent again: for up to 15 game-minutes, or a few seconds to drop an item or place an offer.
+        The counter below counts the decisions of one episode.</p>
+      <p>The trained replays are one agent at different points in its training, each named by how many practice
+        episodes it had played by then. Training is also measured in decisions, summed over all those episodes, which
+        is why it runs to a million or more.</p>
+      <ul id="about"></ul>
+    </details>
+  </section>
+
+  <div class="controls">
+    <div class="row" role="group" aria-label="Replay to follow" id="pick"></div>
+    <div class="row" style="margin-top:8px">
+      <button id="play" aria-label="Play">Play</button>
+      <select id="speed" aria-label="Playback speed">
+        <option value="900">Slow</option><option value="400" selected>Normal</option>
+        <option value="150">Fast</option><option value="40">Fastest</option>
+      </select>
+      <input type="range" id="scrub" min="0" max="0" value="0" aria-label="Decision in the episode">
+      <span class="readout" id="readout"></span>
+    </div>
+  </div>
+
+  <div class="tiles" id="tiles"></div>
+
+  <section class="card">
+    <h2>What each replay did, over 20 game-hours</h2>
+    <div class="legend" id="famlegend"></div>
+    <div id="timeline"></div>
+    <p class="note">Each block is one decision, as long as the option ran, coloured by its family. Click one to jump to
+      it. The hairline is the followed replay's current decision.</p>
+  </section>
+
+  <div class="grid2">
+    <section class="card">
+      <div class="mapbar">
+        <h2 style="margin:0">Where it went</h2>
+        <div class="row"><button id="fit">Fit to the route</button><button id="whole">Whole map</button></div>
+      </div>
+      <canvas id="map" aria-label="Map of the followed replay's route so far"></canvas>
+      <p class="note">Walks are drawn from where each option began to where it ended, on the collision map; trips inside
+        an option (to a bank and back) aren't. A ring marks a dungeon, drawn above it on the surface. Drag to pan,
+        scroll to zoom.</p>
+    </section>
+    <section class="card">
+      <h2 id="dtitle">Decision</h2>
+      <dl class="kv" id="dkv"></dl>
+      <h2>What the policy weighed</h2>
+      <div id="choices"></div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:12px">
+    <h2>Skills after this decision <span class="muted" style="font-weight:400">(level, and the gain since the start; outlined: raised by this decision)</span></h2>
+    <div class="skills" id="skills"></div>
+  </section>
+
+  <div class="grid2b">
+    <section class="card"><h2>Total level</h2><div id="chart-level"></div></section>
+    <section class="card"><h2>Net worth (gp)</h2><div id="chart-worth"></div></section>
+  </div>
+
+  <section class="card" style="margin-top:12px">
+    <details id="tabledetails">
+      <summary>Every decision of the followed replay (table)</summary>
+      <div class="tablewrap"><table id="table"></table></div>
+    </details>
+  </section>
+</main>
+<div class="tip" id="tip" role="status"></div>
+
+<script>
+"use strict";
+const DATA = /*REPLAY_DATA*/null;
+const TICKS_PER_HOUR = 6000, HOURS = 20;
+const $ = (id) => document.getElementById(id);
+const el = (tag, attrs = {}, text) => {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  if (text !== undefined) node.textContent = text;
+  return node;
+};
+const svgEl = (tag, attrs = {}) => {
+  const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  return node;
+};
+const fmtInt = (v) => Math.round(v).toLocaleString("en-US");
+const fmtCompact = (v) => Math.abs(v) >= 1e6 ? (v / 1e6).toFixed(Math.abs(v) >= 1e7 ? 0 : 1) + "M"
+  : Math.abs(v) >= 1e4 ? Math.round(v / 1e3) + "K" : fmtInt(v);
+const clock = (ticks) => { const m = Math.round(ticks / 100); return Math.floor(m / 60) + ":" + String(m % 60).padStart(2, "0"); };
+const famIndex = Object.fromEntries(DATA.families.map((f, i) => [f, i]));
+const famColor = (f) => `var(--f${(famIndex[f] ?? 7) + 1})`;
+const pretty = (id) => {
+  const m = /^(sell_ge|buy_ge|high_alch|drop)_(\d+)$/.exec(id);
+  const verb = { sell_ge: "sell", buy_ge: "buy", high_alch: "high alch", drop: "drop" };
+  return m && DATA.items[m[2]] ? `${verb[m[1]]} ${DATA.items[m[2]]}` : id.replaceAll("_", " ");
+};
+
+let sel = 0, cur = 0, timer = null;
+const R = DATA.replays;
+
+/* ---------- header ---------- */
+(function header() {
+  const m = DATA.meta;
+  $("title").textContent = m.title || "Agent replay";
+  $("meta").textContent = m.subtitle || "";
+  document.title = m.title || "Agent Replay";
+  const legend = $("famlegend");
+  for (const f of DATA.families) { const s = el("span", {}, f); s.style.setProperty("--c", famColor(f)); legend.append(s); }
+  R.forEach((r, i) => {
+    const b = el("button", { "aria-pressed": i === sel ? "true" : "false", title: r.about || "" }, r.label);
+    b.addEventListener("click", () => select(i, 0));
+    $("pick").append(b);
+    const li = el("li");
+    li.append(el("b", {}, r.label), document.createTextNode(`: ${r.about || ""} This episode: ${r.decisions.length} decisions.`));
+    $("about").append(li);
+  });
+})();
+
+/* ---------- tooltip ---------- */
+const tip = $("tip");
+function showTip(event, nodes) {
+  tip.replaceChildren(...nodes);
+  tip.style.display = "block";
+  const pad = 14, w = tip.offsetWidth, h = tip.offsetHeight;
+  let x = event.clientX + pad, y = event.clientY + pad;
+  if (x + w > window.innerWidth - 8) x = event.clientX - w - pad;
+  if (y + h > window.innerHeight - 8) y = event.clientY - h - pad;
+  tip.style.left = Math.max(8, x) + "px"; tip.style.top = Math.max(8, y) + "px";
+}
+const hideTip = () => { tip.style.display = "none"; };
+function decisionTip(r, d, i) {
+  const nodes = [el("b", {}, pretty(d.option)), el("br")];
+  const line = (k, v) => { const div = el("div"); div.append(el("span", { class: "k" }, k + ": "), document.createTextNode(v)); return div; };
+  nodes.push(line("replay", r.label), line("decision", `${i + 1} of ${r.decisions.length} in the episode`),
+    line("time", `${clock(d.t0)} to ${clock(d.t1)} (${Math.round((d.t1 - d.t0) / 100)} min)`),
+    line("family", d.family), line("ended", d.end.replaceAll("_", " ")));
+  const what = describe(d);
+  if (what) nodes.push(line("detail", what));
+  return nodes;
+}
+function describe(d) {
+  const x = d.detail || {}, parts = [];
+  if (x.target_name) parts.push(`${x.target_name}${x.style ? ", " + x.style.replaceAll("_", " ") : ""}${x.kills !== undefined ? ", " + x.kills + " kills" : ""}`);
+  if (x.path) parts.push(String(x.path).replaceAll("_", " "));
+  for (const [k, v] of Object.entries(x)) {
+    if (["target", "target_name", "style", "kills", "path", "site", "neighbour_kills"].includes(k)) continue;
+    if (v === null || typeof v === "object") continue;
+    parts.push(`${k.replaceAll("_", " ")} ${v}`);
+  }
+  return parts.join("; ");
+}
+
+/* ---------- timeline ---------- */
+const TL = { left: 150, right: 8, rowH: 22, gap: 10, top: 18 };
+let tlWidth = 0;
+function drawTimeline() {
+  const host = $("timeline");
+  tlWidth = Math.max(320, host.clientWidth);
+  const h = TL.top + R.length * (TL.rowH + TL.gap);
+  const svg = svgEl("svg", { viewBox: `0 0 ${tlWidth} ${h}`, height: h, role: "img", "aria-label": "Timeline of each replay's decisions" });
+  const x = (t) => TL.left + (tlWidth - TL.left - TL.right) * t / (HOURS * TICKS_PER_HOUR);
+  for (let hr = 0; hr <= HOURS; hr += 2) {
+    svg.append(svgEl("line", { x1: x(hr * TICKS_PER_HOUR), x2: x(hr * TICKS_PER_HOUR), y1: TL.top - 4, y2: h - TL.gap + 2, stroke: "var(--grid)", "stroke-width": 1 }));
+    const t = svgEl("text", { x: x(hr * TICKS_PER_HOUR), y: 11, "text-anchor": "middle" }); t.textContent = hr + "h"; svg.append(t);
+  }
+  R.forEach((r, ri) => {
+    const y = TL.top + ri * (TL.rowH + TL.gap);
+    const label = svgEl("text", { x: 0, y: y + TL.rowH / 2 + 4, class: "rowlabel" + (ri === sel ? " sel" : "") });
+    label.textContent = r.label.length > 22 ? r.label.slice(0, 21) + "…" : r.label;
+    svg.append(label);
+    r.decisions.forEach((d, i) => {
+      const x0 = x(d.t0), x1 = x(d.t1), w = Math.max(0.5, x1 - x0 - (x1 - x0 > 3 ? 1 : 0));
+      const rect = svgEl("rect", { x: x0, y, width: w, height: TL.rowH, fill: famColor(d.family), class: "seg", rx: 1 });
+      rect.addEventListener("pointermove", (e) => showTip(e, decisionTip(r, d, i)));
+      rect.addEventListener("pointerleave", hideTip);
+      rect.addEventListener("click", () => select(ri, i));
+      svg.append(rect);
+    });
+  });
+  const hair = svgEl("line", { id: "tlhair", y1: TL.top - 6, y2: h - TL.gap + 4, stroke: "var(--ink)", "stroke-width": 1.5 });
+  svg.append(hair);
+  host.replaceChildren(svg);
+  placeHair();
+}
+function placeHair() {
+  const hair = document.getElementById("tlhair");
+  if (!hair) return;
+  const d = R[sel].decisions[cur];
+  const xx = TL.left + (tlWidth - TL.left - TL.right) * d.t0 / (HOURS * TICKS_PER_HOUR);
+  hair.setAttribute("x1", xx); hair.setAttribute("x2", xx);
+}
+
+/* ---------- line charts: emphasis, one axis each ---------- */
+function stepSeries(r, key) {
+  const pts = [[0, r.start[key]]];
+  for (const d of r.decisions) pts.push([d.t1, d[key]]);
+  return pts;
+}
+function valueAt(pts, t) {
+  let lo = 0, hi = pts.length - 1;
+  if (t <= pts[0][0]) return pts[0][1];
+  while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (pts[mid][0] <= t) lo = mid; else hi = mid - 1; }
+  return pts[lo][1];
+}
+function niceMax(v) { if (v <= 0) return 1; const p = Math.pow(10, Math.floor(Math.log10(v))); for (const m of [1, 2, 2.5, 5, 10]) if (m * p >= v) return m * p; return 10 * p; }
+function drawChart(hostId, key, fmt) {
+  const host = $(hostId), W = Math.max(280, host.clientWidth), H = 220, m = { l: 48, r: 108, t: 10, b: 24 };
+  const series = R.map((r) => stepSeries(r, key));
+  const ymax = niceMax(Math.max(...series.flat().map((p) => p[1])));
+  const X = (t) => m.l + (W - m.l - m.r) * t / (HOURS * TICKS_PER_HOUR), Y = (v) => H - m.b - (H - m.t - m.b) * v / ymax;
+  const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, height: H, role: "img", "aria-label": `${key.replaceAll("_", " ")} over game hours` });
+  for (let i = 0; i <= 4; i++) {
+    const v = ymax * i / 4;
+    svg.append(svgEl("line", { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), stroke: i ? "var(--grid)" : "var(--axis)", "stroke-width": 1 }));
+    const t = svgEl("text", { x: m.l - 6, y: Y(v) + 4, "text-anchor": "end" }); t.textContent = fmt(v); svg.append(t);
+  }
+  for (let hr = 0; hr <= HOURS; hr += 4) { const t = svgEl("text", { x: X(hr * TICKS_PER_HOUR), y: H - 6, "text-anchor": "middle" }); t.textContent = hr + "h"; svg.append(t); }
+  const order = R.map((_, i) => i).filter((i) => i !== sel).concat([sel]);  // the followed replay on top
+  const ends = [];
+  for (const i of order) {
+    const pts = series[i];
+    let d = `M${X(pts[0][0])},${Y(pts[0][1])}`;
+    for (let k = 1; k < pts.length; k++) d += `H${X(pts[k][0])}V${Y(pts[k][1])}`;
+    d += `H${X(HOURS * TICKS_PER_HOUR)}`;
+    svg.append(svgEl("path", { d, fill: "none", stroke: i === sel ? "var(--ink)" : "var(--axis)", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+    ends.push({ i, y: Y(pts[pts.length - 1][1]) });
+  }
+  ends.sort((a, b) => a.y - b.y);  // end labels, kept apart with a leader line when they'd touch
+  let last = -Infinity;
+  for (const e of ends) {
+    const ly = Math.max(e.y, last + 13); last = ly;
+    if (Math.abs(ly - e.y) > 1) svg.append(svgEl("line", { x1: W - m.r + 2, x2: W - m.r + 8, y1: e.y, y2: ly, stroke: "var(--axis)", "stroke-width": 1 }));
+    const t = svgEl("text", { x: W - m.r + 10, y: ly + 4, class: "rowlabel" + (e.i === sel ? " sel" : "") });
+    const short = R[e.i].short || R[e.i].label;
+    t.textContent = short.length > 15 ? short.slice(0, 14) + "…" : short; svg.append(t);
+  }
+  const cross = svgEl("line", { y1: m.t, y2: H - m.b, stroke: "var(--muted)", "stroke-width": 1, visibility: "hidden" });
+  const now = svgEl("line", { y1: m.t, y2: H - m.b, stroke: "var(--ink)", "stroke-width": 1.5, class: "nowline" });
+  svg.append(cross, now);
+  const hit = svgEl("rect", { x: m.l, y: m.t, width: W - m.l - m.r, height: H - m.t - m.b, fill: "transparent" });
+  hit.addEventListener("pointermove", (e) => {
+    const box = svg.getBoundingClientRect(), px = (e.clientX - box.left) * W / box.width;
+    const t = Math.min(HOURS * TICKS_PER_HOUR, Math.max(0, (px - m.l) / (W - m.l - m.r) * HOURS * TICKS_PER_HOUR));
+    cross.setAttribute("x1", X(t)); cross.setAttribute("x2", X(t)); cross.setAttribute("visibility", "visible");
+    const nodes = [el("div", { class: "k" }, `at ${clock(t)}`)];
+    R.map((r, i) => ({ r, i, v: valueAt(series[i], t) })).sort((a, b) => b.v - a.v).forEach(({ r, i, v }) => {
+      const row = el("div"), key = el("span", { class: "line" }); key.style.setProperty("--c", i === sel ? "var(--ink)" : "var(--axis)");
+      row.append(key, el("b", {}, fmt(v, true)), document.createTextNode("  " + r.label)); nodes.push(row);
+    });
+    showTip(e, nodes);
+  });
+  hit.addEventListener("pointerleave", () => { cross.setAttribute("visibility", "hidden"); hideTip(); });
+  svg.append(hit);
+  host.replaceChildren(svg);
+  host._place = () => { const d = R[sel].decisions[cur]; now.setAttribute("x1", X(d.t1)); now.setAttribute("x2", X(d.t1)); };
+  host._place();
+}
+const fmtLevel = (v) => fmtInt(v), fmtWorth = (v, full) => full ? fmtInt(v) : fmtCompact(v);
+
+/* ---------- map ---------- */
+const M = DATA.map, canvas = $("map"), ctx = canvas.getContext("2d");
+const img = new Image();
+img.src = "data:image/png;base64," + M.png;
+const ground = document.createElement("canvas");
+let view = null;  // {x, y, scale}: the tile at the canvas centre, and pixels per tile
+const surfaceY = (y) => y >= M.underground ? y - M.underground : y;
+function themed(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function tintGround() {
+  ground.width = M.width; ground.height = M.height;
+  const g = ground.getContext("2d");
+  g.clearRect(0, 0, M.width, M.height);
+  g.drawImage(img, 0, 0);
+  g.globalCompositeOperation = "source-in";
+  g.fillStyle = themed("--map-ground"); g.fillRect(0, 0, M.width, M.height);
+  g.globalCompositeOperation = "source-over";
+}
+function routePoints(r, upto) {
+  const pts = [];
+  for (let i = 0; i <= upto; i++) {
+    const d = r.decisions[i];
+    pts.push({ x: d.to[0], y: surfaceY(d.to[1]), under: d.to[1] >= M.underground, family: d.family, d, i,
+               walk: d.walk, from: d.from });
+  }
+  return pts;
+}
+function fitView(all) {
+  const r = R[sel], ds = r.decisions, xs = [r.start.location[0]], ys = [surfaceY(r.start.location[1])];
+  for (const d of (all ? ds : ds.slice(0, cur + 1))) { xs.push(d.to[0]); ys.push(surfaceY(d.to[1])); }
+  const minx = Math.min(...xs), maxx = Math.max(...xs), miny = Math.min(...ys), maxy = Math.max(...ys);
+  const span = Math.max(80, maxx - minx, maxy - miny) * 1.25;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  view = { x: (minx + maxx) / 2, y: (miny + maxy) / 2, scale: Math.min(w, h) / span };
+}
+function wholeView() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  view = { x: M.x0 + M.width / 2, y: M.y0 + M.height / 2, scale: Math.min(w / M.width, h / M.height) };
+}
+function toScreen(x, y) {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  return [w / 2 + (x - view.x) * view.scale, h / 2 - (y - view.y) * view.scale];
+}
+function drawMap() {
+  const dpr = window.devicePixelRatio || 1, w = canvas.clientWidth, h = canvas.clientHeight;
+  if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = themed("--map-void"); ctx.fillRect(0, 0, w, h);
+  if (!view) fitView(false);
+  // the ground: image row 0 is the northmost row (y0 + height - 1)
+  const [gx, gy] = toScreen(M.x0, M.y0 + M.height);
+  ctx.imageSmoothingEnabled = view.scale < 1;
+  ctx.drawImage(ground, gx, gy, M.width * view.scale, M.height * view.scale);
+  const r = R[sel], pts = routePoints(r, cur), lw = Math.max(1.5, Math.min(3, view.scale * 0.6));
+  // walks, faded with age, coloured by the option they led to
+  let prev = { x: r.start.location[0], y: surfaceY(r.start.location[1]) };
+  pts.forEach((p, k) => {
+    const age = cur - k, alpha = age > 40 ? 0.25 : 1 - age * 0.018;
+    ctx.globalAlpha = alpha; ctx.strokeStyle = themed(`--f${(famIndex[p.family] ?? 7) + 1}`); ctx.lineWidth = lw;
+    ctx.lineJoin = ctx.lineCap = "round";
+    ctx.beginPath();
+    if (p.walk && p.walk.length > 1) {
+      p.walk.forEach(([x, y], j) => { const [sx, sy] = toScreen(x, y); j ? ctx.lineTo(sx, sy) : ctx.moveTo(sx, sy); });
+      ctx.setLineDash([]);
+    } else {
+      const [ax, ay] = toScreen(prev.x, prev.y), [bx, by] = toScreen(p.x, p.y);
+      ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.setLineDash([4, 4]);  // no surface walk: a teleport, a dungeon, a boat
+    }
+    ctx.stroke(); ctx.setLineDash([]);
+    prev = p;
+  });
+  ctx.globalAlpha = 1;
+  // sites: where options ended, each drawn once, rings for dungeons
+  const seen = new Set();
+  for (const p of pts) {
+    const key = p.x + "," + p.y; if (seen.has(key)) continue; seen.add(key);
+    const [sx, sy] = toScreen(p.x, p.y);
+    ctx.beginPath(); ctx.arc(sx, sy, 4, 0, 2 * Math.PI);
+    ctx.lineWidth = 2; ctx.strokeStyle = themed("--surface");
+    if (p.under) { ctx.stroke(); ctx.beginPath(); ctx.arc(sx, sy, 4, 0, 2 * Math.PI); ctx.lineWidth = 1.5; ctx.strokeStyle = themed(`--f${(famIndex[p.family] ?? 7) + 1}`); ctx.stroke(); }
+    else { ctx.fillStyle = themed(`--f${(famIndex[p.family] ?? 7) + 1}`); ctx.fill(); ctx.stroke(); }
+  }
+  // now
+  const last = pts[pts.length - 1], [nx, ny] = toScreen(last.x, last.y);
+  ctx.beginPath(); ctx.arc(nx, ny, 7, 0, 2 * Math.PI); ctx.fillStyle = themed("--ink"); ctx.fill();
+  ctx.lineWidth = 2; ctx.strokeStyle = themed("--surface"); ctx.stroke();
+  // scale bar
+  const tiles = [10, 25, 50, 100, 250, 500].find((t) => t * view.scale >= 60) || 500;
+  ctx.fillStyle = themed("--ink-2"); ctx.fillRect(12, h - 16, tiles * view.scale, 2);
+  ctx.font = "11px system-ui, sans-serif"; ctx.fillText(tiles + " tiles", 12, h - 22);
+}
+(function mapInput() {
+  let drag = null;
+  canvas.addEventListener("pointerdown", (e) => { drag = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y }; canvas.setPointerCapture(e.pointerId); canvas.classList.add("drag"); });
+  canvas.addEventListener("pointerup", () => { drag = null; canvas.classList.remove("drag"); });
+  canvas.addEventListener("pointermove", (e) => {
+    if (drag) { view.x = drag.vx - (e.clientX - drag.x) / view.scale; view.y = drag.vy + (e.clientY - drag.y) / view.scale; drawMap(); return; }
+    const box = canvas.getBoundingClientRect(), px = e.clientX - box.left, py = e.clientY - box.top;
+    let best = null, bestD = 14;
+    for (const p of routePoints(R[sel], cur)) { const [sx, sy] = toScreen(p.x, p.y); const dd = Math.hypot(sx - px, sy - py); if (dd < bestD) { bestD = dd; best = p; } }
+    if (best) {
+      const visits = routePoints(R[sel], cur).filter((p) => p.x === best.x && p.y === best.y).length;
+      const nodes = decisionTip(R[sel], best.d, best.i);
+      nodes.push(el("div", { class: "k" }, `${visits} decision${visits > 1 ? "s" : ""} ended here so far` + (best.under ? " (underground)" : "")));
+      showTip(e, nodes);
+    } else hideTip();
+  });
+  canvas.addEventListener("pointerleave", hideTip);
+  canvas.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const box = canvas.getBoundingClientRect(), px = e.clientX - box.left - box.width / 2, py = e.clientY - box.top - box.height / 2;
+    const before = { x: view.x + px / view.scale, y: view.y - py / view.scale };
+    view.scale = Math.min(40, Math.max(0.15, view.scale * Math.exp(-e.deltaY * 0.0015)));
+    view.x = before.x - px / view.scale; view.y = before.y + py / view.scale;
+    drawMap();
+  }, { passive: false });
+  $("fit").addEventListener("click", () => { fitView(true); drawMap(); });
+  $("whole").addEventListener("click", () => { wholeView(); drawMap(); });
+})();
+
+/* ---------- the decision, its choices, the skills ---------- */
+function drawDecision() {
+  const r = R[sel], d = r.decisions[cur];
+  $("dtitle").textContent = `Decision ${cur + 1} of ${r.decisions.length} in this episode`;
+  const kv = $("dkv"); kv.replaceChildren();
+  const add = (k, node) => { kv.append(el("dt", {}, k)); const dd = el("dd"); typeof node === "string" ? dd.textContent = node : dd.append(node); kv.append(dd); };
+  const opt = el("span"); const sw = el("span", { class: "swatch" }); sw.style.background = famColor(d.family);
+  opt.append(sw, el("span", { class: "opt" }, pretty(d.option)), el("span", { class: "muted" }, ` (${d.family})`));
+  add("Option", opt);
+  const what = describe(d); if (what) add("Detail", what);
+  add("Time", `${clock(d.t0)} to ${clock(d.t1)}, ${Math.round((d.t1 - d.t0) / 100)} game-minutes`);
+  add("Ended", d.end.replaceAll("_", " "));
+  add("Reward", `${d.reward.toFixed(2)} (levels +${d.r_skill.toFixed(2)}, net worth ${d.r_wealth >= 0 ? "+" : ""}${fmtInt(d.r_wealth * 1e5)} gp)`);
+  add("After it", `total level ${fmtInt(d.total_level)}, net worth ${fmtInt(d.net_worth)} gp, coins ${fmtInt(d.coins)}`);
+  add("Choices open", fmtInt(d.choices));
+  if (d.value !== null && d.value !== undefined) add("Value estimate", `${d.value.toFixed(1)} (the discounted reward the critic expected from here)`);
+  const box = $("choices"); box.replaceChildren();
+  if (!d.top) { box.append(el("p", { class: "note" }, "A scripted policy: it has no probabilities to show.")); return; }
+  const pmax = Math.max(...d.top.map((t) => t[1]));
+  for (const [id, p, fam] of d.top) {
+    const row = el("div", { class: "choice" + (id === d.option ? " chosen" : "") });
+    row.append(el("span", { class: "name", title: id }, (id === d.option ? "▸ " : "") + pretty(id)));
+    const track = el("span", { class: "track" }), bar = el("span", { class: "bar" }); bar.style.width = (100 * p / pmax) + "%"; bar.style.setProperty("--c", famColor(fam)); track.append(bar);
+    row.append(track, el("span", { class: "p" }, (100 * p).toFixed(p < 0.1 ? 1 : 0) + "%"));
+    box.append(row);
+  }
+  if (!d.top.some((t) => t[0] === d.option)) box.append(el("p", { class: "note" }, `Chosen: ${pretty(d.option)}, sampled from outside the five most likely.`));
+}
+function drawSkills() {
+  const r = R[sel], d = r.decisions[cur], before = cur ? r.decisions[cur - 1].levels : r.start.levels;
+  const host = $("skills"); host.replaceChildren();
+  DATA.skills.forEach((s, i) => {
+    const tile = el("div", { class: "skill" + (d.levels[i] > before[i] ? " now" : "") });
+    const gain = d.levels[i] - r.start.levels[i];
+    tile.append(el("span", {}, s), el("span", {}, ""));
+    tile.lastChild.append(el("span", { class: "lv" }, String(d.levels[i])), el("span", { class: "gain" }, gain ? ` +${gain}` : ""));
+    host.append(tile);
+  });
+}
+function drawTiles() {
+  const r = R[sel], d = r.decisions[cur], host = $("tiles"); host.replaceChildren();
+  const tile = (label, value, delta) => { const t = el("div", { class: "card tile" }); t.append(el("div", { class: "label" }, label), el("div", { class: "value" }, value), el("div", { class: "delta" }, delta)); host.append(t); };
+  tile("Game time", clock(d.t1), `of ${HOURS}:00`);
+  tile("Total level", fmtInt(d.total_level), `${r.start.total_level} at the start; ${fmtInt(r.final.total_level)} at the end`);
+  tile("Net worth", fmtCompact(d.net_worth) + " gp", `${fmtCompact(r.final.net_worth)} gp at the end`);
+  tile("Total XP", fmtCompact(d.total_xp), `${fmtCompact(r.final.total_xp)} at the end`);
+}
+function drawTable() {
+  const r = R[sel], t = $("table"); t.replaceChildren();
+  const head = el("tr");
+  for (const [h, num] of [["#", 1], ["Start", 1], ["Min", 1], ["Option", 0], ["Family", 0], ["Detail", 0], ["Ended", 0], ["Reward", 1], ["Total level", 1], ["Net worth", 1]]) head.append(el("th", num ? { class: "num" } : {}, h));
+  const thead = el("thead"); thead.append(head); t.append(thead);
+  const body = el("tbody");
+  r.decisions.forEach((d, i) => {
+    const tr = el("tr", i === cur ? { class: "cur" } : {});
+    for (const [v, num] of [[i + 1, 1], [clock(d.t0), 1], [Math.round((d.t1 - d.t0) / 100), 1], [pretty(d.option), 0], [d.family, 0], [describe(d), 0], [d.end.replaceAll("_", " "), 0], [d.reward.toFixed(2), 1], [fmtInt(d.total_level), 1], [fmtInt(d.net_worth), 1]]) tr.append(el("td", num ? { class: "num" } : {}, String(v)));
+    tr.addEventListener("click", () => select(sel, i));
+    body.append(tr);
+  });
+  t.append(body);
+}
+
+/* ---------- state ---------- */
+function select(ri, i, fromScrub) {
+  const changed = ri !== sel;
+  sel = ri; cur = Math.max(0, Math.min(i, R[sel].decisions.length - 1));
+  document.querySelectorAll("#pick button").forEach((b, k) => b.setAttribute("aria-pressed", k === sel ? "true" : "false"));
+  const scrub = $("scrub"); scrub.max = R[sel].decisions.length - 1; if (!fromScrub) scrub.value = cur;
+  const d = R[sel].decisions[cur];
+  $("readout").textContent = `decision ${cur + 1} of ${R[sel].decisions.length} · ${clock(d.t0)}–${clock(d.t1)}`;
+  if (changed) { drawTimeline(); drawChart("chart-level", "total_level", fmtLevel); drawChart("chart-worth", "net_worth", fmtWorth); fitView(true); if ($("tabledetails").open) drawTable(); }
+  placeHair(); $("chart-level")._place(); $("chart-worth")._place();
+  drawTiles(); drawDecision(); drawSkills(); drawMap();
+  if ($("tabledetails").open) {
+    document.querySelectorAll("#table tbody tr").forEach((tr, k) => tr.classList.toggle("cur", k === cur));
+  }
+}
+$("scrub").addEventListener("input", (e) => select(sel, +e.target.value, true));
+$("tabledetails").addEventListener("toggle", () => { if ($("tabledetails").open) drawTable(); });
+function stop() { clearInterval(timer); timer = null; $("play").textContent = "Play"; $("play").setAttribute("aria-label", "Play"); }
+$("play").addEventListener("click", () => {
+  if (timer) { stop(); return; }
+  if (cur >= R[sel].decisions.length - 1) select(sel, 0);
+  $("play").textContent = "Pause"; $("play").setAttribute("aria-label", "Pause");
+  const tick = () => { if (cur >= R[sel].decisions.length - 1) { stop(); return; } select(sel, cur + 1); };
+  timer = setInterval(tick, +$("speed").value);
+});
+$("speed").addEventListener("change", () => { if (timer) { stop(); $("play").click(); } });
+let resizeTimer = null;
+window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { drawTimeline(); drawChart("chart-level", "total_level", fmtLevel); drawChart("chart-worth", "net_worth", fmtWorth); drawMap(); }, 120); });
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { tintGround(); drawMap(); });
+
+img.onload = () => {
+  tintGround();
+  drawTimeline(); drawChart("chart-level", "total_level", fmtLevel); drawChart("chart-worth", "net_worth", fmtWorth);
+  fitView(true); select(0, 0);
+};
+</script>
+</body>
+</html>

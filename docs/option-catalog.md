@@ -59,8 +59,12 @@ each target's spawn area.
 **Skilling slots** (Caleb, 2026-10-30/31; `rlscape/sim/skilling.py`). Like the combat slots (§4), each gathering
 skill offers its best **paths** by XP/hr and by gp/hr at the current levels, gear and position, as actions, and
 agents choose a path, not a fixed method. Nine skills (Woodcutting, Fishing, Mining, Thieving, Fletching, Crafting,
-Herblore, Runecrafting, Agility) × 2 slots by XP/hr + 2 by gp/hr = 36 actions, `skill_<skill>_xp1/xp2/gp1/gp2`. They replace the 31 fixed gathering and thieving
-actions.
+Herblore, Runecrafting, Agility) × 2 slots by XP/hr + 2 by gp/hr = 36 actions, `skill_<skill>_xp1/xp2/gp1/gp2`, and
+woodcutting's fifth, `skill_woodcutting_fletch` (sim v1.2, env contract v1.44): 37. They replace the 31 fixed
+gathering and thieving actions.
+**Woodcutting's fletch slot** (Caleb, 2026-11-11, OQ-75) holds the best open chop-and-fletch path by XP/hr. It's
+filled first, and the XP and gp slots rank the rest. A chop-and-fletch path without a knife carried takes one from the
+nearest reachable spawn on its way, and its rate counts the detour.
 A path in an XP slot doesn't also fill a gp slot (the next best takes its place, as in combat), and slots are
 recomputed every decision. The observation carries each slot's rates (env contract §3). A gathering path's rate
 counts its site's aggressive monsters (2026-11-08): it keeps the share of XP per tick that the sim's own option keeps
@@ -797,7 +801,7 @@ selling as "all in the inventory"):**
 | Selling | 560 (GE and store, 280 each) |
 | Buying | 217 (180 at the GE, with the knife, 19 fletching inputs, the anti-dragon shield, 6 quest items, 2 antipoisons, 8 combat potions and antifire, Ava's 2 devices, 11 crossbows and 53 bolts; 37 at shops) |
 | **Total in sim v0** | **1,709** |
-| Sim v1 so far (v1.4) | Crafting's 4 skilling slots; Crafting's 25 GE buys (needle and chisel one each, the rest in lots of 1,000) and its 18 new *V* items' 90 actions: 1,828; Herblore's and Runecrafting's 4 skilling slots each; Herblore's 66 GE buys (the pestle and mortar one, the rest in lots of 1,000) and its 51 new *V* items' 255 actions: 2,157; Agility's 4 skilling slots: 2,161; Runecrafting's 21 GE buys (the essence in lots of 1,000, the talismans and plain tiaras in lots of 14, a rune's tiara one) and its 19 new *V* items' 95 actions: 2,277; the barbarian rod's buy and *V* item: 2,283; less chaos's 2 buys and 2 items (Caleb, 2026-11-09): 2,271; the four pouches' 20 actions: 2,291; the Gem Store's 2 buys (OQ-57): **2,293** |
+| Sim v1 so far (v1.4) | Crafting's 4 skilling slots; Crafting's 25 GE buys (needle and chisel one each, the rest in lots of 1,000) and its 18 new *V* items' 90 actions: 1,828; Herblore's and Runecrafting's 4 skilling slots each; Herblore's 66 GE buys (the pestle and mortar one, the rest in lots of 1,000) and its 51 new *V* items' 255 actions: 2,157; Agility's 4 skilling slots: 2,161; Runecrafting's 21 GE buys (the essence in lots of 1,000, the talismans and plain tiaras in lots of 14, a rune's tiara one) and its 19 new *V* items' 95 actions: 2,277; the barbarian rod's buy and *V* item: 2,283; less chaos's 2 buys and 2 items (Caleb, 2026-11-09): 2,271; the four pouches' 20 actions: 2,291; the Gem Store's 2 buys (OQ-57): 2,293; woodcutting's fletch slot (sim v1.2, OQ-75): **2,294** |
 
 Each *V* item adds 7 observation features: its inventory and bank counts, and its 5 actions' mask entries (env
 contract §3).

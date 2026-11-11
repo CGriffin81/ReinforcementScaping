@@ -7061,3 +7061,242 @@ than exp." `m002-oq61`.
   - refusals;
   - the config keys;
   - 40 random options on the sim, each rewarded by the converted weights.
+
+### Decided: OQ-70, watching an agent: a replay page with a map, built early (Caleb)
+- **Raised and decided:** 2026-11-10, in chat. Caleb: "I would like to watch an agent's training session. Can we
+  build that easily or would it cost a lot of time to our already time starved project?"
+- **Options** (asked in chat):
+  - **(a) Recommended: TensorBoard and a replay page.**
+    - TensorBoard needs no build: every run already logs to it.
+    - The replay page plays one 20-hour episode from chosen checkpoints in the sim and writes one HTML page. That's
+      ROADMAP's demo (Nov 27 to 30) built early, about half a day.
+  - **(b) The replay page with a map:** the agent's route drawn on the collision map, about 2 to 3 hours more.
+  - **(c) TensorBoard only:** curves, not what the agent does.
+  - **(d) In the game client:** needs a ServerEnv-style driver, which was cut. 1.5 weeks or more.
+- **Caleb: (b).** It was built while E3 trained (below).
+
+### Built: the replay page (OQ-70)
+- **`scripts/replay.py <run dir>`** writes `results/replays/<experiment>_<variant>_seed<k>_episode<seed>.html`
+  (git-ignored).
+  - One episode on one seed for each of the run's chosen checkpoints: by default the first, the middle one and the
+    final model.
+  - Optionally, baselines beside them (`--also scripted_guide`).
+  - The env is made as the run was trained.
+- **`rlscape/eval/replay.py`:** `record` plays the episode the evaluation harness plays: the env and the policy reset
+  with the seed, and actions are sampled.
+  - For a trained policy, before each action it takes the masked distribution's five most likely options and the
+    critic's value. Neither draws a random number, so the sampled action is the evaluation's.
+  - Each decision keeps its game time, option, family, detail, why it ended, reward parts, total level, net worth,
+    every skill's level, and where it began and ended.
+  - The walk between those two places is rebuilt on the collision map. A trip inside an option, to a bank and back,
+    isn't drawn.
+- **`rlscape/eval/replay.html`:** one self-contained page with no network use and no libraries. It shows:
+  - a timeline of every replay's decisions over 20 game-hours, coloured by family;
+  - the map: the followed replay's route so far, its sites, and dungeons as rings;
+  - the decision: option, detail, time, why it ended, reward, value, and the five options the policy weighed;
+  - the 24 skills;
+  - total level and net worth over time;
+  - a table of every decision.
+
+  Play and the scrubber step through the decisions. The colours are the dataviz reference palette: families in a
+  fixed order with the commonest first, and lines as emphasis. It has light and dark themes.
+- **Checked:** E2's best run, seed 0, against the evaluation. The final model's replay is its evaluated episode
+  exactly (166 decisions, total level 338, 23,410 gp), and so is the guide's (368, 337, 130,826 gp). A replay with
+  three checkpoints and the guide takes about 1.5 minutes.
+- **Tests** (`tests/test_replay.py`, 4):
+  - a replay is the evaluation's episode, for the guide always and for E2's best model when it's present;
+  - the decisions run end to end, with levels summing to the total level and walks joining their ends;
+  - the page carries the data intact, and nothing in it can close the script;
+  - a trained replay's choices are ordered probabilities with a finite value.
+
+### Changed: the replay page names a checkpoint by its practice episodes (2026-11-10)
+- **Why:** Caleb found the page confusing. Checkpoints were labelled by their training decisions ("final (1M
+  decisions)"), right beside the counter of one episode's decisions ("1 of 166"). The two counts read as the same kind
+  of number. They are the same unit (one decision is one option chosen), but one sums thousands of episodes and the
+  other counts one.
+- **Now:**
+  - A trained replay is named by the practice episodes it had played: "After 8,638 episodes". Its description gives
+    the training decisions, and the episode counter says "in this episode".
+  - The counts come from `episodes.parquet` once a run has finished. While it trains, they come from its decision
+    log, which knows them up to its last part written. The two sources agree at every checkpoint of E2's best run.
+  - A "How to read this" box at the top says what an episode and a decision are, and gives a line for each replay.
+    The baselines are described as untrained.
+- **Tests** (`tests/test_replay.py`, now 6): the two sources of episode counts agree, and a trained replay's name
+  holds its episodes, not its decisions.
+- **The project's unit is unchanged.** Training budgets are still counted in decisions (OQ-69's 2M) in the configs,
+  logs and docs. The report qualifies them (OQ-71 (a), below).
+
+### Decided: OQ-71, the report keeps "decision" as its one unit, defined once and always qualified (Caleb)
+- **Raised:** 2026-11-10, by Caleb on E2's replay page: "reusing the terminology is incredibly confusing to anybody who
+  is not deeply involved with the experiments." Record `m002-replay-terms`.
+- **Found:**
+  - "Decision" is one unit, one option chosen by the high-level policy (one SMDP step).
+  - A run's budget sums them over thousands of episodes: E2's best model trained on 1,000,448 decisions, which was
+    8,638 episodes.
+  - An episode's count is a few hundred: that model made 166 on seed 0, and the guide 368.
+  - The replay page now names checkpoints by episodes (decision log, 2026-11-10). The configs (`total_decisions`), the
+    logs and OQ-69's "2M decisions a run" use decisions.
+- **Options:**
+  - **(a) Recommended, chosen: keep "decision" as the one unit, defined once in the method.** Always qualify it: "training
+    decisions" for a run, "decisions per episode" for an episode. Give a run's length in episodes beside it, e.g.
+    "2M training decisions (about N episodes)". No code or config changes.
+  - **(b) Call the training measure "steps"** (SB3's timesteps) and keep "decisions" for an episode. That's familiar
+    to RL readers. But a reader of a game paper may take a step for a game tick, and the configs and docs would differ
+    from the report.
+  - **(c) Measure training in episodes throughout.** It's the most intuitive. But the budget was fixed in decisions
+    (OQ-69), and episodes vary from about 100 to 400 decisions between policies, so equal episodes aren't equal
+    training.
+- **Answer (Caleb, 2026-11-10):** "go with (a) for OQ-71". Record `m002-replay-terms`.
+- **So:** the report's method defines a decision once: one option chosen by the high-level policy, one SMDP
+  step. A run's length is "training decisions", with its episodes beside it ("2M training decisions, about N
+  episodes"). An episode's count is "decisions per episode". The configs, logs and docs stay as they are.
+
+### Built: reward parts kept apart in the learning curve and the decision log (tooling, E4 and E6b)
+- **Why:** E4's RND and E6b's PBRS each add to the env's reward during training. Their curves must still report the
+  env's own reward, to compare with E3's, and the additions must be logged with every decision (CLAUDE.md's reward
+  components).
+- **How:** a training wrapper puts the env's reward in its step's info as `reward_extrinsic` and its addition as
+  `r_intrinsic` (RND) or `r_shaping` (PBRS). These two are `REWARD_PARTS` in `rlscape/agents/training.py`.
+  - `episodes.parquet` and TensorBoard's `sim/*`: `reward` is the env's, and each part is summed beside it.
+  - The decision log has `r_intrinsic` and `r_shaping` columns. Its `reward` is what PPO learned from.
+  - Without a wrapper both are 0, and a run is as before.
+- **Shared tooling:** it goes to `main` first by its own PR (CLAUDE.md). E4's branch merges it, and E6b's starts from
+  it.
+- **Tests:** `tests/test_training.py`, 5 passed. Without a wrapper the parts are 0, and the logged reward is the env's.
+
+### Built: the training queue, one queue for several experiments' runs (tooling, 2026-11-11)
+- **Why:** E6a, E4, E6b and E5 are 25 runs on four branches. `train.py --jobs` trains one experiment at a time, and
+  each run must train in its own experiment's worktree, so it records that branch's provenance (OQ-61). Run by hand,
+  one experiment after another, the machine would sit partly idle between them. From about Nov 12 12:30, E3's last
+  run trains alone, leaving three slots free.
+- **How:** `scripts/train_queue.py --jobs 4 <config> ...`, each config in its own worktree.
+  - Each run trains in its worktree, by that worktree's own `scripts/train.py` and venv, as `train.py --jobs` would
+    train it. Its log goes beside its directory.
+  - `--jobs` counts every training run on the machine, E3's included. A training run is a process running
+    `scripts/train.py` with `--seed`; the queue reads the process table every minute. A slot must stay free for 30 s
+    before the queue takes it, so E3's launcher, which looks every 5 s, keeps its own slots.
+  - **Order** (`--order seeds`, the default): seed 0 of every experiment and variant, then seed 1, and so on. Every
+    experiment has its first seeds early, and about as many seeds as the others if the machine is needed before the
+    end. `--order experiments` trains them in turn.
+  - **Resuming:** a run that's done (run.json) is skipped, and a run already training is left to finish. If a run was
+    stopped part-way, the queue refuses to start, unless `--restart-partial`, which trains that run again from the
+    start.
+  - **Checks first:** each worktree lists its runs with its own trainer. That checks its config by its branch's rules
+    and builds its venv. The queue refuses a worktree with uncommitted changes (unless `--allow-dirty`), since
+    `publish_training` would refuse its runs. It also refuses worktrees on different server commits.
+  - `--dry-run` prints the plan and each run's state. It's safe to run while a queue trains.
+- **The worktrees:** `D:\ReinforcementScaping-e4`, `-e6b` and `-e5`, set up like E6a's:
+  - the branch checked out;
+  - the server cloned from this checkout's submodule at `cad9743`, without the game cache's LFS files (only the
+    running server reads them; E3's worktree was made the same way);
+  - `wheels/` linked;
+  - the travel map's `places.npz` copied, with the same SHA-256 as E3's.
+
+  Each has its own venv, about 2.5 minutes to build.
+- **Tests** (`tests/test_train_queue.py`, 4 passed):
+  - the command lines the process table showed for E3's runs;
+  - the two orders;
+  - a live queue of two tiny runs with `--jobs 1`. It waits for another experiment's run to leave its slot, then
+    trains its own runs one at a time, each recording the worktree's provenance. Run again, it skips them. It refuses
+    a run stopped part-way, and with `--restart-partial` trains it again.
+- **Dry run** over the four experiments: 25 runs, every config accepted by its own branch's trainer, E3's four runs
+  counted.
+
+### Built: the analysis's data, every evaluation episode's trace and each training run's behaviour (tooling, 2026-11-11)
+- **Why:** the proposal's §6 measures two things the summaries didn't keep.
+  - Time allocation per activity and the game time to reach milestones need each evaluation episode's decisions. The
+    harness kept only checkpoints and totals.
+  - The time-allocation plot across training, the first-discovery timeline and the action entropy need the training
+    decision logs, which are git-ignored at about 1.2 GB a run.
+
+  E3 is evaluated when it finishes (about Nov 12). After that, a missing table would mean evaluating again while the
+  training queue holds the machine. So the data comes first, kept general enough that the analysis's definitions
+  (what an activity is, what counts as taking one up, which milestones) can still be chosen afterwards.
+- **Evaluation traces:**
+  - `rlscape/eval/rollout.py`: an episode keeps a row per decision: its number, the tick it ended at, its option,
+    why it ended, and the total level and net worth after it.
+  - `harness.run_tables` returns them as a third table, `decisions`. `run` keeps its two tables, so its callers (E5's
+    tests among them) are unchanged.
+  - `scripts/evaluate.py` saves `decisions.parquet`, and `publish_summary` writes it as `decisions.csv.gz`. The gzip
+    is written without a timestamp, so republishing the same run gives the same bytes.
+  - About 300 decisions an episode: E3's evaluation (29 policies × 30 seeds) should come to a few MB.
+- **Training behaviour** (`rlscape/eval/behaviour.py`, read by `publish_training` for each run with a decision log).
+  A bin is the run's checkpoint interval, 100,000 decisions:
+  - `behaviour_bins.csv`: a row per bin: its decisions, game ticks and episodes, and the policy's mean entropy over
+    the options open;
+  - `behaviour_options.csv.gz`: a row per (bin, option chosen in it): decisions, game ticks, episodes that chose it;
+  - `first_choices.csv.gz`: when each option was first chosen.
+- **On E2's best run** (1M decisions): 7.8 s, and the bins add up to the run's 1,000,448 decisions and 8,638
+  episodes. 1,000 of the 2,293 options were tried at least once, the last at decision 999,788. So "first chosen"
+  can't be what discovery means. That definition is for Caleb, with the figures.
+- **Tests** (`tests/test_analysis_data.py`, 5; with the harness and publish tests, 15 passed):
+  - a trace is every decision and ends where its episode does;
+  - it's the same whatever the number of workers;
+  - it's published byte for byte the same each time;
+  - a run's behaviour tables add up to its decision log, including each decision's entropy recomputed by hand;
+  - `publish_training` writes the three tables.
+- **Using it for E3:** E3's worktree is at `801405c`, before this tooling. Once E3's runs have all trained, its
+  branch merges the tooling before it's evaluated, so its evaluation keeps the traces.
+
+### Decided: OQ-75 (the sim changes for Fletching), OQ-76 to OQ-78 (the analysis's definitions) (Caleb, 2026-11-11)
+Asked together after Caleb's question "Why don't any of the runs do anything with fletching?"
+(`m002-fletching-unused`) and the analysis data (`m002-analysis-data`).
+
+- **OQ-75, Fletching.** No run trains it. Fletching's own options open only while logs (or other inputs) and a knife
+  are held, which the agents rarely arrange. Woodcutting's two XP slots are won by chop-and-burn, which out-earns
+  chop-and-fletch counting the processing's XP. Fletching stays at 1, while the guide reaches 11. Options:
+  - (a) report it as an RQ2 finding and a post-project gap, the sim kept (recommended);
+  - (b) report it only;
+  - (c) change the sim: a sim-v1.2 offering chop-and-fletch in a slot of its own, restarting E3 (half trained) and
+    the queue's 25 runs, about 100 machine-hours.
+
+  **Caleb: (c).** The training queue was stopped at once (PIDs 8436, 5984, 21288; it had started nothing), so
+  that no v1.1 run starts in a slot E3 leaves. E3 keeps training on v1.1 until its fate is decided. The slot's
+  design, the knife, and what reruns follow are asked next.
+- **OQ-76, discovery** (RQ2, H3). "First chosen" can't be it: E2's agent tried 1,000 of the 2,293 options, the last
+  at decision 999,788 of 1M. Activities are about 20 groups: each gathering skill, each combat style, smithing,
+  cooking, firemaking, prayer, selling, buying, alchemy, banking. Options:
+  - (a) the first 100,000-decision bin in which the activity takes at least 5% of the training episodes' game time
+    (recommended);
+  - (b) the same, but only if it stays at 5% or more in every later bin;
+  - (c) the first bin in which at least half the bin's episodes choose it.
+
+  **Caleb: (a).**
+- **OQ-77, the hypervolume** (RQ3). The front is each policy's mean 20-hour gain over the fresh character in
+  normalised units (OQ-67). Options for its reference point:
+  - (a) the fresh character, (0, 0) gain, computed per training seed (E3: seed k at each weighting; E5: seed k at
+    its weightings) and reported as the mean and 95% CI over the 5 (recommended);
+  - (b) E1's random policy's mean gain;
+  - (c) the nadir of every policy evaluated.
+
+  **Caleb: (a).**
+- **OQ-78, sudden or gradual** (RQ2). Options:
+  - (a) changepoints (ruptures, PELT) on each run's learning curve as mean reward per 20,000 decisions. A run learns
+    "suddenly" if one changepoint's jump is at least half its total gain, and the curves are annotated (recommended;
+    adds ruptures);
+  - (b) annotate the changepoints only;
+  - (c) a step function against a smooth logistic fit, by BIC.
+
+  **Caleb: (a).**
+
+### Built: sim v1.2, woodcutting's fletch slot (Caleb, 2026-11-11, OQ-75 (c))
+- **Why:** no run trained Fletching (`m002-fletching-unused`). Its own slots open only while logs and a knife are
+  held, and chop-and-burn won both of woodcutting's XP slots at every level the agents reached: E2's and E3's agents
+  ran only `wc_*_burn` paths, and Fletching stayed at 1 while the guide reached 11. Caleb chose to change the sim and
+  restart E3 to E6 (OQ-75 (c)), and took the recommendations on the rest (2026-11-11): one new slot, the knife taken
+  on the way, E3 stopped at once, E1 rerun with E2 kept on v1.1, and the gem trade kept.
+- **Built** (`rlscape/sim/skilling.py`, `rlscape/envs/encoding.py`; env contract v1.44, option catalog §2):
+  - `skill_woodcutting_fletch`: the best open chop-and-fletch path by XP/hr, filled before woodcutting's XP and gp
+    slots, which rank the rest (no path in two slots). `EXTRA_SLOTS` and `slot_names` give a skill's slots in order.
+  - A chop-and-fletch path without a knife carried takes one from the nearest reachable spawn on its way
+    (`knife_spawn`, `TakeSpawn`), and its rate counts the detour. It's open when a knife is carried or can be taken.
+  - The observation carries the slot's 5 rate features: 2,294 actions and 3,488 features (one more mask bit).
+- **Seen:** a fresh character's fletch slot is open; run for 15 game-minutes it takes the knife and makes 1,095 arrow
+  shafts, 365 Fletching XP and 2,025 Woodcutting XP. Random episodes run at the same speed (64 decisions a second on
+  v1.2, 61 on v1.1).
+- **Tests:** the full suite, 436 passed, 75 skipped (the live tests; the server was down). New: the fletch slot holds
+  the best chop-and-fletch path and the XP slots rank the rest; a path takes a knife on its way and counts the
+  detour. Updated: a fresh character's open paths and slots, and the schema's sizes.
+- **What follows:** E1 is rerun on v1.2, and OQ-67's units come from it. E2 stays on v1.1, the sanity ladder it was.
+  E3's 13 v1.1 runs are kept aside as a record. E3 to E6 train again on v1.2. Models trained on v1.1 (E2's) don't
+  load on v1.2, whose observation is 6 features longer, so they're replayed from E2's branch.

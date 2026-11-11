@@ -1,8 +1,20 @@
-# Environment Contract (v1.43)
+# Environment Contract (v1.44)
 
-**Status:** v1.43, 2026-11-09: OQ-64 (a), Caleb's choice; its wording is to confirm. Caleb confirmed every version, to
-v1.42, on 2026-11-09: sim v1's contract is frozen. Any change needs Caleb's approval and is logged in
+**Status:** v1.44, 2026-11-11: OQ-75 (c), Caleb's choice (sim v1.2); its wording is to confirm. Caleb confirmed every
+version, to v1.42, on 2026-11-09: sim v1's contract is frozen. Any change needs Caleb's approval and is logged in
 `docs/decision-log.md`.
+- **v1.44** (2026-11-11, Caleb, OQ-75 (c); sim v1.2) gives chop-and-fletch a skilling slot of its own, so Fletching
+  can be trained:
+  - **Why:** no run trained Fletching. Its own slots open only while logs and a knife are held, which the agents
+    rarely arranged, and chop-and-burn won both of woodcutting's XP slots at every level they reached (it out-earns
+    chop-and-fletch counting the processing's XP). Fletching stayed at 1 in E2 and E3; the scripted guide reached 11.
+  - **The slot:** `skill_woodcutting_fletch` holds the best open chop-and-fletch path by XP/hr. It's filled before
+    woodcutting's XP and gp slots, which rank the rest, so no path is offered twice (option catalog §2).
+  - **The knife:** a chop-and-fletch path without a knife carried takes one on its way, from the nearest reachable
+    spawn (the Lumbridge Castle knives), and its rate counts the detour. It's open when a knife is carried or one can
+    be taken (a free inventory slot); a fresh character can chop and fletch from the start.
+  - **The schema:** 2,294 actions (one more) and 3,488 features (the slot's 5, and its mask bit). E1 is rerun on it,
+    and the normalised weights' units (OQ-67) are recomputed from it.
 - **v1.43** (2026-11-09, Caleb, OQ-64 (a); sim v1.1) makes every walk directional, so an episode depends only on its
   seed:
   - **The rule:** the walk from a to b is the shortest walk from a to b on the server's collision map, which is
@@ -229,7 +241,7 @@ roughly [0, 1].
 | Equipment | E | tier index / max tier per slot: weapon (melee / ranged / staff), ammunition, head, body, legs, shield; tools (axe, pickaxe, fishing gear); cape (Ava's devices: attractor 1, accumulator 2) |
 | Region | R | one-hot over the catalog's regions |
 | Combat candidates | C × 5 | for each candidate slot: XP/hr, gp/hr, expected damage taken per hour vs food held, travel minutes, Slayer / level eligibility (option catalog §4) |
-| Skilling candidates | 36 × 5 | per skilling slot (option catalog §2; Crafting's 4 since v1.23, Herblore's since v1.25, Runecrafting's since v1.26, Agility's since v1.28): the gathering skill's XP/hr, its processing counterpart's XP/hr, gp/hr, travel, open; scaled as the combat candidates |
+| Skilling candidates | 37 × 5 | per skilling slot (option catalog §2; Crafting's 4 since v1.23, Herblore's since v1.25, Runecrafting's since v1.26, Agility's since v1.28, woodcutting's fletch slot since v1.44): the gathering skill's XP/hr, its processing counterpart's XP/hr, gp/hr, travel, open; scaled as the combat candidates |
 | Loot mode | 4 | one-hot: all / valuable / vocabulary / none (option catalog §4.D) |
 | Task | 18 | one-hot: the last activity's task (none, woodcutting, mining, the three fishing methods, thieving, fletching, crafting, flax picking (v1.38), herblore, runecrafting, agility, barbarian fishing, processing, the three combat classes), which decides what `bank_deposit` keeps (option catalog §5) |
 | Access | A | 0/1 per access rule (`data/access_areas.csv`, A = 55 today; `access.unlocked_rules`): unlocked by quests, items held, levels or coins (option catalog §4.C). Rules decided by quests alone are constant, since the quests are complete from the start |
@@ -242,8 +254,8 @@ option catalog.
 **As built** (`rlscape/envs/encoding.py`, 2026-10-30): E = 12 roles (weapons for melee, ranged and magic,
 ammunition, head, body, legs, shield, axe, pickaxe, fishing gear), R = 12 (the catalog's 11 regions and
 "elsewhere"), C = 18 slots (6 per combat class). The encoder's docstring lists how each part is scaled. With the
-catalog as built (2,293 actions, *V* = 370) the vector has 3,482 features (v1.12 dropped the quest part's 64; v1.13
-added 7 buys and 27 items; v1.14 11 buys, 11 items and the potions part's 22; v1.16 2 buys, 2 items and the cape role;
+catalog as built (2,294 actions since v1.44, *V* = 370) the vector has 3,488 features, 3,482 before v1.44 (v1.12
+dropped the quest part's 64; v1.13 added 7 buys and 27 items; v1.14 11 buys, 11 items and the potions part's 22; v1.16 2 buys, 2 items and the cape role;
 v1.17 64 buys and 63 items; v1.19 the home teleport's wait; v1.23 Crafting's slots and task; v1.24 25 buys and 18
 items; v1.25 Herblore's slots and task; v1.26 Runecrafting's; v1.27 66
 buys and 51 items; v1.28 Agility's slots and task; v1.29 11 buys and 9 items; v1.30 10 buys and 10 items; v1.31 the rod's buy and item, and a task; v1.34 the skull; v1.35 less 2 buys and 2 items, chaos's; v1.36 the 4 pouches and their capacities).
