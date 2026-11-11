@@ -70,6 +70,10 @@ def test_the_learning_curve_matches_the_decision_log(runs):
     rows = log[(log.env == first.env) & (log.episode == 0)]
     assert first.decisions == len(rows) and first.r_skill == pytest.approx(rows.r_skill.sum(), rel=1e-5)
     assert first.game_ticks == 3_000  # the half-hour horizon
+    # without a training wrapper, nothing is added to the env's reward (rlscape.agents.training's REWARD_PARTS)
+    assert (log.r_intrinsic == 0).all() and (log.r_shaping == 0).all()
+    assert (episodes.r_intrinsic == 0).all() and (episodes.r_shaping == 0).all()
+    assert np.allclose(log.reward, 0.5 * log.r_skill + 0.5 * log.r_wealth, atol=1e-6)
 
 
 def test_the_same_config_and_seed_give_the_same_run(runs):
