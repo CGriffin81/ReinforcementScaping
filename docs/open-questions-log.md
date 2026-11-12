@@ -70,3 +70,26 @@ Started 2026-10-31 (Caleb), from a review of the documentation.
 - **Decides:** Caleb.
 - **Needed by:** Nov 22, when the guide is written alongside the draft. Nothing before then waits on it, since one
   config and one command per experiment suits every option.
+
+### OQ-81. Should the queue train five runs at once instead of four? *(deferred)*
+- **Raised:** 2026-11-11, in Caleb's question "Can we run more simultaneous seeds on the gpu?" Record
+  `m002-gpu-capacity`.
+- **Found:**
+  - **The GPU isn't the limit:** 18% busy, 2.4 of 8 GB.
+  - **RAM is:** a run uses 3.7 to 3.9 GB between its decision-log writes and 4.8 to 5.3 GB during one.
+  - **After Caleb closed other applications,** 6.5 to 8.8 GB was free. A fifth run would leave about 1.2 GB at the
+    worst moment (all writes at once), and as little as 0.4 GB if its env processes regrow.
+  - **Running short would slow the runs, not crash them:** Windows pages, and the system-managed pagefile grows.
+  - **The gain is unmeasured:** an estimated 10 to 20% more decisions a second, since the CPU comes next.
+- **Options:**
+  - **(a) Recommended: a monitored trial at `--jobs 5`.**
+    - Restart only the queue; its runs keep training.
+    - Check an hour later: available RAM never below about 1 GB, no sustained paging, and more decisions a second in
+      all.
+    - If any check fails, go back to `--jobs 4`.
+    - The applications Caleb closed stay closed until the queue ends.
+  - **(b) Stay at four runs:** the queue ends early on Nov 16 as it is, before the Nov 19 analysis.
+- **Decides:** Caleb.
+- **Deferred** (Caleb, 2026-11-11: "let's put a pin in --jobs 5 until we're done laying the groundwork"). It reopens
+  when the groundwork (the figure script and the other tooling still to build) is done. Until then the queue stays at
+  four, and nothing waits on this. Building and testing that tooling beside four runs is also safer than beside five.

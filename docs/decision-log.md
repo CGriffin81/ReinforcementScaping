@@ -7278,3 +7278,103 @@ Asked together after Caleb's question "Why don't any of the runs do anything wit
   - (c) a step function against a smooth logistic fit, by BIC.
 
   **Caleb: (a).**
+
+### Built: sim v1.2, woodcutting's fletch slot (Caleb, 2026-11-11, OQ-75 (c))
+- **Why:** no run trained Fletching (`m002-fletching-unused`). Its own slots open only while logs and a knife are
+  held, and chop-and-burn won both of woodcutting's XP slots at every level the agents reached: E2's and E3's agents
+  ran only `wc_*_burn` paths, and Fletching stayed at 1 while the guide reached 11. Caleb chose to change the sim and
+  restart E3 to E6 (OQ-75 (c)), and took the recommendations on the rest (2026-11-11): one new slot, the knife taken
+  on the way, E3 stopped at once, E1 rerun with E2 kept on v1.1, and the gem trade kept.
+- **Built** (`rlscape/sim/skilling.py`, `rlscape/envs/encoding.py`; env contract v1.44, option catalog §2):
+  - `skill_woodcutting_fletch`: the best open chop-and-fletch path by XP/hr, filled before woodcutting's XP and gp
+    slots, which rank the rest (no path in two slots). `EXTRA_SLOTS` and `slot_names` give a skill's slots in order.
+  - A chop-and-fletch path without a knife carried takes one from the nearest reachable spawn on its way
+    (`knife_spawn`, `TakeSpawn`), and its rate counts the detour. It's open when a knife is carried or can be taken.
+  - The observation carries the slot's 5 rate features: 2,294 actions and 3,488 features (one more mask bit).
+- **Seen:** a fresh character's fletch slot is open; run for 15 game-minutes it takes the knife and makes 1,095 arrow
+  shafts, 365 Fletching XP and 2,025 Woodcutting XP. Random episodes run at the same speed (64 decisions a second on
+  v1.2, 61 on v1.1).
+- **Tests:** the full suite, 436 passed, 75 skipped (the live tests; the server was down). New: the fletch slot holds
+  the best chop-and-fletch path and the XP slots rank the rest; a path takes a knife on its way and counts the
+  detour. Updated: a fresh character's open paths and slots, and the schema's sizes.
+- **What follows:** E1 is rerun on v1.2, and OQ-67's units come from it. E2 stays on v1.1, the sanity ladder it was.
+  E3's 13 v1.1 runs are kept aside as a record. E3 to E6 train again on v1.2. Models trained on v1.1 (E2's) don't
+  load on v1.2, whose observation is 6 features longer, so they're replayed from E2's branch.
+
+### Rerun: E1 on sim v1.2 (Caleb, 2026-11-11, after OQ-75)
+- **Why:** sim v1.2 adds woodcutting's fletch slot (OQ-75 (c)), and Caleb chose to rerun E1 on it (E2 stays on
+  v1.1). E1 is RQ1's bar and the source of the normalised weights' units (OQ-67).
+- **Run:** `scripts/evaluate.py --config configs/e1-baselines.yaml` on `fc55a14`, the same 4 baselines on seeds 0 to
+  29, 16 workers, 799 s. Published over the v1.1 summary (`results/summary/e1-baselines/`); v1.1's is in git
+  history and its run in `results/eval/e1-baselines-sim-v1.1` (git-ignored).
+- **At hour 20** (mean [95% CI]), against v1.1:
+
+  | Baseline | Total level | Net worth (gp) | v1.1 total level | v1.1 net worth |
+  |---|---:|---:|---:|---:|
+  | random | 214 [206, 223] | 16,563 [11,766, 21,834] | 214 | 14,190 |
+  | greedy XP/hr | 157 [157, 157] | 1,111 | 157 | 1,160 |
+  | greedy GP/hr | 79 [69, 89] | 1,764,896 [1,671,363, 1,849,582] | 40 | 1,891,142 |
+  | scripted guide | 351 [344, 357] | 129,789 [123,945, 135,909] | 351 | 129,789 |
+
+  - The scripted guide's episodes are the same: it takes its own knife and picks its own paths.
+  - Greedy GP/hr takes the fletch slot at times (arrow shafts add net worth at once). It gains 39 more levels and
+    126,000 gp less.
+- **OQ-67's units,** by its rule (the best mean 20-hour gain on each objective):
+  - skill: the guide's 323.866 levels, unchanged;
+  - wealth: greedy GP/hr's 17.639 in r_wealth (1.76M gp), down from 18.901.
+
+  So `WEALTH_FACTOR` goes from 17.13 to 18.36, and the normalised (.5, .5) is env (.5, 9.18). Updated with the
+  tooling (`rlscape/envs/weights.py`), which E3 to E6 merge before they train again.
+
+### Changed: OQ-67's units on sim v1.2, and E3 to E6 restart from one queue (2026-11-11)
+- **The units** (`rlscape/envs/weights.py`), from E1 on v1.2 by OQ-67's rule:
+  - `SKILL_UNIT` 323.866 levels, unchanged;
+  - `WEALTH_UNIT` 17.639 (1.76M gp), was 18.901;
+  - `WEALTH_FACTOR` 18.36, was 17.13. The normalised (.5, .5) is env (.5, 9.18), was (.5, 8.57).
+
+  E3 to E6's configs give normalised weights, so they're unchanged; what they stand for moves with E1.
+  `tests/test_weights.py` checks the units against E1's published summary.
+- **The branches:** `tooling/units-v1.2` is the tooling stack with sim v1.2 (`sim/v1.2-fletching-slot`, PR #22) and
+  E1's rerun merged in, and these units. E3's, E4's, E5's, E6a's and E6b's branches merge it.
+  - E5's test gets the observation's new size (3,488).
+  - E3 also gets the tooling it lacked since `801405c`: the replay, the reward parts, the queue and the analysis data.
+- **The queue** (`scripts/train_queue.py`, OQ-61's worktrees) trains all 50 runs, E3 included, by seeds: seed 0 of
+  every experiment first. Each run takes about 8.7 hours four at a time, so about 110 hours: done around Nov 16 to 17.
+- **E3's 13 finished v1.1 runs and 4 partial ones** are kept aside in its worktree
+  (`runs/e3-reward-weight-sweep-sim-v1.1`). They aren't used.
+
+### Decided: OQ-79, E4's centred RND bonus is centred on a recent mean (Caleb, 2026-11-11: (a))
+- **The question:** E4's own tests on sim v1.2 showed its centred bonus mostly below zero (−0.53 spreads, 55 of 64
+  decisions negative): it was centred on the predictor error's mean over the whole run so far, and the error falls as
+  the predictor learns, so the bonus charged a small cost per decision, what centring (OQ-72 (b)) was meant to avoid.
+  Raised in `m002-restart-v1.2`.
+- **Options:**
+  - (a) centre (and scale) on a recent mean, an exponential moving average over about the last 10 rollouts
+    (recommended);
+  - (b) keep the cumulative mean, and report the early drift;
+  - (c) don't centre (Burda et al.'s way), which pays for short decisions, the reason OQ-72 chose (b).
+- **Caleb: (a).** Built on E4's branch (`m002-oq79-rnd-centring`). Measured at E4's scale before its runs, the recent
+  mean shortens the drift rather than removing it at the start: both centrings average about −0.5 spreads over the
+  first 10 rollouts, while the error falls fastest; over rollouts 12 to 20, the recent mean averages about −0.2 and
+  the cumulative one −0.3. The recommendation had said it would average about zero at every stage. That holds once
+  the error levels off, not in the first one or two percent of a run.
+- **E4 joins the training queue** with it.
+
+### Decided: OQ-80, E3 to E6 train on the GPU, deterministically (Caleb, 2026-11-11: (a))
+- **The question** (Caleb: "Why are the experiments not running on GPU?"; `m002-gpu`): Caleb chose CUDA torch on
+  2026-11-08, but Claude had set every training config to `device: cpu` on 2026-11-09 without putting it to Caleb.
+- **Measured:** the PPO update of one rollout (1,024 decisions at E3's settings) takes 1.12 s on the CPU and 0.11 s on
+  the RTX 3050, against about 20 s for the rollout's simulation. Two GPU runs of the same config and seed were
+  identical (actions and weights), with and without torch's deterministic algorithms.
+- **Options:** (a) switch now, all 50 runs on the GPU in deterministic mode, restarting E3's four seed-0 runs
+  (recommended); (b) switch the 46 runs not yet started; (c) stay on the CPU. Projected saving of (a) or (b): about 5
+  to 7% of training, 6 to 8 hours over the queue.
+- **Caleb: (a).**
+  - **The trainer** (`rlscape/agents/training.py`): a CUDA run (`device: cuda`, or `auto` with a GPU) gets
+    `deterministic_cuda()`: cuBLAS's workspace (`CUBLAS_WORKSPACE_CONFIG=:4096:8`) and
+    `torch.use_deterministic_algorithms(True)`. Its config.json records the GPU and the mode. A test checks that two
+    GPU runs of the same config and seed are identical.
+  - **The configs:** E3's, E6a's, E4's, E6b's and E5's say `device: cuda`. RND's networks (E4) stay on the CPU, as
+    they were; the evaluation loads models on the CPU, as before.
+  - **The restart:** the queue and E3's four seed-0 runs (on the CPU since 18:01) were stopped at 18:54. Those runs
+    are kept aside (`runs/e3-reward-weight-sweep-cpu-partial` in E3's worktree), and all 50 runs train on the GPU.
