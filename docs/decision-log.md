@@ -7515,3 +7515,49 @@ Asked together after building the figure script (`m002-figures`), with E3's seed
 - **Caleb:** "Pause Windows Update until we are done with all of our tests. Put a requirement post-testing to turn
   Windows Update back on." Caleb pauses it (it's a system setting); ROADMAP's plan has turning it back on as a step
   after the last test.
+
+### Decided: OQ-81, the queue trains five runs at once, on trial (Caleb, 2026-11-12: (a))
+- **The question** (raised 2026-11-11 in Caleb's "Can we run more simultaneous seeds on the gpu?", `m002-gpu-capacity`;
+  deferred until the groundwork was done): should the queue train five runs at once instead of four?
+- **Found on 2026-11-11:**
+  - the GPU isn't the limit (18% busy, 2.4 of 8 GB); RAM is: a run uses 3.7 to 3.9 GB between its decision-log
+    writes and 4.8 to 5.3 GB during one;
+  - with 6.5 to 8.8 GB free, a fifth run would have left about 1.2 GB at the worst moment;
+  - running short would slow the runs, not crash them (Windows pages; the pagefile is system-managed);
+  - the gain was unmeasured: an estimated 10 to 20% more decisions a second.
+- **Options:** (a) a monitored trial at `--jobs 5`: restart only the queue, check an hour later (available RAM never
+  below about 1 GB, no sustained paging, more decisions a second in all), back to `--jobs 4` if a check fails
+  (recommended); (b) stay at four.
+- **Reopened** (Caleb, 2026-11-12: "Is there anything else to work on while the tests run, or can we switch to five
+  active jobs now?"). Claude reported 10.9 GB free with four runs training, so a fifth leaving about 4 to 5 GB at the
+  worst moment. The CPU was at 57% and the GPU at 39%. The runs are deterministic (the check above), so how many
+  train at once changes their speed, not their results.
+  - **Corrected after the decision:** the 10.9 GB was measured at 09:01, 25 seconds after E6a's γ_hr 0.5 seed 0
+    started, before that run had grown. It overstated the headroom by about one run. So the margin is about what
+    OQ-81 estimated on Nov 11 (about 1 GB at the worst moment), and the trial's checks are what decide.
+- **Caleb: (a).** At 09:12 CST the queue was stopped (its three processes; its four runs kept training) and started
+  again with `--jobs 5` (PID 5420, log `runs/train-queue.log`; the previous log is `train-queue-gpu-part2.log`).
+  - **The baseline,** four runs at once: E3's (1, 0), (.75, .25) and (.5, .5) seed 0 made 60.0, 61.8 and 62.9
+    decisions a second (08:30 to 09:11), and E6a's γ_hr 0.5 seed 0 67.2 in its first 9 minutes.
+  - **The check** compares those runs' rates with five at once: five runs gain if each keeps more than 80% of its
+    speed.
+  - **After an hour (09:20 to 10:20 CST),** with E6a's γ_hr 0.9 seed 0 the fifth run from 09:14:
+    - **Speed:** E3's three runs made 59.5, 62.1 and 62.4 decisions a second (99 to 101% of their speed), E6a's
+      γ_hr 0.5 72.1 (more than in its first minutes), and the new run 64.6. In all, 320.7 decisions a second against
+      251.9 with four (27% more). The CPU averaged 67%.
+    - **Paging:** the pagefile's use stayed at 3.3 to 3.6%; hard page reads averaged 50 a second, with spikes of 1,400
+      to 2,500 that lasted a sample or two.
+    - **Available RAM:** 3.3 GB on average. It fell below 1.5 GB in 2 of 779 samples (every 5 seconds): 808 MB at
+      10:14:00 and 1.2 GB at 10:14:05, then 2.4 GB at 10:14:10. Its 10-minute averages fell through the hour: 4.4,
+      3.4, 3.5, 3.3, 3.0 and 2.6 GB. E6a's two runs hold about 7 GB each against E3's 3.6 to 4.0 GB.
+    - **Commit charge** (found at 10:25): 82.3 of 86.0 GB, 96% of the current limit. The training processes commit
+      73 GB and use 25 GB. Each env worker loads torch's CUDA libraries (3.1 GB of DLLs, unused there) and commits
+      about 2.4 GB for 0.6 to 1 GB in use. The pagefile is system-managed (54 GB now, C: 220 GB free), so Windows
+      grows it as the charge rises. There were no low-virtual-memory events (2004) in the last three days.
+    - **So** the speed and paging checks pass; the RAM check fails as written, on one 5-second sample.
+- **Caleb (10:26 CST): keep five, with the RAM check on sustained lows** (Claude's recommendation; the other option
+  was back to four, the check as written). Back to `--jobs 4` if available RAM stays under 1 GB for more than a
+  minute, hard page reads stay above 1,000 a second for a minute, or a run falls below 80% of its speed. Checked
+  again once E4's, E6b's and E5's seed 0 have started (E3's three seed-0 runs end at about 13:48 to 14:18), with a
+  sampler until 15:30. At five the queue finishes about a day sooner: about Nov 15 in the evening, not Nov 16 in the
+  afternoon.

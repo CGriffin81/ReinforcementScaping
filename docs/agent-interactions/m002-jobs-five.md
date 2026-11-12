@@ -1,0 +1,130 @@
+# Agent Interaction
+
+## Metadata
+
+- Interaction ID: m002-jobs-five
+- Timestamp CST: 2026-11-12 09:00:25 CST, the prompt's timestamp in the session transcript (UTC−06:00). Caleb's answers
+  to the question dialog: 09:10:48 CST.
+- Agent: Claude Code (desktop app, Code tab)
+- Model: Claude Opus 5.5 (`claude-opus-5-5`)
+- Status: IN PROGRESS. The trial's hour passed the speed and paging checks; Caleb kept five runs with the RAM check
+  on sustained lows (10:26 CST). It's checked again once E4's, E6b's and E5's seed 0 start (about 13:48 to 14:20).
+- Commit: this record, with the decision log's and the open-questions log's changes, committed directly to `main` after
+  `424b879` (Caleb: "Commit it to main directly", 10:34:04 CST). The afternoon's check is still to come.
+
+## Full Prompt
+
+> Is there anything else to work on while the tests run, or can we switch to five active jobs now?
+
+Answers in the question dialog (09:10:48 CST):
+
+> OQ-81: "Trial at 5 now (Recommended)"
+>
+> Which work should come next while the runs train? "Seed-0 checks"
+
+Answer to the trial's result (question dialog, 10:26:21 CST, the tool result's timestamp in the transcript):
+
+> "Keep 5, sustained-low check (Recommended)"
+
+Follow-up prompt (10:34:04 CST):
+
+> Commit it to main directly
+
+## Response Summary
+
+- **Five runs at once (OQ-81, deferred on 2026-11-11):**
+  - **Measured at 09:00 with four runs:** 10.9 GB of RAM available (6.5 to 8.8 GB when OQ-81 was deferred); the CPU
+    at 57%; the GPU at 39%, 2.1 of 8 GB; D: with 1.8 TB free. A fifth run (4.8 to 5.3 GB at its peak) leaves about 4
+    to 5 GB at the worst moment.
+  - **Corrected after Caleb's answer:** the 10.9 GB was measured at 09:01, 25 seconds after E6a's γ_hr 0.5 seed 0
+    started (its `config.json`: 15:00:35 UTC), before it had grown. Claude didn't check that before reporting it. It
+    overstated the headroom by about one run, so the margin is about OQ-81's Nov 11 estimate (about 1 GB at the worst
+    moment). The trial's checks decide, as (a) intended. Caleb was told.
+  - **Results don't change:** the runs are deterministic (`m002-determinism-check`), so how many train at once
+    changes their speed only.
+  - **Restarting the queue is safe:** the restart on Nov 11 at 18:29 stopped the queue's three processes, uv's
+    first, and its runs kept training (8 `train.py` processes before and after). Every process is in a job object
+    here, so that evidence was checked before stopping anything.
+- **What's left while the runs train,** offered in order:
+  1. each experiment's seed 0 as it finishes, and the determinism check on E3's other three restarted runs;
+  2. the sim-to-real table, the figure script's last piece besides RQ5;
+  3. OQ-1 (RQ5) and OQ-50 (the peer-review package), Caleb's;
+  4. the report's method section.
+
+  Every experiment already has its evaluation config (`configs/<name>-eval.yaml` on its branch).
+- **The trial (Caleb: (a)):**
+  - **Baseline** (`rate_window.py`, the runs' TensorBoard rollouts, 08:30 to 09:11): E3's (1, 0), (.75, .25) and
+    (.5, .5) seed 0 at 60.0, 61.8 and 62.9 decisions a second; E6a's γ_hr 0.5 seed 0 at 67.2 in its first 9 minutes.
+  - **The restart:** at 09:12 the queue's three processes (uv 3992, python 18600 and 20532) were stopped; its four
+    runs kept training (8 `train.py` and 16 env processes before and after). The log was renamed
+    `train-queue-gpu-part2.log`, and the queue relaunched the same way with `--jobs 5` (PID 5420, 09:12:20).
+  - **The fifth run:** E6a's γ_hr 0.9 seed 0, started 09:14:20. Its `config.json` records `d805255` with a clean tree,
+    the RTX 3050, deterministic, γ_hr 0.9 and the env weights (0.5, 9.181).
+  - **The check:** available RAM, hard page reads, pagefile use and CPU sampled every 5 seconds for 65 minutes
+    (`trial_sample.ps1`). After an hour: RAM never below about 1 GB, no sustained paging, and each continuing run
+    keeping more than 80% of its speed (five then make more in all).
+- **The seed-0 check, E3's two finished runs** ((.25, .75) and (0, 1)), published into a scratch summary beside E1's
+  and drawn by `scripts/figures.py`:
+  - **(0, 1):** a jump to about 2.2× the best of E1 (greedy GP/hr) by 0.3M decisions, a slight decline after 1M. Past
+    greedy GP/hr from 260,000 decisions. Its time goes to buying and selling (the Gem Store's emeralds to the GE),
+    with some banking.
+  - **(.25, .75):** about 0.25 until 0.6M decisions, then a jump to 1.5 and a slow rise to about 1.7. Past greedy
+    GP/hr from 640,000. Melee, woodcutting, agility and crafting before the jump; the gem trade after it.
+  - Both are "sudden" under OQ-82's rule; under OQ-78's, (0, 1) is sudden and (.25, .75) gradual. Nothing looks
+    broken. Both find the gem trade that `m002-wealth-neglect` found on sim v1.1.
+
+## Documentation Changes
+
+- `docs/open-questions-log.md`: OQ-81 removed.
+- `docs/decision-log.md`: "Decided: OQ-81, the queue trains five runs at once, on trial", with its options, the
+  measurements and the baseline.
+- This record.
+
+## Code Changes
+
+- None. The scratchpad's `rate_window.py`, `in_job.ps1` and `trial_sample.ps1` are measurement scripts.
+
+## Infrastructure Changes
+
+- The queue relaunched with `--jobs 5` (PID 5420); E6a's γ_hr 0.9 seed 0 started as the fifth run.
+- The previous queue log renamed `train-queue-gpu-part2.log` (and `.err`).
+
+## Decisions
+
+- **User decisions (Caleb):** OQ-81 (a), a monitored trial at `--jobs 5`; the seed-0 checks next. After the trial's
+  hour: keep five, with the RAM check on sustained lows (Claude recommended it; the other option was back to four, the
+  check as written).
+- **The new check:** back to `--jobs 4` if available RAM stays under 1 GB for more than a minute, hard page reads stay
+  above 1,000 a second for a minute, or a run falls below 80% of its speed.
+- **Claude's choices within them:** the trial's measures (each continuing run's speed, RAM, paging); restarting only the
+  queue; the scratch summary for the seed-0 check; the second sampler through the next runs' start.
+
+## Validation
+
+- The process table before and after stopping the queue; the fifth run's `config.json`.
+- The trial's samples (`trial_sample.ps1`, 779 samples, 09:15 to 10:20) and rates (`rate_window.py`, 09:20 to 10:20):
+  - **First minutes:** at 09:15:02, as the fifth run started and the seed-0 publish ran beside it, available RAM fell to
+    2.7 GB and the pagefile's use rose from 1.4% to 3.5%. By 09:17:47, 4.8 GB was available, the pagefile steady at
+    3.6% and the CPU at about 70%.
+  - **Speed: passes.** E3's (1, 0), (.75, .25) and (.5, .5) at 59.5, 62.1 and 62.4 decisions a second (99 to 101% of
+    08:30 to 09:11's 60.0, 61.7 and 62.8, re-measured); E6a's γ_hr 0.5 at 72.1; the new γ_hr 0.9 at 64.6. In all 320.7
+    against 251.9 (27% more). Halves of the hour: 311.0 and 330.6.
+  - **Paging: passes.** The pagefile's use at 3.3 to 3.6% after 09:20; hard page reads 50 a second on average, with
+    spikes of 1,400 to 2,500 for a sample or two.
+  - **Available RAM: fails as written,** on one sample: 808 MB at 10:14:00, 1.2 GB at 10:14:05, 2.4 GB at 10:14:10;
+    3.3 GB on average. The 10-minute averages fell through the hour (4.4 to 2.6 GB). E6a's two runs hold about 7 GB
+    each (trainer and workers' working sets), E3's 3.6 to 4.0 GB.
+  - **Found beside it:** commit charge at 96% of the current limit (82.3 of 86.0 GB). The training processes commit
+    73 GB for 25 GB in use: each env worker loads torch's CUDA DLLs (3.1 GB) and commits about 2.4 GB. The pagefile
+    is system-managed (54 GB, C: 220 GB free) and no event 2004 (low virtual memory) was logged in three days.
+- A second sampler (`trial_sample2.ps1`, every 10 seconds until 15:30) adds commit charge, the training processes'
+  working sets and the count of trainers, to cover 13:48 to 14:18, when E3's three seed-0 runs end and the queue
+  starts the next ones. A watcher on it (`watch_lows.ps1`) stops early if a sustained low (Caleb's new check) occurs.
+
+## Follow-Up
+
+- **Claude:** the check again once E4's, E6b's and E5's seed 0 start (about 13:48 to 14:20), and back to `--jobs 4` if
+  it fails; the seed-0 check on E3's other three runs and the determinism check when they finish (about 13:48 to
+  14:18); E6a's, E4's, E6b's and E5's seed 0 as they finish.
+- **Later, not now:** the env workers needn't load torch's CUDA DLLs (about 2 GB of commit each, 40 GB across 20
+  workers). Changing that is code in every experiment's branch, so it waits unless commit charge becomes a limit.
