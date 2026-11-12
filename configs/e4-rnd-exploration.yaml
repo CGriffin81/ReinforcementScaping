@@ -29,6 +29,7 @@ ppo:
 rnd:
   coef: 0.75
   centre: true
+  ema_rollouts: 10  # centred on a recent mean, over about the last 10 rollouts (Caleb, OQ-79 (a))
   features: [skills, total_level, hitpoints_prayer, run_energy_weight, home_teleport, skull, pouches, wealth,
              inventory, bank, equipment, region, loot_mode, task, potions, access]
 checkpoint_every: 100_000

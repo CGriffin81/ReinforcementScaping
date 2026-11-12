@@ -15,7 +15,8 @@ pytest.importorskip("rlscape.agents.ppo")
 from stable_baselines3.common.vec_env import DummyVecEnv  # noqa: E402
 
 from rlscape.agents.decision_log import read_decisions  # noqa: E402
-from rlscape.agents.rnd import RNDReward, check_rnd  # noqa: E402
+from rlscape.agents.rnd import RecentStats, RNDReward, check_rnd  # noqa: E402
+from stable_baselines3.common.running_mean_std import RunningMeanStd  # noqa: E402
 from rlscape.agents.training import check_config, train  # noqa: E402
 from rlscape.envs.sim_env import SimEnv  # noqa: E402
 
@@ -95,10 +96,30 @@ def bonuses(centre: bool) -> np.ndarray:
     return np.array(out[8:]).ravel()
 
 
-def test_a_centred_bonus_averages_about_zero_and_burdas_is_positive():
+def test_a_centred_bonus_has_both_signs_and_burdas_is_positive():
+    # These are the first rollouts, when the predictor learns fastest and its error falls: a centred bonus is mostly
+    # below zero here whatever mean it's centred on (OQ-79). That a recent mean follows the fall is the test below.
     centred, plain = bonuses(True), bonuses(False)
-    assert abs(centred.mean()) < 0.5 * centred.std() and (centred < 0).any() and (centred > 0).any()
-    assert (plain > 0).all() and plain.mean() > 2 * abs(centred.mean())
+    assert (centred < 0).any() and (centred > 0).any()
+    assert (plain > 0).all() and plain.mean() > 2 * abs(centred.mean())  # centring takes most of the mean away
+
+
+def test_recent_statistics_follow_a_falling_error_that_cumulative_ones_lag():
+    # OQ-79 (a): a learning predictor's error falls. Centred on its mean over the whole run, the bonus sits below zero
+    # long after; centred on a recent mean, it's back about zero once the window has passed.
+    level = np.concatenate([np.full(200, 10.0), np.linspace(10.0, 1.0, 200), np.full(600, 1.0)])
+    rng, recent, cumulative, late = np.random.default_rng(0), RecentStats(50), RunningMeanStd(shape=()), []
+    for t, mu in enumerate(level):
+        x = mu + rng.normal(0.0, 0.5, 4)  # a step of 4 envs
+        recent.update(x)
+        cumulative.update(x)
+        if t >= 600:  # 200 steps (four windows) after the fall
+            late.append((x.mean() - recent.mean, x.mean() - float(cumulative.mean)))
+    by_recent, by_cumulative = np.array(late).T
+    assert abs(by_recent.mean()) < 0.05 and by_cumulative.mean() < -2.0
+    first = RecentStats(10)
+    first.update(np.array([5.0, 7.0]))  # bias-corrected: the first step's own statistics, not pulled towards 0
+    assert first.mean == pytest.approx(6.0) and first.var == pytest.approx(1.0)
 
 
 def test_an_rnd_section_with_an_unknown_key_or_part_is_refused():
