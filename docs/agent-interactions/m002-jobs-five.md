@@ -14,7 +14,8 @@
   `424b879` (Caleb: "Commit it to main directly", 10:34:04 CST): `f332029`. The interim check, committed the same way
   after `b4145b7` (11:49:45 CST): `491fbe0`. The paging rule's firing and Caleb's RAM gate (first in PR #27, `dfa15db`),
   the RAM rule's firing and the determinism check: committed the same way after `491fbe0` (Caleb: "Commit it to main
-  directly", 15:45:42 CST). The watch until 19:00 is still to come.
+  directly", 15:45:42 CST): `7fcbc3f`. The seed-0 learning check, in the PR of `docs/reviewer-guide` (Caleb: "Commit
+  it and open a PR into main", 16:25:21 CST). The watch until 19:00 is still to come.
 
 ## Full Prompt
 
@@ -178,9 +179,15 @@ Answer to the RAM rule's firing (question dialog, 15:33:20 CST):
 
 ## Follow-Up
 
-- **Claude:** the watch until 19:00 (the RAM rule; each run's speed every 15 minutes); the seed-0 learning check on
-  E3's other three runs once the machine is at four runs (publishing their training summaries takes about 2 GB);
-  E6a's, E4's, E6b's and E5's seed 0 as they finish.
+- **Claude:** the watch until 19:00 (the RAM rule; each run's speed every 15 minutes); E6a's, E4's, E6b's and
+  E5's seed 0 as they finish.
+- **Done, 16:20:** the seed-0 learning check on all five of E3's seed-0 runs (their training summaries published
+  into a scratch summary beside E1's, `scripts/figures.py` on it). The learning curves' value at the end (1 is
+  E1's ideal point at the run's weighting): (1, 0) 0.96, (.75, .25) 0.76, (.5, .5) 0.55, (.25, .75) 1.69, (0, 1)
+  2.17. Each but (.5, .5) passes the best greedy baseline at its weighting (from 20k, 20k, 640k and 260k
+  decisions); (.5, .5) stays under greedy GP/hr's 0.57, skilling (melee, woodcutting, fishing) while (.25, .75)
+  and (0, 1) trade gems, as on sim v1.1 (`m002-wealth-neglect`). Under OQ-82's rule four are sudden and (.75,
+  .25) gradual; under OQ-78's only (0, 1) is sudden. Nothing looks broken.
 - **Done:** the determinism check on E3's other three restarted runs (the decision log, "Found: E3's other three
   restarted runs repeat their killed runs byte for byte").
 - **Later, not now:** the env workers needn't load torch's CUDA DLLs (about 2 GB of commit each, 40 GB across 20
