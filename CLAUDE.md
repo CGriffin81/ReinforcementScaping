@@ -168,7 +168,9 @@ work.
   `uv run pytest -n 8 --dist loadgroup` (the live tests stay on one worker).
 - An experiment's run: `uv run python scripts/evaluate.py --config configs/<name>.yaml`, then `uv run python
   scripts/publish_summary.py <run dir> <name>`, which writes the committed `results/summary/<name>/` (CSV tables,
-  `config.json`, a README) and refuses a run from a dirty tree. The rest of `results/` stays git-ignored.
+  every episode's trace as `decisions.csv.gz`, `config.json`, a README) and refuses a run from a dirty tree. The rest
+  of `results/` stays git-ignored. `publish_training` also reads each run's decision log into small behaviour tables
+  (`rlscape/eval/behaviour.py`): game time per option per 100,000 decisions, the policy's entropy, first choices.
 - Training: `uv run python scripts/train.py --config configs/<name>.yaml --jobs 4` trains every seed (and every
   variant of a `sweep:`), four at a time, into `runs/<name>/[<variant>/]seed<k>/` (git-ignored): provenance,
   checkpoints, TensorBoard, the learning curve and the decision log. Four runs of 4 envs make about 1M decisions an

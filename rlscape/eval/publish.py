@@ -6,6 +6,7 @@
   the tree had uncommitted changes, package versions, and the command when the script recorded one;
 - `summary.csv`, `checkpoints.csv` and `episodes.csv`, the run's three tables (rlscape/eval/harness.py) as CSV, so
   they diff and open anywhere;
+- `decisions.csv.gz`, every episode's trace, a row per decision, when the run kept one (scripts/evaluate.py does);
 - `README.md`: the provenance and the last checkpoint's table, each policy's mean and 95% CI.
 
 It refuses a run made from a tree with uncommitted changes, since its git SHA wouldn't reproduce it (`allow_dirty`
@@ -18,6 +19,10 @@ replaces its own files only, so a training summary beside it stays).
   decisions, episodes and wall time, and its `ppo` and env settings (JSON);
 - `learning_curves.csv`: each run's learning curve (episodes.parquet), with its variant and seed;
 - `configs/`: each run's config.json;
+- from the runs' decision logs, where they kept one (rlscape/eval/behaviour.py), each with its variant and seed:
+  `behaviour_bins.csv` (a row per bin of decisions: game time, episodes, the policy's entropy),
+  `behaviour_options.csv.gz` (a row per bin and option chosen in it: decisions, game time, episodes) and
+  `first_choices.csv.gz` (when each option was first chosen);
 - `README.md`: per variant, the runs and the mean of their last 100 episodes' total level and net worth.
 
 The same refusals apply: a run from a dirty tree, and a training summary already published.
@@ -31,11 +36,14 @@ from pathlib import Path
 
 import pandas as pd
 
+from rlscape.eval.behaviour import training_behaviour
 from rlscape.eval.harness import METRICS, REPO
 
 SUMMARY_ROOT = REPO / "results" / "summary"
 TABLES = ("summary", "checkpoints", "episodes")
-OWN_FILES = ("config.json", "README.md", *(f"{t}.csv" for t in TABLES))
+TRACE_FILE = "decisions.csv.gz"
+OWN_FILES = ("config.json", "README.md", *(f"{t}.csv" for t in TABLES), TRACE_FILE)
+GZIP = {"method": "gzip", "mtime": 0}  # the same bytes for the same table, so a republished file doesn't diff
 LAST_EPISODES = 100
 METRIC_NAMES = {"total_level": "Total level", "total_xp": "Total XP", "net_worth": "Net worth (gp)"}
 
@@ -61,11 +69,15 @@ def publish(run_dir: Path, name: str, root: Path = SUMMARY_ROOT, allow_dirty: bo
     tables = {t: pd.read_parquet(run_dir / f"{t}.parquet") for t in TABLES}
     for table, frame in tables.items():
         frame.to_csv(out / f"{table}.csv", index=False, lineterminator="\n")
-    (out / "README.md").write_text(readme(name, run_dir, meta, tables["summary"]), encoding="utf-8", newline="\n")
+    if (run_dir / "decisions.parquet").exists():
+        pd.read_parquet(run_dir / "decisions.parquet").to_csv(out / TRACE_FILE, index=False, lineterminator="\n",
+                                                               compression=GZIP)
+    (out / "README.md").write_text(readme(name, run_dir, meta, tables["summary"], (out / TRACE_FILE).exists()),
+                                   encoding="utf-8", newline="\n")
     return out
 
 
-def readme(name: str, run_dir: Path, meta: dict, summary: pd.DataFrame) -> str:
+def readme(name: str, run_dir: Path, meta: dict, summary: pd.DataFrame, traced: bool = False) -> str:
     last = summary[summary.hour == summary.hour.max()]
     metrics = [m for m in METRICS if m in set(last.metric)]
     seeds = int(last.seeds.min())
@@ -95,8 +107,11 @@ def readme(name: str, run_dir: Path, meta: dict, summary: pd.DataFrame) -> str:
               "standard deviation;",
               "- `checkpoints.csv`: each seed's metrics at each checkpoint (hour 0 is the fresh character);",
               "- `episodes.csv`: each episode's decisions, reward sums, final metrics, deaths, most chosen options "
-              "and wall time (the only column that changes between identical runs).", ""]
-    return "\n".join(lines)
+              "and wall time (the only column that changes between identical runs)."]
+    if traced:
+        lines.append(f"- `{TRACE_FILE}`: every episode's trace, a row per decision: the game tick it ended at, its "
+                     "option and why it ended, and the total level and net worth after it.")
+    return "\n".join(lines + [""])
 
 
 def publish_training(runs_root: Path, name: str, root: Path = SUMMARY_ROOT, allow_dirty: bool = False,
@@ -133,8 +148,27 @@ def publish_training(runs_root: Path, name: str, root: Path = SUMMARY_ROOT, allo
     table, curve = pd.DataFrame(rows), pd.concat(curves, ignore_index=True)
     table.to_csv(out / "runs.csv", index=False, lineterminator="\n")
     curve.to_csv(out / "learning_curves.csv", index=False, lineterminator="\n")
+    behaviour = _behaviour(runs, metas)
+    if behaviour:
+        behaviour["bins"].to_csv(out / "behaviour_bins.csv", index=False, lineterminator="\n")
+        behaviour["options"].to_csv(out / "behaviour_options.csv.gz", index=False, lineterminator="\n",
+                                    compression=GZIP)
+        behaviour["first"].to_csv(out / "first_choices.csv.gz", index=False, lineterminator="\n", compression=GZIP)
     (out / "README.md").write_text(training_readme(name, runs_root, table, curve), encoding="utf-8", newline="\n")
     return out
+
+
+def _behaviour(runs: list[Path], metas: list[dict]) -> dict[str, pd.DataFrame]:
+    """Every logged run's behaviour tables (rlscape/eval/behaviour.py), each row with its variant and seed."""
+    tables: dict[str, list[pd.DataFrame]] = {"bins": [], "options": [], "first": []}
+    for run, meta in zip(runs, metas):
+        if not (run / "decisions").is_dir():
+            continue
+        for key, frame in training_behaviour(run).items():
+            frame.insert(0, "seed", meta["seed"])
+            frame.insert(0, "variant", meta["config"].get("variant", ""))
+            tables[key].append(frame)
+    return {key: pd.concat(frames, ignore_index=True) for key, frames in tables.items() if frames}
 
 
 def training_readme(name: str, runs_root: Path, runs: pd.DataFrame, curves: pd.DataFrame) -> str:

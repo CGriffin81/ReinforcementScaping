@@ -354,6 +354,9 @@ The old weeks 6 to 8 (E6 on the server, the stretch, a replay with the client) a
   - the sim-to-real table from the calibration gate;
   - RQ5 (OQ-1).
 - [ ] Every figure and table is rebuilt by one script from small summaries committed to `results/summary/`.
+- [x] The data the figures need (2026-11-11): each evaluation episode's trace (`decisions.csv.gz` in an experiment's
+  summary) and each training run's behaviour from its decision log (`behaviour_bins.csv`, `behaviour_options.csv.gz`,
+  `first_choices.csv.gz` in its training summary).
 
 *Nov 22–25: the draft and the copy to review*
 - [ ] The report answers RQ1 to RQ4 (and RQ5, depending on OQ-1), with a verdict on each of H1 to H3. Negative results
