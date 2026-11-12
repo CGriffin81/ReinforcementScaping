@@ -7561,3 +7561,66 @@ Asked together after building the figure script (`m002-figures`), with E3's seed
   again once E4's, E6b's and E5's seed 0 have started (E3's three seed-0 runs end at about 13:48 to 14:18), with a
   sampler until 15:30. At five the queue finishes about a day sooner: about Nov 15 in the evening, not Nov 16 in the
   afternoon.
+
+### Decided and built: the sim-to-real table, every calibration case re-simulated on sim-v1.2 (Caleb, 2026-11-12)
+Caleb, 2026-11-12: "Start on the sim-to-real table while the runs train", then, on Claude's two questions, "Re-simulate
+on sim-v1.2 (Recommended)" and "Family table + case appendix (Recommended)". `m002-sim-to-real`.
+- **Found first:** no consolidated gate result. The calibration's results were about 225 git-ignored files in
+  `results/calibration/`, in a dozen formats, each family's result reported here where it was measured.
+- **The questions:**
+  - which sim the table compares with the server: (a) each case's latest server runs re-simulated on sim-v1.2, the sim
+    the experiments train on (recommended); (b) each case's comparison as calibrated, with the sim of its day (Oct 31
+    to Nov 9; v1's last changes, v1.1's directional walks and v1.2's fletch slot came after); (c) as calibrated, with a
+    few cases a family re-simulated;
+  - how the report shows the cases: (a) a table per family in the body and every case in an appendix (recommended);
+    (b) the family table only; (c) every case in the body.
+- **Caleb: (a) and (a).**
+- **Correction to the question:** it said the server "has been frozen since Oct 31, so its runs still stand". The
+  upstream code was frozen then, but the fork's own rule changes went on to Nov 9 (CLAUDE.md lists them). Where this
+  log found one touched a family's measurements, it re-measured them (combat's sets after the region fix, 2026-11-08),
+  and the runs the table takes are those re-measurements. The summary's README says so.
+- **Built:**
+  - `scripts/sim_to_real.py`: per family, the results files this log reports; each case's last measurement among
+    them; its server runs through the runner's own rates, and its sim side through the runner's own sim function,
+    called now from the same start with 200 seeds (one where the sim is deterministic). It writes
+    `results/summary/sim-to-real/`: `cases.csv`, `drops.csv` (OQ-20 (a)'s drop tables, judged by the sim's sampler
+    now), `speed_check.csv` (OQ-21's, as measured, both sides on the server), `config.json` (the provenance and each
+    source's SHA-256) and a README. It needs no server and takes about 2 minutes. Into `results/summary/` it refuses a
+    tree with uncommitted changes, as `scripts/publish_summary.py` does.
+  - The gated metrics are the gate's: XP/hr, gp/hr or what makes it (items, products, kills, catches), and duration.
+    A runner's other comparisons (combat's food an hour, its gp/hr, which OQ-20 (a) gates by its parts) are kept and
+    marked not gated.
+  - Left out: the 600 ms reruns (the speed check's table), earlier re-simulations, runs this log superseded, chaos's
+    crossings (`abyss_rc_chaos` isn't an option), and the measurements that fitted inputs rather than test an option
+    (Agility's entries and spike pit, the shortcuts' own crossings, the travel constants, the pouches, the Abyss's
+    failed tries).
+  - `rlscape/analysis/sim_to_real.py`, called by `scripts/figures.py`: `sim_to_real_families.csv` (the body),
+    `sim_to_real_cases.csv` (the appendix) and `sim_to_real_drops.csv`.
+  - `scripts/measure_abyss.py`: the sim's side of its pass, rift and trip runs as functions, so a stored run can be
+    re-simulated. Its results are unchanged: the Nov 9 crossings, re-simulated, equal their stored sim side.
+  - `tests/test_sim_to_real.py`: which stored run stands for a case, a re-simulation through a runner's own sim, and
+    the tables.
+- **Results** (sim over server on the gated metrics, 236 cases): **533 of 548 within ±20%.**
+  - Gathering 125 of 126 (42 cases), Barbarian fishing 12 of 12 (3), processing 102 of 102 (34), Crafting 53 of 53
+    (14), Herblore 33 of 33 (9), Thieving 15 of 16 (8), Agility 6 of 7 (7), Runecrafting at the ruins 17 of 17 (9),
+    the Abyss 39 of 40 (30), combat 84 of 93 (31), travel 47 of 49 (49).
+  - The drop tables: 371 of 374 items in the sim's central 99%, over 9 monsters (the misses: the Black Knights' and a
+    chaos druid's bones, the moss giants' big bones). The speed check: 72 of 72 agree.
+  - **Outside the gate, as this log has them:** the band-1 shrimp at Draynor's items/hr (0.66: it dies in 9 of 10
+    server runs, and the server counts the catch at 0 hitpoints, the sim after its death; XP/hr 1.09); the heroes'
+    gp/hr (0.75, rare items); the leeches (OQ-51 (a)); the band-31 poison spiders by magic (OQ-35's case); ranged
+    abyssal demons at band 91 (1.29) and melee experiments at band 91 (1.20), both noted after the region fix; the
+    Abyss's hitpoints at Defence 20 (1.23, "a small, noisy sample") and the way out from its north (1.21).
+  - **Outside, not reported against the gate before:** the Barbarian course at Agility 15 (0.80; run to sample the
+    falls); the band-91 walkers' run length (1.23; fitted on the same runs by the time to run out of food, 1.02, and
+    one of the five didn't run out).
+  - **New, not in this log:** the toll-gate check trip, Varrock east bank to Al Kharid (0.42: OQ-86); and magic at
+    the band-1 Black Knights, kills/hr 1.52 (its XP/hr 1.06, as reported).
+  - **What re-simulating changed:** mining's cases, 1.13 to 1.24 as stored (before the fit) to 0.89 to 1.12 (as this
+    log reported after it); the willows at band 31, 0.81 (one sim run then) to 0.95; the Abyss's outer ring and rifts,
+    0.80 to 0.82 to 0.98 to 1.03 (their stored sim sides came before the walks' last fit). Combat, Crafting, Herblore
+    and the Abyss's crossings equal their stored sim side.
+- **Fitted and checked:** the calibration fitted each family's overheads on the server's runs, so many cases agree
+  partly by construction (Agility's lap times are the measured ones: 1.00). Combat and travel keep fit and check sets
+  apart; the README says which is which.
+- **OQ-86 raised:** the toll-gate trip.

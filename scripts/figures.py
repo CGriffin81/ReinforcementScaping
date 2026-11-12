@@ -10,7 +10,10 @@ with its plotted values as <name>.csv (its table view), and the measures' tables
 - `sample_efficiency.csv`: each run's decisions to match the best greedy baseline at its weighting (OQ-84);
 - `milestones.csv` and `milestones_summary.csv`: each evaluation episode's hours to 50% and 100% of E1's ideal point
   on each objective, and per series the share that got there and the median (OQ-83);
-- `consistency.csv`: per trained series, the mean pairwise Jensen–Shannon divergence of its seeds' mixes (OQ-85).
+- `consistency.csv`: per trained series, the mean pairwise Jensen–Shannon divergence of its seeds' mixes (OQ-85);
+- `sim_to_real_families.csv` (the report's body), `sim_to_real_cases.csv` (its appendix) and `sim_to_real_drops.csv`:
+  the calibration gate's cases against sim-v1.2 (rlscape/analysis/sim_to_real.py), from `results/summary/sim-to-real/`
+  (scripts/sim_to_real.py).
 
 The figures:
 - `learning_e3`, `learning_rq4`: learning curves with CIs and changepoints (RQ2; RQ4 against E3's (.5, .5));
@@ -37,6 +40,7 @@ import pandas as pd
 
 from rlscape.analysis import figures as fg
 from rlscape.analysis import measures as ms
+from rlscape.analysis import sim_to_real as s2r
 from rlscape.analysis.activities import OTHER
 from rlscape.eval.harness import REPO
 
@@ -310,6 +314,21 @@ def build(summary: Path, out: Path, curve_bin: int = ms.CURVE_BIN) -> list[str]:
 
     attempt("progress", "E3's evaluation summary", progress)
     attempt("pareto", "E3's evaluation summary and E1's", pareto)
+
+    # --- the sim-to-real tables: the calibration gate's cases against sim-v1.2 ---
+    gate = summary / "sim-to-real"
+    if (gate / "cases.csv").exists():
+        cases = pd.read_csv(gate / "cases.csv", keep_default_na=False)
+        speed = pd.read_csv(gate / "speed_check.csv", keep_default_na=False) \
+            if (gate / "speed_check.csv").exists() else None
+        save_table(s2r.family_table(cases, speed), out / "sim_to_real_families.csv")
+        save_table(s2r.case_table(cases), out / "sim_to_real_cases.csv")
+        if (gate / "drops.csv").exists():
+            save_table(s2r.drops_row(pd.read_csv(gate / "drops.csv", keep_default_na=False)),
+                       out / "sim_to_real_drops.csv")
+        print("made     sim_to_real tables")
+    else:
+        skipped.append("sim_to_real tables (needs results/summary/sim-to-real, from scripts/sim_to_real.py)")
     for name in made:
         print(f"made     {name}")
     for name in skipped:
