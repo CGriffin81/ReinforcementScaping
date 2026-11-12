@@ -48,7 +48,13 @@ Mid-turn:
 
 ## Infrastructure Changes
 
-- None. The benchmarks ran beside the queue's four runs and left them alone.
+- The benchmarks ran beside the queue's four runs and left them alone.
+- After OQ-80 (a), at 18:54 CST: the queue and E3's four seed-0 CPU runs stopped (28 processes, by PID); the runs
+  moved aside to `runs/e3-reward-weight-sweep-cpu-partial` in E3's worktree. The five experiment branches merged
+  the trainer change and say `device: cuda` (E4's merge resolved in `training.py`, both sides kept; a tiny E4 run
+  on the GPU, twice, gave the same actions, RND bonuses and weights; E4's tests 12 passed).
+- The queue relaunched: PID 16844, 18:59:16 CST, 50 runs. E3's four seed-0 runs started at 19:02:34 on the RTX 3050,
+  deterministic, at `b29de68` with a clean tree. Caleb, mid-turn: "Run E3 as soon as everything is ready."
 
 ## Decisions
 
