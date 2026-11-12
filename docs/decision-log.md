@@ -7714,3 +7714,14 @@ Windows Update restart at 02:29 and run again from the same commits, config and 
 - **Checkpoints:** 16, 17 and 17; 5 of each zip's 6 members identical. The sixth (`data`) differs only in the
   episodes' wall-clock `t` and the memory addresses in its reprs; equal without them.
 - With (0, 1)'s check this morning, all four restarted runs repeat their killed runs exactly, on the GPU.
+
+### Decided: OQ-88, the reviewer's check runs on Windows only (Caleb, 2026-11-12)
+Raised and answered while drafting the reviewer's guide (OQ-50 (a)), `m002-reviewer-guide`.
+- **The question:** the environment installs only on Windows: `pyproject.toml` takes torch from `wheels/`, where
+  `scripts/fetch_torch_wheel.py` downloads PyTorch's Windows CUDA 13.0 wheel (1.9 GB), so `uv sync` fails on Linux and
+  macOS. The guide's 10-minute check (the core tests, the figures from the committed summaries, a short CPU training
+  run) needs a working environment.
+- **The options:** (a) a per-platform torch source, the CPU wheel on Linux and macOS, the lockfile updated, the results
+  unchanged (recommended); (b) Windows only, the guide saying so; (c) a container with the environment.
+- **Caleb: (b).** The guide says the check needs Windows x64; elsewhere the code and the committed summaries can be
+  read.
