@@ -7,7 +7,8 @@
   to the question dialog: 10:44:49 CST.
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: PARTIAL. Built, tested and committed on branch `tooling/sim-to-real` with a PR into `main`; OQ-86 is open.
+- Status: SUCCESS. Built, tested and merged into `main` by PR #26 (`d127073`, 11:33 CST; Caleb: "Merge PR 26 into
+  main"). OQ-86 answered (b) in `m002-oq86`.
 - Commit: on `tooling/sim-to-real` (from `main` at `f332029`; Caleb: "Commit it and open a PR into main", 11:19:25
   CST): `4f05ec5` (the tooling and docs), `35e48e6` (the clean-tree check fixed), and this commit, the summary made
   from `35e48e6`'s clean tree.
@@ -114,5 +115,4 @@ Follow-up prompt (11:19:25 CST):
 
 ## Follow-Up
 
-- **Caleb:** review the PR (the code and the case selection); OQ-86.
-- **Claude:** none for this record beyond OQ-86's answer.
+- None. PR #26 is merged, and OQ-86 was answered (b) (`m002-oq86`): the toll-gate trip is a known gap.

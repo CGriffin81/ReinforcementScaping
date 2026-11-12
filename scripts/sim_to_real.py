@@ -104,9 +104,9 @@ NOTES = {
     ("agility", "barbarian course laps", 15): "run to sample the course's falls, not reported against the gate then "
                                               "(decision log, 2026-11-08)",
     ("travel", "Varrock east bank to Al Kharid, paying the toll (check set)", ""):
-        "not in the decision log: the server's walk from Lumbridge took 178 ticks on 2026-11-06 (the same at 600 ms) "
-        "against 66 on 2026-11-01 (0.95 then), after every quest was complete from the start (free passage at the "
-        "toll gate)",
+        "a known gap, not investigated (OQ-86 (b)): the server's walk from Lumbridge took 178 ticks on 2026-11-06 "
+        "(the same at 600 ms) against 66 on 2026-11-01 (0.95 then), after every quest was complete from the start "
+        "(free passage at the toll gate)",
     ("travel", "out of the Abyss from its north (abyss set)", ""): "starts beside the passage (decision log, "
                                                                    "2026-11-09)",
     ("abyss", "hitpoints lost in the outer ring (Defence 20)", ""): "the check at Defence 20, \"a small, noisy "

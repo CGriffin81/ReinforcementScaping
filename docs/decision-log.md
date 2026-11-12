@@ -7624,3 +7624,19 @@ on sim-v1.2 (Recommended)" and "Family table + case appendix (Recommended)". `m0
   partly by construction (Agility's lap times are the measured ones: 1.00). Combat and travel keep fit and check sets
   apart; the README says which is which.
 - **OQ-86 raised:** the toll-gate trip.
+
+### Decided: OQ-86 (b), the toll-gate trip is a known gap, reported without investigating (Caleb)
+2026-11-12, Caleb: "OQ-86: option b". `m002-oq86`.
+- **The question** (raised by the sim-to-real table, above): travel's check trip "Varrock east bank to Al Kharid,
+  paying the toll" took the server 88 ticks on Nov 1 (the sim 84: 0.95) and 200 on Nov 6 (0.42): after the home
+  teleport, 178 ticks walking from Lumbridge against 66, and the same 200 at 600 ms. The sim takes the same route both
+  days, the home teleport and then the toll gate. Between the two runs every quest became complete at spawn, which
+  gives free passage at the gate (Prince Ali Rescue). Nothing had checked it since.
+- **The options:** (a) investigate after the queue's runs end, about Nov 15: the trip on the server both ways, 3 runs,
+  watching the gate, about an hour; the report gives the cause and bounds the effect by the policies' time on trips
+  through the gate (recommended); (b) report it as a known gap now, without investigating; (c) investigate now, on a
+  server beside the five runs (about 1.5 GB more RAM, where the trial's margin is about 1 GB at its worst).
+- **Caleb: (b).**
+- **Follows:** `docs/post-project-gaps.md` has the gap (what, why, the cost, how to close it). The sim-to-real table's
+  note on the trip names OQ-86 (b) (`scripts/sim_to_real.py`'s `NOTES`; the summary is made again from the commit).
+  The sim (sim-v1.2) and the experiments are unchanged.
