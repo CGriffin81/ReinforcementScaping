@@ -7,7 +7,8 @@ command per experiment).
 - `total_decisions`: decisions per run, over all envs;
 - `n_envs`: the training envs;
 - `vec_env`: `subproc` (each env in its own process) or `dummy` (all in this one);
-- `device`: torch's (`cpu`, `cuda`, `auto`). On the GPU a run isn't bit-for-bit repeatable;
+- `device`: torch's (`cpu`, `cuda`, `auto`). On the GPU the trainer turns on torch's deterministic algorithms
+  (`deterministic_cuda`; Caleb, 2026-11-11, OQ-80), so a run is repeatable there too, on the same GPU;
 - `torch_threads`: torch's CPU threads in the run's own process (its envs are processes of their own). Several runs
   at once share the machine's 16 threads with their envs, so each wants a few;
 - `env`: SimEnv's settings. `reward_weights` [w_skill, w_wealth] in SimEnv's units, or `normalised_weights`
@@ -38,8 +39,8 @@ command per experiment).
 the env's own reward in its step's info as `reward_extrinsic`, and its addition as one of `REWARD_PARTS`. The learning
 curve sums each apart, and the decision log records them (rlscape.agents.decision_log); without a wrapper they're 0.
 
-The same config and seed give the same run on the CPU: the envs are seeded from the seed (sb3's VecEnv seeding), and
-an episode depends only on its seed (OQ-64).
+The same config and seed give the same run, on the CPU and on the GPU (with torch's deterministic algorithms, OQ-80):
+the envs are seeded from the seed (sb3's VecEnv seeding), and an episode depends only on its seed (OQ-64).
 """
 
 from __future__ import annotations
@@ -47,6 +48,7 @@ from __future__ import annotations
 import copy
 import itertools
 import json
+import os
 import shutil
 import sys
 import time
@@ -213,6 +215,20 @@ class EpisodeTable(BaseCallback):
                                                 "net_worth"])
 
 
+def on_cuda(config: dict) -> bool:
+    """Whether the run's model goes on the GPU: `device: cuda`, or `auto` with one there."""
+    device = str(config.get("device", "auto"))
+    return device.startswith("cuda") or (device == "auto" and th.cuda.is_available())
+
+
+def deterministic_cuda() -> None:
+    """Make a CUDA run repeatable (OQ-80): cuBLAS gets a fixed workspace (read when it first starts), and torch
+    refuses any op that has no deterministic version, rather than running it. Measured on 2026-11-11: two GPU runs of
+    the same config and seed gave the same actions and bit-identical weights, with this and without it."""
+    os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
+    th.use_deterministic_algorithms(True)
+
+
 def run_dir(config: dict, name: str, seed: int) -> Path:
     root = Path(config.get("out") or REPO / "runs" / name)
     return (root / config["variant"] if config.get("variant") else root) / f"seed{seed}"
@@ -235,6 +251,9 @@ def train(config: dict, name: str, seed: int, out: Path | None = None, force: bo
             "env_kwargs": env_kwargs(config), **provenance(), "torch": th.__version__,
             "stable_baselines3": stable_baselines3.__version__, "sb3_contrib": sb3_contrib.__version__,
             "script": "scripts/train.py", "argv": list(sys.argv[1:] if argv is None else argv)}
+    if on_cuda(config):
+        deterministic_cuda()  # before cuBLAS starts, which reads its workspace setting once
+        meta.update({"gpu": th.cuda.get_device_name(0), "deterministic": th.are_deterministic_algorithms_enabled()})
     (run / "config.json").write_text(json.dumps(meta, indent=2, default=str), encoding="utf-8")
 
     started = time.perf_counter()

@@ -7342,3 +7342,39 @@ Asked together after Caleb's question "Why don't any of the runs do anything wit
   every experiment first. Each run takes about 8.7 hours four at a time, so about 110 hours: done around Nov 16 to 17.
 - **E3's 13 finished v1.1 runs and 4 partial ones** are kept aside in its worktree
   (`runs/e3-reward-weight-sweep-sim-v1.1`). They aren't used.
+
+### Decided: OQ-79, E4's centred RND bonus is centred on a recent mean (Caleb, 2026-11-11: (a))
+- **The question:** E4's own tests on sim v1.2 showed its centred bonus mostly below zero (−0.53 spreads, 55 of 64
+  decisions negative): it was centred on the predictor error's mean over the whole run so far, and the error falls as
+  the predictor learns, so the bonus charged a small cost per decision, what centring (OQ-72 (b)) was meant to avoid.
+  Raised in `m002-restart-v1.2`.
+- **Options:**
+  - (a) centre (and scale) on a recent mean, an exponential moving average over about the last 10 rollouts
+    (recommended);
+  - (b) keep the cumulative mean, and report the early drift;
+  - (c) don't centre (Burda et al.'s way), which pays for short decisions, the reason OQ-72 chose (b).
+- **Caleb: (a).** Built on E4's branch (`m002-oq79-rnd-centring`). Measured at E4's scale before its runs, the recent
+  mean shortens the drift rather than removing it at the start: both centrings average about −0.5 spreads over the
+  first 10 rollouts, while the error falls fastest; over rollouts 12 to 20, the recent mean averages about −0.2 and
+  the cumulative one −0.3. The recommendation had said it would average about zero at every stage. That holds once
+  the error levels off, not in the first one or two percent of a run.
+- **E4 joins the training queue** with it.
+
+### Decided: OQ-80, E3 to E6 train on the GPU, deterministically (Caleb, 2026-11-11: (a))
+- **The question** (Caleb: "Why are the experiments not running on GPU?"; `m002-gpu`): Caleb chose CUDA torch on
+  2026-11-08, but Claude had set every training config to `device: cpu` on 2026-11-09 without putting it to him.
+- **Measured:** the PPO update of one rollout (1,024 decisions at E3's settings) takes 1.12 s on the CPU and 0.11 s on
+  the RTX 3050, against about 20 s for the rollout's simulation. Two GPU runs of the same config and seed were
+  identical (actions and weights), with and without torch's deterministic algorithms.
+- **Options:** (a) switch now, all 50 runs on the GPU in deterministic mode, restarting E3's four seed-0 runs
+  (recommended); (b) switch the 46 runs not yet started; (c) stay on the CPU. Projected saving of (a) or (b): about 5
+  to 7% of training, 6 to 8 hours over the queue.
+- **Caleb: (a).**
+  - **The trainer** (`rlscape/agents/training.py`): a CUDA run (`device: cuda`, or `auto` with a GPU) gets
+    `deterministic_cuda()`: cuBLAS's workspace (`CUBLAS_WORKSPACE_CONFIG=:4096:8`) and
+    `torch.use_deterministic_algorithms(True)`. Its config.json records the GPU and the mode. A test checks that two
+    GPU runs of the same config and seed are identical.
+  - **The configs:** E3's, E6a's, E4's, E6b's and E5's say `device: cuda`. RND's networks (E4) stay on the CPU, as
+    they were; the evaluation loads models on the CPU, as before.
+  - **The restart:** the queue and E3's four seed-0 runs (on the CPU since 18:01) were stopped at 18:54. Those runs
+    are kept aside (`runs/e3-reward-weight-sweep-cpu-partial` in E3's worktree), and all 50 runs train on the GPU.
