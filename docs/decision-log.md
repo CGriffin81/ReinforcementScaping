@@ -7495,3 +7495,23 @@ Asked together after building the figure script (`m002-figures`), with E3's seed
   75 skipped, 1 failed. The failure is `test_replay`'s E2 replay: E2's v1.1 model has 3,482 features and sim v1.2
   has 3,488. It's left from the v1.2 change and only runs where E2's model is (the main checkout). It's flagged as a
   task of its own.
+
+### Found: GPU training is deterministic over 1M decisions (2026-11-12, OQ-80's check at scale)
+- **The chance:** Windows Update restarted the machine at 02:29 CST and killed E3's four seed-0 runs
+  (`m002-queue-reboot`). The queue started them again from the start, with the same commit (`b29de68`), config and
+  seed. The killed runs were kept aside (`runs/e3-reward-weight-sweep-reboot-partial` in E3's worktree).
+- **Checked on (0, 1)** (Caleb), whose restart passed the killed run's 1.0M decisions by 08:40:
+  - **the decision log:** all 20 parts (1,000,000 rows: observations, masks, actions, action probabilities, values,
+    reward parts, durations, character state) are byte-identical;
+  - **the 10 checkpoints** (100,000 to 1.0M decisions): the weights, the optimizer state, the version and the system
+    info are identical. In `data`, only the wall clock and the process differ: the start time, the episode buffer's
+    wall-clock field `t` (its lengths and returns are equal) and the memory addresses in the class records.
+- **So** a GPU run in deterministic mode is reproducible from its config and seed alone over 1M decisions, as
+  OQ-80's test showed on a small run. The other three killed runs (1.6M to 1.7M decisions) can be checked the same way
+  once their restarts pass them.
+
+### Decided: Windows Update paused until the last test is done (Caleb, 2026-11-12)
+- **Why:** its restart at 02:29 on Nov 12 killed the queue and cost about 6 hours of training (`m002-queue-reboot`).
+- **Caleb:** "Pause Windows Update until we are done with all of our tests. Put a requirement post-testing to turn
+  Windows Update back on." Caleb pauses it (it's a system setting); ROADMAP's plan has turning it back on as a step
+  after the last test.

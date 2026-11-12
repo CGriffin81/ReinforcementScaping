@@ -340,6 +340,11 @@ The old weeks 6 to 8 (E6 on the server, the stretch, a replay with the client) a
 was stopped with 13 of its 25 runs done on v1.1, which are kept aside (`runs/e3-reward-weight-sweep-sim-v1.1` in its
 worktree). E1 was rerun on v1.2 and OQ-67's units recomputed from it. E3 to E6 train again from one queue, all 50
 runs, seed 0 of every experiment first: about 110 hours, so done around Nov 16 to 17. E2 stays on v1.1.
+
+*Restarted after a Windows Update restart (2026-11-12):* the machine restarted at 02:29 and killed E3's four seed-0
+runs, which started again from the start at 04:41 (about 6 hours lost, so the queue ends around midday Nov 16).
+Windows Update is paused until the last test is done (Caleb). The restarted (0, 1) run repeated the killed one's
+1.0M decisions byte for byte.
 - [ ] **E3, the reward-weight sweep** (RQ1 to RQ3): (1,0), (.75,.25), (.5,.5), (.25,.75) and (0,1) in normalised
   units (OQ-67), 5 seeds each, 2M decisions a run (OQ-69), with E2's winner: λ 0.95, learning rate 3e-4, entropy 0.01.
 - [ ] **E4, PPO + RND** (RQ2, RQ4, H3): the RND wrapper, then PPO + RND at (.5,.5), 5 seeds, against E3's (.5,.5).
@@ -377,6 +382,11 @@ runs, seed 0 of every experiment first: about 110 hours, so done around Nov 16 t
 
 *Nov 26: peer review (Thanksgiving week runs at half capacity). Nov 27–30: revisions, and the demo (sim replays of an
 early, a middle and a final checkpoint: `scripts/replay.py`, built 2026-11-10, OQ-70). The report is due Mon Nov 30.*
+
+*After the last test* (Caleb, 2026-11-12):
+- [ ] **Turn Windows Update back on** (Settings → Windows Update → Resume updates) once every run, evaluation and
+  test is done. It's paused from Nov 12 so that a forced restart can't kill a run: one at 02:29 on Nov 12 killed the
+  queue and cost about 6 hours.
 
 **If time runs short:** depth gives way, not a research question (from Caleb's answer):
 - fewer γ_hr values or weightings, or shorter runs;
