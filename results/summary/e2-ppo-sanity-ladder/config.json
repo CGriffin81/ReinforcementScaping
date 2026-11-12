@@ -1,0 +1,70 @@
+{
+  "config": {
+    "backend": "sim",
+    "policies": [
+      "random",
+      "scripted_guide",
+      "gae_lambda0.95_learning_rate0.0001/seed0=ppo:runs/e2-ppo-sanity-ladder/gae_lambda0.95_learning_rate0.0001/seed0/model.zip",
+      "gae_lambda0.95_learning_rate0.0001/seed1=ppo:runs/e2-ppo-sanity-ladder/gae_lambda0.95_learning_rate0.0001/seed1/model.zip",
+      "gae_lambda0.95_learning_rate0.0003/seed0=ppo:runs/e2-ppo-sanity-ladder/gae_lambda0.95_learning_rate0.0003/seed0/model.zip",
+      "gae_lambda0.95_learning_rate0.0003/seed1=ppo:runs/e2-ppo-sanity-ladder/gae_lambda0.95_learning_rate0.0003/seed1/model.zip",
+      "gae_lambda0.99_learning_rate0.0001/seed0=ppo:runs/e2-ppo-sanity-ladder/gae_lambda0.99_learning_rate0.0001/seed0/model.zip",
+      "gae_lambda0.99_learning_rate0.0001/seed1=ppo:runs/e2-ppo-sanity-ladder/gae_lambda0.99_learning_rate0.0001/seed1/model.zip",
+      "gae_lambda0.99_learning_rate0.0003/seed0=ppo:runs/e2-ppo-sanity-ladder/gae_lambda0.99_learning_rate0.0003/seed0/model.zip",
+      "gae_lambda0.99_learning_rate0.0003/seed1=ppo:runs/e2-ppo-sanity-ladder/gae_lambda0.99_learning_rate0.0003/seed1/model.zip"
+    ],
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29
+    ],
+    "env": {
+      "horizon_ticks": 120000,
+      "activity_ticks": 1500
+    },
+    "reward_weights": [
+      0.5,
+      0.5
+    ]
+  },
+  "config_hash": "22b13ab52e37",
+  "git_sha": "e3719a3da39b90ff48cf0488d260c717f31fef6f",
+  "git_dirty": false,
+  "server_sha": "cad9743444626e56b9e758db1b78867e7fe75b86",
+  "created": "2026-11-10T10:51:37+00:00",
+  "python": "3.12.14",
+  "numpy": "2.5.4",
+  "pandas": "3.1.0",
+  "script": "scripts/evaluate.py",
+  "argv": [
+    "--config",
+    "configs/e2-ppo-sanity-ladder-eval.yaml"
+  ]
+}

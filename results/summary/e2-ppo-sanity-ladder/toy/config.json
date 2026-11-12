@@ -1,0 +1,47 @@
+{
+  "config": {
+    "seeds": [
+      0,
+      1
+    ],
+    "total_decisions": 2000000,
+    "n_envs": 8,
+    "eval_episodes": 100,
+    "pass_share": 0.95,
+    "ppo": {
+      "gamma_hr": 0.99,
+      "gae_lambda": 0.99,
+      "n_steps": 256,
+      "batch_size": 1024,
+      "n_epochs": 4,
+      "learning_rate": 0.0003,
+      "ent_coef": 0.01,
+      "policy_kwargs": {
+        "net_arch": [
+          256,
+          256
+        ]
+      }
+    }
+  },
+  "config_hash": "2c3a062efea1",
+  "git_sha": "32719bac2b5b002eefe84a7f0bf5f53f44bc4955",
+  "git_dirty": false,
+  "server_sha": "cad9743444626e56b9e758db1b78867e7fe75b86",
+  "created": "2026-11-10T02:28:46+00:00",
+  "python": "3.12.14",
+  "numpy": "2.5.4",
+  "pandas": "3.1.0",
+  "torch": "2.14.1+cu130",
+  "script": "scripts/e2_toy_rung.py",
+  "argv": [
+    "--config",
+    "configs/e2-ppo-sanity-ladder-toy.yaml"
+  ],
+  "optimum": {
+    "discounted": 72.74287308485023,
+    "undiscounted": 82.51102851743975,
+    "trainings": 22
+  },
+  "horizon_ticks": 120000
+}

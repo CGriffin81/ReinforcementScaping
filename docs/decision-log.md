@@ -6867,3 +6867,175 @@ than exp." `m002-oq61`.
   `results/summary/<name>/training/` gets `runs.csv`, `learning_curves.csv`, each run's config.json and a README.
   Runs from a dirty tree and an existing training summary are refused. `publish` (an evaluation's summary) now
   replaces only its own files, so the two share an experiment's folder.
+
+### Found: E2's rung 1 fails at GAE λ 0.95; decided: OQ-66, the sweep varies λ and the learning rate (Caleb)
+- **Rung 1 as configured** (`configs/e2-ppo-sanity-ladder-toy-lambda0.95.yaml`, run from `57a31ae`): 200k
+  decisions, GAE λ 0.95, learning rate 3e-4, entropy 0.01, two seeds.
+  - **Result:** 70.1% and 70.0% of the optimum's discounted return, about 7.5 trainings where the optimum trains 22.
+    The rung fails: it asks for 95% on every seed.
+  - **How it fails:** PPO learns to work early and under-invests. A 20k-decision dry run trained about 20 times
+    before it drifted down.
+  - The summary stays in `results/summary/e2-ppo-sanity-ladder/toy-lambda0.95/`.
+- **Diagnosed** with one setting changed at a time (600k toy decisions, one seed; share of the optimum, trainings and
+  idles at the end, evaluated as the rung does):
+
+  | Change | Share | Trainings | Idles |
+  |---|---:|---:|---:|
+  | none (λ 0.95) | 75% | 6.9 | 0.7 |
+  | learning rate 1e-4 | 71% | 8.4 | 1.7 |
+  | entropy 0.05 | 79% | 9.7 | 5.0 |
+  | λ 0.98 | 81% | 12.4 | 5.5 |
+  | λ 0.99 | 84% | 15.7 | 10.9 |
+  | λ 1 | 83% | 19.1 | 21.4 |
+  | λ 1, entropy 0 | 83% | 15.9 | 14.8 |
+  | the horizon as a true end (terminated) | 62% (unstable) | 11.8 | 232 |
+
+  - **λ 0.99 for 1.2M decisions** reaches 94% (17.9 trainings, 7.7 idles), still rising.
+  - **The SMDP machinery works:** with λ near 1, PPO finds the investment.
+  - **λ 0.95, applied once a decision (`rlscape/agents/smdp.py`), cuts the credit** for a payoff that comes 50 to 60
+    decisions later (0.95^58 ≈ 0.05). That credit has to come through the critic, which undervalues the trainings.
+  - **The price of a λ near 1 is variance:** its advantages can't tell that idling wastes time.
+  - **The sim's episodes are 177 to 400 decisions,** so λ matters more there.
+- **Options** (asked in chat, 2026-11-09):
+  - **(a) Recommended:** sweep λ {0.95, 0.99} × learning rate {1e-4, 3e-4}, with entropy fixed at 0.01. Still 8
+    runs. Rung 1 is rerun at λ 0.99 with 2M toy decisions, and λ 0.95's failure stays in E2's summary as a finding.
+  - **(b)** Fix λ at 0.99 and keep the learning rate × entropy grid.
+  - **(c)** λ as a third factor: 16 runs, about 18 hours.
+  - **(d)** Keep OQ-65 as decided, and report rung 1 as failed.
+- **Caleb: (a).** `configs/e2-ppo-sanity-ladder.yaml` sweeps `ppo.gae_lambda` and `ppo.learning_rate`, with
+  `ent_coef` 0.01. Rung 1's config (`configs/e2-ppo-sanity-ladder-toy.yaml`) is λ 0.99 and 2M decisions, its 95% bar
+  unchanged. OQ-65 (2)'s entropy factor is replaced. For the report, it's evidence for H1 and RQ4: credit for a
+  delayed payoff is what decides whether the agent invests.
+
+### Found: E2's sweep and rung 2: PPO beats random; the best variant is GAE λ 0.95 with learning rate 3e-4
+- **The sweep** (`configs/e2-ppo-sanity-ladder.yaml`, OQ-66): 8 runs of 1M decisions at (.5, .5), all from a clean
+  `e3719a3`. Four at once took 2026-11-09 20:37 to 2026-11-10 04:51 CST, 3.8 to 4.4 hours a run. The summary is in
+  `results/summary/e2-ppo-sanity-ladder/training/`.
+- **Rung 2** (`configs/e2-ppo-sanity-ladder-eval.yaml`): every model on E1's 30 seeds with sampled actions, beside
+  random and the guide. Random and the guide match E1's numbers exactly. `scripts/e2_rung2.py` ranks the variants
+  and pairs each run with the baselines by seed (`.../rung2/`).
+
+  | Variant | Reward | Total level | Total XP | Net worth (gp) |
+  |---|---:|---:|---:|---:|
+  | λ 0.95, 3e-4 | 149.6 | 328 | 256,900 | 8,115 |
+  | λ 0.99, 3e-4 | 142.4 | 314 | 198,932 | 10,505 |
+  | λ 0.95, 1e-4 | 127.7 | 286 | 251,353 | 5,765 |
+  | λ 0.99, 1e-4 | 124.5 | 278 | 233,631 | 4,723 |
+  | random (E1) | 92.7 | 214 | 79,660 | 14,190 |
+  | the guide (E1) | 162.6 | 351 | 97,279 | 129,789 |
+
+  - **Rung 2 passes:** both runs of the best variant beat random by +59.1 [55.0, 63.4] and +54.7 [50.1, 59.2] reward
+    an episode (paired, 95% bootstrap CI over the 30 seeds), and by +119 and +110 total levels.
+  - **They're still below the guide:** −10.8 [−14.4, −6.8] and −15.1 [−18.6, −11.2] reward, and 18 and 27 levels.
+    They gain 2.2 and 3.0 times the guide's XP: more XP in fewer skills.
+  - **The best variant is λ 0.95,** the λ that under-invests on the toy env. The sim's skill reward mostly arrives
+    during the option that earns it, not dozens of decisions later. Its runs also take fewer, longer decisions (147
+    and 169 an episode, against 212 and 188 at λ 0.99 with 3e-4, and random's 381).
+  - **What they learned** (the best variant's last 25,000 training decisions):
+    - about half the game time in melee on the nearest monsters;
+    - half gathering (Fishing, Thieving, Woodcutting, Agility, tanning), cooking or burning what they gather;
+    - buying and selling about 2 to 3% of the time;
+    - dropping items in 13 to 14% of decisions.
+
+    Their wealth reward in the evaluation is 0.07 an episode (about 7,000 gp), against about 300 for skill (OQ-67).
+  - **The learning rate matters more than λ:** 3e-4 beats 1e-4 by 22 reward at λ 0.95 and 18 at λ 0.99. λ 0.95 beats
+    λ 0.99 by 7 at 3e-4 and 3 at 1e-4.
+- **Still rising at 1M:** over the last 30% of training, the best variant's training reward rose by 20.0 and 17.1,
+  and λ 0.99 with 3e-4 by 6.6 and 6.7. The 1e-4 runs rose by 0.9 to 2.9 (OQ-69).
+- **The sweep's winner is what E3 to E6 use** (OQ-65 (2)): λ 0.95, learning rate 3e-4, entropy 0.01.
+
+### Decided: OQ-67, E3 to E6 give their reward weights in normalised units, with no sim change (Caleb)
+- **Raised and decided:** 2026-11-10, from E2's sweep (record `m002-e2-ladder`). The reward is
+  w_s·r_skill + w_b·r_wealth, with r_skill in levels and r_wealth = Δ net worth / 100,000 gp (env contract §4).
+  ROADMAP's technical decisions gave the scale as "e.g. 100k GP"; it was never compared with what a policy earns.
+- **What it does at 20 hours** (E1's mean reward sums, `results/summary/e1-baselines/episodes.csv`):
+
+  | Policy | r_skill | r_wealth |
+  |---|---:|---:|
+  | random | 185.4 | 0.13 |
+  | greedy XP/hr | 122.5 | 0.00 |
+  | greedy GP/hr | 6.4 | 18.9 |
+  | the guide | 323.9 | 1.29 |
+
+  - Even greedy GP/hr's 1.89M gp is worth less than random's levels, so a level outweighs 100,000 gp.
+  - **E2's agents at (.5, .5)** learned skill only. In the evaluation their wealth reward is 0.03 to 0.13 an
+    episode (3,900 to 14,000 gp), against 247 to 304 for skill.
+  - **E3's grid** is (1,0), (.75,.25), (.5,.5), (.25,.75), (0,1). At (.25, .75) a skill policy scores about
+    0.25 × 300 = 75 against greedy GP/hr's 0.75 × 18.9 + 0.25 × 6.4 = 16. A policy that went for wealth would score
+    about 16, so only (0, 1) makes wealth worth chasing. The front would be four skill points and one wealth point.
+  - Rescaling the wealth term is the same as moving the weights: scale c on r_wealth gives the same policies as
+    weights (w_s, c·w_b). So the question is where E3's points sit, and whether the sim's scale changes to put them
+    there.
+- **Options:**
+  - **(a) Recommended: normalised weights, no sim change.** E3 to E6 give their weights in units of E1's best
+    20-hour gain on each objective: the guide's 324 levels and greedy GP/hr's 1.89M gp (the ideal point). A shared
+    helper converts them to the env's weights, keeping a level worth w_s.
+    - E3's (.75,.25), (.5,.5) and (.25,.75) become env weights (.75, 4.3), (.5, 8.6) and (.25, 12.9). As shares of
+      w_s + w_b, that's w_b .85, .945 and .98.
+    - E4's and E6's "(.5, .5)" means the normalised point, and E5 draws normalised weights.
+    - E2 stays as run, its (.5, .5) noted as rewarding skill.
+  - **(b) Change the sim's scale** (for example 5,800 gp a unit, where a level and the ideal point's gp balance). It
+    picks the same policies as (a), and "(.5, .5)" keeps its plain meaning. But it's a sim change: sim-v1.2 by a main
+    PR, E1's reward sums change (its metrics don't), and E2's sweep ran on the old objective.
+  - **(c) Keep the scale and add wealth-heavy points to E3** (for example w_b .9, .95 and .98, 5 seeds each). The
+    front is denser where the trade happens, for 15 more runs (about 30 hours at 2M decisions, four at once).
+  - **(d) Keep everything,** and the report says four of E3's five points reward mostly skill.
+- **Decides:** Caleb (experiment design: what RQ1 to RQ3's fronts show).
+- **Caleb: (a)** (asked in chat, 2026-11-10).
+  - A shared helper (tooling, into `main` by its own PR) turns normalised weights into the env's. It keeps a level
+    worth w_s, so 1 normalised unit of wealth is 1.89M gp.
+  - E3's grid stays (1,0), (.75,.25), (.5,.5), (.25,.75), (0,1), in normalised units.
+  - E4's and E6's "(.5, .5)" is the normalised point, env weights (.5, 8.57), and E5 draws normalised weights.
+  - E2 stays as run at env (.5, .5), which rewards skill only. Its winning hyperparameters were chosen there.
+
+### Decided: OQ-68, E2's rung 1 passes at 94.4% and 94.9%, reported with its numbers (Caleb)
+- **Raised:** 2026-11-09, by rung 1's second run (record `m002-e2-ladder`); decided 2026-11-10. Claude proposed the
+  bar (every seed's mean discounted return at least 95% of the optimum's) with rung 1's config. Caleb didn't set it.
+- **The run** (`results/summary/e2-ppo-sanity-ladder/toy/`, λ 0.99, 2M decisions): 94.9% and 94.4%, 13 trainings
+  where the optimum trains 22, almost no idling. It was still rising.
+- **Options:**
+  - **(a) Recommended: it passes, reported with its numbers.** The rung checks that the SMDP machinery learns a
+    delayed investment, and 94% is far from always working's 25%. The report gives 94.4% and 94.9% and the 13
+    trainings against 22, not a bare "pass".
+  - **(b) It fails at 95%,** reported as such. Rung 3 and E3 go ahead anyway, since the rung doesn't gate them.
+  - **(c) Rerun it longer** (4M decisions; the 2M run took about 4 minutes a seed) and judge that run at 95%.
+- **Decides:** Caleb (what the report claims).
+- **Caleb: (a)** (asked in chat, 2026-11-10). Rung 1 passes.
+  - The report gives 94.4% and 94.9% of the optimum, and 13 trainings against its 22.
+  - The bar stays as proposed in the config. The summary's README, generated from the run, still reads "fails" against
+    95%; this entry is the verdict.
+
+### Decided: OQ-69, E3 to E6 train for 2M decisions a run (Caleb)
+- **Raised and decided:** 2026-11-10, by E2's curves (record `m002-e2-ladder`). OQ-65 (3) (Caleb): 1M, "revisited
+  after E2: if E2's curves still rise at 1M, E3 to E6 take 2M".
+- **The curves** (training reward over the last 30% of training, `results/summary/e2-ppo-sanity-ladder/training/`):
+
+  | Variant | Seed 0 | Seed 1 |
+  |---|---:|---:|
+  | λ 0.95, 3e-4 (the best, what E3 to E6 use) | 132.6 → 152.6 | 129.4 → 146.5 |
+  | λ 0.99, 3e-4 | 134.2 → 140.8 | 133.4 → 140.1 |
+  | λ 0.95, 1e-4 | 127.2 → 128.1 | 125.6 → 127.1 |
+  | λ 0.99, 1e-4 | 120.9 → 123.8 | 121.0 → 122.4 |
+
+  The best variant is the one still rising fastest. By OQ-65 (3)'s rule, E3 to E6 take 2M.
+- **The cost:** E3 to E6 are 55 runs:
+
+  | Experiment | Runs |
+  |---|---:|
+  | E3 | 25 |
+  | E4 | 5 |
+  | E5 | 5 |
+  | E6a | 10 |
+  | E6b | 5 |
+
+  At about 1M decisions an hour (four runs at once), 2M is about 110 hours and 1M about 55. E4's RND and E5's
+  conditioning cost more a decision. Nov 13 to 18 is 144 hours, with E4's to E6's building alongside the runs.
+- **Options:**
+  - **(a) Recommended: 2M, as the rule says.** E3 runs first (about 50 hours), and the others follow as they're
+    built. Every run keeps its 1M checkpoint, so a 1M comparison stays possible.
+  - **(b) 1M.** Half the compute, but E3 to E6 would compare agents still learning, and the report would say so.
+  - **(c) 2M for E3, 1M for E4 to E6,** compared with E3's (.5, .5) at its 1M checkpoint. RQ1 to RQ3 get learned
+    agents, and the rest fits more easily.
+- **Decides:** Caleb (experiment design).
+- **Caleb: (a)** (asked in chat, 2026-11-10). E3 to E6 train for 2M decisions a run, E3 first. Every run keeps its
+  1M checkpoint.

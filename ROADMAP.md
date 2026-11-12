@@ -305,18 +305,30 @@ The old weeks 6 to 8 (E6 on the server, the stretch, a replay with the client) a
 *Nov 11–12: does PPO learn?*
 - [x] **E1** rerun on sim v1: random, greedy XP/hr, greedy GP/hr and the scripted guide, 30 seeds (run 2026-11-09,
   PR #10).
-- [ ] **E2, the sanity ladder** (after E1: its second rung is judged against E1's random). Its design is OQ-65
+- [x] **E2, the sanity ladder** (after E1: its second rung is judged against E1's random; PR #15). Its design is OQ-65
   (Caleb, 2026-11-09):
   1. a synthetic 3-option env (work, train, idle) with its optimum computed exactly;
   2. PPO beats random on the full catalog, answered by the sweep's best variant, evaluated with sampled actions on
      E1's 30 seeds;
-  3. the sweep at (.5, .5): learning rate {1e-4, 3e-4} × entropy coefficient {0, 0.01}, 2 seeds each, 1M decisions a
-     run (2M for E3 to E6 if E2's curves still rise at 1M).
+  3. the sweep at (.5, .5): GAE λ {0.95, 0.99} × learning rate {1e-4, 3e-4}, entropy 0.01, 2 seeds each, 1M
+     decisions a run (2M for E3 to E6 if E2's curves still rise at 1M). OQ-66 replaced OQ-65's entropy factor with λ
+     after rung 1 failed at λ 0.95 (70% of the optimum, under-investing).
+
+  *Run 2026-11-09 to 11-10:*
+  - **Rung 1 passes** (Caleb, OQ-68): at λ 0.99 and 2M decisions, 94.9% and 94.4% of the optimum, reported with its
+    numbers.
+  - **Rung 3, the sweep:** the best variant is λ 0.95 with learning rate 3e-4, still rising at 1M, so E3 to E6 train
+    for 2M decisions (Caleb, OQ-69).
+  - **Rung 2 passes:** it beats random by +59 and +55 reward an episode, paired over E1's 30 seeds. It's 11 to 15
+    below the guide.
+  - **At (.5, .5) the agents learn skill only:** a level outweighs 100,000 gp. E3 to E6 give their weights in
+    normalised units, E1's best 20-hour gain on each objective (Caleb, OQ-67).
 - [x] The tooling E2 needs, shared by E3 to E6 (2026-11-09): sweeps in `train.py`, trained policies in the eval
   harness, and `scripts/publish_training.py`.
 
 *Nov 13–18: the experiments* (the runs overlap the building)
-- [ ] **E3, the reward-weight sweep** (RQ1 to RQ3): (1,0), (.75,.25), (.5,.5), (.25,.75) and (0,1), 5 seeds each.
+- [ ] **E3, the reward-weight sweep** (RQ1 to RQ3): (1,0), (.75,.25), (.5,.5), (.25,.75) and (0,1) in normalised
+  units (OQ-67), 5 seeds each, 2M decisions a run (OQ-69), with E2's winner: λ 0.95, learning rate 3e-4, entropy 0.01.
 - [ ] **E4, PPO + RND** (RQ2, RQ4, H3): the RND wrapper, then PPO + RND at (.5,.5), 5 seeds, against E3's (.5,.5).
 - [ ] **E5, the weight-conditioned PPO** (RQ3's second half): weights drawn each episode and given in the
   observation. Pareto coverage, hypervolume and training cost against E3's agents.
