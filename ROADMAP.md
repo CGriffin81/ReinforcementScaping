@@ -359,6 +359,11 @@ runs, seed 0 of every experiment first: about 110 hours, so done around Nov 16 t
   - the sim-to-real table from the calibration gate;
   - RQ5 (OQ-1).
 - [ ] Every figure and table is rebuilt by one script from small summaries committed to `results/summary/`.
+  *Built 2026-11-11:* `scripts/figures.py` (`rlscape/analysis/`) makes the first four, with RQ1's progress at the
+  checkpoints, each policy's activity mix in evaluation and the policy's entropy, from whichever experiments are
+  published, and the tables for the milestones (OQ-83), sample efficiency (OQ-84), consistency across seeds (OQ-85)
+  and each run's sudden-or-gradual verdict under OQ-82's rule and OQ-78's. Still to add: the sim-to-real table and
+  RQ5.
 - [x] The data the figures need (2026-11-11): each evaluation episode's trace (`decisions.csv.gz` in an experiment's
   summary) and each training run's behaviour from its decision log (`behaviour_bins.csv`, `behaviour_options.csv.gz`,
   `first_choices.csv.gz` in its training summary).
