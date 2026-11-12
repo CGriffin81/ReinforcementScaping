@@ -7163,3 +7163,41 @@ than exp." `m002-oq61`.
 - **Shared tooling:** it goes to `main` first by its own PR (CLAUDE.md). E4's branch merges it, and E6b's starts from
   it.
 - **Tests:** `tests/test_training.py`, 5 passed. Without a wrapper the parts are 0, and the logged reward is the env's.
+
+### Built: the training queue, one queue for several experiments' runs (tooling, 2026-11-11)
+- **Why:** E6a, E4, E6b and E5 are 25 runs on four branches. `train.py --jobs` trains one experiment at a time, and
+  each run must train in its own experiment's worktree, so it records that branch's provenance (OQ-61). Run by hand,
+  one experiment after another, the machine would sit partly idle between them. From about Nov 12 12:30, E3's last
+  run trains alone, leaving three slots free.
+- **How:** `scripts/train_queue.py --jobs 4 <config> ...`, each config in its own worktree.
+  - Each run trains in its worktree, by that worktree's own `scripts/train.py` and venv, as `train.py --jobs` would
+    train it. Its log goes beside its directory.
+  - `--jobs` counts every training run on the machine, E3's included. A training run is a process running
+    `scripts/train.py` with `--seed`; the queue reads the process table every minute. A slot must stay free for 30 s
+    before the queue takes it, so E3's launcher, which looks every 5 s, keeps its own slots.
+  - **Order** (`--order seeds`, the default): seed 0 of every experiment and variant, then seed 1, and so on. Every
+    experiment has its first seeds early, and about as many seeds as the others if the machine is needed before the
+    end. `--order experiments` trains them in turn.
+  - **Resuming:** a run that's done (run.json) is skipped, and a run already training is left to finish. If a run was
+    stopped part-way, the queue refuses to start, unless `--restart-partial`, which trains that run again from the
+    start.
+  - **Checks first:** each worktree lists its runs with its own trainer. That checks its config by its branch's rules
+    and builds its venv. The queue refuses a worktree with uncommitted changes (unless `--allow-dirty`), since
+    `publish_training` would refuse its runs. It also refuses worktrees on different server commits.
+  - `--dry-run` prints the plan and each run's state. It's safe to run while a queue trains.
+- **The worktrees:** `D:\ReinforcementScaping-e4`, `-e6b` and `-e5`, set up like E6a's:
+  - the branch checked out;
+  - the server cloned from this checkout's submodule at `cad9743`, without the game cache's LFS files (only the
+    running server reads them; E3's worktree was made the same way);
+  - `wheels/` linked;
+  - the travel map's `places.npz` copied, with the same SHA-256 as E3's.
+
+  Each has its own venv, about 2.5 minutes to build.
+- **Tests** (`tests/test_train_queue.py`, 4 passed):
+  - the command lines the process table showed for E3's runs;
+  - the two orders;
+  - a live queue of two tiny runs with `--jobs 1`. It waits for another experiment's run to leave its slot, then
+    trains its own runs one at a time, each recording the worktree's provenance. Run again, it skips them. It refuses
+    a run stopped part-way, and with `--restart-partial` trains it again.
+- **Dry run** over the four experiments: 25 runs, every config accepted by its own branch's trainer, E3's four runs
+  counted.
