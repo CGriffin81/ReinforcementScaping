@@ -3,7 +3,9 @@
 The eval harness (ROADMAP week 2: any policy × N seeds, parquet, bootstrap CIs) builds on this.
 
 An episode keeps a trace, a row per decision (TRACE): its number, the game tick it ended at, its option and why it
-ended, and the total level and net worth after it. The analysis reads time allocation, milestones and when an
+ended, and the total level and net worth after it; and, where the walk counter is installed (rlscape.eval.walking,
+as the eval harness does), its ticks on foot, their overhead and its transports' ticks (RQ5's bound, OQ-87 (a)),
+NaN otherwise. The analysis reads time allocation, milestones and when an
 activity is taken up from it, so the evaluation needn't be run again for a new question.
 """
 
@@ -14,8 +16,10 @@ from dataclasses import dataclass, field
 
 from rlscape.baselines.policies import Policy
 from rlscape.envs.sim_env import SimEnv
+from rlscape.eval import walking
 
-TRACE = ("decision", "t1", "option", "termination", "total_level", "net_worth")
+TRACE = ("decision", "t1", "option", "termination", "total_level", "net_worth", *walking.FIELDS)
+NO_COUNTER = (float("nan"),) * len(walking.FIELDS)
 
 
 @dataclass
@@ -46,7 +50,11 @@ def play(env: SimEnv, policy: Policy, seed: int, options: dict | None = None,
     episode = Episode(policy.name, seed, start=start, **start)
     skill = wealth = 0.0
     for _ in range(max_decisions):
-        obs, reward, terminated, truncated, info = env.step(policy.act(env, obs))
+        action = policy.act(env, obs)  # first: a greedy policy's lookahead runs options on copies, walks and all
+        before = walking.COUNTER.snapshot() if walking.COUNTER is not None else None
+        obs, reward, terminated, truncated, info = env.step(action)
+        walked = NO_COUNTER if before is None else tuple(
+            round(after - was, 3) for after, was in zip(walking.COUNTER.snapshot(), before))
         episode.decisions += 1
         episode.reward += reward
         skill, wealth = skill + info["reward_vec"][0], wealth + info["reward_vec"][1]
@@ -54,7 +62,8 @@ def play(env: SimEnv, policy: Policy, seed: int, options: dict | None = None,
         episode.terminations[info["termination"]] += 1
         episode.checkpoints.update(info.get("checkpoints", {}))
         episode.trace.append((episode.decisions - 1, int(info["game_ticks"]), info["option"]["id"],
-                              str(info["termination"]), int(info["total_level"]), float(info["net_worth"])))
+                              str(info["termination"]), int(info["total_level"]), float(info["net_worth"]),
+                              *walked))
         if terminated or truncated:
             break
     episode.reward_vec = (skill, wealth)

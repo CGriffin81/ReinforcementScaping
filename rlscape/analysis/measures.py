@@ -38,6 +38,11 @@ tables (`learning_curves.csv`, `behaviour_bins.csv`, `behaviour_options.csv.gz`)
   normalised units (`r_skill` / SKILL_UNIT, `r_wealth` / WEALTH_UNIT; `gains`), the hypervolume of a set of policies'
   points above the reference point, the fresh character's (0, 0) (`hypervolume`), computed per training seed and
   reported as the mean with a 95% CI over the seeds (`hypervolumes`).
+- **RQ5's click-ahead bound** (OQ-1 (C′), OQ-87 (a), Caleb, 2026-11-12): per evaluation episode, the shares of its game
+  time on foot, in the walker's measured overhead (starting a walk and the pauses between its clicks: the most a
+  perfect click-ahead could save) and on transports (`walking`), from the trace's walk counter
+  (rlscape.eval.walking); per variant, a trained one's mean and CI over its training seeds (each seed's mean over the
+  evaluation seeds), a baseline's over its evaluation seeds (`walking_summary`).
 - **Over seeds:** `over_seeds` gives each group's mean and percentile-bootstrap 95% CI over its seeds
   (rlscape.eval.harness.bootstrap_ci, a fixed rng), the same CIs as the eval summaries.
 
@@ -395,3 +400,41 @@ def progress(checkpoints: pd.DataFrame, metric: str) -> pd.DataFrame:
     out = [over_seeds(per_seed, ["variant", "hour"], metric).assign(trained=True),
            over_seeds(frame[frame["train_seed"].isna()], ["variant", "hour"], metric).assign(trained=False)]
     return pd.concat([o for o in out if len(o)], ignore_index=True)
+
+
+# --- RQ5's click-ahead bound (OQ-87 (a)) ---------------------------------------------------------------------------
+
+WALKING_SHARES = ("walk_share", "overhead_share", "transport_share")
+
+
+def walking(decisions: pd.DataFrame) -> pd.DataFrame:
+    """Per (policy, seed) of an evaluation: its game ticks, the ticks on foot, in the walker's overhead and on
+    transports, and their shares of the game ticks. Decisions with no walk counter (NaN: traces from before it, or
+    a play() outside the harness) are left out, and so is a trace without its columns."""
+    columns = ["policy", "seed", "ticks", "walk", "overhead", "transport", *WALKING_SHARES]
+    if "walk_ticks" not in decisions:
+        return pd.DataFrame(columns=columns)
+    walked = ("walk_ticks", "walk_overhead_ticks", "transport_ticks")  # a summary read with keep_default_na=False
+    frame = decisions.assign(**{c: pd.to_numeric(decisions[c], errors="coerce") for c in walked})  # has "" for NaN
+    frame = frame.dropna(subset=["walk_ticks"])
+    per = frame.groupby(["policy", "seed"], sort=False).agg(
+        ticks=("t1", "max"), walk=("walk_ticks", "sum"), overhead=("walk_overhead_ticks", "sum"),
+        transport=("transport_ticks", "sum")).reset_index()
+    per = per.assign(walk_share=per["walk"] / per["ticks"], overhead_share=per["overhead"] / per["ticks"],
+                     transport_share=per["transport"] / per["ticks"])
+    return per[columns]
+
+
+def walking_summary(per_episode: pd.DataFrame) -> pd.DataFrame:
+    """Per (variant, share): a trained variant's mean and CI over its training seeds, a baseline's over its
+    evaluation seeds, as `progress` has them. `trained` says which."""
+    variant, train_seed, _ = _labels(per_episode["policy"])
+    frame = per_episode.assign(variant=variant, train_seed=train_seed)
+    out = []
+    for share in WALKING_SHARES:
+        per_seed = frame[frame["train_seed"].notna()].groupby(["variant", "train_seed"], as_index=False)[share].mean()
+        parts = [over_seeds(per_seed, ["variant"], share).assign(trained=True),
+                 over_seeds(frame[frame["train_seed"].isna()], ["variant"], share).assign(trained=False)]
+        out += [p.assign(share=share) for p in parts if len(p)]
+    return pd.concat(out, ignore_index=True) if out else pd.DataFrame(
+        columns=["variant", "seeds", "mean", "ci_low", "ci_high", "trained", "share"])

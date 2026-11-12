@@ -12,7 +12,9 @@
   0 start (about 13:54 to 14:22). (The status said "IN PROGRESS", which isn't one of the policy's values.)
 - Commit: this record, with the decision log's and the open-questions log's changes, committed directly to `main` after
   `424b879` (Caleb: "Commit it to main directly", 10:34:04 CST): `f332029`. The interim check, committed the same way
-  after `b4145b7` (11:49:45 CST). The afternoon's check is still to come.
+  after `b4145b7` (11:49:45 CST): `491fbe0`. The paging rule's firing and Caleb's RAM gate, in the PR of
+  `tooling/rq5-walking` (`m002-oq1-oq50`; Caleb: "Commit it and open a PR into main", 14:24:28 CST). The
+  afternoon's check is still to come.
 
 ## Full Prompt
 
@@ -37,6 +39,10 @@ Follow-up prompts (11:46:38 and 11:49:45 CST):
 > Check on the five-run trial now
 >
 > Commit it to main directly
+
+Answer to the paging rule's firing (question dialog, 13:37:04 CST, the tool result's timestamp in the transcript):
+
+> "Restore 5, RAM-gated (Recommended)"
 
 ## Response Summary
 
@@ -103,7 +109,9 @@ Follow-up prompts (11:46:38 and 11:49:45 CST):
   hour: keep five, with the RAM check on sustained lows (Claude recommended it; the other option was back to four, the
   check as written).
 - **The new check:** back to `--jobs 4` if available RAM stays under 1 GB for more than a minute, hard page reads stay
-  above 1,000 a second for a minute, or a run falls below 80% of its speed.
+  above 1,000 a second for a minute, or a run falls below 80% of its speed. After it fired on file reads (13:11),
+  Caleb gated the paging rule on RAM: it counts only while free RAM is under 2 GB (Claude recommended it; the other
+  option was to stay at four).
 - **Claude's choices within them:** the trial's measures (each continuing run's speed, RAM, paging); restarting only the
   queue; the scratch summary for the seed-0 check; the second sampler through the next runs' start.
 
@@ -137,6 +145,15 @@ Follow-up prompts (11:46:38 and 11:49:45 CST):
   - **Commit charge:** 93.7 to 98.7% of a limit that grew with the system-managed pagefile (86.0 to 87.0 GB).
   - **Speed, 10:20 to 11:46:** E3's three at 58.7, 62.6 and 60.9 decisions a second (97 to 101% of the baseline), E6a's
     γ_hr 0.5 at 79.6 and γ_hr 0.9 at 97.7 (126 from 11:00). In all 359 a second, against 252 with four.
+- **The paging rule fired at 13:11:56:** hard page reads over 1,000 a second for 7 samples (13:10:50 to 13:11:51), with
+  6 to 7 GB of RAM free and the pagefile at 4.0%. The runs didn't slow (E3's three at 56 to 66 over 13:09 to 13:14).
+  The day's bursts line up with Claude's own large file reads (the transcript, git, TensorBoard's logs).
+  - Per the rule, the queue went back to `--jobs 4` at 13:13: its processes (uv 5420, python 20420 and 4628) stopped,
+    its runs kept training (10 `train.py` and 20 worker processes before and after), the log renamed
+    `train-queue-gpu-part3.log`, relaunched as PID 3588.
+  - Caleb (13:37): five again, the paging rule RAM-gated (counted only while free RAM is under 2 GB). The queue
+    relaunched with `--jobs 5` at 13:37:38 (PID 8728; the four-slot queue's log `train-queue-gpu-part4.log`), before
+    the first slot opened (about 13:54). The watcher restarted with the gate (`watch_lows.ps1 -PagingRamMb 2048`).
 
 ## Follow-Up
 
