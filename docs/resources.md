@@ -168,6 +168,15 @@ and is credited where used.
 49. **RuneScape Wiki. "Server",** revision 893026 (2009-01-29). https://runescape.wiki/w/Server?oldid=893026
     (CC BY-NC-SA 3.0) — **Used:** 2009's worlds for OQ-57: 175 in its table, 88 free and 87 members'. Added
     2026-11-09.
+50. **C. Truong, L. Oudre, N. Vayatis (2020). "Selective review of offline change point detection methods."**
+    *Signal Processing* 167, 107299. Its library, **ruptures** (BSD-2-Clause), 1.1.10. — **Used:** the changepoints
+    in the learning curves (OQ-78; `rlscape/analysis/measures.py`). Added 2026-11-11.
+51. **R. Killick, P. Fearnhead, I. A. Eckley (2012). "Optimal detection of changepoints with a linear computational
+    cost."** *Journal of the American Statistical Association* 107(500), 1590–1598. — **Used:** PELT, the search
+    ruptures runs for OQ-78, with a mean shift's cost and a BIC penalty. Added 2026-11-11.
+52. **J. D. Hunter (2007). "Matplotlib: A 2D graphics environment."** *Computing in Science & Engineering* 9(3),
+    90–95. matplotlib 3.11.2 (its license is PSF-based). — **Used:** the report's figures
+    (`rlscape/analysis/figures.py`). Added 2026-11-11.
 
 sb3-contrib's MaskablePPO ([15]) has been in use since 2026-11-08: `SMDPMaskablePPO` and its rollout buffer
 (`rlscape/agents/ppo.py`) subclass it.
@@ -175,7 +184,6 @@ sb3-contrib's MaskablePPO ([15]) has been in use since 2026-11-08: `SMDPMaskable
 ## Planned (named in ROADMAP.md, not used yet)
 
 - **CleanRL** `ppo_rnd_envpool.py`, the reference for a dual-value-head RND. E3, if needed.
-- **ruptures**, for the changepoints in the learning curves (RQ2). The analysis, Nov 19 to 21.
 
 No longer planned: **MORL-Baselines** (Envelope Q-learning) and **MO-Gymnasium**, for E4. OQ-17 (a′) (Caleb,
 2026-11-09) replaces E4's Envelope Q with a weight-conditioned PPO.

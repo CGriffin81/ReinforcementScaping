@@ -7378,3 +7378,120 @@ Asked together after Caleb's question "Why don't any of the runs do anything wit
     they were; the evaluation loads models on the CPU, as before.
   - **The restart:** the queue and E3's four seed-0 runs (on the CPU since 18:01) were stopped at 18:54. Those runs
     are kept aside (`runs/e3-reward-weight-sweep-cpu-partial` in E3's worktree), and all 50 runs train on the GPU.
+
+### Built: the figure script, the report's figures from the committed summaries (tooling, 2026-11-11)
+- **Why:** ROADMAP's analysis needs every figure and table rebuilt by one script from `results/summary/`, and OQ-76
+  to OQ-78 defined discovery, the hypervolume and sudden-or-gradual (Caleb: "Yes, start the figure script";
+  `m002-figures`).
+- **Built** (`rlscape/analysis/`, `scripts/figures.py`; matplotlib and ruptures added):
+  - **Activities** (`activities.py`, OQ-76): an option's activity from its catalog id. That's the 9 gathering skills,
+    melee, ranged and magic, smithing, cooking, firemaking, prayer, selling, buying, alchemy and banking (20), and
+    `other` (dropping an item, taking the knife, the gravestone, the loot settings). A skill slot counts for its skill
+    whatever fills it, so chop-and-fletch is woodcutting, as chop-and-burn is.
+  - **The measures** (`measures.py`):
+    - **Learning curves** (OQ-78): the mean episode reward per 20,000 decisions, over SKILL_UNIT, so 1 is what E1's
+      ideal point scores at the run's own weighting. A run's last bin is dropped when the run ended less than
+      half-way into it.
+    - **Changepoints** (OQ-78 (a)): PELT, a mean shift's cost, a BIC penalty 2σ²·ln n (σ from the first
+      differences' MAD), segments of 2 bins at least. Each run is sudden, gradual or "no gain".
+    - **Time allocation:** each training bin's game-time share per activity, and each evaluation episode's, from its
+      trace.
+    - **Discovery** (OQ-76 (a)): an activity's first 100,000-decision bin with at least 5% of game time.
+    - **The front** (OQ-77 (a)): gains in normalised units, the hypervolume above (0, 0) per training seed, and the
+      mean with a bootstrap CI over the seeds.
+    - **RQ1's progress:** a trained variant's mean at each checkpoint with its CI over training seeds, and a
+      baseline's over the evaluation seeds.
+  - **The figures** (`figures.py`, the dataviz method's palette, each color set checked with its validator):
+    - `learning_e3` and `learning_rq4`: curves with CIs, changepoint ticks, sudden triangles, the verdicts counted, and
+      E1's best baseline at the weighting as a reference line;
+    - `progress`: total level and net worth;
+    - `time_e3` and `time_rq4`: stacked areas, the 7 largest activities and "other";
+    - `mix`: each policy's activity mix in evaluation;
+    - `discovery`: E3 (.5, .5) against PPO + RND;
+    - `pareto`: E3's and E5's fronts as attainment staircases, with their hypervolumes and E1's baselines;
+    - `entropy`.
+    Each figure is written as PDF and PNG, with its values as CSV. Changepoints, verdicts, discovery and hypervolumes
+    are written as their own tables.
+  - **The script** builds what the published summaries allow and names what it skipped.
+- **Tried** on E3's seed-0 runs part-way (750k to 1.15M decisions, read-only from their decision logs) and on their
+  700k checkpoints evaluated on 3 seeds (scratch files, not published):
+  - (.25, .75) jumps from 0.27 to 1.43 of E1's ideal between 580k and 660k decisions. It takes up crafting at 300k,
+    then buying, selling and banking at 700k: the gem trade, worth 3.3M gp in 20 hours against greedy GP/hr's 1.7M.
+  - (1, 0) and (.5, .5) level off at 0.80 and 0.42, under the guide (1.0) and greedy GP/hr (0.55).
+- **Tests** (`tests/test_analysis.py`, 11 at first, 20 with OQ-82 to OQ-85's measures below):
+  - every catalog option has its family's activity, and every activity has options;
+  - the hypervolume on known geometry, per training seed;
+  - learning-curve bins;
+  - a step is sudden, a ramp gradual, a flat or falling curve "no gain";
+  - time shares and discovery from a real tiny run;
+  - evaluation shares from real traces;
+  - the script end to end on a real tiny E3-style run's published summaries beside E1's: it makes the six figures
+    those allow.
+- **Raised:** OQ-82 (the sudden rule misreads the runs seen so far), OQ-83 (milestones), OQ-84 (sample efficiency)
+  and OQ-85 (consistency across seeds).
+
+### Decided: OQ-82 to OQ-85, the analysis's last definitions (Caleb, 2026-11-11: each (a) or (c) as recommended)
+Asked together after building the figure script (`m002-figures`), with E3's seed-0 runs seen part-way.
+
+- **OQ-82, the sudden-or-gradual rule** (RQ2; revises OQ-78 (a)). OQ-78's rule misread both kinds of run seen so far:
+  - (.25, .75)'s gem trade, 85% of its gain within 80k decisions, was split by PELT into two changepoints of 40% and
+    39%, so it was called "gradual".
+  - (1, 0) and (.5, .5) were called "sudden" for their rise from the random start in the first 40k to 100k
+    decisions.
+
+  Options:
+  - (a) keep OQ-78 (a);
+  - (b) merge rising changepoints within 100,000 decisions into one jump;
+  - (c) (b), with the jump looked for after a 100,000-decision warm-up and the initial rise reported apart; the
+    report says the rule was revised after seeing partial runs, and shows both verdicts (recommended).
+
+  **Caleb: (c).** Built in `rlscape/analysis/measures.py` (`revised_verdict`; `decided_verdict` keeps (a)), and
+  `verdicts.csv` has each run's verdict under both rules.
+  - **Added by Claude, confirmed by Caleb** ("Both choices are fine"): a gain after the warm-up of no more than 2σ (the curve's noise per bin) is "no
+    gain". Without that floor, (1, 0)'s flat curve, which wiggles up by 0.015 and back down for a net gain of 0.0009,
+    is "sudden".
+  - **With it,** on E3's partial runs: (.25, .75) is sudden (its merged rise 87% of its gain; gradual under (a));
+    (.5, .5) and (1, 0) have no gain after the warm-up (initial rises 0.06 and 0.13; sudden under (a)).
+  - **E2's eight runs** (v1.1): 3 sudden and 5 gradual under (c), all 8 gradual under (a).
+- **OQ-83, the milestones.** Options:
+  - (a) 50% and 100% of E1's ideal point on each objective, the median game hours to each with the share of
+    episodes that get there, censored at 20 hours (recommended);
+  - (b) 100% only;
+  - (c) round targets.
+
+  **Caleb: (a).** One change from the question's numbers, Claude's, confirmed by Caleb: the evaluation trace has whole
+  levels, and in whole levels the guide gains 316.03 in 20 hours (E1), not SKILL_UNIT's 323.87 (which counts progress
+  within levels). So the level milestones are 158 and 316 levels gained, not 162 and 324, keeping "100%" as matching
+  the guide's 20 hours (at 324 the guide itself would miss it). The wealth milestones are as asked: 881,932 and
+  1,763,863 gp gained (net worth is exact). Built: `milestones`, `milestone_summary`; `milestones.csv` and
+  `milestones_summary.csv`.
+- **OQ-84, sample efficiency.** Options:
+  - (a) the first 20,000-decision bin from which the curve stays at or above the best greedy baseline's value at the
+    run's weighting for 100,000 decisions (recommended);
+  - (b) the same against all four baselines;
+  - (c) the first bin reaching it.
+
+  **Caleb: (a).** Built: `sample_efficiency`, and `sample_efficiency.csv` per run. "Stays" means for 5 bins, or to the
+  run's end if fewer remain. E5's runs have no single weighting, so it has none.
+- **OQ-85, consistency across seeds.** Options:
+  - (a) the mean pairwise Jensen–Shannon divergence (bits) between a variant's seeds' activity mixes in evaluation,
+    with a bootstrap CI (recommended);
+  - (b) Kendall's τ between discovery orders;
+  - (c) no number.
+
+  **Caleb: (a).** Built: `js_divergence`, `consistency` (the CI is over the seed pairs), and `consistency.csv`.
+- **Tests** for these (9 more in `tests/test_analysis.py`):
+  - both rules on a step, a ramp, flat noise and a fall;
+  - a jump split over adjacent bins (one rise under (c), gradual under (a));
+  - the initial rise (warm-up under (c), sudden under (a));
+  - a flat run's wiggle (no gain);
+  - how rises group;
+  - changepoints placed at their decisions;
+  - sample efficiency's first sustained bin;
+  - the Jensen–Shannon divergence's bounds, a known value, and consistency's mean over seed pairs;
+  - the level milestone checked against E1's committed checkpoints, and a milestone's hour.
+
+  The end-to-end test checks the new tables. The full suite, run on one worker before these were added: 483 passed,
+  75 skipped, 1 failed. The failure is `test_replay`'s E2 replay: E2's v1.1 model has 3,482 features and sim v1.2
+  has 3,488. It's left from the v1.2 change and only runs where E2's model is (the main checkout). It's flagged as a
+  task of its own.
