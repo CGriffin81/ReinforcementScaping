@@ -29,9 +29,14 @@ command per experiment).
 - `options.json`: the catalog (index, id, family);
 - `checkpoints/ppo_<decisions>_steps.zip`, then `model.zip`;
 - `tb/`: TensorBoard. sb3's own curves, and `sim/*`: the means of the rollout's finished episodes;
-- `episodes.parquet`: the learning curve, a row per finished episode;
+- `episodes.parquet`: the learning curve, a row per finished episode. Its `reward` is the env's weighted reward; what a
+  training wrapper adds to it is apart (`REWARD_PARTS`);
 - `decisions/`: the decision log;
 - `run.json`: written at the end (decisions, episodes, wall time).
+
+**Reward parts.** A wrapper that adds to the env's reward during training (E4's RND bonus, E6b's PBRS shaping) puts
+the env's own reward in its step's info as `reward_extrinsic`, and its addition as one of `REWARD_PARTS`. The learning
+curve sums each apart, and the decision log records them (rlscape.agents.decision_log); without a wrapper they're 0.
 
 The same config and seed give the same run on the CPU: the envs are seeded from the seed (sb3's VecEnv seeding), and
 an episode depends only on its seed (OQ-64).
@@ -70,6 +75,7 @@ KEYS = {"seeds", "total_decisions", "n_envs", "vec_env", "device", "torch_thread
 UNSWEPT = {"seeds", "out", "sweep", "variant"}  # a sweep can't vary these
 REQUIRED = {"seeds", "total_decisions", "n_envs", "ppo"}
 ENV_KEYS = {"reward_weights", "normalised_weights", "hours", "activity_minutes", "preference_in_obs"}
+REWARD_PARTS = ("r_intrinsic", "r_shaping")  # added by a training wrapper: RND's bonus (E4), PBRS's shaping (E6b)
 
 
 def load_config(path: Path) -> dict:
@@ -158,10 +164,12 @@ def make_vec_env(config: dict) -> VecEnv:
 
 
 class EpisodeTable(BaseCallback):
-    """The learning curve: at each episode's end, a row with its decisions, its reward sums (weighted, skill,
-    wealth), its deaths and its final metrics; and in TensorBoard, `sim/*`, their means over the rollout's episodes."""
+    """The learning curve: at each episode's end, a row with its decisions, its reward sums (the env's weighted
+    reward, skill, wealth, and each of REWARD_PARTS), its deaths and its final metrics; and in TensorBoard, `sim/*`,
+    their means over the rollout's episodes."""
 
-    LOGGED = ("total_level", "net_worth", "total_xp", "r_skill", "r_wealth", "reward", "decisions", "deaths")
+    LOGGED = ("total_level", "net_worth", "total_xp", "r_skill", "r_wealth", "reward", *REWARD_PARTS, "decisions",
+              "deaths")
 
     def __init__(self):
         super().__init__()
@@ -170,17 +178,20 @@ class EpisodeTable(BaseCallback):
 
     def _on_training_start(self) -> None:
         n = self.training_env.num_envs
-        self._sums, self._decisions, self._deaths = np.zeros((n, 3)), np.zeros(n, int), np.zeros(n, int)
+        self._sums = np.zeros((n, 3 + len(REWARD_PARTS)))
+        self._decisions, self._deaths = np.zeros(n, int), np.zeros(n, int)
 
     def _on_step(self) -> bool:
         rewards, dones, infos = self.locals["rewards"], self.locals["dones"], self.locals["infos"]
         for i, info in enumerate(infos):
-            self._sums[i] += (float(rewards[i]), *info["reward_vec"])
+            extrinsic = info.get("reward_extrinsic", float(rewards[i]))
+            self._sums[i] += (extrinsic, *info["reward_vec"], *(info.get(part, 0.0) for part in REWARD_PARTS))
             self._decisions[i] += 1
             self._deaths[i] += info["termination"] == "died"
             if dones[i]:
                 row = {"step": self.num_timesteps, "env": i, "decisions": int(self._decisions[i]),
                        "reward": self._sums[i, 0], "r_skill": self._sums[i, 1], "r_wealth": self._sums[i, 2],
+                       **{part: self._sums[i, 3 + k] for k, part in enumerate(REWARD_PARTS)},
                        "deaths": int(self._deaths[i]), "game_ticks": info["game_ticks"],
                        "total_level": info["total_level"], "total_xp": info["total_xp"],
                        "net_worth": info["net_worth"]}
@@ -198,7 +209,8 @@ class EpisodeTable(BaseCallback):
 
     def table(self) -> pd.DataFrame:
         return pd.DataFrame(self.rows, columns=["step", "env", "decisions", "reward", "r_skill", "r_wealth",
-                                                "deaths", "game_ticks", "total_level", "total_xp", "net_worth"])
+                                                *REWARD_PARTS, "deaths", "game_ticks", "total_level", "total_xp",
+                                                "net_worth"])
 
 
 def run_dir(config: dict, name: str, seed: int) -> Path:
