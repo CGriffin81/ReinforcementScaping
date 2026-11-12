@@ -52,7 +52,7 @@
 ## Infrastructure Changes
 
 - **The training queue** restarted with E4 added: PID 10900 (uv), 2026-11-11 18:29:38 CST, from
-  `D:\ReinforcementScaping-int`, log `D:\ReinforcementScapinguns	rain-queue.log` (the first part's renamed
+  `D:\ReinforcementScaping-int`, log `D:\ReinforcementScaping\runs\train-queue.log` (the first part's renamed
   `train-queue-v1.2-part1.log`). 50 runs from 5 experiments; E3's four seed-0 runs kept training; E4's seed 0 is
   eighth.
 
