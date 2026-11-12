@@ -7,10 +7,12 @@
   to the question dialog: 09:10:48 CST.
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: IN PROGRESS. The trial's hour passed the speed and paging checks; Caleb kept five runs with the RAM check
-  on sustained lows (10:26 CST). It's checked again once E4's, E6b's and E5's seed 0 start (about 13:48 to 14:20).
+- Status: PARTIAL. The trial's hour passed the speed and paging checks; Caleb kept five runs with the RAM check on
+  sustained lows (10:26 CST), and an interim check at 11:47 passed. It's checked again once E4's, E6b's and E5's seed
+  0 start (about 13:54 to 14:22). (The status said "IN PROGRESS", which isn't one of the policy's values.)
 - Commit: this record, with the decision log's and the open-questions log's changes, committed directly to `main` after
-  `424b879` (Caleb: "Commit it to main directly", 10:34:04 CST). The afternoon's check is still to come.
+  `424b879` (Caleb: "Commit it to main directly", 10:34:04 CST): `f332029`. The interim check, committed the same way
+  after `b4145b7` (11:49:45 CST). The afternoon's check is still to come.
 
 ## Full Prompt
 
@@ -28,6 +30,12 @@ Answer to the trial's result (question dialog, 10:26:21 CST, the tool result's t
 
 Follow-up prompt (10:34:04 CST):
 
+> Commit it to main directly
+
+Follow-up prompts (11:46:38 and 11:49:45 CST):
+
+> Check on the five-run trial now
+>
 > Commit it to main directly
 
 ## Response Summary
@@ -120,6 +128,15 @@ Follow-up prompt (10:34:04 CST):
 - A second sampler (`trial_sample2.ps1`, every 10 seconds until 15:30) adds commit charge, the training processes'
   working sets and the count of trainers, to cover 13:48 to 14:18, when E3's three seed-0 runs end and the queue
   starts the next ones. A watcher on it (`watch_lows.ps1`) stops early if a sustained low (Caleb's new check) occurs.
+- **Interim check** (Caleb: "Check on the five-run trial now", 11:46 CST; 498 samples, 10:23 to 11:46):
+  - **RAM:** under 1 GB in one 10-second sample (471 MB at 10:28:26, a decision-log write: commit up 1.3 GB for that
+    sample), back to 2.8 GB 10 seconds later. Since 10:40 available RAM has been 3.4 to 7.4 GB, rising as Windows
+    trimmed the training processes' working sets (25.3 to 19.6 GB). The watcher never fired.
+  - **Paging:** the pagefile's use 3.3 to 4.4%; hard page reads over 1,000 a second for at most 3 samples in a row (30
+    seconds), the spikes beside Claude's own scripts (10:34 to 10:36, 11:15).
+  - **Commit charge:** 93.7 to 98.7% of a limit that grew with the system-managed pagefile (86.0 to 87.0 GB).
+  - **Speed, 10:20 to 11:46:** E3's three at 58.7, 62.6 and 60.9 decisions a second (97 to 101% of the baseline), E6a's
+    γ_hr 0.5 at 79.6 and γ_hr 0.9 at 97.7 (126 from 11:00). In all 359 a second, against 252 with four.
 
 ## Follow-Up
 
