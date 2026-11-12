@@ -5,9 +5,9 @@ The calibration gate's cases (env contract §7: XP/hr, gp/hr and duration within
 | | |
 |---|---|
 | Command | `uv run python scripts/sim_to_real.py` |
-| Git SHA | `35e48e6528890a18a0476909dd832a5aaf91436f` |
+| Git SHA | `a98530127401648fdd74a86279cb91741c397eec` |
 | Sim | `sim-v1.2` (the commit descends from it: True) |
-| Made | 2026-11-12T11:24:33-06:00 |
+| Made | 2026-11-12T11:42:39-06:00 |
 | Sources | 69 files of `results/calibration/` (their SHA-256 in `config.json`) |
 
 ## Per family (gated metrics; sim over server)

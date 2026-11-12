@@ -1,11 +1,11 @@
 {
- "commit": "35e48e6528890a18a0476909dd832a5aaf91436f",
+ "commit": "a98530127401648fdd74a86279cb91741c397eec",
  "dirty": false,
  "sim_tag": "sim-v1.2",
  "descends_from_sim_tag": true,
  "sim_runs": 200,
  "gate": 0.2,
- "made": "2026-11-12T11:24:33-06:00",
+ "made": "2026-11-12T11:42:39-06:00",
  "sources": {
   "abyss-20261108-2301-i6.json": "ea04fd93d814f6dcd98a0fd9ca0d6e206da9bd305ca0ed81066db48674a4e7d8",
   "abyss-20261108-2310-i6.json": "42b2f34a42e8164ebab5b2ccab7852bbe4639b8b55a6d437492dd55888bb12b1",
