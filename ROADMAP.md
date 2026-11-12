@@ -327,6 +327,8 @@ The old weeks 6 to 8 (E6 on the server, the stretch, a replay with the client) a
   harness, and `scripts/publish_training.py`.
 - [x] Normalised reward weights for E3 to E6 (2026-11-10, OQ-67): `env.normalised_weights` in a config, converted to
   SimEnv's by `rlscape/envs/weights.py`.
+- [x] The replay page (2026-11-10, OQ-70): `scripts/replay.py <run dir>` plays a run's checkpoints on one seed and writes
+  one HTML page, with a timeline, a map, the policy's choices, the skills and the curves. It's the demo, built early.
 
 *Nov 13–18: the experiments* (the runs overlap the building)
 - [ ] **E3, the reward-weight sweep** (RQ1 to RQ3): (1,0), (.75,.25), (.5,.5), (.25,.75) and (0,1) in normalised
@@ -352,10 +354,12 @@ The old weeks 6 to 8 (E6 on the server, the stretch, a replay with the client) a
 *Nov 22–25: the draft and the copy to review*
 - [ ] The report answers RQ1 to RQ4 (and RQ5, depending on OQ-1), with a verdict on each of H1 to H3. Negative results
   get their supporting analysis.
+- [ ] Its wording (Caleb, OQ-71 (a)): a decision is one option chosen, defined once in the method. A run's
+  length is "training decisions" with its episodes beside it; an episode's count is "decisions per episode".
 - [ ] The peer review kept simple (Caleb; the form is OQ-50): a reviewer's guide, and the reviewed version tagged.
 
 *Nov 26: peer review (Thanksgiving week runs at half capacity). Nov 27–30: revisions, and the demo (sim replays of an
-early, a middle and a final checkpoint). The report is due Mon Nov 30.*
+early, a middle and a final checkpoint: `scripts/replay.py`, built 2026-11-10, OQ-70). The report is due Mon Nov 30.*
 
 **If time runs short:** depth gives way, not a research question (from Caleb's answer):
 - fewer γ_hr values or weightings, or shorter runs;
