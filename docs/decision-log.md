@@ -7359,3 +7359,22 @@ Asked together after Caleb's question "Why don't any of the runs do anything wit
   the cumulative one −0.3. The recommendation had said it would average about zero at every stage. That holds once
   the error levels off, not in the first one or two percent of a run.
 - **E4 joins the training queue** with it.
+
+### Decided: OQ-80, E3 to E6 train on the GPU, deterministically (Caleb, 2026-11-11: (a))
+- **The question** (Caleb: "Why are the experiments not running on GPU?"; `m002-gpu`): Caleb chose CUDA torch on
+  2026-11-08, but Claude had set every training config to `device: cpu` on 2026-11-09 without putting it to him.
+- **Measured:** the PPO update of one rollout (1,024 decisions at E3's settings) takes 1.12 s on the CPU and 0.11 s on
+  the RTX 3050, against about 20 s for the rollout's simulation. Two GPU runs of the same config and seed were
+  identical (actions and weights), with and without torch's deterministic algorithms.
+- **Options:** (a) switch now, all 50 runs on the GPU in deterministic mode, restarting E3's four seed-0 runs
+  (recommended); (b) switch the 46 runs not yet started; (c) stay on the CPU. Projected saving of (a) or (b): about 5
+  to 7% of training, 6 to 8 hours over the queue.
+- **Caleb: (a).**
+  - **The trainer** (`rlscape/agents/training.py`): a CUDA run (`device: cuda`, or `auto` with a GPU) gets
+    `deterministic_cuda()`: cuBLAS's workspace (`CUBLAS_WORKSPACE_CONFIG=:4096:8`) and
+    `torch.use_deterministic_algorithms(True)`. Its config.json records the GPU and the mode. A test checks that two
+    GPU runs of the same config and seed are identical.
+  - **The configs:** E3's, E6a's, E4's, E6b's and E5's say `device: cuda`. RND's networks (E4) stay on the CPU, as
+    they were; the evaluation loads models on the CPU, as before.
+  - **The restart:** the queue and E3's four seed-0 runs (on the CPU since 18:01) were stopped at 18:54. Those runs
+    are kept aside (`runs/e3-reward-weight-sweep-cpu-partial` in E3's worktree), and all 50 runs train on the GPU.

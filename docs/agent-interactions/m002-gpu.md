@@ -7,7 +7,8 @@
   follow-up came in mid-turn at 18:42:42 CST.
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: ANSWERED. Whether to switch is OQ-80, Caleb's.
+- Status: COMPLETE. Caleb chose OQ-80 (a) ("Go with (a) for OQ-80."): the trainer runs CUDA deterministically,
+  the five configs say `device: cuda`, and the queue restarted all 50 runs on the GPU.
 - Commit: on `tooling/units-v1.2`.
 
 ## Full Prompt
@@ -51,7 +52,7 @@ Mid-turn:
 
 ## Decisions
 
-- **Pending:** OQ-80, Caleb's.
+- **User decision (Caleb):** OQ-80 (a).
 - **Agent recommendation:** OQ-80 (a).
 
 ## Validation
