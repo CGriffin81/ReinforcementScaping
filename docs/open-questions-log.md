@@ -75,8 +75,9 @@ Started 2026-10-31 (Caleb), from a review of the documentation.
 - **Raised:** 2026-11-11, Caleb: "Why are the experiments not running on GPU?" and "What are the projected time
   savings on running all of the experiments on GPU instead of CPU?" (`m002-gpu`).
 - **How it got here:** Caleb chose CUDA torch on 2026-11-08 (the RL stack), and the first training measurements ran
-  on the GPU. Claude then set every training config to `device: cpu` on 2026-11-09 (the tooling, E2 onwards), for bit-for-bit
-  repeatability and because the simulator, not the network, takes the time. That choice wasn't put to Caleb.
+  on the GPU. Claude then set every training config to `device: cpu` on 2026-11-09 (the tooling, E2 onwards), for
+  bit-for-bit repeatability and because the simulator, not the network, takes the time. That choice wasn't put to
+  Caleb.
 - **Measured** (2026-11-11, the four E3 runs training at the same time):
   - **The PPO update** for one rollout at E3's settings (1,024 decisions, batch 1,024, 4 epochs, 256 × 256):
     1.12 s on the CPU (2 threads, as the runs), 0.11 s on the RTX 3050.
