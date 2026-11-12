@@ -7571,6 +7571,18 @@ Asked together after building the figure script (`m002-figures`), with E3's seed
     to stay at four). Paging counts only while free RAM is also under 2 GB; the RAM and speed rules are unchanged. The
     queue relaunched with `--jobs 5` at 13:37:38 (PID 8728; `train-queue-gpu-part4.log` the four-slot queue's log),
     before the first slot opened, so no run waited.
+- **The RAM rule fired at 14:26:56:** free RAM under 1 GB for 25 samples (14:25:52 to about 14:30, at its lowest
+  179 MB), the training processes' working sets 28.4 GB against about 20 before. Four runs had started within 40
+  minutes (E4's seed 0 at 13:45, E6b's at 14:03, E5's at 14:18, E3's (1, 0) seed 1 at 14:24) as E3's seed-0 runs and
+  E6a's γ_hr 0.9 ended, and a young run holds 6 to 7 GB until Windows trims it.
+  - **As the rule has it,** the queue went back to `--jobs 4` at 14:27:49 (PID 20648; the log
+    `train-queue-gpu-part5.log`). That bites only when a run ends: five kept training.
+  - **The question** (Claude's): stop the youngest run, E3's (1, 0) seed 1 (about 4,000 decisions; restarted from
+    scratch when a slot opens, deterministic, about 5 minutes lost; recommended), or keep five and watch.
+  - **Caleb (15:33 CST): keep five and watch.** By then free RAM had been back at 1.4 to 4.8 GB for an hour, and no
+    run had slowed: 14:30 to 15:33, E6a's γ_hr 0.5 at 84 to 88 decisions a second, E4 58, E6b 77 to 85, E5 55, E3's
+    seed 1 53 to 57; 335 in all. Watched until 19:00: the RAM rule, and each run's speed every 15 minutes against its
+    previous 15 (a fall below 80% asks again).
 
 ### Decided and built: the sim-to-real table, every calibration case re-simulated on sim-v1.2 (Caleb, 2026-11-12)
 Caleb, 2026-11-12: "Start on the sim-to-real table while the runs train", then, on Claude's two questions, "Re-simulate
@@ -7693,3 +7705,12 @@ new env (Recommended)" and "Repo + reviewer's guide (Recommended)". `m002-oq1-oq
     policies as they learned; the training envs' seeding reproduced exactly); (c) estimates from each decision's
     option record (its site) by the travel model, missing the walks inside an option.
   - **Caleb: (a).**
+
+### Found: E3's other three restarted runs repeat their killed runs byte for byte (2026-11-12)
+`m002-jobs-five` (the seed-0 checks Caleb chose). E3's (1, 0), (.75, .25) and (.5, .5) seed 0, killed by the
+Windows Update restart at 02:29 and run again from the same commits, config and seeds, against the killed runs
+(`runs/e3-reward-weight-sweep-reboot-partial/`):
+- **Decision logs:** 33 of 33, 34 of 34 and 35 of 35 parts byte-identical (1,650,000, 1,700,000 and 1,750,000 rows).
+- **Checkpoints:** 16, 17 and 17; 5 of each zip's 6 members identical. The sixth (`data`) differs only in the
+  episodes' wall-clock `t` and the memory addresses in its reprs; equal without them.
+- With (0, 1)'s check this morning, all four restarted runs repeat their killed runs exactly, on the GPU.
