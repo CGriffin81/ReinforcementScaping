@@ -70,3 +70,23 @@ Started 2026-10-31 (Caleb), from a review of the documentation.
 - **Decides:** Caleb.
 - **Needed by:** Nov 22, when the guide is written alongside the draft. Nothing before then waits on it, since one
   config and one command per experiment suits every option.
+
+### OQ-86. The toll-gate check trip comes out at 0.42: investigate it, or report it as a gap?
+- **Raised:** 2026-11-12, by the sim-to-real table (`m002-sim-to-real`).
+- **Found:** travel's check trip "Varrock east bank to Al Kharid, paying the toll" took the server 88 ticks on Nov 1
+  (the sim 84: 0.95) and 200 on Nov 6 (178 of them walking from Lumbridge after the home teleport; the same at
+  600 ms): 0.42. The sim takes the same route both days, the home teleport and then the toll gate. Between them, every
+  quest became complete at spawn (Nov 6), which gives free passage at the gate (Prince Ali Rescue). The decision log
+  doesn't mention it, and nothing since has checked it.
+- **What it touches:** the sim may underrate trips into Al Kharid through the gate (its bank, furnace and mine). The
+  sim is frozen, so the experiments stand on it as it is: this changes what the report says about the sim, not the
+  runs.
+- **Options:**
+  - **(a) Recommended: investigate after the queue's runs end** (about Nov 15 in the evening): the trip on the server,
+    both ways, 3 runs, watching the gate; about an hour. The report gives the cause, and bounds the effect by the
+    share of game time the policies spend on trips through the gate (their decision logs).
+  - **(b) Report it as a known gap now,** without investigating.
+  - **(c) Investigate now,** on a server beside the five runs: about 1.5 GB more RAM where the trial's margin is about
+    1 GB at its worst.
+- **Decides:** Caleb (what the report claims).
+- **Needed by:** Nov 19, the analysis. Nothing before then waits on it.
