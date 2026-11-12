@@ -7039,3 +7039,25 @@ than exp." `m002-oq61`.
 - **Decides:** Caleb (experiment design).
 - **Caleb: (a)** (asked in chat, 2026-11-10). E3 to E6 train for 2M decisions a run, E3 first. Every run keeps its
   1M checkpoint.
+
+### Built: normalised reward weights for E3 to E6 (tooling, OQ-67)
+- **`rlscape/envs/weights.py`:** `env_weights((u_s, u_b))` gives SimEnv's weights (u_s, u_b × 17.13), and
+  `normalised_weights` goes back.
+  - The units are E1's ideal point on sim v1.1 (`results/summary/e1-baselines/episodes.csv`): the guide's mean
+    20-hour r_skill, 323.87 levels, and greedy GP/hr's mean r_wealth, 18.90 (1,890,109 gp).
+  - A level stays worth u_s, so the env's reward keeps E2's scale. At the normalised (.5, .5), the guide's levels and
+    greedy GP/hr's gp weigh the same.
+  - Weights off the simplex are refused.
+- **`train.py`'s configs:** `env.normalised_weights: [u_s, u_b]` in place of `env.reward_weights`; a config may not
+  give both. A sweep over it names its variants `normalised_weights0.75-0.25`. The run's `config.json` keeps both
+  the normalised weights (its config) and SimEnv's (its `env_kwargs`).
+- **The sim doesn't change.** The evaluation harness needs nothing new: the weights reach the observation only with
+  `preference_in_obs` (E5), and episodes keep r_skill and r_wealth apart, so any weighting can be recomputed.
+- **Left for E5:** its observation shows SimEnv's weights, unnormalised, and it draws its weights in normalised
+  units.
+- **Tests** (`tests/test_weights.py`):
+  - the units against E1's committed summary;
+  - the conversion and its round trip;
+  - refusals;
+  - the config keys;
+  - 40 random options on the sim, each rewarded by the converted weights.

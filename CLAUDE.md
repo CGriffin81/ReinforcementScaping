@@ -174,7 +174,8 @@ work.
   checkpoints, TensorBoard, the learning curve and the decision log. Four runs of 4 envs make about 1M decisions an
   hour in all, twice one run of 16. Evaluate a trained model with `scripts/evaluate.py --policies random
   <label>=ppo:<model.zip>` (sampled actions, OQ-65), and publish the runs with `uv run python
-  scripts/publish_training.py runs/<name> <name>`.
+  scripts/publish_training.py runs/<name> <name>`. E3 to E6 give their reward weights as `env.normalised_weights`, in
+  units of E1's best 20-hour gain on each objective (OQ-67, `rlscape/envs/weights.py`).
 - More servers at once (Caleb, 2026-11-06): `uv run python
   scripts/server_instances.py 2 3` writes `results/servers/rl-<n>.conf`
   (world n, bridge port 43610 + n - 1, its own GE under
