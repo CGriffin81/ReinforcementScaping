@@ -70,3 +70,25 @@ Started 2026-10-31 (Caleb), from a review of the documentation.
 - **Decides:** Caleb.
 - **Needed by:** Nov 22, when the guide is written alongside the draft. Nothing before then waits on it, since one
   config and one command per experiment suits every option.
+
+### OQ-79. E4's centred RND bonus drifts below zero while the predictor learns: centre it on a recent mean?
+- **Raised:** 2026-11-11, when E4's own tests ran on sim v1.2 before E4's restart (`m002-restart-v1.2`).
+  `tests/test_rnd.py`'s check that the centred bonus averages about zero (|mean| < 0.5 × its spread) failed: on 64
+  bonuses after the first rollout, the mean is −0.53 spreads and 55 of the 64 are negative. On v1.1's episodes the
+  same check had passed.
+- **Why:** the bonus is coef × (error − μ) / σ, with μ and σ the predictor error's running mean and spread over
+  every decision so far (`RunningMeanStd`, a cumulative mean). The predictor trains every rollout, so its errors fall,
+  and the current error sits below the all-time mean. While it learns, the centred bonus is a small cost on every
+  decision, the opposite of the per-decision pay that centring was chosen to remove (OQ-72 (b)). The bias fades about
+  as 1/t as the errors level off, but it's there through the early part of every run, where RND is meant to matter
+  most.
+- **Options:**
+  - **(a) Recommended: centre on a recent mean,** an exponential moving average of the error over about the last 10
+    rollouts (σ likewise). The bonus then averages about zero at every stage of training, as OQ-72 (b) meant. It's a
+    few lines in `rlscape/agents/rnd.py`, with the test kept as it is.
+  - **(b) Keep the cumulative mean** as built, and report the early drift.
+  - **(c) Don't centre** (Burda et al.'s way). It's positive everywhere, which pays for short decisions: the reason
+    OQ-72 chose (b).
+- **Blocks:** E4's runs. The training queue was started on 2026-11-11 without E4 (E3, E6a, E6b and E5's 45 runs).
+  E4's 5 runs join it once this is decided; restarting the queue with E4 added leaves the runs it's training alone.
+- **Decides:** Caleb.
