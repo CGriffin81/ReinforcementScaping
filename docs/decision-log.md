@@ -7418,3 +7418,11 @@ Asked together after Caleb's question "Why don't any of the runs do anything wit
   the cumulative one −0.3. The recommendation had said it would average about zero at every stage. That holds once
   the error levels off, not in the first one or two percent of a run.
 - **E4 joins the training queue** with it.
+
+### Built: E4's bonus centred on a recent mean (OQ-79 (a))
+- `rlscape/agents/rnd.py`: `RecentStats`, an exponential moving average of the error's mean and second moment over
+  `ema_rollouts` (10) rollouts' steps, bias-corrected; the centred bonus uses it, the uncentred one keeps the
+  cumulative statistics. E4's config states `ema_rollouts: 10`.
+- **Tests** (`tests/test_rnd.py`, 6, with `tests/test_training.py` 11 passed): a falling error is followed by the
+  recent mean and lagged by the cumulative one; the short integration test checks what holds in its first rollouts.
+- Record `m002-oq79-rnd-centring`.
