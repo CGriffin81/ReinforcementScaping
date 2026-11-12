@@ -11,6 +11,8 @@ with its plotted values as <name>.csv (its table view), and the measures' tables
 - `milestones.csv` and `milestones_summary.csv`: each evaluation episode's hours to 50% and 100% of E1's ideal point
   on each objective, and per series the share that got there and the median (OQ-83);
 - `consistency.csv`: per trained series, the mean pairwise Jensen–Shannon divergence of its seeds' mixes (OQ-85);
+- `rq5_walking.csv` and `rq5_walking_summary.csv`: RQ5's click-ahead bound (OQ-87 (a)), each evaluation episode's
+  shares of game time on foot, in the walker's overhead and on transports, and per series their mean and CI;
 - `sim_to_real_families.csv` (the report's body), `sim_to_real_cases.csv` (its appendix) and `sim_to_real_drops.csv`:
   the calibration gate's cases against sim-v1.2 (rlscape/analysis/sim_to_real.py), from `results/summary/sim-to-real/`
   (scripts/sim_to_real.py).
@@ -191,11 +193,12 @@ def build(summary: Path, out: Path, curve_bin: int = ms.CURVE_BIN) -> list[str]:
 
     # --- time allocation, discovery (OQ-76) and entropy ---
     shares = ms.time_shares(options, bins) if options is not None and bins is not None else None
-    mixes, reached = [], []
+    mixes, reached, walks = [], [], []
     for experiment in TRAINED:
         trace = data.evaluation(experiment, "decisions.csv.gz")
         if trace is None:
             continue
+        walks.append(ms.walking(trace))  # RQ5's bound (OQ-87 (a)); empty for a trace without the walk counter
         mix = ms.trace_shares(trace)
         mixes.append(mix.assign(variant=trained_series(experiment, mix["policy"]),
                                 train_seed=[ms.parse_label(p)[1] for p in mix["policy"]]))
@@ -314,6 +317,19 @@ def build(summary: Path, out: Path, curve_bin: int = ms.CURVE_BIN) -> list[str]:
 
     attempt("progress", "E3's evaluation summary", progress)
     attempt("pareto", "E3's evaluation summary and E1's", pareto)
+
+    # --- RQ5's click-ahead bound (OQ-1 (C′), OQ-87 (a)): the evaluated policies' walking ---
+    walks = [w for w in walks if len(w)]
+    if walks:
+        per_episode = pd.concat(walks, ignore_index=True).drop_duplicates(["policy", "seed"])  # baselines repeat
+        save_table(per_episode, out / "rq5_walking.csv")
+        walk_summary = ms.walking_summary(per_episode)
+        walk_summary["variant"] = walk_summary["variant"].map(
+            lambda v: series_name(E3, v) if v in WEIGHTINGS else BASELINES.get(v, v))
+        save_table(walk_summary, out / "rq5_walking_summary.csv")
+        print("made     rq5_walking tables")
+    else:
+        skipped.append("rq5_walking tables (needs an evaluation trace with the walk counter)")
 
     # --- the sim-to-real tables: the calibration gate's cases against sim-v1.2 ---
     gate = summary / "sim-to-real"

@@ -7663,6 +7663,49 @@ on sim-v1.2 (Recommended)" and "Family table + case appendix (Recommended)". `m0
   note on the trip names OQ-86 (b) (`scripts/sim_to_real.py`'s `NOTES`; the summary is made again from the commit).
   The sim (sim-v1.2) and the experiments are unchanged.
 
+### Decided: OQ-1 (C′), RQ5 bounded, not tested; OQ-50 (a), the repo with a reviewer's guide (Caleb)
+2026-11-12, Caleb, asked what to work on while the runs train: "Decide OQ-1, OQ-50 (Recommended)", then "Bound it, no
+new env (Recommended)" and "Repo + reviewer's guide (Recommended)". `m002-oq1-oq50`.
+- **OQ-1, how RQ5 is answered** (raised 2026-10-05 in the plan; ROADMAP Appendix B). RQ5 asks: "Do learned low-level
+  options (click-ahead pathing, prayer flicking) improve high-level results over scripted versions?" The proposal
+  marked it "exploratory, time permitting". Testing it as asked needs a tick-level environment on the server, 1.5 to
+  2 weeks, more than OQ-17 (a′)'s slack.
+  - **The options:**
+    - (C′) bound RQ5 instead of testing it, with no new environment, about half a day (recommended). Prayer
+      flicking: the scripted flick never drains prayer and gets the prayer's full effect (tested live, env contract
+      v1.8), so a learned flick can't beat it. Click-ahead pathing: the policies' share of game time spent walking,
+      and the travel model's measured overhead a walk, give the most a perfect click-ahead could save. The report says
+      it's a bound, not a test of learned options;
+    - (D) none: RQ5 reported as not attempted, with what it would take, in `docs/post-project-gaps.md`;
+    - (C) learned micro-options as planned, 1.5 to 2 weeks;
+    - (A) the LLM planner or (B) DreamerV3, which add to RQ1, not RQ5.
+  - **Caleb: (C′).**
+  - **Found on taking it up:** the decision logs don't record walking time (an option's record has its id, path,
+    target and site, and its whole duration). The walking share comes from replaying episodes in the seeded sim with
+    a counter on its walks.
+- **OQ-50, what the peer reviewer gets** (raised 2026-11-09 in Caleb's answer to OQ-17: "I want to make sure that the
+  peer review is as simple as it can be"). The repo is about 29,000 lines of Python (the RL layer about 1,400) and
+  the server fork, and it had no README.
+  - **The options:**
+    - (a) the whole repo at a tagged commit, with a `README.md` that's a two-page reviewer's guide (recommended): a
+      table from each research question and hypothesis to its result, figure or table, the command that rebuilds it
+      and the code behind it; a reading path through the RL layer's 8 to 10 files; what to skip and why it can be
+      trusted (the gate's table, the tests); and a 10-minute check that needs no server or GPU. The report gets the
+      same map as a half-page appendix;
+    - (b) a slim review copy (the RL layer, the results and the guide) in a separate branch or archive;
+    - (c) the report alone, with a link to the code and no guide.
+  - **Caleb: (a).** What the course's review covers and how long a reviewer has are still unknown.
+- **OQ-87, raised and answered on taking up OQ-1 (C′): where RQ5's walking time comes from.** The bound: the most a
+  perfect click-ahead could save is the walks' measured overhead (`rlscape.travel.overhead`: 2.3 ticks a walk and
+  0.083 a step, the pauses between clicks), as a share of game time.
+  - **The options:** (a) evaluation traces: each evaluation decision's walking ticks and their overhead in its trace,
+    from a counter wrapped round the sim's walks by the evaluation harness, the sim's code unchanged; merged into each
+    experiment's branch with the analysis tooling before its evaluation, so the bound comes from the episodes RQ1 to
+    RQ4 use (recommended); (b) replaying the training episodes from the decision logs with the same counter (the
+    policies as they learned; the training envs' seeding reproduced exactly); (c) estimates from each decision's
+    option record (its site) by the travel model, missing the walks inside an option.
+  - **Caleb: (a).**
+
 ### Found: E3's other three restarted runs repeat their killed runs byte for byte (2026-11-12)
 `m002-jobs-five` (the seed-0 checks Caleb chose). E3's (1, 0), (.75, .25) and (.5, .5) seed 0, killed by the
 Windows Update restart at 02:29 and run again from the same commits, config and seeds, against the killed runs

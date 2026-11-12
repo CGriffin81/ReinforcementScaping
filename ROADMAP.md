@@ -242,7 +242,7 @@ confirmed every env contract version (to v1.37) and option catalog v1.4 the same
 
 ### Weeks 6–8 (Nov 9–30): the finishing plan (OQ-17 (a′), Caleb, 2026-11-09)
 
-Every research question is answered (Caleb), all on sim v1, with 5 seeds per configuration. RQ5 is OQ-1.
+Every research question is answered (Caleb), all on sim v1, with 5 seeds per configuration. RQ5 is bounded, not tested (OQ-1 (C′)).
 
 **Numbering** (Caleb, 2026-11-09, OQ-63): from here on, the experiments are numbered with the sanity ladder after
 E1. Everything above this plan, the approved documents and the records use the proposal's numbers:
@@ -256,7 +256,7 @@ E1. Everything above this plan, the approved documents and the records use the p
   | E4, the preference-conditioned agent (Envelope Q, now a weight-conditioned PPO) | E5 |
   | E5, ablations (γ_hr, PBRS; granularity cut) | E6a, E6b |
   | E6, real-server validation (cut; the calibration gate instead) | none |
-  | E7, the stretch (cut; RQ5 is OQ-1) | none |
+  | E7, the stretch (cut; RQ5 bounded, OQ-1 (C′)) | none |
 
 **Branches** (Caleb, OQ-61, OQ-62 and OQ-63 for the names):
 - each experiment runs on its own `experiment/<name>` branch from `main`, after the `sim-v1.1` tag (`sim-v1`, PR #8's
@@ -362,7 +362,8 @@ Windows Update is paused until the last test is done (Caleb). The restarted (0, 
   - time allocation as stacked areas;
   - the discovery timeline;
   - the sim-to-real table from the calibration gate;
-  - RQ5 (OQ-1).
+  - RQ5's bound (OQ-1 (C′)): prayer flicking by the scripted flick's measured effect, click-ahead pathing by
+    the policies' share of game time walking (replayed in the seeded sim: the decision logs don't record it).
 - [ ] Every figure and table is rebuilt by one script from small summaries committed to `results/summary/`.
   *Built 2026-11-11:* `scripts/figures.py` (`rlscape/analysis/`) makes the first four, with RQ1's progress at the
   checkpoints, each policy's activity mix in evaluation and the policy's entropy, from whichever experiments are
@@ -376,11 +377,12 @@ Windows Update is paused until the last test is done (Caleb). The restarted (0, 
   `first_choices.csv.gz` in its training summary).
 
 *Nov 22–25: the draft and the copy to review*
-- [ ] The report answers RQ1 to RQ4 (and RQ5, depending on OQ-1), with a verdict on each of H1 to H3. Negative results
+- [ ] The report answers RQ1 to RQ4 (and RQ5 as a bound, OQ-1 (C′)), with a verdict on each of H1 to H3. Negative results
   get their supporting analysis.
 - [ ] Its wording (Caleb, OQ-71 (a)): a decision is one option chosen, defined once in the method. A run's
   length is "training decisions" with its episodes beside it; an episode's count is "decisions per episode".
-- [ ] The peer review kept simple (Caleb; the form is OQ-50): a reviewer's guide, and the reviewed version tagged.
+- [ ] The peer review kept simple (Caleb, OQ-50 (a)): the whole repo at a tagged commit, with a two-page `README.md`
+  as the reviewer's guide; the report has the same map as a half-page appendix.
 
 *Nov 26: peer review (Thanksgiving week runs at half capacity). Nov 27–30: revisions, and the demo (sim replays of an
 early, a middle and a final checkpoint: `scripts/replay.py`, built 2026-11-10, OQ-70). The report is due Mon Nov 30.*
@@ -460,7 +462,7 @@ Calibrate against the existing `ChickenKiller`, `CowKiller`, `GenericSlayerBot` 
 
 ## 8. Open questions
 
-Open questions are in `docs/open-questions-log.md` (the E7 choice is OQ-1); answered ones are in
+Open questions are in `docs/open-questions-log.md`; answered ones are in
 `docs/decision-log.md`.
 
 ---
