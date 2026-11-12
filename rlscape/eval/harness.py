@@ -16,6 +16,9 @@ parquet with bootstrap 95% confidence intervals.
   not how it was asked for. `started` is `provenance()` taken when the run began (evaluate.py takes it), so a tree
   changed or committed during a long run doesn't change what's recorded; without it, it's taken at the save.
 
+A policy is a baseline's name (POLICIES) or a trained model's spec, `[label=]ppo:<model.zip>`
+(rlscape/eval/trained.py: sampled actions, OQ-65 (4)); the tables name it by its label.
+
 An episode's result depends only on its policy and seed, never on the number of workers.
 """
 
@@ -58,14 +61,33 @@ def _init(env_kwargs: dict) -> None:
     _env = SimEnv(**env_kwargs)
 
 
-def _episode(policy_name: str, seed: int) -> tuple[list[dict], dict]:
+def make_policy(spec: str) -> Policy:
+    """A baseline by its name, or a trained model by its spec (imported only then: torch is slow to load)."""
+    if spec in POLICIES:
+        return POLICIES[spec]()
+    from rlscape.eval.trained import TrainedPolicy, is_trained
+    if is_trained(spec):
+        return TrainedPolicy(spec)
+    raise ValueError(f"unknown policy {spec!r}; known: {sorted(POLICIES)} or [label=]ppo:<model.zip>")
+
+
+def policy_label(spec: str) -> str:
+    if spec in POLICIES:
+        return spec
+    from rlscape.eval.trained import split
+    return split(spec)[0]
+
+
+def _episode(policy_spec: str, seed: int) -> tuple[list[dict], dict]:
     started = time.perf_counter()
-    episode = play(_env, POLICIES[policy_name](), seed)
-    rows = [{"policy": policy_name, "seed": seed, "hour": 0, **episode.start}]
-    rows += [{"policy": policy_name, "seed": seed, "hour": hour, **values}
+    policy = make_policy(policy_spec)
+    episode = play(_env, policy, seed)
+    label = policy_label(policy_spec)
+    rows = [{"policy": label, "seed": seed, "hour": 0, **episode.start}]
+    rows += [{"policy": label, "seed": seed, "hour": hour, **values}
              for hour, values in sorted(episode.checkpoints.items())]
     summary = {
-        "policy": policy_name, "seed": seed, "decisions": episode.decisions, "game_ticks": episode.game_ticks,
+        "policy": label, "seed": seed, "decisions": episode.decisions, "game_ticks": episode.game_ticks,
         "reward": episode.reward, "r_skill": episode.reward_vec[0], "r_wealth": episode.reward_vec[1],
         "total_level": episode.total_level, "total_xp": episode.total_xp, "net_worth": episode.net_worth,
         "deaths": episode.terminations.get("died", 0),
@@ -78,9 +100,15 @@ def _episode(policy_name: str, seed: int) -> tuple[list[dict], dict]:
 def run(policies: Sequence[str], seeds: Iterable[int], env_kwargs: dict | None = None,
         workers: int = 1) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Play every (policy, seed) episode; returns (checkpoints, episodes), sorted by policy then seed."""
-    unknown = [p for p in policies if p not in POLICIES]
+    unknown = [p for p in policies if p not in POLICIES and not _trained_spec(p)]
     if unknown:
-        raise ValueError(f"unknown policies {unknown}; known: {sorted(POLICIES)}")
+        raise ValueError(f"unknown policies {unknown}; known: {sorted(POLICIES)} or [label=]ppo:<model.zip>")
+    missing = [p for p in policies if p not in POLICIES and not _model_path(p).exists()]
+    if missing:
+        raise FileNotFoundError(f"no model for {missing}")
+    labels = [policy_label(p) for p in policies]
+    if len(set(labels)) != len(labels):
+        raise ValueError(f"two policies share a label: {labels}")
     env_kwargs = env_kwargs or {}
     tasks = [(policy, seed) for policy in policies for seed in seeds]
     if workers <= 1:
@@ -91,8 +119,16 @@ def run(policies: Sequence[str], seeds: Iterable[int], env_kwargs: dict | None =
             results = list(pool.map(_episode, *zip(*tasks)))
     checkpoints = pd.DataFrame([row for rows, _ in results for row in rows])
     episodes = pd.DataFrame([summary for _, summary in results])
-    return (_in_order(checkpoints, policies, ["policy", "seed", "hour"]),
-            _in_order(episodes, policies, ["policy", "seed"]))
+    return (_in_order(checkpoints, labels, ["policy", "seed", "hour"]),
+            _in_order(episodes, labels, ["policy", "seed"]))
+
+
+def _trained_spec(spec: str) -> bool:
+    return spec.startswith("ppo:") or spec.partition("=")[2].startswith("ppo:")
+
+
+def _model_path(spec: str) -> Path:
+    return Path(spec.partition("ppo:")[2])
 
 
 def _in_order(table: pd.DataFrame, policies: Sequence[str], columns: list[str]) -> pd.DataFrame:

@@ -6812,3 +6812,58 @@ than exp." `m002-oq61`.
   - every episode ran to the 20-hour horizon, in about 177 decisions (random takes about 380): PPO soon picks long
     options, mostly woodcutting, melee and Agility;
   - after about 230 episodes on a seed, total level averaged 267: above random's 214, below the guide's 351.
+
+### Decided: OQ-65, E2's design: the toy env, the sweep, 1M decisions a run, sampled evaluation (Caleb)
+- **Raised and decided:** 2026-11-09, asked in chat before E2 (record `m002-eval-training`). ROADMAP had the ladder
+  only as "a 3-option toy catalog with a known optimum; PPO beats random on the full catalog; a small hyperparameter
+  sweep at (0.5, 0.5)".
+- **(1) The toy catalog.**
+  - **(a) Recommended, a synthetic 3-option env:** work pays now, training pays nothing but raises work's pay later,
+    idle is short and pays nothing. Its optimum is computed exactly, so PPO is checked against the true answer in
+    minutes, apart from the sim.
+  - **(b)** The sim cut to 3 options: more real, but the optimum isn't known exactly, and it's slower.
+  - **(c)** Skip the rung.
+
+  **Caleb: (a).**
+- **(2) The sweep at (.5, .5).**
+  - **(a) Recommended, a 2 × 2 grid with 2 seeds:**
+    - learning rate {1e-4, 3e-4} × entropy coefficient {0, 0.01};
+    - fixed: net [256, 256], n_steps 256, batch 1,024, 4 epochs, γ_hr 0.99;
+    - 8 runs of 1M decisions, about 8 hours.
+
+    The best variant by evaluation answers rung 2, PPO against random, so that rung needs no runs of its own.
+  - **(b)** One factor at a time from sb3's defaults, about 10 to 12 runs.
+  - **(c)** No sweep: sb3's defaults (2,048 steps, batch 64, net [64, 64]).
+
+  **Caleb: (a).** The winner is what E3 to E6 use.
+- **(3) Decisions a run.**
+  - **(a) Recommended, 1M** (about 2,500 twenty-hour episodes; about an hour a run with four at once), revisited
+    after E2: if E2's curves still rise at 1M, E3 to E6 take 2M (about 6 days, still inside Nov 12 to 21).
+  - **(b)** 2M from the start.
+  - **(c)** 500k.
+
+  **Caleb: (a).**
+- **(4) Evaluation against E1's baselines** (E1's 30 seeds, the 20-hour checkpoint).
+  - **(a) Recommended, sampled actions:** the policy PPO trained, keeping a mixed strategy, with a fixed seed an
+    episode.
+  - **(b)** Greedy (argmax) actions.
+  - **(c)** Both, reporting sampled.
+
+  **Caleb: (a).**
+
+### Built: sweeps, trained policies in the eval harness, and training summaries (tooling, OQ-61, OQ-65)
+- **Sweeps** (`rlscape.agents.training.variants`): a config's `sweep: {key: [values]}` is a grid of variants, a key
+  being `ppo.<argument>`, `env.<setting>` or a top-level key (not the seeds or the output). Each variant is named by
+  its values (`learning_rate0.0003_ent_coef0.01`), with its runs in `runs/<name>/<variant>/seed<k>/`.
+  `scripts/train.py` runs every (variant, seed), `--jobs N` at a time, or chosen ones with `--variant` and `--seed`.
+  E2's grid, E3's weights and E6a's γ_hr are each one config.
+- **Trained policies in the harness** (`rlscape/eval/trained.py`): `scripts/evaluate.py --policies random
+  <label>=ppo:<model.zip>` evaluates a trained model on the same seeds and checkpoints as the baselines.
+  - **Sampled actions (OQ-65 (4)),** with torch's generator seeded by the episode's seed, so an episode depends only
+    on the model and its seed, whatever the worker played before (tested).
+  - **Tables name the policy by its label,** two policies can't share one, and a missing model is refused.
+  - **Each worker loads a model once,** with one torch thread.
+- **Training summaries** (`scripts/publish_training.py <runs> <name>`, `rlscape.eval.publish.publish_training`):
+  `results/summary/<name>/training/` gets `runs.csv`, `learning_curves.csv`, each run's config.json and a README.
+  Runs from a dirty tree and an existing training summary are refused. `publish` (an evaluation's summary) now
+  replaces only its own files, so the two share an experiment's folder.

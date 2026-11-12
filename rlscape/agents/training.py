@@ -17,9 +17,11 @@ command per experiment).
   default;
 - `checkpoint_every`: decisions between checkpoints;
 - `decision_log`: record every decision (rlscape.agents.decision_log);
-- `out`: where the runs go (default `runs/<name>`, git-ignored).
+- `out`: where the runs go (default `runs/<name>`, git-ignored);
+- `sweep`: a grid of variants, `{key: [values]}`, a key being `ppo.<argument>`, `env.<setting>` or one of the keys
+  above. Each combination is a variant, named by its values (`learning_rate0.0001_ent_coef0.01`), with its own runs.
 
-**A run** (`<out>/seed<k>/`):
+**A run** (`<out>/seed<k>/`, or `<out>/<variant>/seed<k>/` in a sweep):
 - `config.json`: the config, its hash, the seed, the provenance taken at the start (git SHAs, dirty, versions) and
   the command line;
 - `options.json`: the catalog (index, id, family);
@@ -35,6 +37,8 @@ an episode depends only on its seed (OQ-64).
 
 from __future__ import annotations
 
+import copy
+import itertools
 import json
 import shutil
 import sys
@@ -59,7 +63,8 @@ from rlscape.eval.harness import REPO, config_hash, provenance
 from rlscape.sim.engine import TICKS_PER_HOUR
 
 KEYS = {"seeds", "total_decisions", "n_envs", "vec_env", "device", "torch_threads", "env", "ppo", "checkpoint_every",
-        "decision_log", "out"}
+        "decision_log", "out", "sweep", "variant"}
+UNSWEPT = {"seeds", "out", "sweep", "variant"}  # a sweep can't vary these
 REQUIRED = {"seeds", "total_decisions", "n_envs", "ppo"}
 ENV_KEYS = {"reward_weights", "hours", "activity_minutes", "preference_in_obs"}
 
@@ -85,7 +90,41 @@ def check_config(config: dict) -> dict:
             raise ValueError(f"config: ppo.{key} is the text {value!r}: YAML reads 3e-4 as text, so write 3.0e-4")
     if config.get("vec_env", "subproc") not in ("subproc", "dummy"):
         raise ValueError("config: vec_env is subproc or dummy")
+    for key, values in (config.get("sweep") or {}).items():
+        section, _, field = key.partition(".")
+        known = (field and (section == "ppo" or (section == "env" and field in ENV_KEYS))) or \
+            (not field and section in KEYS - UNSWEPT)
+        if not known or not isinstance(values, list) or not values:
+            raise ValueError(f"config: sweep.{key} must be a known key with a list of values")
     return config
+
+
+def variants(config: dict) -> list[tuple[str, dict]]:
+    """The config's sweep as (variant, config) pairs: the grid's combinations in the order the sweep gives them,
+    each the config with those values set, named by them; without a sweep, the one config, unnamed."""
+    base = {k: v for k, v in config.items() if k != "sweep"}
+    sweep = config.get("sweep") or {}
+    if not sweep:
+        return [("", base)]
+    out = []
+    for values in itertools.product(*sweep.values()):
+        variant, parts = copy.deepcopy(base), []
+        for key, value in zip(sweep, values):
+            section, _, field = key.partition(".")
+            if field:
+                variant[section] = {**(variant.get(section) or {}), field: value}
+            else:
+                variant[section] = value
+            parts.append(f"{field or section}{_named(value)}")
+        variant["variant"] = "_".join(parts)
+        out.append((variant["variant"], check_config(variant)))
+    return out
+
+
+def _named(value) -> str:
+    if isinstance(value, (list, tuple)):
+        return "-".join(_named(v) for v in value)
+    return f"{value:g}" if isinstance(value, float) else str(value)
 
 
 def env_kwargs(config: dict) -> dict:
@@ -153,13 +192,17 @@ class EpisodeTable(BaseCallback):
 
 
 def run_dir(config: dict, name: str, seed: int) -> Path:
-    return Path(config.get("out") or REPO / "runs" / name) / f"seed{seed}"
+    root = Path(config.get("out") or REPO / "runs" / name)
+    return (root / config["variant"] if config.get("variant") else root) / f"seed{seed}"
 
 
 def train(config: dict, name: str, seed: int, out: Path | None = None, force: bool = False,
           argv: list[str] | None = None) -> Path:
-    """One run of the experiment `name` with `seed`; returns its directory."""
+    """One run of the experiment `name` with `seed` (one variant: expand a sweep with `variants` first); returns its
+    directory."""
     config = check_config(config)
+    if config.get("sweep"):
+        raise ValueError("train takes one variant: expand the sweep with variants()")
     run = Path(out) if out is not None else run_dir(config, name, seed)
     if run.exists():
         if not force:

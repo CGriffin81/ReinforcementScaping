@@ -169,9 +169,12 @@ work.
 - An experiment's run: `uv run python scripts/evaluate.py --config configs/<name>.yaml`, then `uv run python
   scripts/publish_summary.py <run dir> <name>`, which writes the committed `results/summary/<name>/` (CSV tables,
   `config.json`, a README) and refuses a run from a dirty tree. The rest of `results/` stays git-ignored.
-- Training: `uv run python scripts/train.py --config configs/<name>.yaml --jobs 4` trains every seed, four at a
-  time, into `runs/<name>/seed<k>/` (git-ignored): provenance, checkpoints, TensorBoard, the learning curve and the
-  decision log. Four runs of 4 envs make about 1M decisions an hour in all, twice one run of 16.
+- Training: `uv run python scripts/train.py --config configs/<name>.yaml --jobs 4` trains every seed (and every
+  variant of a `sweep:`), four at a time, into `runs/<name>/[<variant>/]seed<k>/` (git-ignored): provenance,
+  checkpoints, TensorBoard, the learning curve and the decision log. Four runs of 4 envs make about 1M decisions an
+  hour in all, twice one run of 16. Evaluate a trained model with `scripts/evaluate.py --policies random
+  <label>=ppo:<model.zip>` (sampled actions, OQ-65), and publish the runs with `uv run python
+  scripts/publish_training.py runs/<name> <name>`.
 - More servers at once (Caleb, 2026-11-06): `uv run python
   scripts/server_instances.py 2 3` writes `results/servers/rl-<n>.conf`
   (world n, bridge port 43610 + n - 1, its own GE under

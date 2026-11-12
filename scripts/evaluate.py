@@ -24,7 +24,7 @@ from pathlib import Path
 import yaml
 
 from rlscape.envs.sim_env import DEFAULT_REWARD_WEIGHTS
-from rlscape.eval.harness import POLICIES, REPO, provenance, run, save, summarize
+from rlscape.eval.harness import POLICIES, REPO, policy_label, provenance, run, save, summarize
 from rlscape.sim.engine import ACTIVITY_TICKS, TICKS_PER_HOUR
 
 
@@ -46,7 +46,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--config", type=Path, default=None, help="a YAML file of these options (configs/<name>.yaml)")
     parser.add_argument("--policies", nargs="+", default=["random", "greedy_xp", "greedy_wealth"],
-                        choices=sorted(POLICIES))
+                        help=f"baselines ({', '.join(sorted(POLICIES))}) or trained models: [label=]ppo:<model.zip>")
     parser.add_argument("--seeds", type=int, default=10, help="seeds 0 .. N-1")
     parser.add_argument("--first-seed", type=int, default=0)
     parser.add_argument("--hours", type=float, default=20.0, help="the horizon in game-hours")
@@ -71,11 +71,13 @@ def main() -> None:
 
     last = summary[summary.hour == summary.hour.max()]
     print(f"\nAt hour {last.hour.max()} ({len(seeds)} seeds; mean [95% CI]):")
-    for policy in args.policies:
-        rows = last[last.policy == policy].set_index("metric")
+    labels = [policy_label(spec) for spec in args.policies]  # a trained policy's rows go by its label, not its spec
+    width = max(len(label) for label in labels)
+    for label in labels:
+        rows = last[last.policy == label].set_index("metric")
         cells = [f"{m} {rows.loc[m, 'mean']:,.0f} [{rows.loc[m, 'ci_low']:,.0f}, {rows.loc[m, 'ci_high']:,.0f}]"
                  for m in rows.index]
-        print(f"  {policy:14s} " + "; ".join(cells))
+        print(f"  {label:{width}s} " + "; ".join(cells))
 
 
 if __name__ == "__main__":

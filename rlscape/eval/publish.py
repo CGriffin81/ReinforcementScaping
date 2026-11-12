@@ -9,7 +9,18 @@
 - `README.md`: the provenance and the last checkpoint's table, each policy's mean and 95% CI.
 
 It refuses a run made from a tree with uncommitted changes, since its git SHA wouldn't reproduce it (`allow_dirty`
-publishes it anyway, and the README says so), and it never overwrites a published summary unless `force`.
+publishes it anyway, and the README says so), and it never overwrites a published summary unless `force` (which
+replaces its own files only, so a training summary beside it stays).
+
+`publish_training(runs_root, name)` writes `results/summary/<name>/training/` from an experiment's training runs
+(rlscape/agents/training.py), every finished run under `runs_root` (one with a `run.json`):
+- `runs.csv`: a row per run: its variant and seed, its provenance (config hash, git and fork SHAs, dirty), its
+  decisions, episodes and wall time, and its `ppo` and env settings (JSON);
+- `learning_curves.csv`: each run's learning curve (episodes.parquet), with its variant and seed;
+- `configs/`: each run's config.json;
+- `README.md`: per variant, the runs and the mean of their last 100 episodes' total level and net worth.
+
+The same refusals apply: a run from a dirty tree, and a training summary already published.
 """
 
 from __future__ import annotations
@@ -24,6 +35,8 @@ from rlscape.eval.harness import METRICS, REPO
 
 SUMMARY_ROOT = REPO / "results" / "summary"
 TABLES = ("summary", "checkpoints", "episodes")
+OWN_FILES = ("config.json", "README.md", *(f"{t}.csv" for t in TABLES))
+LAST_EPISODES = 100
 METRIC_NAMES = {"total_level": "Total level", "total_xp": "Total XP", "net_worth": "Net worth (gp)"}
 
 
@@ -38,11 +51,12 @@ def publish(run_dir: Path, name: str, root: Path = SUMMARY_ROOT, allow_dirty: bo
     if meta.get("git_dirty", True) and not allow_dirty:
         raise PublishError(f"{run_dir} was run from a tree with uncommitted changes (or without a record of it): "
                            "rerun it from a clean commit, or pass allow_dirty")
-    if out.exists():
+    if any((out / f).exists() for f in OWN_FILES):
         if not force:
             raise PublishError(f"{out} is already published; pass force to replace it")
-        shutil.rmtree(out)
-    out.mkdir(parents=True)
+        for f in OWN_FILES:
+            (out / f).unlink(missing_ok=True)
+    out.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(run_dir / "config.json", out / "config.json")
     tables = {t: pd.read_parquet(run_dir / f"{t}.parquet") for t in TABLES}
     for table, frame in tables.items():
@@ -82,6 +96,63 @@ def readme(name: str, run_dir: Path, meta: dict, summary: pd.DataFrame) -> str:
               "- `checkpoints.csv`: each seed's metrics at each checkpoint (hour 0 is the fresh character);",
               "- `episodes.csv`: each episode's decisions, reward sums, final metrics, deaths, most chosen options "
               "and wall time (the only column that changes between identical runs).", ""]
+    return "\n".join(lines)
+
+
+def publish_training(runs_root: Path, name: str, root: Path = SUMMARY_ROOT, allow_dirty: bool = False,
+                     force: bool = False) -> Path:
+    runs_root = Path(runs_root)
+    runs = sorted(p.parent for p in runs_root.rglob("run.json"))
+    if not runs:
+        raise PublishError(f"no finished runs under {runs_root}")
+    metas = [json.loads((r / "config.json").read_text(encoding="utf-8")) for r in runs]
+    dirty = [_shown(r) for r, m in zip(runs, metas) if m.get("git_dirty", True)]
+    if dirty and not allow_dirty:
+        raise PublishError(f"runs from a tree with uncommitted changes: {dirty}; rerun them from a clean commit, "
+                           "or pass allow_dirty")
+    out = Path(root) / name / "training"
+    if out.exists():
+        if not force:
+            raise PublishError(f"{out} is already published; pass force to replace it")
+        shutil.rmtree(out)
+    (out / "configs").mkdir(parents=True)
+    rows, curves = [], []
+    for run, meta in zip(runs, metas):
+        done = json.loads((run / "run.json").read_text(encoding="utf-8"))
+        variant, seed = meta["config"].get("variant", ""), meta["seed"]
+        rows.append({"variant": variant, "seed": seed, "config_hash": meta["config_hash"],
+                     "git_sha": meta["git_sha"], "git_dirty": meta["git_dirty"], "server_sha": meta["server_sha"],
+                     "decisions": done["decisions"], "episodes": done["episodes"],
+                     "wall_seconds": done["wall_seconds"], "ppo": json.dumps(meta["config"]["ppo"], sort_keys=True),
+                     "env": json.dumps(meta["env_kwargs"], sort_keys=True)})
+        curve = pd.read_parquet(run / "episodes.parquet")
+        curve.insert(0, "seed", seed)
+        curve.insert(0, "variant", variant)
+        curves.append(curve)
+        shutil.copyfile(run / "config.json", out / "configs" / f"{variant + '_' if variant else ''}seed{seed}.json")
+    table, curve = pd.DataFrame(rows), pd.concat(curves, ignore_index=True)
+    table.to_csv(out / "runs.csv", index=False, lineterminator="\n")
+    curve.to_csv(out / "learning_curves.csv", index=False, lineterminator="\n")
+    (out / "README.md").write_text(training_readme(name, runs_root, table, curve), encoding="utf-8", newline="\n")
+    return out
+
+
+def training_readme(name: str, runs_root: Path, runs: pd.DataFrame, curves: pd.DataFrame) -> str:
+    lines = [f"# {name}: training", "",
+             f"Published from `{_shown(runs_root)}` by `scripts/publish_training.py`: {len(runs)} runs. `runs.csv` "
+             "has each run's provenance and settings, `learning_curves.csv` each run's finished episodes, `configs/` "
+             "each run's config.json.", "",
+             f"| Variant | Runs | Decisions a run | Total level, last {LAST_EPISODES} episodes | "
+             f"Net worth (gp), last {LAST_EPISODES} episodes |", "|---|---:|---:|---:|---:|"]
+    for variant, group in runs.groupby("variant", sort=False):
+        lasts = [curves[(curves.variant == variant) & (curves.seed == seed)].tail(LAST_EPISODES)
+                 for seed in group.seed]
+        level = sum(c.total_level.mean() for c in lasts) / len(lasts)
+        worth = sum(c.net_worth.mean() for c in lasts) / len(lasts)
+        lines.append(f"| {variant or '(one config)'} | {len(group)} | {int(group.decisions.mean()):,} | "
+                     f"{level:,.0f} | {worth:,.0f} |")
+    lines += ["", "Each number is the mean over the variant's runs of their own means. The policies' evaluations "
+              "against the baselines, on E1's seeds, are the experiment's own summary beside this folder.", ""]
     return "\n".join(lines)
 
 
