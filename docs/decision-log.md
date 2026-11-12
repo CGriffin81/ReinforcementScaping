@@ -7362,7 +7362,7 @@ Asked together after Caleb's question "Why don't any of the runs do anything wit
 
 ### Decided: OQ-80, E3 to E6 train on the GPU, deterministically (Caleb, 2026-11-11: (a))
 - **The question** (Caleb: "Why are the experiments not running on GPU?"; `m002-gpu`): Caleb chose CUDA torch on
-  2026-11-08, but Claude had set every training config to `device: cpu` on 2026-11-09 without putting it to him.
+  2026-11-08, but Claude had set every training config to `device: cpu` on 2026-11-09 without putting it to Caleb.
 - **Measured:** the PPO update of one rollout (1,024 decisions at E3's settings) takes 1.12 s on the CPU and 0.11 s on
   the RTX 3050, against about 20 s for the rollout's simulation. Two GPU runs of the same config and seed were
   identical (actions and weights), with and without torch's deterministic algorithms.
