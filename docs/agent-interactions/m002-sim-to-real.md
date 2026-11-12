@@ -8,8 +8,9 @@
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: PARTIAL. Built, tested and committed on branch `tooling/sim-to-real` with a PR into `main`; OQ-86 is open.
-- Commit: this commit on `tooling/sim-to-real` (from `main` at `f332029`; Caleb: "Commit it and open a PR into
-  main", 11:19:25 CST), and the next, the summary made from this one's clean tree.
+- Commit: on `tooling/sim-to-real` (from `main` at `f332029`; Caleb: "Commit it and open a PR into main", 11:19:25
+  CST): `4f05ec5` (the tooling and docs), `35e48e6` (the clean-tree check fixed), and this commit, the summary made
+  from `35e48e6`'s clean tree.
 
 ## Full Prompt
 
@@ -73,11 +74,12 @@ Follow-up prompt (11:19:25 CST):
   summary is there.
 - `scripts/measure_abyss.py`: `pass_levels`, `sim_outer_ticks`, `sim_rift_ticks`, `altar_ticks`, `trip_character`,
   `sim_trip_ticks` and `sim_trip_expected`, used by its runs and by `sim_to_real.py`.
-- `tests/test_sim_to_real.py` (new): 8 tests.
+- `tests/test_sim_to_real.py` (new): 9 tests.
+- `results/summary/sim-to-real/` (new, committed): the summary, made from `35e48e6`.
 
 ## Infrastructure Changes
 
-- None. The draft summary and tables are in the session's scratchpad (`s2r_root/`, `s2r_figs/`), not the repo.
+- The branch pushed and a PR opened into `main`.
 
 ## Decisions
 
@@ -98,7 +100,12 @@ Follow-up prompt (11:19:25 CST):
   stayed 5.7 to 6.2 GB).
 - `figures.py` made the three tables from it (236 case rows, 12 outside the gate).
 - Tests: `tests/test_sim_to_real.py` and `tests/test_analysis.py`, 28 passed; `tests/test_sim_abyss.py` and
-  `tests/test_sim_pouches.py`, 25 passed.
+  `tests/test_sim_pouches.py`, 25 passed. After the fix below, `tests/test_sim_to_real.py`: 9 passed.
+- **Found on committing:** the first summary from the clean commit (`4f05ec5`) said `dirty: true`. The provenance read
+  `git status` after the run had written its own files. Fixed in `35e48e6`: the check runs once at the start and
+  leaves the output folder out (a rerun rewrites its committed files); a new test on a real git repo. The summary,
+  made again from `35e48e6`: `dirty: false`, the same counts (533 of 548). `scripts/figures.py` made the three tables
+  from `results/summary/`.
 - **Cross-checks:**
   - combat, Crafting, Herblore and the Abyss's crossings re-simulate to their stored sim side, which shows the
     adapters run the same sims;
@@ -108,5 +115,4 @@ Follow-up prompt (11:19:25 CST):
 ## Follow-Up
 
 - **Caleb:** review the PR (the code and the case selection); OQ-86.
-- **Claude:** the summary from this commit's clean tree (`uv run python scripts/sim_to_real.py`), committed next on the
-  branch.
+- **Claude:** none for this record beyond OQ-86's answer.
