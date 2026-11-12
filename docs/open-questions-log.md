@@ -70,3 +70,30 @@ Started 2026-10-31 (Caleb), from a review of the documentation.
 - **Decides:** Caleb.
 - **Needed by:** Nov 22, when the guide is written alongside the draft. Nothing before then waits on it, since one
   config and one command per experiment suits every option.
+
+### OQ-80. Train E3 to E6 on the GPU?
+- **Raised:** 2026-11-11, Caleb: "Why are the experiments not running on GPU?" and "What are the projected time
+  savings on running all of the experiments on GPU instead of CPU?" (`m002-gpu`).
+- **How it got here:** Caleb chose CUDA torch on 2026-11-08 (the RL stack), and the first training measurements ran
+  on the GPU. Claude then set every training config to `device: cpu` on 2026-11-09 (the tooling, E2 onwards), for bit-for-bit
+  repeatability and because the simulator, not the network, takes the time. That choice wasn't put to Caleb.
+- **Measured** (2026-11-11, the four E3 runs training at the same time):
+  - **The PPO update** for one rollout at E3's settings (1,024 decisions, batch 1,024, 4 epochs, 256 × 256):
+    1.12 s on the CPU (2 threads, as the runs), 0.11 s on the RTX 3050.
+  - **A rollout** takes about 20 s in the runs (50 to 54 decisions a second each, four at once). So the update is
+    about 5% of a run, and the rest is the simulator in the env processes, which the GPU can't take.
+  - **Repeatable on the GPU:** two tiny real runs (512 decisions, 2 updates) gave the same actions and bit-identical
+    weights, with and without `torch.use_deterministic_algorithms`. The earlier claim that a GPU run isn't
+    repeatable was wrong for this network; deterministic mode guarantees it (an op that isn't raises an error).
+- **Projected saving:** about 5 to 7% of training time: the update (about 1 s a rollout), and a little more from the
+  policy's forward passes leaving the CPU to the simulator. Over the queue's remaining 110 to 125 hours, about 6 to 8
+  hours.
+- **Options:**
+  - **(a) Recommended: switch now, all 50 runs on the GPU.** `device: cuda` in the five configs, deterministic mode
+    in the trainer for CUDA runs, and E3's four seed-0 runs (started 18:01) restarted, so every run of an experiment
+    shares a config. It costs those four runs' first hour, about an hour's work, and saves about 6 to 7 hours.
+  - **(b) Switch the 46 runs not yet started;** E3's four seed-0 runs finish on the CPU. It saves about 7 hours, but
+    E3's runs then have two configs (the device differs), which its summary shows.
+  - **(c) Stay on the CPU.** No change. The queue finishes about 6 to 8 hours later, with about 2 days still before
+    the analysis (Nov 19).
+- **Decides:** Caleb.
