@@ -12,7 +12,9 @@
   0 start (about 13:54 to 14:22). (The status said "IN PROGRESS", which isn't one of the policy's values.)
 - Commit: this record, with the decision log's and the open-questions log's changes, committed directly to `main` after
   `424b879` (Caleb: "Commit it to main directly", 10:34:04 CST): `f332029`. The interim check, committed the same way
-  after `b4145b7` (11:49:45 CST). The afternoon's check is still to come.
+  after `b4145b7` (11:49:45 CST): `491fbe0`. The paging rule's firing and Caleb's RAM gate (first in PR #27, `dfa15db`),
+  the RAM rule's firing and the determinism check: committed the same way after `491fbe0` (Caleb: "Commit it to main
+  directly", 15:45:42 CST). The watch until 19:00 is still to come.
 
 ## Full Prompt
 
@@ -37,6 +39,14 @@ Follow-up prompts (11:46:38 and 11:49:45 CST):
 > Check on the five-run trial now
 >
 > Commit it to main directly
+
+Answer to the paging rule's firing (question dialog, 13:37:04 CST, the tool result's timestamp in the transcript):
+
+> "Restore 5, RAM-gated (Recommended)"
+
+Answer to the RAM rule's firing (question dialog, 15:33:20 CST):
+
+> "Keep five, watch"
 
 ## Response Summary
 
@@ -103,9 +113,13 @@ Follow-up prompts (11:46:38 and 11:49:45 CST):
   hour: keep five, with the RAM check on sustained lows (Claude recommended it; the other option was back to four, the
   check as written).
 - **The new check:** back to `--jobs 4` if available RAM stays under 1 GB for more than a minute, hard page reads stay
-  above 1,000 a second for a minute, or a run falls below 80% of its speed.
+  above 1,000 a second for a minute, or a run falls below 80% of its speed. After it fired on file reads (13:11),
+  Caleb gated the paging rule on RAM: it counts only while free RAM is under 2 GB (Claude recommended it; the other
+  option was to stay at four).
 - **Claude's choices within them:** the trial's measures (each continuing run's speed, RAM, paging); restarting only the
   queue; the scratch summary for the seed-0 check; the second sampler through the next runs' start.
+- **After the RAM rule fired (14:26):** the queue back to four, as the rule has it; Caleb chose to keep the five runs
+  training and watch, over stopping the youngest (Claude's recommendation).
 
 ## Validation
 
@@ -125,6 +139,9 @@ Follow-up prompts (11:46:38 and 11:49:45 CST):
   - **Found beside it:** commit charge at 96% of the current limit (82.3 of 86.0 GB). The training processes commit
     73 GB for 25 GB in use: each env worker loads torch's CUDA DLLs (3.1 GB) and commits about 2.4 GB. The pagefile
     is system-managed (54 GB, C: 220 GB free) and no event 2004 (low virtual memory) was logged in three days.
+- **The determinism check, E3's (1, 0), (.75, .25) and (.5, .5) seed 0** against the runs the reboot killed: 33 of 33,
+  34 of 34 and 35 of 35 decision-log parts byte-identical (1.65M, 1.70M and 1.75M rows); the checkpoints' `data`
+  differs only in the episodes' wall-clock `t` and memory addresses (`determinism_check.py`, `ckpt_data_diff2.py`).
 - A second sampler (`trial_sample2.ps1`, every 10 seconds until 15:30) adds commit charge, the training processes'
   working sets and the count of trainers, to cover 13:48 to 14:18, when E3's three seed-0 runs end and the queue
   starts the next ones. A watcher on it (`watch_lows.ps1`) stops early if a sustained low (Caleb's new check) occurs.
@@ -137,11 +154,34 @@ Follow-up prompts (11:46:38 and 11:49:45 CST):
   - **Commit charge:** 93.7 to 98.7% of a limit that grew with the system-managed pagefile (86.0 to 87.0 GB).
   - **Speed, 10:20 to 11:46:** E3's three at 58.7, 62.6 and 60.9 decisions a second (97 to 101% of the baseline), E6a's
     γ_hr 0.5 at 79.6 and γ_hr 0.9 at 97.7 (126 from 11:00). In all 359 a second, against 252 with four.
+- **The paging rule fired at 13:11:56:** hard page reads over 1,000 a second for 7 samples (13:10:50 to 13:11:51), with
+  6 to 7 GB of RAM free and the pagefile at 4.0%. The runs didn't slow (E3's three at 56 to 66 over 13:09 to 13:14).
+  The day's bursts line up with Claude's own large file reads (the transcript, git, TensorBoard's logs).
+  - Per the rule, the queue went back to `--jobs 4` at 13:13: its processes (uv 5420, python 20420 and 4628) stopped,
+    its runs kept training (10 `train.py` and 20 worker processes before and after), the log renamed
+    `train-queue-gpu-part3.log`, relaunched as PID 3588.
+  - Caleb (13:37): five again, the paging rule RAM-gated (counted only while free RAM is under 2 GB). The queue
+    relaunched with `--jobs 5` at 13:37:38 (PID 8728; the four-slot queue's log `train-queue-gpu-part4.log`), before
+    the first slot opened (about 13:54). The watcher restarted with the gate (`watch_lows.ps1 -PagingRamMb 2048`).
+- **The RAM rule fired at 14:26:56:** free RAM under 1 GB for 25 samples, 14:25:52 to about 14:30 (179 MB at its
+  lowest), the training processes' working sets 28.4 GB. Four runs had started within 40 minutes (E4's seed 0 13:45,
+  E6b's 14:03, E5's 14:18, E3's (1, 0) seed 1 14:24), each young run about 6 to 7 GB (E6b's trainer 3.0 GB and its 4
+  workers about 1 GB each).
+  - Per the rule, the queue went back to `--jobs 4` at 14:27:49 (PID 20648; `train-queue-gpu-part5.log`); the five
+    runs kept training (10 `train.py` and 20 worker processes before and after).
+  - Claude asked whether to stop the youngest run (E3's (1, 0) seed 1, about 4,000 decisions in; recommended) or keep
+    five and watch. Caleb (15:33): keep five and watch.
+  - By then free RAM had been 1.4 to 4.8 GB for an hour, and no run had slowed: 14:30 to 15:33, E6a's γ_hr 0.5 84 to
+    88 decisions a second, E4 58, E6b 77 to 85, E5 55, E3's seed 1 53 to 57; 335 in all.
+  - **Watched until 19:00:** a sampler (`trial_sample3.csv`), the RAM watcher, and `rate_watch.py`, which checks each
+    run's speed every 15 minutes against its previous 15 and stops at a fall below 80%.
 
 ## Follow-Up
 
-- **Claude:** the check again once E4's, E6b's and E5's seed 0 start (about 13:48 to 14:20), and back to `--jobs 4` if
-  it fails; the seed-0 check on E3's other three runs and the determinism check when they finish (about 13:48 to
-  14:18); E6a's, E4's, E6b's and E5's seed 0 as they finish.
+- **Claude:** the watch until 19:00 (the RAM rule; each run's speed every 15 minutes); the seed-0 learning check on
+  E3's other three runs once the machine is at four runs (publishing their training summaries takes about 2 GB);
+  E6a's, E4's, E6b's and E5's seed 0 as they finish.
+- **Done:** the determinism check on E3's other three restarted runs (the decision log, "Found: E3's other three
+  restarted runs repeat their killed runs byte for byte").
 - **Later, not now:** the env workers needn't load torch's CUDA DLLs (about 2 GB of commit each, 40 GB across 20
   workers). Changing that is code in every experiment's branch, so it waits unless commit charge becomes a limit.

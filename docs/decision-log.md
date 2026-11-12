@@ -7561,6 +7561,28 @@ Asked together after building the figure script (`m002-figures`), with E3's seed
   again once E4's, E6b's and E5's seed 0 have started (E3's three seed-0 runs end at about 13:48 to 14:18), with a
   sampler until 15:30. At five the queue finishes about a day sooner: about Nov 15 in the evening, not Nov 16 in the
   afternoon.
+- **The paging rule fired at 13:11:56** (the watcher): hard page reads over 1,000 a second from 13:10:50 to 13:11:51.
+  Free RAM was 6 to 7 GB throughout and the pagefile's use stayed at 4.0%; the runs didn't slow (E3's three at 56 to
+  66 decisions a second over 13:09 to 13:14, against 60 to 68 before). The bursts that day lined up with Claude's own
+  large file reads (the session's transcript, git, TensorBoard's logs), which Windows counts as page reads too.
+  - **As the rule has it,** the queue went back to `--jobs 4` at 13:13 (its three processes stopped, its five runs
+    kept training; PID 3588; the log `train-queue-gpu-part3.log`). No run stopped.
+  - **Caleb (13:37 CST): restore five, the paging rule gated on RAM** (Claude's recommendation; the other option was
+    to stay at four). Paging counts only while free RAM is also under 2 GB; the RAM and speed rules are unchanged. The
+    queue relaunched with `--jobs 5` at 13:37:38 (PID 8728; `train-queue-gpu-part4.log` the four-slot queue's log),
+    before the first slot opened, so no run waited.
+- **The RAM rule fired at 14:26:56:** free RAM under 1 GB for 25 samples (14:25:52 to about 14:30, at its lowest
+  179 MB), the training processes' working sets 28.4 GB against about 20 before. Four runs had started within 40
+  minutes (E4's seed 0 at 13:45, E6b's at 14:03, E5's at 14:18, E3's (1, 0) seed 1 at 14:24) as E3's seed-0 runs and
+  E6a's γ_hr 0.9 ended, and a young run holds 6 to 7 GB until Windows trims it.
+  - **As the rule has it,** the queue went back to `--jobs 4` at 14:27:49 (PID 20648; the log
+    `train-queue-gpu-part5.log`). That bites only when a run ends: five kept training.
+  - **The question** (Claude's): stop the youngest run, E3's (1, 0) seed 1 (about 4,000 decisions; restarted from
+    scratch when a slot opens, deterministic, about 5 minutes lost; recommended), or keep five and watch.
+  - **Caleb (15:33 CST): keep five and watch.** By then free RAM had been back at 1.4 to 4.8 GB for an hour, and no
+    run had slowed: 14:30 to 15:33, E6a's γ_hr 0.5 at 84 to 88 decisions a second, E4 58, E6b 77 to 85, E5 55, E3's
+    seed 1 53 to 57; 335 in all. Watched until 19:00: the RAM rule, and each run's speed every 15 minutes against its
+    previous 15 (a fall below 80% asks again).
 
 ### Decided and built: the sim-to-real table, every calibration case re-simulated on sim-v1.2 (Caleb, 2026-11-12)
 Caleb, 2026-11-12: "Start on the sim-to-real table while the runs train", then, on Claude's two questions, "Re-simulate
@@ -7640,3 +7662,12 @@ on sim-v1.2 (Recommended)" and "Family table + case appendix (Recommended)". `m0
 - **Follows:** `docs/post-project-gaps.md` has the gap (what, why, the cost, how to close it). The sim-to-real table's
   note on the trip names OQ-86 (b) (`scripts/sim_to_real.py`'s `NOTES`; the summary is made again from the commit).
   The sim (sim-v1.2) and the experiments are unchanged.
+
+### Found: E3's other three restarted runs repeat their killed runs byte for byte (2026-11-12)
+`m002-jobs-five` (the seed-0 checks Caleb chose). E3's (1, 0), (.75, .25) and (.5, .5) seed 0, killed by the
+Windows Update restart at 02:29 and run again from the same commits, config and seeds, against the killed runs
+(`runs/e3-reward-weight-sweep-reboot-partial/`):
+- **Decision logs:** 33 of 33, 34 of 34 and 35 of 35 parts byte-identical (1,650,000, 1,700,000 and 1,750,000 rows).
+- **Checkpoints:** 16, 17 and 17; 5 of each zip's 6 members identical. The sixth (`data`) differs only in the
+  episodes' wall-clock `t` and the memory addresses in its reprs; equal without them.
+- With (0, 1)'s check this morning, all four restarted runs repeat their killed runs exactly, on the GPU.
