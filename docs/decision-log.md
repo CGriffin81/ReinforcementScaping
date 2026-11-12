@@ -7583,6 +7583,11 @@ Asked together after building the figure script (`m002-figures`), with E3's seed
     run had slowed: 14:30 to 15:33, E6a's γ_hr 0.5 at 84 to 88 decisions a second, E4 58, E6b 77 to 85, E5 55, E3's
     seed 1 53 to 57; 335 in all. Watched until 19:00: the RAM rule, and each run's speed every 15 minutes against its
     previous 15 (a fall below 80% asks again).
+- **Caleb (16:52 CST): back to five** ("Bring it back up to 5 jobs."), with four runs training, 11 GB free and
+  the queue at about 17% (16.7M of 100M decisions). Relaunched with `--jobs 5` at 16:52:58 (PID 12512; the
+  four-slot queue's log `train-queue-gpu-part6.log`); E3's (.75, .25) seed 1 started as the fifth at 16:54:59. The
+  rules stand (RAM under 1 GB for a minute, paging RAM-gated, a run under 80% of its speed), watched until
+  midnight. Runs that start close together are what took RAM under 1 GB at 14:26.
 
 ### Decided and built: the sim-to-real table, every calibration case re-simulated on sim-v1.2 (Caleb, 2026-11-12)
 Caleb, 2026-11-12: "Start on the sim-to-real table while the runs train", then, on Claude's two questions, "Re-simulate

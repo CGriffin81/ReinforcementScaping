@@ -15,7 +15,8 @@
   after `b4145b7` (11:49:45 CST): `491fbe0`. The paging rule's firing and Caleb's RAM gate (first in PR #27, `dfa15db`),
   the RAM rule's firing and the determinism check: committed the same way after `491fbe0` (Caleb: "Commit it to main
   directly", 15:45:42 CST): `7fcbc3f`. The seed-0 learning check, in the PR of `docs/reviewer-guide` (Caleb: "Commit
-  it and open a PR into main", 16:25:21 CST). The watch until 19:00 is still to come.
+  it and open a PR into main", 16:25:21 CST): `6e42ad4`, merged by PR #28. Back to five, committed directly to `main`
+  after `c05e716` (Caleb: "Commit it to main directly", 17:17:07 CST). The watch until midnight is still to come.
 
 ## Full Prompt
 
@@ -176,6 +177,11 @@ Answer to the RAM rule's firing (question dialog, 15:33:20 CST):
     88 decisions a second, E4 58, E6b 77 to 85, E5 55, E3's seed 1 53 to 57; 335 in all.
   - **Watched until 19:00:** a sampler (`trial_sample3.csv`), the RAM watcher, and `rate_watch.py`, which checks each
     run's speed every 15 minutes against its previous 15 and stops at a fall below 80%.
+- **Back to five** (Caleb, 16:52: "Bring it back up to 5 jobs."): the four-slot queue's processes stopped (uv 20648,
+  python 12308 and 9148; its runs kept training, 8 `train.py` and 16 worker processes), its log renamed
+  `train-queue-gpu-part6.log`, the queue relaunched with `--jobs 5` at 16:52:58 (PID 12512). E3's (.75, .25) seed 1
+  started as the fifth at 16:54:59. The sampler, the RAM watcher and the speed watch were restarted to run until
+  midnight (`trial_sample4.csv`, `rate_watch.log`).
 
 ## Follow-Up
 
