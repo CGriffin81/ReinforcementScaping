@@ -453,11 +453,20 @@ def speed_check() -> tuple[list[dict[str, Any]], set[str]]:
     return list(rows.values()), used
 
 
-def provenance(sources: Iterable[str]) -> dict[str, Any]:
-    def git(*args: str) -> str:
-        return subprocess.run(["git", *args], cwd=REPO, capture_output=True, text=True, check=True).stdout.strip()
+def git(*args: str) -> str:
+    return subprocess.run(["git", *args], cwd=REPO, capture_output=True, text=True, check=True).stdout.strip()
+
+
+def tree_dirty(out: Path) -> bool:
+    """Uncommitted changes in the tree, the summary's own files aside (a run rewrites them, committed or not)."""
+    out = out.resolve()
+    mine = [f":(exclude){out.relative_to(REPO).as_posix()}"] if REPO in out.parents else []
+    return bool(git("status", "--porcelain", "--", ".", *mine))
+
+
+def provenance(sources: Iterable[str], dirty: bool) -> dict[str, Any]:
     descends = subprocess.run(["git", "merge-base", "--is-ancestor", SIM_TAG, "HEAD"], cwd=REPO).returncode == 0
-    return {"commit": git("rev-parse", "HEAD"), "dirty": bool(git("status", "--porcelain")),
+    return {"commit": git("rev-parse", "HEAD"), "dirty": dirty,
             "sim_tag": SIM_TAG, "descends_from_sim_tag": descends, "sim_runs": SIM_RUNS, "gate": GATE,
             "made": datetime.now().astimezone().isoformat(timespec="seconds"),
             "sources": {name: hashlib.sha256((CALIBRATION / name).read_bytes()).hexdigest()
@@ -539,8 +548,7 @@ def main() -> None:
     parser.add_argument("--out", type=Path, default=REPO / "results" / "summary" / "sim-to-real")
     parser.add_argument("--allow-dirty", action="store_true", help="into results/summary from uncommitted changes")
     args = parser.parse_args()
-    dirty = bool(subprocess.run(["git", "status", "--porcelain"], cwd=REPO, capture_output=True, text=True,
-                                check=True).stdout.strip())
+    dirty = tree_dirty(args.out)  # before the run writes anything
     if dirty and not args.allow_dirty and (REPO / "results" / "summary") in args.out.resolve().parents:
         raise SystemExit("the tree has uncommitted changes, so its SHA wouldn't reproduce this summary: commit "
                          "first, or pass --allow-dirty")
@@ -568,7 +576,7 @@ def main() -> None:
     used |= speed_used
     write(args.out / "speed_check.csv", speed_rows)
     print(f"speed check  {len(speed_rows):3d} rows, {sum(bool(r['agrees']) for r in speed_rows)} agree")
-    prov = provenance(used)
+    prov = provenance(used, dirty)
     (args.out / "config.json").write_text(json.dumps(prov, indent=1) + "\n", encoding="utf-8")
     command = "uv run python scripts/sim_to_real.py" + (f" {' '.join(sys.argv[1:])}" if sys.argv[1:] else "")
     (args.out / "README.md").write_text(readme(args.out, prov, command), encoding="utf-8")

@@ -63,6 +63,27 @@ def test_a_case_comes_from_the_last_file_that_measured_it(tool, tmp_path):
     assert found == {"smelt_iron": ("processing-2.json", 8), "smelt_bronze": ("processing-1.json", 3)}
 
 
+def test_the_summarys_own_files_dont_make_the_tree_dirty_but_other_changes_do(tmp_path, monkeypatch):
+    """A run writes its files before the provenance is read, and a rerun rewrites committed ones: only changes
+    outside the summary count (a real git repo)."""
+    import subprocess
+    module = script("sim_to_real")
+    monkeypatch.setattr(module, "REPO", tmp_path)
+
+    def git(*args):
+        subprocess.run(["git", *args], cwd=tmp_path, check=True, capture_output=True)
+    git("init", "-q")
+    (tmp_path / "code.py").write_text("x = 1\n")
+    git("add", "code.py")
+    git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "c")
+    out = tmp_path / "results" / "summary" / "sim-to-real"
+    out.mkdir(parents=True)
+    (out / "cases.csv").write_text("family\n")
+    assert not module.tree_dirty(out)
+    (tmp_path / "code.py").write_text("x = 2\n")
+    assert module.tree_dirty(out)
+
+
 @needs_server_data
 def test_a_resimulation_runs_the_runners_own_sim_from_the_stored_case():
     """Herblore's sim is deterministic: its own run as the server's side gives 1.00 on every metric."""
