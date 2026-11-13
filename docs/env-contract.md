@@ -1,8 +1,18 @@
-# Environment Contract (v1.44)
+# Environment Contract (v1.45)
 
-**Status:** v1.44, 2026-11-11: OQ-75 (c), Caleb's choice (sim v1.2); its wording is to confirm. Caleb confirmed every
-version, to v1.42, on 2026-11-09: sim v1's contract is frozen. Any change needs Caleb's approval and is logged in
-`docs/decision-log.md`.
+**Status:** v1.45, 2026-11-12: Caleb's choice (sim v1.3); its wording is to confirm. v1.44, 2026-11-11: OQ-75 (c),
+Caleb's choice (sim v1.2); its wording is to confirm. Caleb confirmed every version, to v1.42, on 2026-11-09: sim v1's
+contract is frozen. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
+- **v1.45** (2026-11-12, Caleb; sim v1.3) ends a gathering option at its budget when its aggressive monsters kill the
+  character after it:
+  - **Why:** at a site whose monsters attack a character as it runs away (Draynor's shrimp spots, the only one
+    measured), running away, eating and waiting for hitpoints add ticks while the attacks go on, so the kill could
+    come after the option's budget (*D*, or what's left of the horizon). The option returned the kill's tick, and the
+    engine stopped on it: E3's (.5, .5) seed 1, at 1,711 ticks of 1,500.
+  - **The rule:** the option ends at its budget, with `died`. The death keeps the tick the model gave it (its
+    gravestone's expiry, the respawn region's tolerance clock, the regeneration up to it), as a gathering path with
+    processing already did. So nothing sim v1.2 completes changes; only the episodes it stopped on go on.
+  - The schema is unchanged (2,294 actions, 3,488 features).
 - **v1.44** (2026-11-11, Caleb, OQ-75 (c); sim v1.2) gives chop-and-fletch a skilling slot of its own, so Fletching
   can be trained:
   - **Why:** no run trained Fletching. Its own slots open only while logs and a knife are held, which the agents
@@ -185,7 +195,7 @@ through the bridge as §7 describes, and the calibration gate is the sim-to-real
     - a full inventory
     - inputs running out
     - out of food or ammunition
-    - death
+    - death (a gathering option whose monsters kill the character after *D* ends at *D*, with `died`: v1.45)
     - the horizon
   - **Banking is never automatic** (decided). When the inventory fills, the agent chooses what to do: bank,
     drop, sell, alch, process, or keep going with something else.

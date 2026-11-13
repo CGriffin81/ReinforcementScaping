@@ -5,10 +5,12 @@ description = "Hierarchical RL for skill and wealth accumulation in 2009Scape (C
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "gymnasium>=1.4.0",
+    "matplotlib>=3.9",
     "numpy>=2.5.4",
     "pandas>=3.1.0",
     "pyarrow>=26.0.0",
     "pyyaml>=6.0.3",
+    "ruptures>=1.1.9",
     "sb3-contrib>=2.9.2",
     "scipy>=1.18.1",
     "stable-baselines3>=2.9.2",
