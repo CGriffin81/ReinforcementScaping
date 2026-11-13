@@ -7730,3 +7730,42 @@ Raised and answered while drafting the reviewer's guide (OQ-50 (a)), `m002-revie
   unchanged (recommended); (b) Windows only, the guide saying so; (c) a container with the environment.
 - **Caleb: (b).** The guide says the check needs Windows x64; elsewhere the code and the committed summaries can be
   read.
+
+### Found and decided: sim v1.3, a kill after a gathering option's budget ends it at the budget (Caleb, 2026-11-12)
+2026-11-12, Caleb, on what was found answering "Show me the results of the most recent speed check on each run.":
+"Leave it until the fix" and "Cap the death, sim-v1.3 (Recommended)" (22:14:59 CST). `m002-death-budget`.
+- **Found (22:02):** E3's (.5, .5) seed 1, which the queue started at 18:49, has been hung since 18:54. One of its four
+  env workers stopped on the engine's budget check (`RuntimeError: option 'skill_fishing_gp2' took 1711 ticks with a
+  budget of 1500`), and the training process went on waiting for it, with no error (60 s of CPU in 3 hours). The queue
+  counts the process, so the slot stayed taken: four runs trained from 18:54. The speed watch lists only runs whose
+  TensorBoard file changed in the last 5 minutes, so it showed four runs rather than a stall.
+- **The cause (sim v1.2):** at Draynor's shrimp spots the dark wizards attack a character as it runs away (the only
+  gathering site with a measured chase). Running away, eating and waiting for hitpoints add ticks inside one wait for
+  a catch, while the attacks are drawn on that wait's own clock, so the kill can come after the option's budget. The
+  three gathering loops cap every other return at the budget; their death returns (`fishing.py`'s, and `gathering.py`'s
+  two, while making attempts and while waiting for a resource to come back) didn't. A gathering path with processing
+  (fish and cook) already capped it.
+  - **Reproduced on sim v1.2:** 6 of 500 level-3 fishers at the spot with a 600-tick budget die after it (seed 467 at
+    817 ticks); the willows given Draynor's exposure reach both of `gathering.py`'s returns. No woodcutting or mining
+    site has a chase, so neither can die late in the catalog.
+  - **How rare:** the first such stop in about 18M decisions of training.
+  - **The rate model's sessions** (`aggression.gathering_share`, 6,000 ticks) are never reached by the cap: their
+    deaths end by 1,480 ticks (15,000 sessions), since the attacks stop when the region's tolerance (1,000 ticks) runs
+    out.
+- **The hung run, the options:** stop it now, so the queue fills the slot with the next run (recommended); leave it
+  until the fix. **Caleb: leave it.**
+- **The fix, the options:**
+  - (a) cap the kill at the budget in the three returns, as sim v1.3. Only the outcomes that stop sim v1.2 change, so
+    the finished runs stay valid and reproducible (recommended);
+  - (b) stop the attacks at the budget, the fuller fix, so no damage, eating or fight XP lands after an option ends.
+    It changes runs that never stopped, so all 50 would restart;
+  - (c) keep sim v1.2 and give the run a new seed, or drop it; a later run that hits the branch hangs the same way.
+  - **Caleb: (a).**
+- **Built (branch `sim/v1.3-death-budget`):** each death return ends at the lesser of the kill's tick and the budget.
+  The death keeps the model's tick (its gravestone's expiry, the respawn region's tolerance clock, the regeneration up
+  to it), as the paths with processing did, so nothing sim v1.2 completes changes. Env contract v1.45, schema
+  unchanged. Two tests reproduce the stop before the fix (`tests/test_sim_aggression.py`).
+- **Follows:** sim-v1.3 is tagged on `main` once merged. `main` then goes into each experiment's worktree with the
+  queue's launcher stopped (the training runs keep the code they loaded), and the hung run is stopped and trained
+  again on sim v1.3. Runs already trained or training stay on sim v1.2; the rest train on sim v1.3, which is sim v1.2
+  wherever sim v1.2 completes.

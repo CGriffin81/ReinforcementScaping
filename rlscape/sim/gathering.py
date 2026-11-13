@@ -70,6 +70,12 @@ def gather_depleting(state: CharacterState, rng: np.random.Generator, budget: in
     def done(ticks: int, termination: str) -> OptionResult:
         return OptionResult(ticks, termination, exposure.finish(ticks))
 
+    def died() -> OptionResult:
+        """sim v1.3: a kill that running away and waiting put after the budget ends the option at the budget. The
+        death keeps the model's tick (its gravestone, the regeneration to it), as a processing path's did."""
+        at = max(exposure.died_at, 1)
+        return OptionResult(min(at, budget), DIED, exposure.finish(at))
+
     first, between = site_offsets(site, attempt_ticks)
     elapsed += first
     standing, regrowing = site.resources, []  # regrowing: ticks (from the option's start) when depleted ones return
@@ -85,7 +91,7 @@ def gather_depleting(state: CharacterState, rng: np.random.Generator, budget: in
                 return done(budget, COMPLETED)
             away = exposure.gather(elapsed, regrowing[0])
             if away is None:
-                return done(max(exposure.died_at, 1), DIED)
+                return died()
             elapsed = regrowing[0] + away
             if exposure.abandoned or elapsed > budget:
                 return done(min(elapsed, budget), COMPLETED)
@@ -95,7 +101,7 @@ def gather_depleting(state: CharacterState, rng: np.random.Generator, budget: in
             return done(budget, COMPLETED)
         away = exposure.gather(elapsed, elapsed + extra + attempts * attempt_ticks)
         if away is None:
-            return done(max(exposure.died_at, 1), DIED)
+            return died()
         elapsed += extra + attempts * attempt_ticks + away
         if exposure.abandoned or elapsed > budget:
             return done(min(elapsed, budget), COMPLETED)
