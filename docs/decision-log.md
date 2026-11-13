@@ -7855,3 +7855,21 @@ Raised and answered while drafting the reviewer's guide (OQ-50 (a)), `m002-revie
 - **So:**
   - sim v1.3 is sim v1.2 on these 1.4M decisions;
   - neither the scheduled task nor the copied interpreter changes a run.
+
+### OQ-81's RAM rule fired (2026-11-13, 17:39): the queue back to four jobs
+At Caleb's "Check on the runs." (17:38:10 CST), `m002-app-update`.
+- **The app:** it had restarted at 17:37:53, and the queue (under the scheduled task) carried on, as it should.
+- **The low:** free RAM was under 1 GB from at least 17:38:37 to 17:39:49 (887 to 948 MB). The causes: E3's (0, 1)
+  seed 2, started at 17:16 and still growing; and the restarted app, at 2.2 GB.
+- **The rule's action:** the queue relaunched with `--jobs 4` at 17:40:17 (PID 1188). All five runs carried on; the
+  next to finish isn't replaced.
+- **What happened next:** free RAM fell to 316 MB at 17:41:12. Then Windows trimmed the runs' working sets: 2.9 GB free
+  at 17:41:42, 7.9 GB by 17:43:42. Page reads ran at 2,000 to 4,000 a second for about 90 seconds as the memory
+  came back, then stopped. They were over 1,000 a second with free RAM under 2 GB in one 14-second sample only, so
+  the paging rule didn't fire. Speeds are unaffected.
+- **Since the restart:** 20 of the 50 runs are done. The five training are E3's seed 2 (334 decisions a second in
+  all).
+- **Restoring five, the options:** back to five now (recommended); five with a RAM watch until midnight; or stay at
+  four, about 10 hours later to finish. **Caleb (17:46:06 CST): back to five now.** The queue was relaunched with
+  `--jobs 5` at 17:46:21 (PID 21176), with 7.9 GB free. No slot is free until the next run ends (about 19:00), and no
+  watcher runs. The rule stands.

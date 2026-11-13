@@ -11,7 +11,8 @@
   1% and was dropped (Caleb), and nothing more is optimised. The task is deleted when the runs end.
 - Commit: this record, with the decision log's, CLAUDE.md's and ROADMAP's changes, committed directly to `main` after
   `1419837` (Caleb: "Commit it to main directly", 02:08:07 CST): `955b013`. The morning's determinism check, committed
-  the same way after `955b013` (07:40:05 CST).
+  the same way after `955b013` (07:40:05 CST): `75ba816`. The RAM rule's firing at 17:39 and the return to five,
+  committed the same way after `75ba816` (17:47:34 CST).
 
 ## Full Prompt
 
@@ -194,6 +195,16 @@ Answer in the question dialog (00:49:38 CST), what to do after the profile:
 
   By then 14 of the 50 runs were done. The queue had started E6a's γ0.9, E4's and E6b's seed 1 on its own, at 05:06,
   05:51 and 06:12.
+- **Done (Caleb: "Check on the runs.", 17:38:10 CST):**
+  - **The app:** it restarted at 17:37:53, and the queue carried on under the task.
+  - **The runs:** 20 of the 50 done (E6b, E6a γ0.9, E4 and E5 seed 1 finished at 10:57, 13:50, 15:43 and 17:15);
+    the five training are E3's seed 2.
+  - **OQ-81's RAM rule fired:** under 1 GB for over a minute from 17:38:37. The queue was relaunched at `--jobs 4`
+    (17:40:17, PID 1188); no run stopped.
+  - **Recovery:** free RAM fell to 316 MB, then recovered to 7.9 GB by 17:43:42 as Windows trimmed the runs; the
+    paging rule didn't fire (the decision log has the samples).
+  - **Five again:** in the question dialog (17:46:06 CST), Caleb chose "Back to five now (Recommended)". The queue was
+    relaunched with `--jobs 5` at 17:46:21 (PID 21176). No watcher runs.
 - **Caleb:**
   - whether to commit these docs;
   - deleting the task when the runs end, with the reminder to resume Windows Update.
