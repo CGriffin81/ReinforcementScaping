@@ -350,6 +350,10 @@ Windows Update is paused until the last test is done (Caleb). The restarted (0, 
 sim v1.2 stop, a Draynor fisher's kill after its option's budget. Sim v1.3 ends such an option at the budget and
 equals sim v1.2 wherever sim v1.2 completes, so nothing is retrained. The run trains again, and the runs not yet
 started train on sim v1.3 (`main` merged into the five worktrees, the queue relaunched at 22:42).
+
+*Restarted after a Claude app update (2026-11-13, Caleb, `m002-app-update`):* the app updated itself at 00:13 and
+killed the queue and its five runs (about 2.4 hours of the queue lost). They train again from the start, and the queue
+now runs from Task Scheduler, outside the app, from 00:23. With 11 of the 50 runs done, it ends around Nov 16.
 - [ ] **E3, the reward-weight sweep** (RQ1 to RQ3): (1,0), (.75,.25), (.5,.5), (.25,.75) and (0,1) in normalised
   units (OQ-67), 5 seeds each, 2M decisions a run (OQ-69), with E2's winner: λ 0.95, learning rate 3e-4, entropy 0.01.
 - [ ] **E4, PPO + RND** (RQ2, RQ4, H3): the RND wrapper, then PPO + RND at (.5,.5), 5 seeds, against E3's (.5,.5).

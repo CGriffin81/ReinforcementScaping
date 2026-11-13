@@ -16,7 +16,8 @@
   the RAM rule's firing and the determinism check: committed the same way after `491fbe0` (Caleb: "Commit it to main
   directly", 15:45:42 CST): `7fcbc3f`. The seed-0 learning check, in the PR of `docs/reviewer-guide` (Caleb: "Commit
   it and open a PR into main", 16:25:21 CST): `6e42ad4`, merged by PR #28. Back to five, committed directly to `main`
-  after `c05e716` (Caleb: "Commit it to main directly", 17:17:07 CST). The watch until midnight is still to come.
+  after `c05e716` (Caleb: "Commit it to main directly", 17:17:07 CST). E5's seed-0 learning check, committed directly
+  to `main` after `1419837` (Caleb: "Commit it to main directly", 02:08:07 CST, Nov 13).
 
 ## Full Prompt
 
@@ -49,6 +50,10 @@ Answer to the paging rule's firing (question dialog, 13:37:04 CST, the tool resu
 Answer to the RAM rule's firing (question dialog, 15:33:20 CST):
 
 > "Keep five, watch"
+
+Then (22:50:13 CST):
+
+> Run E5's seed-0 learning check
 
 ## Response Summary
 
@@ -194,6 +199,40 @@ Answer to the RAM rule's firing (question dialog, 15:33:20 CST):
   decisions); (.5, .5) stays under greedy GP/hr's 0.57, skilling (melee, woodcutting, fishing) while (.25, .75)
   and (0, 1) trade gems, as on sim v1.1 (`m002-wealth-neglect`). Under OQ-82's rule four are sudden and (.75,
   .25) gradual; under OQ-78's only (0, 1) is sudden. Nothing looks broken.
+- **Done, 22:53: E5's seed-0 learning check** (it finished at 22:43). It used the run's per-episode table
+  (`episodes.parquet`, 12,014 training episodes), not a published summary: free RAM was about 3.5 GB while two
+  runs that started at 22:45 grew, and publishing takes about 2 GB.
+  - **The method** (scratchpad `e5_seed0_check.py`):
+    - each episode keeps one weighting, so its skill share u comes back exactly from its reward and its two parts
+      (rebuilt to 6e-14);
+    - its value is reward over SKILL_UNIT, E3's check's measure, in units of E1's ideal point at its own u;
+    - episodes are binned to the nearest of E3's five weightings. The end bins are half as wide, with mean u 0.06
+      and 0.93, so the comparison with E3 at exactly 0 and 1 is approximate.
+  - **At the end** (the last 10% of training, 874 episodes):
+
+    | u (skill) | E5 | E3's seed 0 | best greedy |
+    |---|---|---|---|
+    | 0 | 0.80 | 2.17 | 0.95 |
+    | .25 | 0.76 | 1.69 | 0.78 |
+    | .5 | 0.72 | 0.55 | 0.57 |
+    | .75 | 0.72 | 0.76 | 0.36 |
+    | 1 | 0.75 | 0.96 | 0.35 |
+
+    The 95% intervals are ±0.01, and ±0.03 at u = 0.
+  - **It learns, suddenly.** Its value over every u held at 0.41 to 0.51 until 1.2M decisions, then rose to 0.73 by
+    1.6M as it found the gem trade.
+  - **One strategy for every u.** After the gem trade, the end episodes are worth over 1M gp at every weighting: 95% at
+    u = 0, 60% at u = 1. Its value across u is nearly flat (0.72 to 0.80). Net worth falls only from about 1.47M gp
+    at u = 0 to 1.06M at u = 1, and total level rises from 244 to 276 (straight-line fits over the end episodes).
+    At u near 1 its value fell, from 0.87 at 1.2M decisions to 0.75.
+  - **Against E3 and the baselines:**
+    - above E3's seed 0 at (.5, .5), which stays under greedy GP/hr (1.30 times);
+    - about level with it at (.75, .25);
+    - well short of the wealth-weighted specialists (0.37 and 0.45 of them) and short at (1, 0) (0.78);
+    - above the best greedy baseline from u = .5 up, about level at .25, and under greedy GP/hr's 0.95 at u = 0.
+
+    These are seed 0's training episodes, with sampled actions, as E3's check was. RQ3's answer comes from E5's
+    evaluation at its 13 weightings over its 5 seeds. Nothing looks broken.
 - **Done:** the determinism check on E3's other three restarted runs (the decision log, "Found: E3's other three
   restarted runs repeat their killed runs byte for byte").
 - **Later, not now:** the env workers needn't load torch's CUDA DLLs (about 2 GB of commit each, 40 GB across 20

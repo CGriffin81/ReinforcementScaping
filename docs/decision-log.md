@@ -7780,3 +7780,63 @@ Raised and answered while drafting the reviewer's guide (OQ-50 (a)), `m002-revie
     `runs/e3-reward-weight-sweep-hung-partial/` (E3's worktree).
   - The queue was relaunched with `--jobs 5 --restart-partial` at 22:42:36 (PID 21780).
   - Nothing else is retrained: 8 runs done and 4 training, on sim v1.2.
+
+### Found and decided: a Claude app update killed the queue, which now runs from Task Scheduler (Caleb, 2026-11-13)
+2026-11-13, Caleb: "Check on the runs." (00:14:27 CST). In the question dialog (00:18:55 CST): "From the start
+(Recommended)" and "Task Scheduler (Recommended)". `m002-app-update`.
+- **Found:** the Claude desktop app updated itself at 00:13. Windows installed its new package at 00:13:25 and the app
+  restarted at 00:13:26.
+  - The queue (PID 21780) and its five runs had been started from a Claude session's shell, so they were in the app's
+    process tree. They stopped between 00:13:06 and 00:13:22, with no error in any log.
+  - **Lost:** about 2.35M decisions (12 run-hours, about 2.4 hours of the queue at five jobs): E3's (.75, .25)
+    seed 1 at about 1.5M; its (.25, .75) at 0.3M; its (.5, .5) and (0, 1) at 0.2M each; E6a's γ0.5 seed 1 under
+    0.1M.
+  - The 11 finished runs are unharmed. The app has no auto-update setting.
+- **The restart, the options:** from the start, with the partial runs kept aside (recommended); or from their
+  checkpoints, which needs new code, and a resumed run isn't reproducible from its seed. **Caleb: from the start.**
+  The partial runs are in `runs/e3-reward-weight-sweep-appupdate-partial/` (E3's worktree) and
+  `runs/e6a-discount-sweep-appupdate-partial/` (E6a's).
+- **Where the queue runs, the options:** a one-time scheduled task, outside the app (recommended); Caleb's own
+  PowerShell window; or this session, as before, which the next update kills again. **Caleb: Task Scheduler.**
+- **Built:** the task "ReinforcementScaping train queue" runs `runs/launch-train-queue.cmd <jobs>` (the main
+  checkout's `runs/`, git-ignored) under `conhost --headless`.
+  - It runs while Caleb is logged on, so the GPU works as before.
+  - Its priority is normal, where the scheduler's default is below normal, and it has no time limit, where the default
+    stops a task after 72 hours.
+  - It has no trigger, so it runs only when started.
+- **Found on the first launch:** outside the app no venv had an interpreter.
+  - The app is an MSIX package, so uv's Python 3.12.14, installed from inside it on 2026-10-05, lives in the
+    package's private AppData. Outside the app, the path each venv's `pyvenv.cfg` names was empty.
+  - The launcher copies that Python to the path from outside the app (writes from inside the app land in the private
+    copy): 3,415 files, byte-identical (the SHA-256 of `python.exe` and `python312.dll` match, `runs/python-copy.log`).
+  - It runs the -int venv's Python directly, which is what `uv run` ran.
+- **Relaunched at 00:23 with `--jobs 3`.** The queue's processes sit under Task Scheduler, none under the app.
+  - At 00:27:21 it started E3's (.75, .25), (.5, .5) and (.25, .75) seed 1 (`ba9d8ec`, on the GPU, deterministic,
+    clean).
+  - Five young runs at once would want more RAM than the machine has (6 to 7 GB each as they start), so the queue goes
+    to five jobs once these have settled.
+- **Relaunching it** (the RAM rule, or more jobs): stop the queue's Python by PID, and the runs carry on (tested with a
+  throwaway task: a task's child outlives its cmd). The old instance stays "Running" as the runs' parent, so the task
+  allows parallel instances before it's started again.
+- **Caleb (00:41): three jobs until the runs' optimisation is settled** ("Keep the runs to three jobs until we figure out
+  how to optimize the runs."). At three, the queue makes about 203 decisions a second against about 320 at five.
+- **The profile** (Caleb: "Run the profile"; `m002-app-update`):
+  - **Where a training decision's time goes:** the environment's action mask, at 86 to 91%. Most of it is re-ranking
+    every skilling and combat slot (and the routes they need) at every decision. A skilling model spends 28% in the
+    aggression model's practice runs.
+  - **What doesn't matter:** the option's own run (4 to 7%), the policy (2 to 14%), PPO's update (under 1%) and the
+    decision log. Compiling the trainer or using the GPU more would gain nothing.
+- **After the profile, the options:**
+  - five jobs and a byte-identical cache for the share's sessions without aggressors (recommended);
+  - that and torch-free env workers, for a sixth job;
+  - five jobs and no code change;
+  - three jobs while building.
+
+  **Caleb: five jobs and the cache.**
+  - **Five jobs again:** staggered, four from 00:50 and five from 01:27.
+  - **The cache:** exact (0 of 40 E1 episodes differ from `main`), but it saves almost nothing. The share's session
+    runs fell only from 522 to 517 on the (.5, .5) model's episodes, because a share's key rarely recurs with only
+    the tolerance left different.
+  - **Then the options:** drop the cache and stop (recommended); drop it and try torch-free env workers for a sixth
+    job; or keep it. **Caleb: drop it and stop.** The cache was reverted, uncommitted, and the runs stay at five jobs
+    with no more optimisation.

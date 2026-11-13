@@ -186,6 +186,11 @@ work.
   ...` trains each run in its own experiment's worktree (its own `train.py`, venv and provenance), seed 0 of every
   experiment first. `--jobs` counts every training run on the machine, so it fills another launcher's slots as they
   free. `--dry-run` shows each run's state (waiting, training, partial, done), and is safe while a queue trains.
+  **Start long jobs outside the Claude app** (Caleb, 2026-11-13): an app update kills every process started from a
+  session, as it killed the queue and five runs at 00:13 that night. The queue runs from the scheduled task
+  "ReinforcementScaping train queue" (`runs/launch-train-queue.cmd <jobs>`, which calls the -int venv's Python). The
+  app is an MSIX package, so what uv installs from inside it lands in the package's private AppData; uv's Python
+  3.12.14 was copied out to its real path for this.
 - More servers at once (Caleb, 2026-11-06): `uv run python
   scripts/server_instances.py 2 3` writes `results/servers/rl-<n>.conf`
   (world n, bridge port 43610 + n - 1, its own GE under
