@@ -7840,3 +7840,18 @@ Raised and answered while drafting the reviewer's guide (OQ-50 (a)), `m002-revie
   - **Then the options:** drop the cache and stop (recommended); drop it and try torch-free env workers for a sixth
     job; or keep it. **Caleb: drop it and stop.** The cache was reverted, uncommitted, and the runs stay at five jobs
     with no more optimisation.
+
+### Found: E3's (.75, .25) seed 1, restarted on sim v1.3 from Task Scheduler, repeats its killed run (2026-11-13)
+`m002-app-update`, at Caleb's "Check on the runs." (07:23:52 CST). The killed run is
+`runs/e3-reward-weight-sweep-appupdate-partial/normalised_weights0.75-0.25/seed1` in E3's worktree.
+- **The two runs:**
+  - the killed one trained on `b29de68` (sim v1.2), started inside the Claude app through `uv run`;
+  - the restart is on `ba9d8ec` (sim v1.3), from the scheduled task, with uv's Python copied out of the app's package.
+- **Compared** (`determinism_check.py`, `ckpt_data_diff2.py`, as for the reboot's):
+  - **The decision log:** 28 of 28 shared parts byte-identical (1,400,000 rows; the restart hadn't written the last
+    two yet).
+  - **The checkpoints:** 14 of 14 shared, 5 of each zip's 6 members identical. The sixth (`data`) differs only in the
+    episodes' wall-clock `t` and the memory addresses in its reprs.
+- **So:**
+  - sim v1.3 is sim v1.2 on these 1.4M decisions;
+  - neither the scheduled task nor the copied interpreter changes a run.

@@ -10,7 +10,8 @@
   training again from the start. The speed-up question is settled: profiled, the one exact cache tried saved about
   1% and was dropped (Caleb), and nothing more is optimised. The task is deleted when the runs end.
 - Commit: this record, with the decision log's, CLAUDE.md's and ROADMAP's changes, committed directly to `main` after
-  `1419837` (Caleb: "Commit it to main directly", 02:08:07 CST).
+  `1419837` (Caleb: "Commit it to main directly", 02:08:07 CST): `955b013`. The morning's determinism check, committed
+  the same way after `955b013` (07:40:05 CST).
 
 ## Full Prompt
 
@@ -184,8 +185,15 @@ Answer in the question dialog (00:49:38 CST), what to do after the profile:
 ## Follow-Up
 
 - **Done:** five jobs (01:27); the launcher's log line fixed.
-- **Claude:** check E3's (.75, .25) seed 1 against its 1.5M-decision partial, byte for byte, as the reboot's were, once
-  the restart passes 1.5M (about 08:00).
+- **Done (Caleb: "Check on the runs.", 07:23:52 CST):** E3's (.75, .25) seed 1 against its killed run, byte for byte
+  (the decision log, "Found: E3's (.75, .25) seed 1, restarted on sim v1.3 from Task Scheduler, repeats its killed
+  run"):
+  - 28 of 28 shared decision-log parts identical, 1.4M decisions;
+  - the checkpoints identical but for wall-clock times and memory addresses;
+  - the killed run on sim v1.2 inside the app, the restart on sim v1.3 from the task.
+
+  By then 14 of the 50 runs were done. The queue had started E6a's γ0.9, E4's and E6b's seed 1 on its own, at 05:06,
+  05:51 and 06:12.
 - **Caleb:**
   - whether to commit these docs;
   - deleting the task when the runs end, with the reminder to resume Windows Update.
