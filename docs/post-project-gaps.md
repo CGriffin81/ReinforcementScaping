@@ -172,3 +172,31 @@ three things:
 - Add a new env contract version (§8's row for the Abyss's crowd), confirmed by Caleb.
 - The decision log's OQ-49 (a) entry has the fit and the held-out runs
   (`results/calibration/abyss-fight-check-cases.json`).
+
+## Trips through the Al Kharid toll gate may be too fast in the sim (OQ-86 (b), 2026-11-12)
+
+**What's missing.** The cause of one travel check trip's miss, found by the sim-to-real table. "Varrock east bank to
+Al Kharid, paying the toll" took the server 88 ticks on Nov 1 (the sim 84: 0.95) and 200 on Nov 6 (0.42). After the
+home teleport, the server's walk from Lumbridge took 178 ticks, against 66 before, and the same at 600 ms ticks. The
+sim takes the same route both days: the home teleport, then the toll gate. Between the two runs every quest became
+complete at spawn (2026-11-06), which gives free passage at the gate (Prince Ali Rescue). Whether the server's walker
+then went round the gate, or the gate took longer to pass, wasn't looked into. Travel's other 48 gated trips include
+one more miss, the way out of the Abyss from its north (1.21), which the decision log explains.
+
+**Why.** Caleb chose (b) for OQ-86: report it as a known gap without investigating. The sim is frozen (sim-v1.2), so a
+fix couldn't reach the experiments, and investigating needs a server beside the training runs.
+
+**What it costs.**
+- **Time on such trips:** if the server's 200 ticks are what a person's trip takes, the sim takes about 0.4 of it for
+  a walk through the gate into or out of Al Kharid (its bank, furnace and mine): on this trip, 116 ticks (about 70
+  seconds) less.
+- **How much it matters isn't measured:** the policies' decision logs can bound it, by the game time on options whose
+  trips cross the gate.
+- **The gate:** the trip is reported as a residual gap, as the gate's rule has it (ROADMAP week 3: "residual gaps
+  are reported").
+
+**How to close it.**
+- Run the trip on the server both ways, 3 runs, with the bridge's state each tick, to see the walker's path and the
+  gate (about an hour).
+- If the gate's free passage takes longer, or the walker goes round it, fit the gate's time or fix the walker in a
+  new sim version, and rerun travel's check set (`scripts/validate_travel.py --set check`).

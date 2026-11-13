@@ -102,11 +102,56 @@ def sim_character(levels: dict[str, int]) -> CharacterState:
     return state
 
 
+# The sim's side of each measurement, from what the server run recorded (scripts/sim_to_real.py calls these on saved
+# runs, with the sim as it is then).
+
+def pass_levels(kind: str, level: int) -> dict[str, int]:
+    """A --pass or --fails character's levels: the trip's, and the obstacle's skill at the run's level."""
+    skill = KINDS[kind][2]
+    return dict(TRIP_LEVELS, **({skill: level} if skill else {}))
+
+
+def sim_outer_ticks(kind: str, steps: float) -> float:
+    """The outer ring: the walk to beside the obstacle, timed as walks are, and the obstacle's pass."""
+    return walk_ticks(steps) + (PASSAGE_TICKS if kind == "passage" else PASS_TICKS)
+
+
+def sim_rift_ticks(steps: float) -> float:
+    """From an inner-ring landing through a rift: the walk to beside it, and the exit."""
+    return walk_ticks(steps) + RIFT_TICKS
+
+
+def altar_ticks(rune: str) -> float:
+    """From the rift's landing: the walk to the altar and the craft."""
+    to_altar = RIFT_INSIDE[rune] if rune in RIFT_INSIDE else INSIDE[rune][0]
+    return to_altar[0] / RUN_TILES + CRAFT_TICKS
+
+
+def trip_character(rune: str) -> CharacterState:
+    """A --trips character in the sim: the trip's levels, the rune pickaxe worn (but on law's trip)."""
+    sim = sim_character(dict(TRIP_LEVELS, **TRIP_SKILLS))
+    if rune != "law":  # the law rift asks Entrana's rule: no weapons (abyss_rc_law banks its arms)
+        sim.equipment[WEAPON] = RUNE_PICKAXE
+    return sim
+
+
+def sim_trip_ticks(rune: str, kind: str, tries: int, steps: float, inner_steps: float) -> float:
+    """A whole crossing as the server's went (its walks and its tries), timed by the sim's constants."""
+    passing = PASSAGE_TICKS if kind == "passage" else PASS_TICKS + (tries - 1) * FAIL_TICKS
+    return (TELEPORT_TICKS + 4 / 2 + walk_ticks(steps) + passing + walk_ticks(inner_steps) + RIFT_TICKS
+            + altar_ticks(rune))
+
+
+def sim_trip_expected(rune: str, segment: int) -> float:
+    """The sim's expectation for a crossing from the landing's segment (Crossing.expected), as abyss_rc_<rune> has it."""
+    return TELEPORT_TICKS + 4 / 2 + best_crossing(trip_character(rune), segment, rune).expected + altar_ticks(rune)
+
+
 def pass_run(c: BridgeClient, world: Map, kind: str, level: int, max_tries: int = 40,
              budget: int = 600) -> dict[str, Any]:
     name, option, skill = KINDS[kind]
     data = json.loads((rcd.ABYSS / "abyss.json").read_text(encoding="utf-8"))
-    levels = dict(TRIP_LEVELS, **({skill: level} if skill else {}))
+    levels = pass_levels(kind, level)
     uid = spawn_trip(c, levels, [(TOOLS[kind], 1)] if kind in TOOLS else [])
     try:
         c.debug_teleport(uid, *START)
@@ -136,7 +181,7 @@ def pass_run(c: BridgeClient, world: Map, kind: str, level: int, max_tries: int 
                 c.interact(uid, name, option, ids=[chosen], radius=30)
                 clicks.append(t)
                 tries += 1
-        sim_outer = walk_ticks(steps) + (PASSAGE_TICKS if kind == "passage" else PASS_TICKS)
+        sim_outer = sim_outer_ticks(kind, steps)
         return {"kind": kind, "level": level, "teleport": t1 - t0, "landing": landing, "place": here,
                 "chosen": chosen, "tries": tries, "passed": arrived is not None,
                 "outer": (arrived - start) if arrived else None, "sim_outer": round(sim_outer, 2),
@@ -160,7 +205,7 @@ def rift_run(c: BridgeClient, world: Map, start: tuple[int, int], rune: str, bud
             t, s = tick(c, uid)
             if not in_abyss(s):
                 return {"rune": rune, "start": start, "ticks": t - t0, "to": s["location"], "steps": steps,
-                        "sim": round(walk_ticks(steps) + RIFT_TICKS, 2)}
+                        "sim": round(sim_rift_ticks(steps), 2)}
         return {"rune": rune, "start": start, "error": "no exit"}
     finally:
         c.despawn(uid)
@@ -296,10 +341,9 @@ def trip_run(c: BridgeClient, world: Map, rune: str, budget: int = 600) -> dict[
     armed = rune != "law"  # the law rift asks Entrana's rule: no weapons (abyss_rc_law banks its arms)
     uid = spawn_trip(c, levels, [(RUNE_PICKAXE, 1)] * armed + [(rcd.PURE_ESSENCE, 27)])
     try:
-        sim = sim_character(levels)
+        sim = trip_character(rune)
         if armed:
             c.item_option(uid, RUNE_PICKAXE, "Wield")
-            sim.equipment[WEAPON] = RUNE_PICKAXE
         c.debug_teleport(uid, *START)
         c.wait(3)
         t0, t1, s = teleport(c, uid)
@@ -343,12 +387,8 @@ def trip_run(c: BridgeClient, world: Map, rune: str, budget: int = 600) -> dict[
                 break
         if end is None:
             return {"rune": rune, "error": "no runes"}
-        to_altar = RIFT_INSIDE[rune] if rune in RIFT_INSIDE else INSIDE[rune][0]
-        inside = to_altar[0] / RUN_TILES + CRAFT_TICKS
-        passing = PASSAGE_TICKS if kind == "passage" else PASS_TICKS + (tries - 1) * FAIL_TICKS
-        sim_trip = (TELEPORT_TICKS + 4 / 2 + walk_ticks(steps) + passing + walk_ticks(inner_steps) + RIFT_TICKS
-                    + inside)
-        expected = TELEPORT_TICKS + 4 / 2 + crossing.expected + inside
+        sim_trip = sim_trip_ticks(rune, kind, tries, steps, inner_steps)
+        expected = TELEPORT_TICKS + 4 / 2 + crossing.expected + altar_ticks(rune)  # sim_trip_expected(rune, v)
         return {"rune": rune, "segment": v, "kind": kind, "tries": tries, "server": (t1 - t0) + (end - start),
                 "sim": round(sim_trip, 2), "sim_expected": round(expected, 2), "steps": steps,
                 "inner_steps": inner_steps, "hp_lost": 99 - s["hitpoints"]}

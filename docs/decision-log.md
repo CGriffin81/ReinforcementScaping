@@ -7362,7 +7362,7 @@ Asked together after Caleb's question "Why don't any of the runs do anything wit
 
 ### Decided: OQ-80, E3 to E6 train on the GPU, deterministically (Caleb, 2026-11-11: (a))
 - **The question** (Caleb: "Why are the experiments not running on GPU?"; `m002-gpu`): Caleb chose CUDA torch on
-  2026-11-08, but Claude had set every training config to `device: cpu` on 2026-11-09 without putting it to him.
+  2026-11-08, but Claude had set every training config to `device: cpu` on 2026-11-09 without putting it to Caleb.
 - **Measured:** the PPO update of one rollout (1,024 decisions at E3's settings) takes 1.12 s on the CPU and 0.11 s on
   the RTX 3050, against about 20 s for the rollout's simulation. Two GPU runs of the same config and seed were
   identical (actions and weights), with and without torch's deterministic algorithms.
@@ -7378,3 +7378,394 @@ Asked together after Caleb's question "Why don't any of the runs do anything wit
     they were; the evaluation loads models on the CPU, as before.
   - **The restart:** the queue and E3's four seed-0 runs (on the CPU since 18:01) were stopped at 18:54. Those runs
     are kept aside (`runs/e3-reward-weight-sweep-cpu-partial` in E3's worktree), and all 50 runs train on the GPU.
+
+### Built: the figure script, the report's figures from the committed summaries (tooling, 2026-11-11)
+- **Why:** ROADMAP's analysis needs every figure and table rebuilt by one script from `results/summary/`, and OQ-76
+  to OQ-78 defined discovery, the hypervolume and sudden-or-gradual (Caleb: "Yes, start the figure script";
+  `m002-figures`).
+- **Built** (`rlscape/analysis/`, `scripts/figures.py`; matplotlib and ruptures added):
+  - **Activities** (`activities.py`, OQ-76): an option's activity from its catalog id. That's the 9 gathering skills,
+    melee, ranged and magic, smithing, cooking, firemaking, prayer, selling, buying, alchemy and banking (20), and
+    `other` (dropping an item, taking the knife, the gravestone, the loot settings). A skill slot counts for its skill
+    whatever fills it, so chop-and-fletch is woodcutting, as chop-and-burn is.
+  - **The measures** (`measures.py`):
+    - **Learning curves** (OQ-78): the mean episode reward per 20,000 decisions, over SKILL_UNIT, so 1 is what E1's
+      ideal point scores at the run's own weighting. A run's last bin is dropped when the run ended less than
+      half-way into it.
+    - **Changepoints** (OQ-78 (a)): PELT, a mean shift's cost, a BIC penalty 2σ²·ln n (σ from the first
+      differences' MAD), segments of 2 bins at least. Each run is sudden, gradual or "no gain".
+    - **Time allocation:** each training bin's game-time share per activity, and each evaluation episode's, from its
+      trace.
+    - **Discovery** (OQ-76 (a)): an activity's first 100,000-decision bin with at least 5% of game time.
+    - **The front** (OQ-77 (a)): gains in normalised units, the hypervolume above (0, 0) per training seed, and the
+      mean with a bootstrap CI over the seeds.
+    - **RQ1's progress:** a trained variant's mean at each checkpoint with its CI over training seeds, and a
+      baseline's over the evaluation seeds.
+  - **The figures** (`figures.py`, the dataviz method's palette, each color set checked with its validator):
+    - `learning_e3` and `learning_rq4`: curves with CIs, changepoint ticks, sudden triangles, the verdicts counted, and
+      E1's best baseline at the weighting as a reference line;
+    - `progress`: total level and net worth;
+    - `time_e3` and `time_rq4`: stacked areas, the 7 largest activities and "other";
+    - `mix`: each policy's activity mix in evaluation;
+    - `discovery`: E3 (.5, .5) against PPO + RND;
+    - `pareto`: E3's and E5's fronts as attainment staircases, with their hypervolumes and E1's baselines;
+    - `entropy`.
+    Each figure is written as PDF and PNG, with its values as CSV. Changepoints, verdicts, discovery and hypervolumes
+    are written as their own tables.
+  - **The script** builds what the published summaries allow and names what it skipped.
+- **Tried** on E3's seed-0 runs part-way (750k to 1.15M decisions, read-only from their decision logs) and on their
+  700k checkpoints evaluated on 3 seeds (scratch files, not published):
+  - (.25, .75) jumps from 0.27 to 1.43 of E1's ideal between 580k and 660k decisions. It takes up crafting at 300k,
+    then buying, selling and banking at 700k: the gem trade, worth 3.3M gp in 20 hours against greedy GP/hr's 1.7M.
+  - (1, 0) and (.5, .5) level off at 0.80 and 0.42, under the guide (1.0) and greedy GP/hr (0.55).
+- **Tests** (`tests/test_analysis.py`, 11 at first, 20 with OQ-82 to OQ-85's measures below):
+  - every catalog option has its family's activity, and every activity has options;
+  - the hypervolume on known geometry, per training seed;
+  - learning-curve bins;
+  - a step is sudden, a ramp gradual, a flat or falling curve "no gain";
+  - time shares and discovery from a real tiny run;
+  - evaluation shares from real traces;
+  - the script end to end on a real tiny E3-style run's published summaries beside E1's: it makes the six figures
+    those allow.
+- **Raised:** OQ-82 (the sudden rule misreads the runs seen so far), OQ-83 (milestones), OQ-84 (sample efficiency)
+  and OQ-85 (consistency across seeds).
+
+### Decided: OQ-82 to OQ-85, the analysis's last definitions (Caleb, 2026-11-11: each (a) or (c) as recommended)
+Asked together after building the figure script (`m002-figures`), with E3's seed-0 runs seen part-way.
+
+- **OQ-82, the sudden-or-gradual rule** (RQ2; revises OQ-78 (a)). OQ-78's rule misread both kinds of run seen so far:
+  - (.25, .75)'s gem trade, 85% of its gain within 80k decisions, was split by PELT into two changepoints of 40% and
+    39%, so it was called "gradual".
+  - (1, 0) and (.5, .5) were called "sudden" for their rise from the random start in the first 40k to 100k
+    decisions.
+
+  Options:
+  - (a) keep OQ-78 (a);
+  - (b) merge rising changepoints within 100,000 decisions into one jump;
+  - (c) (b), with the jump looked for after a 100,000-decision warm-up and the initial rise reported apart; the
+    report says the rule was revised after seeing partial runs, and shows both verdicts (recommended).
+
+  **Caleb: (c).** Built in `rlscape/analysis/measures.py` (`revised_verdict`; `decided_verdict` keeps (a)), and
+  `verdicts.csv` has each run's verdict under both rules.
+  - **Added by Claude, confirmed by Caleb** ("Both choices are fine"): a gain after the warm-up of no more than 2σ (the curve's noise per bin) is "no
+    gain". Without that floor, (1, 0)'s flat curve, which wiggles up by 0.015 and back down for a net gain of 0.0009,
+    is "sudden".
+  - **With it,** on E3's partial runs: (.25, .75) is sudden (its merged rise 87% of its gain; gradual under (a));
+    (.5, .5) and (1, 0) have no gain after the warm-up (initial rises 0.06 and 0.13; sudden under (a)).
+  - **E2's eight runs** (v1.1): 3 sudden and 5 gradual under (c), all 8 gradual under (a).
+- **OQ-83, the milestones.** Options:
+  - (a) 50% and 100% of E1's ideal point on each objective, the median game hours to each with the share of
+    episodes that get there, censored at 20 hours (recommended);
+  - (b) 100% only;
+  - (c) round targets.
+
+  **Caleb: (a).** One change from the question's numbers, Claude's, confirmed by Caleb: the evaluation trace has whole
+  levels, and in whole levels the guide gains 316.03 in 20 hours (E1), not SKILL_UNIT's 323.87 (which counts progress
+  within levels). So the level milestones are 158 and 316 levels gained, not 162 and 324, keeping "100%" as matching
+  the guide's 20 hours (at 324 the guide itself would miss it). The wealth milestones are as asked: 881,932 and
+  1,763,863 gp gained (net worth is exact). Built: `milestones`, `milestone_summary`; `milestones.csv` and
+  `milestones_summary.csv`.
+- **OQ-84, sample efficiency.** Options:
+  - (a) the first 20,000-decision bin from which the curve stays at or above the best greedy baseline's value at the
+    run's weighting for 100,000 decisions (recommended);
+  - (b) the same against all four baselines;
+  - (c) the first bin reaching it.
+
+  **Caleb: (a).** Built: `sample_efficiency`, and `sample_efficiency.csv` per run. "Stays" means for 5 bins, or to the
+  run's end if fewer remain. E5's runs have no single weighting, so it has none.
+- **OQ-85, consistency across seeds.** Options:
+  - (a) the mean pairwise Jensen–Shannon divergence (bits) between a variant's seeds' activity mixes in evaluation,
+    with a bootstrap CI (recommended);
+  - (b) Kendall's τ between discovery orders;
+  - (c) no number.
+
+  **Caleb: (a).** Built: `js_divergence`, `consistency` (the CI is over the seed pairs), and `consistency.csv`.
+- **Tests** for these (9 more in `tests/test_analysis.py`):
+  - both rules on a step, a ramp, flat noise and a fall;
+  - a jump split over adjacent bins (one rise under (c), gradual under (a));
+  - the initial rise (warm-up under (c), sudden under (a));
+  - a flat run's wiggle (no gain);
+  - how rises group;
+  - changepoints placed at their decisions;
+  - sample efficiency's first sustained bin;
+  - the Jensen–Shannon divergence's bounds, a known value, and consistency's mean over seed pairs;
+  - the level milestone checked against E1's committed checkpoints, and a milestone's hour.
+
+  The end-to-end test checks the new tables. The full suite, run on one worker before these were added: 483 passed,
+  75 skipped, 1 failed. The failure is `test_replay`'s E2 replay: E2's v1.1 model has 3,482 features and sim v1.2
+  has 3,488. It's left from the v1.2 change and only runs where E2's model is (the main checkout). It's flagged as a
+  task of its own.
+
+### Found: GPU training is deterministic over 1M decisions (2026-11-12, OQ-80's check at scale)
+- **The chance:** Windows Update restarted the machine at 02:29 CST and killed E3's four seed-0 runs
+  (`m002-queue-reboot`). The queue started them again from the start, with the same commit (`b29de68`), config and
+  seed. The killed runs were kept aside (`runs/e3-reward-weight-sweep-reboot-partial` in E3's worktree).
+- **Checked on (0, 1)** (Caleb), whose restart passed the killed run's 1.0M decisions by 08:40:
+  - **the decision log:** all 20 parts (1,000,000 rows: observations, masks, actions, action probabilities, values,
+    reward parts, durations, character state) are byte-identical;
+  - **the 10 checkpoints** (100,000 to 1.0M decisions): the weights, the optimizer state, the version and the system
+    info are identical. In `data`, only the wall clock and the process differ: the start time, the episode buffer's
+    wall-clock field `t` (its lengths and returns are equal) and the memory addresses in the class records.
+- **So** a GPU run in deterministic mode is reproducible from its config and seed alone over 1M decisions, as
+  OQ-80's test showed on a small run. The other three killed runs (1.6M to 1.7M decisions) can be checked the same way
+  once their restarts pass them.
+
+### Decided: Windows Update paused until the last test is done (Caleb, 2026-11-12)
+- **Why:** its restart at 02:29 on Nov 12 killed the queue and cost about 6 hours of training (`m002-queue-reboot`).
+- **Caleb:** "Pause Windows Update until we are done with all of our tests. Put a requirement post-testing to turn
+  Windows Update back on." Caleb pauses it (it's a system setting); ROADMAP's plan has turning it back on as a step
+  after the last test.
+
+### Decided: OQ-81, the queue trains five runs at once, on trial (Caleb, 2026-11-12: (a))
+- **The question** (raised 2026-11-11 in Caleb's "Can we run more simultaneous seeds on the gpu?", `m002-gpu-capacity`;
+  deferred until the groundwork was done): should the queue train five runs at once instead of four?
+- **Found on 2026-11-11:**
+  - the GPU isn't the limit (18% busy, 2.4 of 8 GB); RAM is: a run uses 3.7 to 3.9 GB between its decision-log
+    writes and 4.8 to 5.3 GB during one;
+  - with 6.5 to 8.8 GB free, a fifth run would have left about 1.2 GB at the worst moment;
+  - running short would slow the runs, not crash them (Windows pages; the pagefile is system-managed);
+  - the gain was unmeasured: an estimated 10 to 20% more decisions a second.
+- **Options:** (a) a monitored trial at `--jobs 5`: restart only the queue, check an hour later (available RAM never
+  below about 1 GB, no sustained paging, more decisions a second in all), back to `--jobs 4` if a check fails
+  (recommended); (b) stay at four.
+- **Reopened** (Caleb, 2026-11-12: "Is there anything else to work on while the tests run, or can we switch to five
+  active jobs now?"). Claude reported 10.9 GB free with four runs training, so a fifth leaving about 4 to 5 GB at the
+  worst moment. The CPU was at 57% and the GPU at 39%. The runs are deterministic (the check above), so how many
+  train at once changes their speed, not their results.
+  - **Corrected after the decision:** the 10.9 GB was measured at 09:01, 25 seconds after E6a's γ_hr 0.5 seed 0
+    started, before that run had grown. It overstated the headroom by about one run. So the margin is about what
+    OQ-81 estimated on Nov 11 (about 1 GB at the worst moment), and the trial's checks are what decide.
+- **Caleb: (a).** At 09:12 CST the queue was stopped (its three processes; its four runs kept training) and started
+  again with `--jobs 5` (PID 5420, log `runs/train-queue.log`; the previous log is `train-queue-gpu-part2.log`).
+  - **The baseline,** four runs at once: E3's (1, 0), (.75, .25) and (.5, .5) seed 0 made 60.0, 61.8 and 62.9
+    decisions a second (08:30 to 09:11), and E6a's γ_hr 0.5 seed 0 67.2 in its first 9 minutes.
+  - **The check** compares those runs' rates with five at once: five runs gain if each keeps more than 80% of its
+    speed.
+  - **After an hour (09:20 to 10:20 CST),** with E6a's γ_hr 0.9 seed 0 the fifth run from 09:14:
+    - **Speed:** E3's three runs made 59.5, 62.1 and 62.4 decisions a second (99 to 101% of their speed), E6a's
+      γ_hr 0.5 72.1 (more than in its first minutes), and the new run 64.6. In all, 320.7 decisions a second against
+      251.9 with four (27% more). The CPU averaged 67%.
+    - **Paging:** the pagefile's use stayed at 3.3 to 3.6%; hard page reads averaged 50 a second, with spikes of 1,400
+      to 2,500 that lasted a sample or two.
+    - **Available RAM:** 3.3 GB on average. It fell below 1.5 GB in 2 of 779 samples (every 5 seconds): 808 MB at
+      10:14:00 and 1.2 GB at 10:14:05, then 2.4 GB at 10:14:10. Its 10-minute averages fell through the hour: 4.4,
+      3.4, 3.5, 3.3, 3.0 and 2.6 GB. E6a's two runs hold about 7 GB each against E3's 3.6 to 4.0 GB.
+    - **Commit charge** (found at 10:25): 82.3 of 86.0 GB, 96% of the current limit. The training processes commit
+      73 GB and use 25 GB. Each env worker loads torch's CUDA libraries (3.1 GB of DLLs, unused there) and commits
+      about 2.4 GB for 0.6 to 1 GB in use. The pagefile is system-managed (54 GB now, C: 220 GB free), so Windows
+      grows it as the charge rises. There were no low-virtual-memory events (2004) in the last three days.
+    - **So** the speed and paging checks pass; the RAM check fails as written, on one 5-second sample.
+- **Caleb (10:26 CST): keep five, with the RAM check on sustained lows** (Claude's recommendation; the other option
+  was back to four, the check as written). Back to `--jobs 4` if available RAM stays under 1 GB for more than a
+  minute, hard page reads stay above 1,000 a second for a minute, or a run falls below 80% of its speed. Checked
+  again once E4's, E6b's and E5's seed 0 have started (E3's three seed-0 runs end at about 13:48 to 14:18), with a
+  sampler until 15:30. At five the queue finishes about a day sooner: about Nov 15 in the evening, not Nov 16 in the
+  afternoon.
+- **The paging rule fired at 13:11:56** (the watcher): hard page reads over 1,000 a second from 13:10:50 to 13:11:51.
+  Free RAM was 6 to 7 GB throughout and the pagefile's use stayed at 4.0%; the runs didn't slow (E3's three at 56 to
+  66 decisions a second over 13:09 to 13:14, against 60 to 68 before). The bursts that day lined up with Claude's own
+  large file reads (the session's transcript, git, TensorBoard's logs), which Windows counts as page reads too.
+  - **As the rule has it,** the queue went back to `--jobs 4` at 13:13 (its three processes stopped, its five runs
+    kept training; PID 3588; the log `train-queue-gpu-part3.log`). No run stopped.
+  - **Caleb (13:37 CST): restore five, the paging rule gated on RAM** (Claude's recommendation; the other option was
+    to stay at four). Paging counts only while free RAM is also under 2 GB; the RAM and speed rules are unchanged. The
+    queue relaunched with `--jobs 5` at 13:37:38 (PID 8728; `train-queue-gpu-part4.log` the four-slot queue's log),
+    before the first slot opened, so no run waited.
+- **The RAM rule fired at 14:26:56:** free RAM under 1 GB for 25 samples (14:25:52 to about 14:30, at its lowest
+  179 MB), the training processes' working sets 28.4 GB against about 20 before. Four runs had started within 40
+  minutes (E4's seed 0 at 13:45, E6b's at 14:03, E5's at 14:18, E3's (1, 0) seed 1 at 14:24) as E3's seed-0 runs and
+  E6a's γ_hr 0.9 ended, and a young run holds 6 to 7 GB until Windows trims it.
+  - **As the rule has it,** the queue went back to `--jobs 4` at 14:27:49 (PID 20648; the log
+    `train-queue-gpu-part5.log`). That bites only when a run ends: five kept training.
+  - **The question** (Claude's): stop the youngest run, E3's (1, 0) seed 1 (about 4,000 decisions; restarted from
+    scratch when a slot opens, deterministic, about 5 minutes lost; recommended), or keep five and watch.
+  - **Caleb (15:33 CST): keep five and watch.** By then free RAM had been back at 1.4 to 4.8 GB for an hour, and no
+    run had slowed: 14:30 to 15:33, E6a's γ_hr 0.5 at 84 to 88 decisions a second, E4 58, E6b 77 to 85, E5 55, E3's
+    seed 1 53 to 57; 335 in all. Watched until 19:00: the RAM rule, and each run's speed every 15 minutes against its
+    previous 15 (a fall below 80% asks again).
+- **Caleb (16:52 CST): back to five** ("Bring it back up to 5 jobs."), with four runs training, 11 GB free and
+  the queue at about 17% (16.7M of 100M decisions). Relaunched with `--jobs 5` at 16:52:58 (PID 12512; the
+  four-slot queue's log `train-queue-gpu-part6.log`); E3's (.75, .25) seed 1 started as the fifth at 16:54:59. The
+  rules stand (RAM under 1 GB for a minute, paging RAM-gated, a run under 80% of its speed), watched until
+  midnight. Runs that start close together are what took RAM under 1 GB at 14:26.
+
+### Decided and built: the sim-to-real table, every calibration case re-simulated on sim-v1.2 (Caleb, 2026-11-12)
+Caleb, 2026-11-12: "Start on the sim-to-real table while the runs train", then, on Claude's two questions, "Re-simulate
+on sim-v1.2 (Recommended)" and "Family table + case appendix (Recommended)". `m002-sim-to-real`.
+- **Found first:** no consolidated gate result. The calibration's results were about 225 git-ignored files in
+  `results/calibration/`, in a dozen formats, each family's result reported here where it was measured.
+- **The questions:**
+  - which sim the table compares with the server: (a) each case's latest server runs re-simulated on sim-v1.2, the sim
+    the experiments train on (recommended); (b) each case's comparison as calibrated, with the sim of its day (Oct 31
+    to Nov 9; v1's last changes, v1.1's directional walks and v1.2's fletch slot came after); (c) as calibrated, with a
+    few cases a family re-simulated;
+  - how the report shows the cases: (a) a table per family in the body and every case in an appendix (recommended);
+    (b) the family table only; (c) every case in the body.
+- **Caleb: (a) and (a).**
+- **Correction to the question:** it said the server "has been frozen since Oct 31, so its runs still stand". The
+  upstream code was frozen then, but the fork's own rule changes went on to Nov 9 (CLAUDE.md lists them). Where this
+  log found one touched a family's measurements, it re-measured them (combat's sets after the region fix, 2026-11-08),
+  and the runs the table takes are those re-measurements. The summary's README says so.
+- **Built:**
+  - `scripts/sim_to_real.py`: per family, the results files this log reports; each case's last measurement among
+    them; its server runs through the runner's own rates, and its sim side through the runner's own sim function,
+    called now from the same start with 200 seeds (one where the sim is deterministic). It writes
+    `results/summary/sim-to-real/`: `cases.csv`, `drops.csv` (OQ-20 (a)'s drop tables, judged by the sim's sampler
+    now), `speed_check.csv` (OQ-21's, as measured, both sides on the server), `config.json` (the provenance and each
+    source's SHA-256) and a README. It needs no server and takes about 2 minutes. Into `results/summary/` it refuses a
+    tree with uncommitted changes, as `scripts/publish_summary.py` does.
+  - The gated metrics are the gate's: XP/hr, gp/hr or what makes it (items, products, kills, catches), and duration.
+    A runner's other comparisons (combat's food an hour, its gp/hr, which OQ-20 (a) gates by its parts) are kept and
+    marked not gated.
+  - Left out: the 600 ms reruns (the speed check's table), earlier re-simulations, runs this log superseded, chaos's
+    crossings (`abyss_rc_chaos` isn't an option), and the measurements that fitted inputs rather than test an option
+    (Agility's entries and spike pit, the shortcuts' own crossings, the travel constants, the pouches, the Abyss's
+    failed tries).
+  - `rlscape/analysis/sim_to_real.py`, called by `scripts/figures.py`: `sim_to_real_families.csv` (the body),
+    `sim_to_real_cases.csv` (the appendix) and `sim_to_real_drops.csv`.
+  - `scripts/measure_abyss.py`: the sim's side of its pass, rift and trip runs as functions, so a stored run can be
+    re-simulated. Its results are unchanged: the Nov 9 crossings, re-simulated, equal their stored sim side.
+  - `tests/test_sim_to_real.py`: which stored run stands for a case, a re-simulation through a runner's own sim, and
+    the tables.
+- **Results** (sim over server on the gated metrics, 236 cases): **533 of 548 within ±20%.**
+  - Gathering 125 of 126 (42 cases), Barbarian fishing 12 of 12 (3), processing 102 of 102 (34), Crafting 53 of 53
+    (14), Herblore 33 of 33 (9), Thieving 15 of 16 (8), Agility 6 of 7 (7), Runecrafting at the ruins 17 of 17 (9),
+    the Abyss 39 of 40 (30), combat 84 of 93 (31), travel 47 of 49 (49).
+  - The drop tables: 371 of 374 items in the sim's central 99%, over 9 monsters (the misses: the Black Knights' and a
+    chaos druid's bones, the moss giants' big bones). The speed check: 72 of 72 agree.
+  - **Outside the gate, as this log has them:** the band-1 shrimp at Draynor's items/hr (0.66: it dies in 9 of 10
+    server runs, and the server counts the catch at 0 hitpoints, the sim after its death; XP/hr 1.09); the heroes'
+    gp/hr (0.75, rare items); the leeches (OQ-51 (a)); the band-31 poison spiders by magic (OQ-35's case); ranged
+    abyssal demons at band 91 (1.29) and melee experiments at band 91 (1.20), both noted after the region fix; the
+    Abyss's hitpoints at Defence 20 (1.23, "a small, noisy sample") and the way out from its north (1.21).
+  - **Outside, not reported against the gate before:** the Barbarian course at Agility 15 (0.80; run to sample the
+    falls); the band-91 walkers' run length (1.23; fitted on the same runs by the time to run out of food, 1.02, and
+    one of the five didn't run out).
+  - **New, not in this log:** the toll-gate check trip, Varrock east bank to Al Kharid (0.42: OQ-86); and magic at
+    the band-1 Black Knights, kills/hr 1.52 (its XP/hr 1.06, as reported).
+  - **What re-simulating changed:** mining's cases, 1.13 to 1.24 as stored (before the fit) to 0.89 to 1.12 (as this
+    log reported after it); the willows at band 31, 0.81 (one sim run then) to 0.95; the Abyss's outer ring and rifts,
+    0.80 to 0.82 to 0.98 to 1.03 (their stored sim sides came before the walks' last fit). Combat, Crafting, Herblore
+    and the Abyss's crossings equal their stored sim side.
+- **Fitted and checked:** the calibration fitted each family's overheads on the server's runs, so many cases agree
+  partly by construction (Agility's lap times are the measured ones: 1.00). Combat and travel keep fit and check sets
+  apart; the README says which is which.
+- **OQ-86 raised:** the toll-gate trip.
+
+### Decided: OQ-86 (b), the toll-gate trip is a known gap, reported without investigating (Caleb)
+2026-11-12, Caleb: "OQ-86: option b". `m002-oq86`.
+- **The question** (raised by the sim-to-real table, above): travel's check trip "Varrock east bank to Al Kharid,
+  paying the toll" took the server 88 ticks on Nov 1 (the sim 84: 0.95) and 200 on Nov 6 (0.42): after the home
+  teleport, 178 ticks walking from Lumbridge against 66, and the same 200 at 600 ms. The sim takes the same route both
+  days, the home teleport and then the toll gate. Between the two runs every quest became complete at spawn, which
+  gives free passage at the gate (Prince Ali Rescue). Nothing had checked it since.
+- **The options:** (a) investigate after the queue's runs end, about Nov 15: the trip on the server both ways, 3 runs,
+  watching the gate, about an hour; the report gives the cause and bounds the effect by the policies' time on trips
+  through the gate (recommended); (b) report it as a known gap now, without investigating; (c) investigate now, on a
+  server beside the five runs (about 1.5 GB more RAM, where the trial's margin is about 1 GB at its worst).
+- **Caleb: (b).**
+- **Follows:** `docs/post-project-gaps.md` has the gap (what, why, the cost, how to close it). The sim-to-real table's
+  note on the trip names OQ-86 (b) (`scripts/sim_to_real.py`'s `NOTES`; the summary is made again from the commit).
+  The sim (sim-v1.2) and the experiments are unchanged.
+
+### Decided: OQ-1 (C′), RQ5 bounded, not tested; OQ-50 (a), the repo with a reviewer's guide (Caleb)
+2026-11-12, Caleb, asked what to work on while the runs train: "Decide OQ-1, OQ-50 (Recommended)", then "Bound it, no
+new env (Recommended)" and "Repo + reviewer's guide (Recommended)". `m002-oq1-oq50`.
+- **OQ-1, how RQ5 is answered** (raised 2026-10-05 in the plan; ROADMAP Appendix B). RQ5 asks: "Do learned low-level
+  options (click-ahead pathing, prayer flicking) improve high-level results over scripted versions?" The proposal
+  marked it "exploratory, time permitting". Testing it as asked needs a tick-level environment on the server, 1.5 to
+  2 weeks, more than OQ-17 (a′)'s slack.
+  - **The options:**
+    - (C′) bound RQ5 instead of testing it, with no new environment, about half a day (recommended). Prayer
+      flicking: the scripted flick never drains prayer and gets the prayer's full effect (tested live, env contract
+      v1.8), so a learned flick can't beat it. Click-ahead pathing: the policies' share of game time spent walking,
+      and the travel model's measured overhead a walk, give the most a perfect click-ahead could save. The report says
+      it's a bound, not a test of learned options;
+    - (D) none: RQ5 reported as not attempted, with what it would take, in `docs/post-project-gaps.md`;
+    - (C) learned micro-options as planned, 1.5 to 2 weeks;
+    - (A) the LLM planner or (B) DreamerV3, which add to RQ1, not RQ5.
+  - **Caleb: (C′).**
+  - **Found on taking it up:** the decision logs don't record walking time (an option's record has its id, path,
+    target and site, and its whole duration). The walking share comes from replaying episodes in the seeded sim with
+    a counter on its walks.
+- **OQ-50, what the peer reviewer gets** (raised 2026-11-09 in Caleb's answer to OQ-17: "I want to make sure that the
+  peer review is as simple as it can be"). The repo is about 29,000 lines of Python (the RL layer about 1,400) and
+  the server fork, and it had no README.
+  - **The options:**
+    - (a) the whole repo at a tagged commit, with a `README.md` that's a two-page reviewer's guide (recommended): a
+      table from each research question and hypothesis to its result, figure or table, the command that rebuilds it
+      and the code behind it; a reading path through the RL layer's 8 to 10 files; what to skip and why it can be
+      trusted (the gate's table, the tests); and a 10-minute check that needs no server or GPU. The report gets the
+      same map as a half-page appendix;
+    - (b) a slim review copy (the RL layer, the results and the guide) in a separate branch or archive;
+    - (c) the report alone, with a link to the code and no guide.
+  - **Caleb: (a).** What the course's review covers and how long a reviewer has are still unknown.
+- **OQ-87, raised and answered on taking up OQ-1 (C′): where RQ5's walking time comes from.** The bound: the most a
+  perfect click-ahead could save is the walks' measured overhead (`rlscape.travel.overhead`: 2.3 ticks a walk and
+  0.083 a step, the pauses between clicks), as a share of game time.
+  - **The options:** (a) evaluation traces: each evaluation decision's walking ticks and their overhead in its trace,
+    from a counter wrapped round the sim's walks by the evaluation harness, the sim's code unchanged; merged into each
+    experiment's branch with the analysis tooling before its evaluation, so the bound comes from the episodes RQ1 to
+    RQ4 use (recommended); (b) replaying the training episodes from the decision logs with the same counter (the
+    policies as they learned; the training envs' seeding reproduced exactly); (c) estimates from each decision's
+    option record (its site) by the travel model, missing the walks inside an option.
+  - **Caleb: (a).**
+
+### Found: E3's other three restarted runs repeat their killed runs byte for byte (2026-11-12)
+`m002-jobs-five` (the seed-0 checks Caleb chose). E3's (1, 0), (.75, .25) and (.5, .5) seed 0, killed by the
+Windows Update restart at 02:29 and run again from the same commits, config and seeds, against the killed runs
+(`runs/e3-reward-weight-sweep-reboot-partial/`):
+- **Decision logs:** 33 of 33, 34 of 34 and 35 of 35 parts byte-identical (1,650,000, 1,700,000 and 1,750,000 rows).
+- **Checkpoints:** 16, 17 and 17; 5 of each zip's 6 members identical. The sixth (`data`) differs only in the
+  episodes' wall-clock `t` and the memory addresses in its reprs; equal without them.
+- With (0, 1)'s check this morning, all four restarted runs repeat their killed runs exactly, on the GPU.
+
+### Decided: OQ-88, the reviewer's check runs on Windows only (Caleb, 2026-11-12)
+Raised and answered while drafting the reviewer's guide (OQ-50 (a)), `m002-reviewer-guide`.
+- **The question:** the environment installs only on Windows: `pyproject.toml` takes torch from `wheels/`, where
+  `scripts/fetch_torch_wheel.py` downloads PyTorch's Windows CUDA 13.0 wheel (1.9 GB), so `uv sync` fails on Linux and
+  macOS. The guide's 10-minute check (the core tests, the figures from the committed summaries, a short CPU training
+  run) needs a working environment.
+- **The options:** (a) a per-platform torch source, the CPU wheel on Linux and macOS, the lockfile updated, the results
+  unchanged (recommended); (b) Windows only, the guide saying so; (c) a container with the environment.
+- **Caleb: (b).** The guide says the check needs Windows x64; elsewhere the code and the committed summaries can be
+  read.
+
+### Found and decided: sim v1.3, a kill after a gathering option's budget ends it at the budget (Caleb, 2026-11-12)
+2026-11-12, Caleb, on what was found answering "Show me the results of the most recent speed check on each run.":
+"Leave it until the fix" and "Cap the death, sim-v1.3 (Recommended)" (22:14:59 CST). `m002-death-budget`.
+- **Found (22:02):** E3's (.5, .5) seed 1, which the queue started at 18:49, has been hung since 18:54. One of its four
+  env workers stopped on the engine's budget check (`RuntimeError: option 'skill_fishing_gp2' took 1711 ticks with a
+  budget of 1500`), and the training process went on waiting for it, with no error (60 s of CPU in 3 hours). The queue
+  counts the process, so the slot stayed taken: four runs trained from 18:54. The speed watch lists only runs whose
+  TensorBoard file changed in the last 5 minutes, so it showed four runs rather than a stall.
+- **The cause (sim v1.2):** at Draynor's shrimp spots the dark wizards attack a character as it runs away (the only
+  gathering site with a measured chase). Running away, eating and waiting for hitpoints add ticks inside one wait for
+  a catch, while the attacks are drawn on that wait's own clock, so the kill can come after the option's budget. The
+  three gathering loops cap every other return at the budget; their death returns (`fishing.py`'s, and `gathering.py`'s
+  two, while making attempts and while waiting for a resource to come back) didn't. A gathering path with processing
+  (fish and cook) already capped it.
+  - **Reproduced on sim v1.2:** 6 of 500 level-3 fishers at the spot with a 600-tick budget die after it (seed 467 at
+    817 ticks); the willows given Draynor's exposure reach both of `gathering.py`'s returns. No woodcutting or mining
+    site has a chase, so neither can die late in the catalog.
+  - **How rare:** the first such stop in about 18M decisions of training.
+  - **The rate model's sessions** (`aggression.gathering_share`, 6,000 ticks) are never reached by the cap: their
+    deaths end by 1,480 ticks (15,000 sessions), since the attacks stop when the region's tolerance (1,000 ticks) runs
+    out.
+- **The hung run, the options:** stop it now, so the queue fills the slot with the next run (recommended); leave it
+  until the fix. **Caleb: leave it.**
+- **The fix, the options:**
+  - (a) cap the kill at the budget in the three returns, as sim v1.3. Only the outcomes that stop sim v1.2 change, so
+    the finished runs stay valid and reproducible (recommended);
+  - (b) stop the attacks at the budget, the fuller fix, so no damage, eating or fight XP lands after an option ends.
+    It changes runs that never stopped, so all 50 would restart;
+  - (c) keep sim v1.2 and give the run a new seed, or drop it; a later run that hits the branch hangs the same way.
+  - **Caleb: (a).**
+- **Built (branch `sim/v1.3-death-budget`):** each death return ends at the lesser of the kill's tick and the budget.
+  The death keeps the model's tick (its gravestone's expiry, the respawn region's tolerance clock, the regeneration up
+  to it), as the paths with processing did, so nothing sim v1.2 completes changes. Env contract v1.45, schema
+  unchanged. Two tests reproduce the stop before the fix (`tests/test_sim_aggression.py`).
+- **Follows:** sim-v1.3 is tagged on `main` once merged. `main` then goes into each experiment's worktree with the
+  queue's launcher stopped (the training runs keep the code they loaded), and the hung run is stopped and trained
+  again on sim v1.3. Runs already trained or training stay on sim v1.2; the rest train on sim v1.3, which is sim v1.2
+  wherever sim v1.2 completes.
