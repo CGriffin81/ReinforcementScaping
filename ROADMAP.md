@@ -345,6 +345,11 @@ runs, seed 0 of every experiment first: about 110 hours, so done around Nov 16 t
 runs, which started again from the start at 04:41 (about 6 hours lost, so the queue ends around midday Nov 16).
 Windows Update is paused until the last test is done (Caleb). The restarted (0, 1) run repeated the killed one's
 1.0M decisions byte for byte.
+
+*On sim v1.3 from the evening of 2026-11-12 (Caleb, `m002-death-budget`):* E3's (.5, .5) seed 1 hung from 18:54 on a
+sim v1.2 stop, a Draynor fisher's kill after its option's budget. Sim v1.3 ends such an option at the budget and
+equals sim v1.2 wherever sim v1.2 completes, so nothing is retrained. The run trains again, and the runs not yet
+started train on sim v1.3 (`main` merged into the five worktrees, the queue relaunched at 22:42).
 - [ ] **E3, the reward-weight sweep** (RQ1 to RQ3): (1,0), (.75,.25), (.5,.5), (.25,.75) and (0,1) in normalised
   units (OQ-67), 5 seeds each, 2M decisions a run (OQ-69), with E2's winner: λ 0.95, learning rate 3e-4, entropy 0.01.
 - [ ] **E4, PPO + RND** (RQ2, RQ4, H3): the RND wrapper, then PPO + RND at (.5,.5), 5 seeds, against E3's (.5,.5).

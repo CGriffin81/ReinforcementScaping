@@ -61,8 +61,8 @@ Claude writes the code; Caleb reviews and runs it. So:
 - Each experiment runs on its own branch, `experiment/<name>` (Caleb, 2026-11-09, OQ-61), the name its number
   and what it does (OQ-62, OQ-63: `e1-baselines`, `e2-ppo-sanity-ladder`, `e3-reward-weight-sweep`,
   `e4-rnd-exploration`, `e5-weight-conditioned-ppo`, `e6a-discount-sweep`, `e6b-pbrs-shaping`). It starts
-  from `main`, where the `sim-v1.2` tag marks the frozen sim (`sim-v1` with OQ-64's directional walks and OQ-75's
-  fletch slot; `sim-v1.1` before it), and
+  from `main`, where the `sim-v1.3` tag marks the frozen sim (`sim-v1` with OQ-64's directional walks, OQ-75's
+  fletch slot and the cap on a gathering kill after its budget, 2026-11-12; `sim-v1.2` and `sim-v1.1` before it), and
   holds only its config (`configs/<name>.yaml`), the code only it uses, its committed summary
   (`results/summary/<name>/`) and its records. It never changes the sim. It merges into `main` by its own PR once
   its run is checked. Tooling several experiments share goes into `main` first, by its own PR.

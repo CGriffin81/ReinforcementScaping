@@ -7769,3 +7769,14 @@ Raised and answered while drafting the reviewer's guide (OQ-50 (a)), `m002-revie
   queue's launcher stopped (the training runs keep the code they loaded), and the hung run is stopped and trained
   again on sim v1.3. Runs already trained or training stay on sim v1.2; the rest train on sim v1.3, which is sim v1.2
   wherever sim v1.2 completes.
+- **Done (Caleb: "Merge the PR into main once it's open", "Go ahead with all five"):**
+  - PR #29 was merged as `af2ede9` and tagged `sim-v1.3`. Before the merge, 20 seeded 20-hour episodes were
+    byte-identical on sim v1.2 and the fix (5,330 decisions, 8 deaths while fishing).
+  - The queue's launcher was stopped at 22:38:51, and `main` merged into the five experiment branches (E3 `ba9d8ec`,
+    E6a `7a20e6c`, E4 `c359efd`, E6b `6e4aeee`, E5 `d22de18`). Their venvs were left as they were: the merge adds
+    matplotlib and ruptures, which only the figure code imports, so each venv gets them before its experiment's
+    evaluation.
+  - The hung run was stopped at 22:42:16. Its folder and log were kept in
+    `runs/e3-reward-weight-sweep-hung-partial/` (E3's worktree).
+  - The queue was relaunched with `--jobs 5 --restart-partial` at 22:42:36 (PID 21780).
+  - Nothing else is retrained: 8 runs done and 4 training, on sim v1.2.
