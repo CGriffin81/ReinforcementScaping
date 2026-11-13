@@ -45,6 +45,7 @@ import pandas as pd
 from rlscape.baselines import GreedyPolicy, Policy, RandomPolicy
 from rlscape.baselines.guide import ScriptedGuidePolicy
 from rlscape.envs.sim_env import SimEnv
+from rlscape.eval import walking
 from rlscape.eval.rollout import TRACE, play
 
 REPO = Path(__file__).resolve().parents[2]
@@ -64,6 +65,7 @@ _env: SimEnv | None = None  # one per worker process
 def _init(env_kwargs: dict) -> None:
     global _env
     _env = SimEnv(**env_kwargs)
+    walking.install()  # after the env, so the sim's modules are loaded: each decision's walking (OQ-87 (a))
 
 
 def make_policy(spec: str) -> Policy:

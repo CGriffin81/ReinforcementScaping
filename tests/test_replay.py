@@ -107,13 +107,28 @@ def test_a_trained_replay_is_named_by_its_practice_episodes(script):
     assert script.trained_names(100_000, None, final=False)["label"] == "Trained 100k decisions"
 
 
-@pytest.mark.skipif(not BEST.exists(), reason="E2's trained model isn't here (runs/ is git-ignored)")
-def test_a_trained_replay_samples_what_the_evaluation_sampled_and_shows_its_choices():
+@pytest.fixture(scope="module")
+def tiny(tmp_path_factory):
+    """A 48-decision model trained on the sim as it is now, so the trained replay is tested wherever the sim runs.
+    E2's model (BEST) can't be: it is on sim v1.1, and runs/ is git-ignored."""
+    pytest.importorskip("rlscape.agents.ppo")
+    from rlscape.agents.training import train
+    return train(dict(TINY), "replay-test", 0, tmp_path_factory.mktemp("replay") / "seed0") / "model.zip"
+
+
+TINY = {"seeds": [0], "total_decisions": 48, "n_envs": 2, "vec_env": "dummy", "device": "cpu", "torch_threads": 1,
+        "env": {"hours": 0.25}, "ppo": {"gamma_hr": 0.9, "n_steps": 8, "batch_size": 8, "n_epochs": 1},
+        "decision_log": False}
+EVALUATION = {"horizon_ticks": 6_000}  # a one game-hour episode, played by the harness and by the replay
+
+
+def test_a_trained_replay_samples_what_the_evaluation_sampled_and_shows_its_choices(tiny):
     from rlscape.envs.sim_env import SimEnv
-    from rlscape.eval.harness import make_policy
+    from rlscape.eval.harness import make_policy, run_tables
     from rlscape.eval.replay import record
-    replay = record(SimEnv(), make_policy(f"best=ppo:{BEST}"), 0, "best")
-    row = evaluated("gae_lambda0.95_learning_rate0.0003/seed0", 0)
+    spec = f"tiny=ppo:{tiny}"
+    row = run_tables([spec], [0], EVALUATION)[1].iloc[0]
+    replay = record(SimEnv(**EVALUATION), make_policy(spec), 0, "tiny")
     assert len(replay["decisions"]) == row.decisions and replay["final"]["total_level"] == row.total_level
     assert replay["final"]["net_worth"] == row.net_worth
     for d in replay["decisions"]:

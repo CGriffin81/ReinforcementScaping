@@ -9,7 +9,8 @@ Accumulation in 2009Scape*. A high-level policy picks activity-level options
 a semi-MDP. It is trained on a calibrated surrogate simulator, and the
 simulator is checked option by option against a local 2009Scape server (the
 ±20% gate). Scope (Caleb, 2026-11-09, OQ-17 (a′)): every research question is
-answered (RQ5 per OQ-1), the peer review is kept simple (OQ-50), and
+answered (RQ5 by a bound, OQ-1 (C′)), the peer review is a reviewer's guide to
+the repo (OQ-50 (a)), and
 `ServerEnv`, E6's replays, E4's Envelope Q and E7 are cut. The finishing plan
 is ROADMAP's weeks 6 to 8. Its experiments are renumbered (Caleb, OQ-63): E1 the
 baselines, E2 the sanity ladder, E3 the reward-weight sweep, E4 PPO + RND, E5 the

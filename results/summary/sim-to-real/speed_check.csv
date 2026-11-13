@@ -1,0 +1,73 @@
+family,case,measure,at_50ms,at_600ms,slow_over_fast,se_difference,agrees,runs,source
+gathering,"wc_willow, band 31",xp_per_hour,45225.01,48915.76,1.0816086457106735,9773.50549213053,True,3/3,speed-check-20261106-1959.json
+gathering,"mine_iron, band 31",xp_per_hour,15787.15,16209.59,1.026758714227273,1786.6628096152308,True,3/3,speed-check-20261106-1959.json
+gathering,"fish_fly, band 31",xp_per_hour,32127.88,31655.05,0.9852826199193664,4562.543160056941,True,3/3,speed-check-20261106-1959.json
+combat,"melee Scorpion, band 31",xp_per_hour,17151.94,18015.4,1.050341827221877,908.6047732650197,True,3/3,speed-check-20261106-1959.json
+combat,"ranged Scorpion, band 31",xp_per_hour,18857.54,19486.48,1.0333521763708309,372.7953041549695,True,3/3,speed-check-20261106-1959.json
+travel-validation,walk Rimmington to Port Sarim,ticks,43,43,1.0,,True,1/1,speed-check-20261106-1959.json
+travel-validation,walk Falador west bank to Taverley,ticks,88,88,1.0,,True,1/1,speed-check-20261106-1959.json
+travel-validation,walk Lumbridge to Draynor square,ticks,94,94,1.0,,True,1/1,speed-check-20261106-1959.json
+travel-validation,"Varrock east bank to Al Kharid, paying the toll",ticks,200,200,1.0,,True,1/1,speed-check-20261106-1959.json
+travel-validation,walk Edgeville to Wilderness level 5,ticks,47,47,1.0,,True,1/1,speed-check-20261106-1959.json
+travel-validation,home teleport from Falador,ticks,47,47,1.0,,True,1/1,speed-check-20261106-1959.json
+travel-validation,Falador teleport spell,ticks,13,13,1.0,,True,1/1,speed-check-20261106-1959.json
+travel-validation,Lumbridge tablet,ticks,14,14,1.0,,True,1/1,speed-check-20261106-1959.json
+travel-validation,glory to Draynor,ticks,19,19,1.0,,True,1/1,speed-check-20261106-1959.json
+travel-validation,ring of dueling to the Duel Arena,ticks,18,18,1.0,,True,1/1,speed-check-20261106-1959.json
+travel-validation,games necklace to Barbarian Outpost,ticks,15,15,1.0,,True,1/1,speed-check-20261106-1959.json
+travel-validation,charter Port Sarim to Catherby,ticks,35,36,1.0285714285714285,,True,1/1,speed-check-20261106-1959.json
+travel-validation,ship Brimhaven to Ardougne,ticks,42,42,1.0,,True,1/1,speed-check-20261106-1959.json
+agility,"gnome laps, Agility 30",xp_per_hour,7469.76,7490.65,1.002795980777632,223.39299316769956,True,5/5,speed-check-20261108-2331.json
+agility,"barbarian laps, Agility 75",xp_per_hour,13534.33,13728.84,1.0143715360375156,196.00686986854564,True,8/8,speed-check-20261108-2331.json
+agility,"wilderness laps, Agility 99",xp_per_hour,48217.35,48667.73,1.0093405642701416,803.8609175850368,True,6/6,speed-check-20261108-2331.json
+barbfishing,"barb_fish at fishing 70, agility 45, strength 45",xp_per_hour,55251.69,58600.69,1.0606134399729656,6185.073180249905,True,3/3,speed-check-20261108-2331.json
+travel-validation,back over Falador's west wall,ticks,21,21,1.0,,True,1/1,speed-check-20261108-2331.json
+travel-validation,the coal trucks' log balance east,ticks,29,29,1.0,,True,1/1,speed-check-20261108-2331.json
+travel-validation,Rellekka's log balance north,ticks,24,24,1.0,,True,1/1,speed-check-20261108-2331.json
+travel-validation,Ardougne's log balance west,ticks,30,30,1.0,,True,1/1,speed-check-20261108-2331.json
+travel-validation,the River Lum's stepping stone east,ticks,32,32,1.0,,True,1/1,speed-check-20261108-2331.json
+travel-validation,the Al Kharid pit east,ticks,22,22,1.0,,True,1/1,speed-check-20261108-2331.json
+travel-validation,the lumberyard's fence north,ticks,39,39,1.0,,True,1/1,speed-check-20261108-2331.json
+crafting,"cut_opal, band 1",ticks,30.0,30.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+crafting,"cut_emerald, band 31",ticks,30.0,30.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+crafting,"cut_dragonstone, band 61",ticks,30.0,30.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+crafting,"cut_onyx, band 91",ticks,30.0,30.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+crafting,"craft_leather_gloves, band 1",ticks,133.0,133.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+crafting,"craft_leather_chaps, band 31",ticks,133.0,133.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+crafting,"craft_hardleather_body, band 31",ticks,134.0,134.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+crafting,"craft_green_d_hide_chaps, band 61",ticks,73.0,73.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+crafting,"craft_black_d_hide_body, band 91",ticks,44.0,44.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+crafting,"spin_wool, band 1",ticks,115.0,115.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+crafting,"spin_flax, band 31",ticks,115.0,115.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+crafting,"tan_leather, band 1",ticks,5.0,5.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+crafting,"tan_green_d_leather, band 61",ticks,5.0,5.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+crafting,"pick_flax, band 1",ticks,63.0,63.67,1.0105820105820105,0.6666666666666666,True,3/3,speed-check-20261109-1021.json
+herblore,"clean_guam, band 31",ticks,29.0,29.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+herblore,"clean_torstol, band 91",ticks,29.0,29.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+herblore,"unf_guam, band 31",ticks,17.0,17.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+herblore,"unf_torstol, band 91",ticks,17.0,17.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+herblore,"finish_attack, band 31",ticks,46.0,46.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+herblore,"finish_super_restore, band 91",ticks,46.0,46.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+herblore,"grind_237, band 31",ticks,57.0,57.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+herblore,"load_attack, band 31",ticks,53.0,53.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+herblore,"load_super_antipoison, band 61",ticks,74.0,74.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+runecrafting,rc_air enter,enter_ticks,5.0,5.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+runecrafting,rc_air inside,inside_ticks,13.0,13.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+runecrafting,rc_mind enter,enter_ticks,5.0,5.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+runecrafting,rc_mind inside,inside_ticks,21.0,21.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+runecrafting,rc_water enter,enter_ticks,6.0,6.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+runecrafting,rc_water inside,inside_ticks,18.0,18.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+runecrafting,rc_earth enter,enter_ticks,5.0,5.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+runecrafting,rc_earth inside,inside_ticks,19.0,19.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+runecrafting,rc_fire enter,enter_ticks,6.0,6.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+runecrafting,rc_fire inside,inside_ticks,20.0,20.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+runecrafting,rc_body enter,enter_ticks,6.0,6.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+runecrafting,rc_body inside,inside_ticks,13.0,13.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+runecrafting,rc_nature enter,enter_ticks,5.0,5.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+runecrafting,rc_nature inside,inside_ticks,13.0,13.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+runecrafting,rc_law enter,enter_ticks,6.0,6.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+runecrafting,rc_law inside,inside_ticks,21.0,21.0,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+runecrafting,"make_tiara_air, ticks between tiaras",ticks_each,7.85,7.85,1.0,0.0,True,3/3,speed-check-20261109-1021.json
+abyss,"abyss_rc trips, all runes (server over the sim's estimate)",server_over_sim,1.03,1.02,0.986412930579516,0.009053986827833609,True,30/30,speed-check-20261109-1021.json
+combat,"melee Abyssal guardian, band 61",xp_per_hour,28602.24,29181.69,1.0202589281115404,1551.917917682786,True,3/3,speed-check-20261109-1021.json
+combat,"melee Abyssal guardian, band 61 (food/hr)",food_per_hour,144.06,148.0,1.0274040833812235,26.099948910604976,True,3/3,speed-check-20261109-1021.json

@@ -2,17 +2,20 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import numpy as np
 import pytest
 
 from rlscape.gamedata import server as gd
 from rlscape.sim.aggression import TOLERANCE_TICKS, Exposure, site_aggressors
+from rlscape.sim.engine import Simulator
 from rlscape.sim.equipment import WEAPON
 from rlscape.sim.fishing import fishing_options
 from rlscape.sim.options import DIED
 from rlscape.sim.skills import SKILL_INDEX, XP_FOR_LEVEL
 from rlscape.sim.state import CharacterState
-from rlscape.sim.woodcutting import woodcutting_options
+from rlscape.sim.woodcutting import Woodcutting, woodcutting_options
 
 needs_server = pytest.mark.skipif(not gd.SERVER_CONFIGS.exists(), reason="server submodule missing")
 ADAMANT_AXE, RUNE_SCIMITAR = 1357, 1333
@@ -129,3 +132,38 @@ def test_without_a_chase_running_away_is_safe():
     shrimp = next(o for o in fishing_options() if o.id == "fish_shrimp")
     exposure = Exposure.at(state, shrimp.start, np.random.default_rng(0), shrimp.exposure)
     assert exposure.site.chase == shrimp.exposure.chase
+
+
+def test_a_death_after_the_budget_ends_the_option_at_the_budget():
+    """sim v1.3 (2026-11-12): running away and waiting for hitpoints can put the wizards' kill after the option's
+    budget, and the engine raised (E3's (.5, .5) seed 1: 1,711 ticks of 1,500). The option now ends at its budget,
+    with the death."""
+    shrimp = next(o for o in fishing_options() if o.id == "fish_shrimp")
+    sim, late = Simulator([shrimp], activity_ticks=600), 0
+    for seed in range(300):  # on sim v1.2, seeds 130, 138, 241 and 253 died after 600 ticks
+        sim.reset(seed)
+        sim.state.inventory, sim.state.location = {303: 1}, shrimp.start  # a net, at the spot
+        info = sim.step(0).info
+        assert 1 <= info["duration"] <= 600
+        late += info["duration"] == 600 and info["termination"] == DIED
+    assert late >= 4
+
+
+def test_both_depleting_gathering_death_returns_end_at_the_budget():
+    """gathering.py's two death returns, while it makes attempts and while it waits for a resource to come back, cap
+    the same way. No woodcutting or mining site has a measured chase, so neither can die late in the catalog: here the
+    willows' site takes Draynor's exposure, and a tree that always falls, alone at it, makes the character wait."""
+    draynor, site = next(o for o in fishing_options() if o.id == "fish_shrimp").exposure, willows().site
+    cases = [(Woodcutting("wc_willow", 8, replace(site, exposure=draynor)), 30, 300),  # dies making attempts
+             (Woodcutting("wc_willow", 1, replace(site, exposure=draynor, resources=1)), 1, 150)]  # dies waiting
+    for option, level, budget in cases:
+        late = 0
+        for seed in range(100):
+            state = CharacterState.fresh()
+            state.xp[SKILL_INDEX["woodcutting"]] = float(XP_FOR_LEVEL[level])
+            state.add(1351)  # a bronze axe
+            state.location = site.tile
+            result = option.run(state, np.random.default_rng(seed), budget)
+            assert 1 <= result.ticks <= budget
+            late += result.ticks == budget and result.termination == DIED
+        assert late >= 2
