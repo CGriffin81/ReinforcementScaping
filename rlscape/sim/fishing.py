@@ -86,6 +86,12 @@ class Fishing(Option):
         def done(ticks: int, termination: str) -> OptionResult:
             return OptionResult(ticks, termination, exposure.finish(ticks))
 
+        def died() -> OptionResult:
+            """sim v1.3: a kill that running away and waiting put after the budget ends the option at the budget. The
+            death keeps the model's tick (its gravestone, the regeneration to it), as a processing path's did."""
+            at = max(exposure.died_at, 1)
+            return OptionResult(min(at, budget), DIED, exposure.finish(at))
+
         next_move = elapsed + int(rng.integers(0, rng.integers(*SPOT_MOVE_TICKS)))  # partway through a cycle
         fishing = SKILL_INDEX["fishing"]
         lead = FIRST_ATTEMPT_TICKS - ATTEMPT_TICKS  # from now to the first attempt, less one attempt
@@ -110,7 +116,7 @@ class Fishing(Option):
                 return done(budget, COMPLETED)
             away = exposure.gather(elapsed, catch_at)
             if away is None:
-                return done(max(exposure.died_at, 1), DIED)
+                return died()
             elapsed = catch_at + away
             if exposure.abandoned or elapsed > budget:
                 return done(min(elapsed, budget), COMPLETED)
