@@ -4,7 +4,7 @@
 
 - Interaction ID: m002-e1-sim-v1.2
 - Timestamp CST: 2026-11-11 17:14:55 CST, the prompt's timestamp in the session transcript (UTC−06:00), the same
-  prompt as `m002-sim-v1.2`. The run started at about 17:50 CST and took 799 s.
+  prompt as `m002-sim-v1.2`. The run started at 17:33:49 CST (its provenance) and took 799 s.
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: COMPLETE. E1 is rerun and published on sim v1.2, and OQ-67's units are recomputed from it (the tooling).
