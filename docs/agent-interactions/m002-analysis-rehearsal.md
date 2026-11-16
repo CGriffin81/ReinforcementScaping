@@ -9,7 +9,8 @@
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS. The analysis pipeline ran end to end on the first round's E3 data and found four things to fix;
   Caleb chose to fix all four, and they're made (branch `tooling/figure-fixes`, not committed).
-- Commit: None.
+- Commit: `56c12b0` on `tooling/figure-fixes`, merged into `main` by PR #31 (`74969ea`, 2026-11-16, Caleb: "Merge the
+  PR into main"; the first two tries were held by the permission check's outage).
 
 ## Full Prompt
 
@@ -95,4 +96,6 @@ lightest experiment, young and started together; about 3.5 to 3.9 GB each, 18 GB
 
 ## Follow-Up
 
-- Commit and a PR into `main` when Caleb asks, before the rerun's summaries are published.
+- Done: committed, PR #31 merged into `main`.
+- Each experiment branch takes `main` (these fixes) after its runs finish and before its summary is published, not
+  while its runs still start from its worktree.
