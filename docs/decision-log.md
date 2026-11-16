@@ -7873,3 +7873,91 @@ At Caleb's "Check on the runs." (17:38:10 CST), `m002-app-update`.
   four, about 10 hours later to finish. **Caleb (17:46:06 CST): back to five now.** The queue was relaunched with
   `--jobs 5` at 17:46:21 (PID 21176), with 7.9 GB free. No slot is free until the next run ends (about 19:00), and no
   watcher runs. The rule stands.
+
+### Found: 8 runs collapse into zero-effect loops, and every run's critic value grows unbounded (2026-11-15)
+After E3's evaluation; Caleb: "Diagnose first (Recommended)" (13:08:04 CST). `m002-collapse-diagnosis`.
+- **All 50 runs are done** (the queue at 12:35:41, 0 failed).
+- **The collapse, in 8 of the 50:**
+  - E6b, all five seeds;
+  - E6a γ0.9, seeds 0 and 3;
+  - E3 (0, 1), seed 1.
+
+  They end looping options that change nothing: two loot modes alternated at a tick each (the mask keeps each mode
+  from being chosen while it's set, but not the pair from alternating), or a bank deposit and withdraw at 8 ticks.
+  Up to about 118,000 decisions an episode, for about 0 reward.
+- **E6b's shaping is as designed.** It's a time rent, F ≈ −w·G/100,000·τ, which sums to −Φ(start) over any episode,
+  so it can't make the loop optimal.
+- **The critic doesn't converge.** In every run checked, collapsed or healthy, its value:
+  - grows almost linearly through training (about 81 at decision-log part 4, 615 by part 40);
+  - is about the same in each run at the same point;
+  - is the same at an episode's start and end;
+  - is far above what an episode earns (106 to 319).
+- **The likely cause is the trainer's horizon bootstrap** (`rlscape/agents/ppo.py`; env contract §1: the horizon is a
+  truncation, bootstrapped). The observation carries the time left and the task ends at 20 hours, so the value at the
+  end should be 0; but the final observation is only a bootstrap target, never trained on, so nothing pins it.
+- **What an offset does:** an offset c shifts an option's advantage by about −c·(1 − γ_hr^τ), against long options in
+  proportion to their length. The evidence fits:
+  - every run's mean option length falls through training;
+  - γ0.9, ten times the penalty an hour, collapses earliest;
+  - loops, with reward about 0, never correct it.
+
+  It's a hypothesis with consistent evidence, untested.
+
+### Found: the horizon fix pins the critic, but E6a γ0.9 still collapses (2026-11-15)
+The test of the fix (Caleb: "Test the fix first (Recommended)"). `m002-collapse-diagnosis`.
+- **The test runs:** E6a γ0.9 seed 0 and E6b seed 0, each the experiment's own config with the horizon's step not
+  bootstrapped (`ppo.bootstrap_horizon: false`), on the same seeds, from 13:16. E6a γ0.9 reached 800k decisions at
+  about 15:15.
+- **The critic is now right.** Against the realised discounted return-to-go G, through the episode:
+  - with the fix, V − G is about +2 to +4 from hour 2 to hour 19 (decision-log parts 8 and 10);
+  - without it (the original run), V − G grows through the episode, from about +9 at hour 2 to about +51 at hour 19
+    (part 8). That is the offset the first finding saw.
+- **E6a γ0.9 collapses anyway**, about when its original did:
+  - decisions an episode pass 1,000 at part 11 (550k decisions), against part 10 in the original;
+  - by part 13, 97% of decisions take 8 ticks or less.
+- **The loop isn't the entropy bonus, and the critic doesn't overvalue it.** Where it loops, the policy's entropy is
+  about 0.9 to 1.4 nats, against about 4.5 for a uniform choice. Its V − G at loop decisions is within 0.7 of its
+  V − G at acting decisions.
+- **E6b, so far, doesn't collapse.** At 600k decisions (part 11), its episodes take about 555 decisions, and a third of
+  them take 8 ticks or less. Its original took 3,479 decisions an episode at part 8 and only loops after. It doesn't
+  learn either: its unshaped return peaks at part 1 (135) and falls to 116 by part 11.
+- **What's left, a hypothesis:** a zero-effect option costs only the game time it takes, about 0.01 reward for an
+  8-tick loop at γ_hr 0.9. A critic error of a few percent biases a long option's advantage by more than that, so the
+  choice between looping and acting rests on noise. Once loops cost reward, the critic lags the falling return and
+  overestimates (V − G rises to +9 at part 11), which favours the loop more.
+- **Asked Caleb how to proceed:**
+  - (a) test a decision floor (recommended): a trainer-only change that discounts every decision as at least a
+    game-minute, γ_hr^max(τ, 100 ticks), so a loop costs about 0.1 reward a decision, not 0.01; with the horizon fix,
+    on E6a γ0.9 seed 0 to 800k decisions, then decide on a full rerun;
+  - (b) rerun all 50 with the horizon fix only;
+  - (c) keep the results, and report the collapse and the critic's bias;
+  - (d) a sim v1.4 that masks the zero-effect repeats, then a full rerun.
+
+  **Caleb (17:38:19 CST): (a), test a decision floor.** The run started at 17:42:07.
+
+### Found: with the horizon fix and the decision floor, E6a γ0.9 seed 0 doesn't collapse (2026-11-15)
+The floor's test (Caleb, 17:38:19 CST), `m002-collapse-diagnosis`. E6a γ0.9 seed 0, the horizon not bootstrapped and
+every decision discounted as at least 100 ticks, to 800k decisions (17:42:07 to 20:01:21).
+- **No collapse.** Episodes take about 450 to 530 decisions from part 10 to the end. A quarter to a third of the
+  decisions take 8 ticks or less: drops (about 7 ticks) and bank withdrawals for a trip, not the loops. The
+  horizon-only test, at the same seed, took 3,229 decisions an episode at part 12 and 7,361 at part 13.
+- **It earns more, and is still rising.** Its 100k-block mean episode reward peaks at the last block, 232. The
+  horizon-only test peaked at 181 (500k), the original at 202 (1M, before its collapse took over).
+- **The critic** reads below the realised return (V − G about −5 to −11 through most of the episode, at part 15),
+  against the plain γ_hr^τ return. A rising policy's critic lags below it; the floored return the critic learns is
+  also a little lower than the plain one.
+- **What it doesn't show:** one seed of one experiment, to 800k of the 2M decisions a run has. E6b (PBRS) and E3's
+  (0, 1), which collapsed at 1.5M, weren't tested with the floor.
+
+### Decided: train all 50 runs again with both fixes (2026-11-15)
+`m002-rerun`. After the floor's test, the options were: (a) rerun all 50 with both fixes (recommended); (b) test E6b
+with both first, then rerun; (c) rerun only E6a and E6b, which would mix two trainers across the experiments; (d)
+keep the results and report. Caleb asked whether a rerun leaves time for the analysis and the peer review (the
+estimate: about 80 hours, so done around Nov 19 morning, the analysis on Nov 20–22, the draft unchanged on Nov
+22–25). **Caleb (23:07:43 CST): "Well, let's get the fixes in and rerun as soon as possible."** So (a):
+- env contract v1.46: the horizon isn't bootstrapped, and each decision is discounted as at least 100 ticks;
+- every experiment's config sets `ppo.bootstrap_horizon: false` and `ppo.discount_floor_ticks: 100`. The code's
+  defaults stay the old trainer's, so the first runs' configs still say how they trained;
+- E6b's shaping takes the same floor, so F stays the agent's own discount;
+- the first 50 runs are kept aside in each worktree (`runs/<name>-bootstrap`), and E3's first evaluation and summary
+  beside them. E2 isn't trained again.
