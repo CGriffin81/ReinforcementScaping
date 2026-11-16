@@ -22,7 +22,8 @@ command per experiment).
 - `decision_log`: record every decision (rlscape.agents.decision_log);
 - `out`: where the runs go (default `runs/<name>`, git-ignored);
 - `pbrs` (E6b): potential-based shaping (rlscape.agents.pbrs), `potential: gathering_income`. Each training env adds
-  F = γ_hr^τ Φ(s′) − Φ(s) to its reward with the agent's own `ppo.gamma_hr`, so the optimal policy is unchanged;
+  F = γ_hr^τ Φ(s′) − Φ(s) to its reward with the agent's own `ppo.gamma_hr` and `ppo.discount_floor_ticks`, so the
+  optimal policy is unchanged;
 - `sweep`: a grid of variants, `{key: [values]}`, a key being `ppo.<argument>`, `env.<setting>` or one of the keys
   above. Each combination is a variant, named by its values (`learning_rate0.0001_ent_coef0.01`), with its own runs.
 
@@ -169,7 +170,8 @@ def make_vec_env(config: dict) -> VecEnv:
     """The training envs: SimEnv, shaped by PBRS (E6b) with the agent's gamma_hr when the config has `pbrs`."""
     if config.get("pbrs"):
         gamma_hr = float((config["ppo"] or {}).get("gamma_hr", SMDP_DEFAULT_GAMMA_HR))
-        factory = partial(shaped_sim_env, gamma_hr, **env_kwargs(config))
+        floor_ticks = float((config["ppo"] or {}).get("discount_floor_ticks", 0.0))  # the agent's floor (v1.46)
+        factory = partial(shaped_sim_env, gamma_hr, floor_ticks, **env_kwargs(config))
     else:
         factory = partial(SimEnv, **env_kwargs(config))
     factories = [factory for _ in range(int(config["n_envs"]))]

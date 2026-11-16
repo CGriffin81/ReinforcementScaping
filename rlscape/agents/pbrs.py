@@ -4,7 +4,9 @@
     F = γ_hr^τ · Φ(s′) − Φ(s)        (rlscape.agents.smdp.pbrs_bonus)
 
 with γ_hr the agent's own discount per game-hour and τ the decision's duration, so the optimal policy is the unshaped
-one's: shaping can change how fast and in what order strategies are found (RQ4), not which is best.
+one's: shaping can change how fast and in what order strategies are found (RQ4), not which is best. A decision
+shorter than the agent's decision floor counts as the floor here too (`ppo.discount_floor_ticks`, env contract v1.46),
+so that F stays the agent's own discount.
 
 **The potential** (ROADMAP §3's candidate, "the best GP/hr the current unlocks allow"):
 
@@ -159,10 +161,10 @@ class Potential:
 class PBRSShaping(gym.Wrapper):
     """A SimEnv whose reward has F = γ_hr^τ · Φ(s′) − Φ(s) added; infos keep the env's reward and F apart."""
 
-    def __init__(self, env: gym.Env, gamma_hr: float):
+    def __init__(self, env: gym.Env, gamma_hr: float, floor_ticks: float = 0.0):
         super().__init__(env)
         sim = env.unwrapped.sim
-        self.gamma_hr = float(gamma_hr)
+        self.gamma_hr, self.floor_ticks = float(gamma_hr), float(floor_ticks)
         self.potential = Potential(gamma_hr, sim.horizon_ticks, GatheringIncome(sim.activity_ticks))
         self.phi = 0.0
 
@@ -179,13 +181,14 @@ class PBRSShaping(gym.Wrapper):
         obs, reward, terminated, truncated, info = self.env.step(action)
         phi_next = self._phi()
         shaping = float(pbrs_bonus(np.array([self.phi]), np.array([phi_next]), np.array([info["duration"]]),
-                                   np.array([terminated or truncated]), self.gamma_hr)[0])
+                                   np.array([terminated or truncated]), self.gamma_hr,
+                                   self.floor_ticks)[0])
         self.phi = phi_next
         info = {**info, "reward_extrinsic": float(reward), "r_shaping": shaping, "potential": phi_next}
         return obs, float(reward) + shaping, terminated, truncated, info
 
 
-def shaped_sim_env(gamma_hr: float, **sim_env_kwargs) -> PBRSShaping:
+def shaped_sim_env(gamma_hr: float, floor_ticks: float = 0.0, **sim_env_kwargs) -> PBRSShaping:
     """A training env for SubprocVecEnv's factories: SimEnv with E6b's shaping."""
     from rlscape.envs.sim_env import SimEnv
-    return PBRSShaping(SimEnv(**sim_env_kwargs), gamma_hr)
+    return PBRSShaping(SimEnv(**sim_env_kwargs), gamma_hr, floor_ticks)

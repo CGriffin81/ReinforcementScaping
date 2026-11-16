@@ -56,10 +56,12 @@ def test_the_potential_is_zero_at_the_end_and_discounts_the_time_left(income):
     assert annuity(20, 1.0) == 20 and 0 < annuity(20, 0.99) < 20 and annuity(0, 0.99) == 0.0
 
 
-def test_the_shaping_telescopes_and_is_kept_apart():
+@pytest.mark.parametrize("floor", [0.0, 600.0])
+def test_the_shaping_telescopes_and_is_kept_apart(floor):
     """Over a whole episode the discounted shaping sums to −Φ(s₀), Ng et al.'s identity, so it can't change which
-    policy is best; each step's reward is the env's plus F."""
-    shaped, plain = PBRSShaping(SimEnv(horizon_ticks=3_000), 0.9), SimEnv(horizon_ticks=3_000)
+    policy is best; each step's reward is the env's plus F. With a decision floor (env contract v1.46) too, when
+    the discount has the same floor."""
+    shaped, plain = PBRSShaping(SimEnv(horizon_ticks=3_000), 0.9, floor), SimEnv(horizon_ticks=3_000)
     _, info = shaped.reset(seed=3)
     plain.reset(seed=3)
     phi0, rng, total, discount, done = info["potential"], np.random.default_rng(3), 0.0, 1.0, False
@@ -71,7 +73,7 @@ def test_the_shaping_telescopes_and_is_kept_apart():
         assert info["reward_extrinsic"] == pytest.approx(plain_reward) and reward == pytest.approx(
             plain_reward + info["r_shaping"])
         total += discount * info["r_shaping"]
-        discount *= float(option_discounts(np.array([info["duration"]]), 0.9)[0])
+        discount *= float(option_discounts(np.array([info["duration"]]), 0.9, floor)[0])
         done = terminated or truncated
     assert info["potential"] == 0.0 and total == pytest.approx(-phi0, rel=1e-9, abs=1e-9)
 
@@ -84,6 +86,15 @@ def test_a_run_with_pbrs_logs_the_shaping_apart(tmp_path):
     episodes = pd.read_parquet(run / "episodes.parquet")
     first = log[(log.env == episodes.iloc[0].env) & (log.episode == 0)]
     assert episodes.iloc[0].r_shaping == pytest.approx(first.r_shaping.sum(), rel=1e-4)
+
+
+def test_the_training_envs_shape_with_the_agents_floor():
+    from rlscape.agents.training import make_vec_env
+    vec = make_vec_env({**CONFIG, "ppo": {**CONFIG["ppo"], "discount_floor_ticks": 100}})
+    try:
+        assert vec.get_attr("floor_ticks") == [100.0, 100.0] and vec.get_attr("gamma_hr") == [0.9, 0.9]
+    finally:
+        vec.close()
 
 
 def test_a_pbrs_section_must_name_a_known_potential():
