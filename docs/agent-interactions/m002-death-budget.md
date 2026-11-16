@@ -6,10 +6,17 @@
 - Timestamp CST: 2026-11-12 22:02:11 CST, the prompt's timestamp in the session transcript (UTC−06:00).
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: PARTIAL. Sim v1.3's fix, its tests and its docs, in a PR into `main`. The tag, the worktrees and the hung
-  run's restart wait for the merge; the hung run waits for the fix in E3's worktree (Caleb).
-- Commit: this commit on `sim/v1.3-death-budget` (from `main` at `6f668c7`; Caleb: "Commit it and open a PR into
-  main", 22:30:05 CST).
+- Status: SUCCESS. Sim v1.3 is merged into `main` and tagged, `main` is merged into the five experiment branches, and
+  the hung run trains again on sim v1.3. Before each experiment's evaluation, its venv gets `main`'s two figure
+  packages.
+- Commit:
+  - `be4041a` on `sim/v1.3-death-budget` (from `main` at `6f668c7`; Caleb: "Commit it and open a PR into main",
+    22:30:05 CST), merged into `main` by PR #29 as `af2ede9` (Caleb: "Merge the PR into main once it's open",
+    22:33:19 CST); tag `sim-v1.3` on `af2ede9`;
+  - the five branches' merges of `main` (Caleb: "Go ahead with all five", 22:36:21 CST): E3 `ba9d8ec`, E6a `7a20e6c`,
+    E4 `c359efd`, E6b `6e4aeee`, E5 `d22de18`;
+  - this record's last update, the decision log's follow-up, CLAUDE.md and ROADMAP: this commit, to `main` directly
+    (Caleb: "Commit it to main directly", 22:46:28 CST).
 
 ## Full Prompt
 
@@ -32,6 +39,11 @@ And, sent while that was under way (22:30:55 CST, the message's queue time in th
 > So we only have one failed run that needs restarting? (22:32:08 CST)
 
 > Merge the PR into main once it's open (22:33:19 CST)
+
+Then, after the five steps were laid out (tag; stop the launcher; merge `main` into the worktrees; stop the hung run;
+relaunch with `--restart-partial`), at 22:36:21 CST:
+
+> Go ahead with all five
 
 ## Response Summary
 
@@ -100,9 +112,27 @@ And, sent while that was under way (22:30:55 CST, the message's queue time in th
 
 ## Infrastructure Changes
 
-- The hung run is left as it is (Caleb), and the queue is unchanged.
+- The hung run was left as it was (Caleb) until the fix reached its worktree.
 - The speed watch (the session's scratchpad `rate_watch.py`) now also stops and reports a run that stopped writing for
   5 minutes without finishing (no `run.json`). It was restarted at 22:29 to run until midnight, appending to its log.
+- **The five steps** (Caleb: "Go ahead with all five"):
+  1. **The tag:** `sim-v1.3` (annotated) on `af2ede9`, pushed. It was first pushed with a message saying the new
+     runs start "from 23:00 CST", a time not yet known, and replaced at once with one that gives none.
+  2. **The launcher:** stopped at 22:38:51 (python 20912; uv 12512 and python 20056 exited with it). The five runs
+     kept training: 10 `train.py` processes before and after.
+  3. **The worktrees:** `main` merged into each experiment branch, and the branches pushed:
+     - all five merged cleanly, and each worktree's `rlscape/sim` now matches `sim-v1.3`;
+     - the training and evaluation modules import in each venv;
+     - the venvs weren't synced. The merge adds matplotlib and ruptures, which only the figure code imports, so a venv
+       gets them before its experiment's evaluation (`uv sync --frozen`, additions only).
+  4. **The hung run:** stopped at 22:42:16 (python 2752 and 21032, workers 4436, 3620 and 8108). Its folder and its
+     log, with the traceback, moved to `runs/e3-reward-weight-sweep-hung-partial/normalised_weights0.5-0.5/` in E3's
+     worktree, as the reboot's partial runs were.
+  5. **The queue:** relaunched at 22:42:36 as PID 21780 from `D:\ReinforcementScaping-int`, with `--jobs 5
+     --restart-partial` and the same five configs. The 16:52 queue's log is `runs/train-queue-gpu-part7.log`.
+     - With the folder moved, the hung run lists as waiting, so `--restart-partial` changes nothing here.
+     - E5's seed 0 finished at 22:43, so at 22:45:05 the queue started two runs: E3 (.5, .5) seed 1 again, and E3
+       (.25, .75) seed 1. Both are on sim v1.3 (`ba9d8ec`).
 
 ## Decisions
 
@@ -124,7 +154,8 @@ And, sent while that was under way (22:30:55 CST, the message's queue time in th
 
 ## Follow-Up
 
-- **Caleb:** the change; whether to commit it and open a PR into `main`, then tag sim-v1.3.
-- **Claude, once it's merged:** tag sim-v1.3; stop the queue's launcher; merge `main` into the five worktrees (the
-  training runs keep the code they loaded); stop the hung run; relaunch the queue with `--restart-partial` so it trains
-  the run again. CLAUDE.md's and ROADMAP's sim tag then name sim-v1.3.
+- **Claude:**
+  - watch the RAM while the two runs that started together at 22:45 grow (the 14:26 low came from runs starting
+    close together);
+  - add E5's seed-0 learning check;
+  - sync each experiment's venv before its evaluation.

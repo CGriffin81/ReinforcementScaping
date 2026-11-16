@@ -23,6 +23,29 @@ def test_a_decision_is_discounted_by_gamma_per_game_hour():
         option_discounts(np.array([-1]), 0.9)
 
 
+def test_the_decision_floor_discounts_a_short_option_as_the_floor():
+    """2026-11-15: with a floor of a quarter-hour, an option of no time and one of a tick are discounted as a quarter
+    (0.81^0.25 = 0.9^0.5); a half-hour option keeps its own discount."""
+    floored = option_discounts(np.array([0, 1, QUARTER, HALF_HOUR]), 0.81, floor_ticks=QUARTER)
+    assert floored == pytest.approx([0.9 ** 0.5, 0.9 ** 0.5, 0.9 ** 0.5, 0.9])
+    with pytest.raises(ValueError):
+        option_discounts(np.array([HOUR]), 0.9, floor_ticks=-1)
+
+
+def test_the_floor_reaches_gae_and_pbrs():
+    """λ 0: a one-tick option with reward 0 and V 10 before and after has δ = 0.81^0.25·10 − 10 with a quarter-hour
+    floor, against about 0 without it. PBRS's F for Φ 10 to 10 is the same number."""
+    rewards, durations, values = column(0.0), column(1), column(10.0)
+    plain, _ = smdp_gae(rewards, values, durations, column(False), np.array([10.0]), 0.81, 0.0)
+    floored, _ = smdp_gae(rewards, values, durations, column(False), np.array([10.0]), 0.81, 0.0,
+                          floor_ticks=QUARTER)
+    assert plain[0, 0] == pytest.approx(0.81 ** (1 / HOUR) * 10 - 10) and abs(plain[0, 0]) < 1e-3
+    assert floored[0, 0] == pytest.approx(0.9 ** 0.5 * 10 - 10)
+    bonus = pbrs_bonus(np.array([10.0]), np.array([10.0]), np.array([1]), np.array([False]), 0.81,
+                       floor_ticks=QUARTER)
+    assert bonus == pytest.approx([0.9 ** 0.5 * 10 - 10])
+
+
 def test_lambda_one_gives_the_episodes_discounted_returns():
     """Rewards 1, 2, 3 over options of half an hour, an hour and a quarter, γ_hr 0.5, the episode ending at the last:
     R2 = 3, R1 = 2 + 0.5·3 = 3.5, R0 = 1 + 0.5^0.5·3.5."""

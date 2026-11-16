@@ -7811,3 +7811,195 @@ Raised and answered while drafting the reviewer's guide (OQ-50 (a)), `m002-revie
   queue's launcher stopped (the training runs keep the code they loaded), and the hung run is stopped and trained
   again on sim v1.3. Runs already trained or training stay on sim v1.2; the rest train on sim v1.3, which is sim v1.2
   wherever sim v1.2 completes.
+- **Done (Caleb: "Merge the PR into main once it's open", "Go ahead with all five"):**
+  - PR #29 was merged as `af2ede9` and tagged `sim-v1.3`. Before the merge, 20 seeded 20-hour episodes were
+    byte-identical on sim v1.2 and the fix (5,330 decisions, 8 deaths while fishing).
+  - The queue's launcher was stopped at 22:38:51, and `main` merged into the five experiment branches (E3 `ba9d8ec`,
+    E6a `7a20e6c`, E4 `c359efd`, E6b `6e4aeee`, E5 `d22de18`). Their venvs were left as they were: the merge adds
+    matplotlib and ruptures, which only the figure code imports, so each venv gets them before its experiment's
+    evaluation.
+  - The hung run was stopped at 22:42:16. Its folder and log were kept in
+    `runs/e3-reward-weight-sweep-hung-partial/` (E3's worktree).
+  - The queue was relaunched with `--jobs 5 --restart-partial` at 22:42:36 (PID 21780).
+  - Nothing else is retrained: 8 runs done and 4 training, on sim v1.2.
+
+### Found and decided: a Claude app update killed the queue, which now runs from Task Scheduler (Caleb, 2026-11-13)
+2026-11-13, Caleb: "Check on the runs." (00:14:27 CST). In the question dialog (00:18:55 CST): "From the start
+(Recommended)" and "Task Scheduler (Recommended)". `m002-app-update`.
+- **Found:** the Claude desktop app updated itself at 00:13. Windows installed its new package at 00:13:25 and the app
+  restarted at 00:13:26.
+  - The queue (PID 21780) and its five runs had been started from a Claude session's shell, so they were in the app's
+    process tree. They stopped between 00:13:06 and 00:13:22, with no error in any log.
+  - **Lost:** about 2.35M decisions (12 run-hours, about 2.4 hours of the queue at five jobs): E3's (.75, .25)
+    seed 1 at about 1.5M; its (.25, .75) at 0.3M; its (.5, .5) and (0, 1) at 0.2M each; E6a's γ0.5 seed 1 under
+    0.1M.
+  - The 11 finished runs are unharmed. The app has no auto-update setting.
+- **The restart, the options:** from the start, with the partial runs kept aside (recommended); or from their
+  checkpoints, which needs new code, and a resumed run isn't reproducible from its seed. **Caleb: from the start.**
+  The partial runs are in `runs/e3-reward-weight-sweep-appupdate-partial/` (E3's worktree) and
+  `runs/e6a-discount-sweep-appupdate-partial/` (E6a's).
+- **Where the queue runs, the options:** a one-time scheduled task, outside the app (recommended); Caleb's own
+  PowerShell window; or this session, as before, which the next update kills again. **Caleb: Task Scheduler.**
+- **Built:** the task "ReinforcementScaping train queue" runs `runs/launch-train-queue.cmd <jobs>` (the main
+  checkout's `runs/`, git-ignored) under `conhost --headless`.
+  - It runs while Caleb is logged on, so the GPU works as before.
+  - Its priority is normal, where the scheduler's default is below normal, and it has no time limit, where the default
+    stops a task after 72 hours.
+  - It has no trigger, so it runs only when started.
+- **Found on the first launch:** outside the app no venv had an interpreter.
+  - The app is an MSIX package, so uv's Python 3.12.14, installed from inside it on 2026-10-05, lives in the
+    package's private AppData. Outside the app, the path each venv's `pyvenv.cfg` names was empty.
+  - The launcher copies that Python to the path from outside the app (writes from inside the app land in the private
+    copy): 3,415 files, byte-identical (the SHA-256 of `python.exe` and `python312.dll` match, `runs/python-copy.log`).
+  - It runs the -int venv's Python directly, which is what `uv run` ran.
+- **Relaunched at 00:23 with `--jobs 3`.** The queue's processes sit under Task Scheduler, none under the app.
+  - At 00:27:21 it started E3's (.75, .25), (.5, .5) and (.25, .75) seed 1 (`ba9d8ec`, on the GPU, deterministic,
+    clean).
+  - Five young runs at once would want more RAM than the machine has (6 to 7 GB each as they start), so the queue goes
+    to five jobs once these have settled.
+- **Relaunching it** (the RAM rule, or more jobs): stop the queue's Python by PID, and the runs carry on (tested with a
+  throwaway task: a task's child outlives its cmd). The old instance stays "Running" as the runs' parent, so the task
+  allows parallel instances before it's started again.
+- **Caleb (00:41): three jobs until the runs' optimisation is settled** ("Keep the runs to three jobs until we figure out
+  how to optimize the runs."). At three, the queue makes about 203 decisions a second against about 320 at five.
+- **The profile** (Caleb: "Run the profile"; `m002-app-update`):
+  - **Where a training decision's time goes:** the environment's action mask, at 86 to 91%. Most of it is re-ranking
+    every skilling and combat slot (and the routes they need) at every decision. A skilling model spends 28% in the
+    aggression model's practice runs.
+  - **What doesn't matter:** the option's own run (4 to 7%), the policy (2 to 14%), PPO's update (under 1%) and the
+    decision log. Compiling the trainer or using the GPU more would gain nothing.
+- **After the profile, the options:**
+  - five jobs and a byte-identical cache for the share's sessions without aggressors (recommended);
+  - that and torch-free env workers, for a sixth job;
+  - five jobs and no code change;
+  - three jobs while building.
+
+  **Caleb: five jobs and the cache.**
+  - **Five jobs again:** staggered, four from 00:50 and five from 01:27.
+  - **The cache:** exact (0 of 40 E1 episodes differ from `main`), but it saves almost nothing. The share's session
+    runs fell only from 522 to 517 on the (.5, .5) model's episodes, because a share's key rarely recurs with only
+    the tolerance left different.
+  - **Then the options:** drop the cache and stop (recommended); drop it and try torch-free env workers for a sixth
+    job; or keep it. **Caleb: drop it and stop.** The cache was reverted, uncommitted, and the runs stay at five jobs
+    with no more optimisation.
+
+### Found: E3's (.75, .25) seed 1, restarted on sim v1.3 from Task Scheduler, repeats its killed run (2026-11-13)
+`m002-app-update`, at Caleb's "Check on the runs." (07:23:52 CST). The killed run is
+`runs/e3-reward-weight-sweep-appupdate-partial/normalised_weights0.75-0.25/seed1` in E3's worktree.
+- **The two runs:**
+  - the killed one trained on `b29de68` (sim v1.2), started inside the Claude app through `uv run`;
+  - the restart is on `ba9d8ec` (sim v1.3), from the scheduled task, with uv's Python copied out of the app's package.
+- **Compared** (`determinism_check.py`, `ckpt_data_diff2.py`, as for the reboot's):
+  - **The decision log:** 28 of 28 shared parts byte-identical (1,400,000 rows; the restart hadn't written the last
+    two yet).
+  - **The checkpoints:** 14 of 14 shared, 5 of each zip's 6 members identical. The sixth (`data`) differs only in the
+    episodes' wall-clock `t` and the memory addresses in its reprs.
+- **So:**
+  - sim v1.3 is sim v1.2 on these 1.4M decisions;
+  - neither the scheduled task nor the copied interpreter changes a run.
+
+### OQ-81's RAM rule fired (2026-11-13, 17:39): the queue back to four jobs
+At Caleb's "Check on the runs." (17:38:10 CST), `m002-app-update`.
+- **The app:** it had restarted at 17:37:53, and the queue (under the scheduled task) carried on, as it should.
+- **The low:** free RAM was under 1 GB from at least 17:38:37 to 17:39:49 (887 to 948 MB). The causes: E3's (0, 1)
+  seed 2, started at 17:16 and still growing; and the restarted app, at 2.2 GB.
+- **The rule's action:** the queue relaunched with `--jobs 4` at 17:40:17 (PID 1188). All five runs carried on; the
+  next to finish isn't replaced.
+- **What happened next:** free RAM fell to 316 MB at 17:41:12. Then Windows trimmed the runs' working sets: 2.9 GB free
+  at 17:41:42, 7.9 GB by 17:43:42. Page reads ran at 2,000 to 4,000 a second for about 90 seconds as the memory
+  came back, then stopped. They were over 1,000 a second with free RAM under 2 GB in one 14-second sample only, so
+  the paging rule didn't fire. Speeds are unaffected.
+- **Since the restart:** 20 of the 50 runs are done. The five training are E3's seed 2 (334 decisions a second in
+  all).
+- **Restoring five, the options:** back to five now (recommended); five with a RAM watch until midnight; or stay at
+  four, about 10 hours later to finish. **Caleb (17:46:06 CST): back to five now.** The queue was relaunched with
+  `--jobs 5` at 17:46:21 (PID 21176), with 7.9 GB free. No slot is free until the next run ends (about 19:00), and no
+  watcher runs. The rule stands.
+
+### Found: 8 runs collapse into zero-effect loops, and every run's critic value grows unbounded (2026-11-15)
+After E3's evaluation; Caleb: "Diagnose first (Recommended)" (13:08:04 CST). `m002-collapse-diagnosis`.
+- **All 50 runs are done** (the queue at 12:35:41, 0 failed).
+- **The collapse, in 8 of the 50:**
+  - E6b, all five seeds;
+  - E6a γ0.9, seeds 0 and 3;
+  - E3 (0, 1), seed 1.
+
+  They end looping options that change nothing: two loot modes alternated at a tick each (the mask keeps each mode
+  from being chosen while it's set, but not the pair from alternating), or a bank deposit and withdraw at 8 ticks.
+  Up to about 118,000 decisions an episode, for about 0 reward.
+- **E6b's shaping is as designed.** It's a time rent, F ≈ −w·G/100,000·τ, which sums to −Φ(start) over any episode,
+  so it can't make the loop optimal.
+- **The critic doesn't converge.** In every run checked, collapsed or healthy, its value:
+  - grows almost linearly through training (about 81 at decision-log part 4, 615 by part 40);
+  - is about the same in each run at the same point;
+  - is the same at an episode's start and end;
+  - is far above what an episode earns (106 to 319).
+- **The likely cause is the trainer's horizon bootstrap** (`rlscape/agents/ppo.py`; env contract §1: the horizon is a
+  truncation, bootstrapped). The observation carries the time left and the task ends at 20 hours, so the value at the
+  end should be 0; but the final observation is only a bootstrap target, never trained on, so nothing pins it.
+- **What an offset does:** an offset c shifts an option's advantage by about −c·(1 − γ_hr^τ), against long options in
+  proportion to their length. The evidence fits:
+  - every run's mean option length falls through training;
+  - γ0.9, ten times the penalty an hour, collapses earliest;
+  - loops, with reward about 0, never correct it.
+
+  It's a hypothesis with consistent evidence, untested.
+
+### Found: the horizon fix pins the critic, but E6a γ0.9 still collapses (2026-11-15)
+The test of the fix (Caleb: "Test the fix first (Recommended)"). `m002-collapse-diagnosis`.
+- **The test runs:** E6a γ0.9 seed 0 and E6b seed 0, each the experiment's own config with the horizon's step not
+  bootstrapped (`ppo.bootstrap_horizon: false`), on the same seeds, from 13:16. E6a γ0.9 reached 800k decisions at
+  about 15:15.
+- **The critic is now right.** Against the realised discounted return-to-go G, through the episode:
+  - with the fix, V − G is about +2 to +4 from hour 2 to hour 19 (decision-log parts 8 and 10);
+  - without it (the original run), V − G grows through the episode, from about +9 at hour 2 to about +51 at hour 19
+    (part 8). That is the offset the first finding saw.
+- **E6a γ0.9 collapses anyway**, about when its original did:
+  - decisions an episode pass 1,000 at part 11 (550k decisions), against part 10 in the original;
+  - by part 13, 97% of decisions take 8 ticks or less.
+- **The loop isn't the entropy bonus, and the critic doesn't overvalue it.** Where it loops, the policy's entropy is
+  about 0.9 to 1.4 nats, against about 4.5 for a uniform choice. Its V − G at loop decisions is within 0.7 of its
+  V − G at acting decisions.
+- **E6b, so far, doesn't collapse.** At 600k decisions (part 11), its episodes take about 555 decisions, and a third of
+  them take 8 ticks or less. Its original took 3,479 decisions an episode at part 8 and only loops after. It doesn't
+  learn either: its unshaped return peaks at part 1 (135) and falls to 116 by part 11.
+- **What's left, a hypothesis:** a zero-effect option costs only the game time it takes, about 0.01 reward for an
+  8-tick loop at γ_hr 0.9. A critic error of a few percent biases a long option's advantage by more than that, so the
+  choice between looping and acting rests on noise. Once loops cost reward, the critic lags the falling return and
+  overestimates (V − G rises to +9 at part 11), which favours the loop more.
+- **Asked Caleb how to proceed:**
+  - (a) test a decision floor (recommended): a trainer-only change that discounts every decision as at least a
+    game-minute, γ_hr^max(τ, 100 ticks), so a loop costs about 0.1 reward a decision, not 0.01; with the horizon fix,
+    on E6a γ0.9 seed 0 to 800k decisions, then decide on a full rerun;
+  - (b) rerun all 50 with the horizon fix only;
+  - (c) keep the results, and report the collapse and the critic's bias;
+  - (d) a sim v1.4 that masks the zero-effect repeats, then a full rerun.
+
+  **Caleb (17:38:19 CST): (a), test a decision floor.** The run started at 17:42:07.
+
+### Found: with the horizon fix and the decision floor, E6a γ0.9 seed 0 doesn't collapse (2026-11-15)
+The floor's test (Caleb, 17:38:19 CST), `m002-collapse-diagnosis`. E6a γ0.9 seed 0, the horizon not bootstrapped and
+every decision discounted as at least 100 ticks, to 800k decisions (17:42:07 to 20:01:21).
+- **No collapse.** Episodes take about 450 to 530 decisions from part 10 to the end. A quarter to a third of the
+  decisions take 8 ticks or less: drops (about 7 ticks) and bank withdrawals for a trip, not the loops. The
+  horizon-only test, at the same seed, took 3,229 decisions an episode at part 12 and 7,361 at part 13.
+- **It earns more, and is still rising.** Its 100k-block mean episode reward peaks at the last block, 232. The
+  horizon-only test peaked at 181 (500k), the original at 202 (1M, before its collapse took over).
+- **The critic** reads below the realised return (V − G about −5 to −11 through most of the episode, at part 15),
+  against the plain γ_hr^τ return. A rising policy's critic lags below it; the floored return the critic learns is
+  also a little lower than the plain one.
+- **What it doesn't show:** one seed of one experiment, to 800k of the 2M decisions a run has. E6b (PBRS) and E3's
+  (0, 1), which collapsed at 1.5M, weren't tested with the floor.
+
+### Decided: train all 50 runs again with both fixes (2026-11-15)
+`m002-rerun`. After the floor's test, the options were: (a) rerun all 50 with both fixes (recommended); (b) test E6b
+with both first, then rerun; (c) rerun only E6a and E6b, which would mix two trainers across the experiments; (d)
+keep the results and report. Caleb asked whether a rerun leaves time for the analysis and the peer review (the
+estimate: about 80 hours, so done around Nov 19 morning, the analysis on Nov 20–22, the draft unchanged on Nov
+22–25). **Caleb (23:07:43 CST): "Well, let's get the fixes in and rerun as soon as possible."** So (a):
+- env contract v1.46: the horizon isn't bootstrapped, and each decision is discounted as at least 100 ticks;
+- every experiment's config sets `ppo.bootstrap_horizon: false` and `ppo.discount_floor_ticks: 100`. The code's
+  defaults stay the old trainer's, so the first runs' configs still say how they trained;
+- E6b's shaping takes the same floor, so F stays the agent's own discount;
+- the first 50 runs are kept aside in each worktree (`runs/<name>-bootstrap`), and E3's first evaluation and summary
+  beside them. E2 isn't trained again.
