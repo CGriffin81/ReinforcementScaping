@@ -362,6 +362,12 @@ bootstrapped, and each decision is discounted as at least 100 ticks. With both, 
 800k decisions, where it had. All 50 runs train again, seed 0 of every experiment first, from about 01:00 on Nov 16:
 about 80 hours, so done around Nov 19 morning, and the analysis moves to Nov 20–22. The first 50 are kept aside in
 each worktree (`runs/<name>-bootstrap`). E2 stays as it was.
+
+*On sim v1.4 from 2026-11-16 (Caleb, `m002-tan-guard`):* E6a's γ_hr 0.5 seed 0 failed at 05:47 on a sim v1.3 error: a
+tanning path whose walk to the tanner paid a charter with every coin it carried, the fee's among them. Sim v1.4's
+tanner tans nothing then, as it already did when a fare left fewer coins than the fee, and equals sim v1.3 wherever
+sim v1.3 completes, so nothing else is retrained. The run trains again from the start, and the runs not yet started
+train on sim v1.4.
 - [ ] **E3, the reward-weight sweep** (RQ1 to RQ3): (1,0), (.75,.25), (.5,.5), (.25,.75) and (0,1) in normalised
   units (OQ-67), 5 seeds each, 2M decisions a run (OQ-69), with E2's winner: λ 0.95, learning rate 3e-4, entropy 0.01.
 - [ ] **E4, PPO + RND** (RQ2, RQ4, H3): the RND wrapper, then PPO + RND at (.5,.5), 5 seeds, against E3's (.5,.5).
