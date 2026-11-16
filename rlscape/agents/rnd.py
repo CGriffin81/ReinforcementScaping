@@ -27,8 +27,10 @@ about −0.2 and the cumulative one −0.3. So the drift is in the first one or 
 predictor learns fastest, and the recent mean ends it sooner. `centre: false` keeps the cumulative statistics.
 
 - **One value head (v1).** The bonus is part of the reward. Episodes end only at the 20-hour limit (the sim never
-  terminates one, env contract §1), and every run bootstraps that limit (rlscape.agents.ppo), so the bonus isn't cut
-  off there. ROADMAP §3's v2, a second value head, is for if v1's results are ambiguous.
+  terminates one, env contract §1). Until 2026-11-15 every run bootstrapped that limit (rlscape.agents.ppo), so the
+  bonus wasn't cut off there. From env contract v1.46 the limit is the task's end (`ppo.bootstrap_horizon: false`):
+  one value head can't treat the bonus apart from the env's reward, so the bonus too stops at 20 hours, as an
+  episodic bonus does. ROADMAP §3's v2, a second value head, is for if v1's results are ambiguous.
 - **Inputs** are normalised per feature by a running mean and standard deviation and clipped to ±5, as Burda's are. A
   feature that has never varied makes any change from it strongly novel (clipped at 5). The first rollout pays no
   bonus: it fills those statistics.
