@@ -7961,3 +7961,25 @@ estimate: about 80 hours, so done around Nov 19 morning, the analysis on Nov 20â
 - E6b's shaping takes the same floor, so F stays the agent's own discount;
 - the first 50 runs are kept aside in each worktree (`runs/<name>-bootstrap`), and E3's first evaluation and summary
   beside them. E2 isn't trained again.
+
+### Decided: the figure tooling's four fixes from the analysis rehearsal, with empty bins carried forward (2026-11-16)
+`m002-analysis-rehearsal`. The analysis ran end to end on the first round's E3 runs and evaluation, into scratch, and
+found four things to fix in the shared tooling before the rerun's summaries are published:
+1. `learning_curves.csv` was 45.8 MB (325,538 episodes): near GitHub's 50 MB warning for one file;
+2. the mean over seeds saws where a run leaves 20k-decision bins empty (E3's (0, 1) seed 1, looping, from 1.6M);
+3. labels collided in `learning_e3` and `pareto`;
+4. `entropy`'s legend covered its curves' ends, and its axis ran to 2.1M (a run's last behaviour bin holds its last
+   768 decisions).
+
+For 2, the options: (a) carry a run's last value into its empty bins (recommended), so each bin's mean and CI are over
+all the seeds; (b) plot the mean only where every seed has a value, leaving gaps. **Caleb (01:09:48 CST): all four,
+(a).**
+- The curves are written gzipped (`learning_curves.csv.gz`, 13.3 MB for the same table); the figure script reads
+  either, so E2's plain one still reads.
+- `carried_curve` fills a run's empty bins from its first bin to its variant's last, for the mean and its CI; the
+  figure's table counts the carried values (`carried`). A run's own changepoints, verdicts and sample efficiency use
+  its bins as they are.
+- `full_bins` leaves out a run's last behaviour bin when it holds under half a bin, as the learning curve already
+  did; the time allocation and discovery follow it.
+- A reference level near a panel's top is named below its line; the pareto's point labels take the first spot clear
+  of the others; the entropy legend is below the panels.
