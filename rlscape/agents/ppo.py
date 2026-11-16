@@ -35,8 +35,8 @@ from rlscape.agents.smdp import option_discounts, smdp_gae
 class SMDPMaskableRolloutBuffer(MaskableRolloutBuffer):
     """A MaskableRolloutBuffer that also stores each decision's duration, and discounts by game time."""
 
-    def __init__(self, *args: Any, gamma_hr: float = 0.99, **kwargs: Any):
-        self.gamma_hr = gamma_hr
+    def __init__(self, *args: Any, gamma_hr: float = 0.99, discount_floor_ticks: float = 0.0, **kwargs: Any):
+        self.gamma_hr, self.discount_floor_ticks = gamma_hr, discount_floor_ticks
         super().__init__(*args, **kwargs)
 
     def reset(self) -> None:
@@ -56,7 +56,8 @@ class SMDPMaskableRolloutBuffer(MaskableRolloutBuffer):
         ended[:-1] = self.episode_starts[1:].astype(bool)
         ended[-1] = np.asarray(dones, dtype=bool)
         advantages, returns = smdp_gae(self.rewards, self.values, self.durations, ended,
-                                       last_values.clone().cpu().numpy().flatten(), self.gamma_hr, self.gae_lambda)
+                                       last_values.clone().cpu().numpy().flatten(), self.gamma_hr, self.gae_lambda,
+                                       self.discount_floor_ticks)
         self.advantages[:] = advantages
         self.returns = returns.astype(np.float32)
 
@@ -64,13 +65,24 @@ class SMDPMaskableRolloutBuffer(MaskableRolloutBuffer):
 class SMDPMaskablePPO(MaskablePPO):
     """MaskablePPO whose discount is γ_hr per game-hour of each decision's duration (rlscape.agents.smdp)."""
 
-    def __init__(self, policy: Any, env: Any, gamma_hr: float = 0.99, **kwargs: Any):
+    def __init__(self, policy: Any, env: Any, gamma_hr: float = 0.99, bootstrap_horizon: bool = True,
+                 discount_floor_ticks: float = 0.0, **kwargs: Any):
+        """`bootstrap_horizon`: whether the 20-hour horizon's step gets γ_hr^τ·V(final observation) added, as a time
+        limit's would. True is how every run to 2026-11-15 trained. False treats the horizon as the task's end, with
+        nothing left to earn (2026-11-15, the collapse diagnosis): the observation carries the time left, and with
+        the bootstrap nothing pins the critic's value at the end, so it can drift (decision log).
+
+        `discount_floor_ticks`: each decision is discounted as if it took at least this many ticks (rlscape.agents.smdp,
+        the decision floor). 0, how every run to 2026-11-15 trained, is the plain γ_hr^τ."""
         if "gamma" in kwargs:
             raise ValueError("SMDPMaskablePPO discounts by gamma_hr per game-hour; sb3's per-decision gamma is unused")
         self.gamma_hr = gamma_hr
+        self.bootstrap_horizon = bootstrap_horizon
+        self.discount_floor_ticks = discount_floor_ticks
         self.decision_logger: DecisionLogger | None = None
         kwargs.setdefault("rollout_buffer_class", SMDPMaskableRolloutBuffer)
-        kwargs["rollout_buffer_kwargs"] = {**(kwargs.get("rollout_buffer_kwargs") or {}), "gamma_hr": gamma_hr}
+        kwargs["rollout_buffer_kwargs"] = {**(kwargs.get("rollout_buffer_kwargs") or {}), "gamma_hr": gamma_hr,
+                                           "discount_floor_ticks": discount_floor_ticks}
         super().__init__(policy, env, gamma=1.0, **kwargs)
 
     def _excluded_save_params(self) -> list[str]:
@@ -115,13 +127,13 @@ class SMDPMaskablePPO(MaskablePPO):
                 actions = actions.reshape(-1, 1)
             durations = np.array([info["duration"] for info in infos], dtype=np.float64)
             for idx, done in enumerate(dones):  # a time limit: bootstrap the cut-off value (sb3 issue #633)
-                if done and infos[idx].get("terminal_observation") is not None \
+                if self.bootstrap_horizon and done and infos[idx].get("terminal_observation") is not None \
                         and infos[idx].get("TimeLimit.truncated", False):
                     terminal_obs = self.policy.obs_to_tensor(infos[idx]["terminal_observation"])[0]
                     with th.no_grad():
                         terminal_value = self.policy.predict_values(terminal_obs)[0]
-                    rewards[idx] += float(option_discounts(durations[idx : idx + 1], self.gamma_hr)[0]) \
-                        * float(terminal_value)
+                    rewards[idx] += float(option_discounts(durations[idx : idx + 1], self.gamma_hr,
+                                                           self.discount_floor_ticks)[0]) * float(terminal_value)
             rollout_buffer.add(self._last_obs, actions, rewards, self._last_episode_starts, values, log_probs,
                                action_masks=action_masks, durations=durations)
             self._last_obs = new_obs  # type: ignore[assignment]
