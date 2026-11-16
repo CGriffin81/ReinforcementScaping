@@ -61,8 +61,8 @@ Claude writes the code; Caleb reviews and runs it. So:
 - Each experiment runs on its own branch, `experiment/<name>` (Caleb, 2026-11-09, OQ-61), the name its number
   and what it does (OQ-62, OQ-63: `e1-baselines`, `e2-ppo-sanity-ladder`, `e3-reward-weight-sweep`,
   `e4-rnd-exploration`, `e5-weight-conditioned-ppo`, `e6a-discount-sweep`, `e6b-pbrs-shaping`). It starts
-  from `main`, where the `sim-v1.2` tag marks the frozen sim (`sim-v1` with OQ-64's directional walks and OQ-75's
-  fletch slot; `sim-v1.1` before it), and
+  from `main`, where the `sim-v1.3` tag marks the frozen sim (`sim-v1` with OQ-64's directional walks, OQ-75's
+  fletch slot and the cap on a gathering kill after its budget, 2026-11-12; `sim-v1.2` and `sim-v1.1` before it), and
   holds only its config (`configs/<name>.yaml`), the code only it uses, its committed summary
   (`results/summary/<name>/`) and its records. It never changes the sim. It merges into `main` by its own PR once
   its run is checked. Tooling several experiments share goes into `main` first, by its own PR.
@@ -180,13 +180,20 @@ work.
   <label>=ppo:<model.zip>` (sampled actions, OQ-65), and publish the runs with `uv run python
   scripts/publish_training.py runs/<name> <name>`. E3 to E6 give their reward weights as `env.normalised_weights`, in
   units of E1's best 20-hour gain on each objective (OQ-67, `rlscape/envs/weights.py`). E6b adds a `pbrs:` section,
-  potential-based shaping (OQ-73, `rlscape/agents/pbrs.py`). Watch a run: TensorBoard on
+  potential-based shaping (OQ-73, `rlscape/agents/pbrs.py`). From 2026-11-15 (Caleb, env contract v1.46) every training
+  config sets `ppo.bootstrap_horizon: false` and `ppo.discount_floor_ticks: 100`; the code's defaults are the old
+  trainer's, so earlier runs' configs still say how they trained. Watch a run: TensorBoard on
   `runs/<name>`, or `uv run python scripts/replay.py <run dir> [--also scripted_guide] [--seed k]`, which writes one
   HTML page to `results/replays/` (OQ-70).
 - Several experiments from one queue: `uv run python scripts/train_queue.py --jobs 4 <worktree>/configs/<name>.yaml
   ...` trains each run in its own experiment's worktree (its own `train.py`, venv and provenance), seed 0 of every
   experiment first. `--jobs` counts every training run on the machine, so it fills another launcher's slots as they
   free. `--dry-run` shows each run's state (waiting, training, partial, done), and is safe while a queue trains.
+  **Start long jobs outside the Claude app** (Caleb, 2026-11-13): an app update kills every process started from a
+  session, as it killed the queue and five runs at 00:13 that night. The queue runs from the scheduled task
+  "ReinforcementScaping train queue" (`runs/launch-train-queue.cmd <jobs>`, which calls the -int venv's Python). The
+  app is an MSIX package, so what uv installs from inside it lands in the package's private AppData; uv's Python
+  3.12.14 was copied out to its real path for this.
 - More servers at once (Caleb, 2026-11-06): `uv run python
   scripts/server_instances.py 2 3` writes `results/servers/rl-<n>.conf`
   (world n, bridge port 43610 + n - 1, its own GE under
