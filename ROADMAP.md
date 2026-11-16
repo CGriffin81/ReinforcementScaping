@@ -345,6 +345,23 @@ runs, seed 0 of every experiment first: about 110 hours, so done around Nov 16 t
 runs, which started again from the start at 04:41 (about 6 hours lost, so the queue ends around midday Nov 16).
 Windows Update is paused until the last test is done (Caleb). The restarted (0, 1) run repeated the killed one's
 1.0M decisions byte for byte.
+
+*On sim v1.3 from the evening of 2026-11-12 (Caleb, `m002-death-budget`):* E3's (.5, .5) seed 1 hung from 18:54 on a
+sim v1.2 stop, a Draynor fisher's kill after its option's budget. Sim v1.3 ends such an option at the budget and
+equals sim v1.2 wherever sim v1.2 completes, so nothing is retrained. The run trains again, and the runs not yet
+started train on sim v1.3 (`main` merged into the five worktrees, the queue relaunched at 22:42).
+
+*Restarted after a Claude app update (2026-11-13, Caleb, `m002-app-update`):* the app updated itself at 00:13 and
+killed the queue and its five runs (about 2.4 hours of the queue lost). They train again from the start, and the queue
+now runs from Task Scheduler, outside the app, from 00:23. With 11 of the 50 runs done, it ends around Nov 16.
+
+*Trained again with the trainer's two fixes (2026-11-15, Caleb, `m002-collapse-diagnosis`, `m002-rerun`):* the 50
+runs finished at 12:35, but 8 ended looping options that change nothing (E6b's five, E6a γ0.9's seeds 0 and 3, E3's
+(0, 1) seed 1), and every run's critic value grew through training. The fixes (env contract v1.46): the horizon isn't
+bootstrapped, and each decision is discounted as at least 100 ticks. With both, E6a γ0.9 seed 0 didn't collapse to
+800k decisions, where it had. All 50 runs train again, seed 0 of every experiment first, from about 01:00 on Nov 16:
+about 80 hours, so done around Nov 19 morning, and the analysis moves to Nov 20–22. The first 50 are kept aside in
+each worktree (`runs/<name>-bootstrap`). E2 stays as it was.
 - [ ] **E3, the reward-weight sweep** (RQ1 to RQ3): (1,0), (.75,.25), (.5,.5), (.25,.75) and (0,1) in normalised
   units (OQ-67), 5 seeds each, 2M decisions a run (OQ-69), with E2's winner: λ 0.95, learning rate 3e-4, entropy 0.01.
 - [ ] **E4, PPO + RND** (RQ2, RQ4, H3): the RND wrapper, then PPO + RND at (.5,.5), 5 seeds, against E3's (.5,.5).
