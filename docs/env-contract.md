@@ -1,8 +1,19 @@
-# Environment Contract (v1.45)
+# Environment Contract (v1.46)
 
-**Status:** v1.45, 2026-11-12: Caleb's choice (sim v1.3); its wording is to confirm. v1.44, 2026-11-11: OQ-75 (c),
+**Status:** v1.46, 2026-11-15: Caleb's choice (the trainer's horizon and decision floor); its wording is to
+confirm. v1.45, 2026-11-12: Caleb's choice (sim v1.3); its wording is to confirm. v1.44, 2026-11-11: OQ-75 (c),
 Caleb's choice (sim v1.2); its wording is to confirm. Caleb confirmed every version, to v1.42, on 2026-11-09: sim v1's
 contract is frozen. Any change needs Caleb's approval and is logged in `docs/decision-log.md`.
+- **v1.46** (2026-11-15, Caleb; the collapse diagnosis, `m002-collapse-diagnosis`) changes how the trainer treats the
+  horizon and short options. The env and its schema are unchanged.
+  - **The horizon is the task's end.** The env still ends the episode as *truncated*, but the observation carries the
+    time left, so nothing is left to earn after it: the trainer doesn't bootstrap the horizon's step
+    (`ppo.bootstrap_horizon: false`). Bootstrapping it left the critic's value at the end unpinned, and it grew
+    through training in every run.
+  - **The decision floor.** Each decision is discounted as at least 100 ticks, γ_hr^(max(τ, 100)/6000)
+    (`ppo.discount_floor_ticks: 100`), in GAE and in PBRS alike. Without it, an option that changes nothing costs a
+    policy only its own ticks, less than the critic's error, and 8 of the 50 runs to 2026-11-15 ended looping such
+    options.
 - **v1.45** (2026-11-12, Caleb; sim v1.3) ends a gathering option at its budget when its aggressive monsters kill the
   character after it:
   - **Why:** at a site whose monsters attack a character as it runs away (Draynor's shrimp spots, the only one
@@ -210,9 +221,10 @@ through the bridge as §7 describes, and the calibration gate is the sim-to-real
   - **in the Wilderness** (or when skulled) there is no gravestone, and everything else is lost.
   - lost items leave net worth, just like dropped ones.
 - **Horizon cut-off:** an option that would run past the horizon is cut off there. The episode ends as
-  *truncated* (not terminal), so value bootstrapping is handled correctly.
+  *truncated* (not terminal). The trainer treats it as the task's end and doesn't bootstrap it (v1.46): the
+  observation carries the time left, so nothing is left to earn after the horizon.
 - **Discounting:** γ^τ, with γ set **per game-hour** and converted to ticks (γ_tick = γ_hr^(1/6000)). This
-  applies in GAE and in PBRS.
+  applies in GAE and in PBRS. Each decision counts as at least 100 ticks in the discount (the decision floor, v1.46).
 
 ## 2. Interface
 
