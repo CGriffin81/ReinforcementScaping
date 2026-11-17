@@ -23,6 +23,7 @@ import pandas as pd
 matplotlib.use("Agg")  # files only, no window: before pyplot loads a backend
 import matplotlib.pyplot as plt  # noqa: E402
 from matplotlib.ticker import FuncFormatter  # noqa: E402
+from matplotlib.transforms import Bbox  # noqa: E402
 
 SERIES = ("#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6", "#e34948")
 BLUE, ORANGE, AQUA, YELLOW, MAGENTA, GREEN, VIOLET, RED = SERIES
@@ -82,6 +83,39 @@ def _end_labels(ax, items: Sequence[tuple[str, float, float]], gap: float = 8.0)
                     if moved else None)
 
 
+_LABEL_SPOTS = ((4, 3, "left", "bottom"), (4, -3, "left", "top"), (-4, 3, "right", "bottom"),
+                (-4, -3, "right", "top"), (4, 11, "left", "bottom"), (4, -11, "left", "top"),
+                (-4, 11, "right", "bottom"), (-4, -11, "right", "top"))
+
+
+def _point_labels(ax, items: Sequence[tuple[str, float, float]]) -> None:
+    """Name points (`items`: text, x, y) beside them, in order, each at the first of `_LABEL_SPOTS` where its box
+    overlaps no label already placed and no other named point (2026-11-16: the pareto's labels collided); if none is
+    clear, at the first spot."""
+    fig = ax.figure
+    fig.canvas.draw()  # the final layout and limits, for display coordinates
+    renderer = fig.canvas.get_renderer()
+    pad = 4.0 * fig.dpi / 72  # a point's marker, about 4 points across its centre
+    points = [ax.transData.transform((x, y)) for _, x, y in items]
+    placed = []
+    for i, (text, x, y) in enumerate(items):
+        others = [Bbox.from_extents(px - pad, py - pad, px + pad, py + pad)
+                  for j, (px, py) in enumerate(points) if j != i]
+        for k, (dx, dy, ha, va) in enumerate(_LABEL_SPOTS):
+            label = ax.annotate(text, (x, y), xytext=(dx, dy), textcoords="offset points", ha=ha, va=va,
+                                fontsize=6.5, color=INK2)
+            box = label.get_window_extent(renderer)
+            if not any(box.overlaps(b) for b in [*placed, *others]):
+                placed.append(box)
+                break
+            label.remove()
+        else:
+            dx, dy, ha, va = _LABEL_SPOTS[0]
+            label = ax.annotate(text, (x, y), xytext=(dx, dy), textcoords="offset points", ha=ha, va=va,
+                                fontsize=6.5, color=INK2)
+            placed.append(label.get_window_extent(renderer))
+
+
 # --- learning curves -----------------------------------------------------------------------------------------------
 
 def learning_curves(stats: pd.DataFrame, changes: pd.DataFrame, verdicts: pd.DataFrame,
@@ -117,8 +151,11 @@ def learning_curves(stats: pd.DataFrame, changes: pd.DataFrame, verdicts: pd.Dat
         if references and title in references:
             name, level = references[title]
             ax.axhline(level, color=MUTED, linewidth=0.8)
-            ax.annotate(name, (0.99, level), xycoords=("axes fraction", "data"), xytext=(0, 2),
-                        textcoords="offset points", ha="right", va="bottom", color=INK2, fontsize=6.5)
+            low, high = ax.get_ylim()  # a level near the top is named below its line, clear of the panel's title
+            below = (level - low) / (high - low) > 0.85
+            ax.annotate(name, (0.99, level), xycoords=("axes fraction", "data"), xytext=(0, -2 if below else 2),
+                        textcoords="offset points", ha="right", va="top" if below else "bottom", color=INK2,
+                        fontsize=6.5)
         ax.set_title(tally(series[0]) if single else title)
         ax.set_xlim(0, stats["to_step"].max())
         ax.xaxis.set_major_formatter(DECISIONS)
@@ -268,6 +305,7 @@ def pareto(methods: Mapping[str, pd.DataFrame], colors: Mapping[str, str], basel
     from rlscape.analysis.measures import front
 
     fig, ax = plt.subplots(figsize=(WIDTH * 0.62, WIDTH * 0.56), layout="constrained")
+    named: list[tuple[str, float, float]] = []  # each named point: its text, skill and wealth
     for method, table in methods.items():
         row = hv[hv["method"] == method]
         name = method
@@ -285,20 +323,17 @@ def pareto(methods: Mapping[str, pd.DataFrame], colors: Mapping[str, str], basel
         ax.plot(ordered["skill"], ordered["wealth"], "o", color=colors[method], markersize=5,
                 markeredgecolor=SURFACE, markeredgewidth=1, label=name, zorder=3)
         if "label" in ordered:
-            for _, r in ordered.dropna(subset=["label"]).iterrows():
-                ax.annotate(r["label"], (r["skill"], r["wealth"]), xytext=(4, 3), textcoords="offset points",
-                            fontsize=6.5, color=INK2)
+            named += [(r["label"], r["skill"], r["wealth"]) for _, r in ordered.dropna(subset=["label"]).iterrows()]
     ax.scatter(baselines["skill"], baselines["wealth"], s=22, color=MUTED, edgecolors=SURFACE, linewidths=1,
                zorder=2)
-    for _, r in baselines.iterrows():
-        ax.annotate(labels.get(r["variant"], r["variant"]), (r["skill"], r["wealth"]), xytext=(4, -8),
-                    textcoords="offset points", fontsize=6.5, color=INK2)
+    named += [(labels.get(r["variant"], r["variant"]), r["skill"], r["wealth"]) for _, r in baselines.iterrows()]
     ax.axhline(0, color=AXIS, linewidth=0.8)
     ax.axvline(0, color=AXIS, linewidth=0.8)
     ax.set_xlabel("Skill gain in 20 hours ÷ the guide's (levels)")
     ax.set_ylabel("Wealth gain in 20 hours ÷ greedy GP/hr's")
     ax.grid(True, axis="both")
     fig.legend(loc="outside lower center")
+    _point_labels(ax, named)  # last, once the legend has fixed the layout
     return fig
 
 
@@ -316,6 +351,10 @@ def entropy(stats: pd.DataFrame, panels: Sequence[tuple[str, Sequence[str]]], co
         ax.set_xlim(0, stats["to_step"].max())
         ax.xaxis.set_major_formatter(DECISIONS)
         ax.set_xlabel("Training decisions")
-        ax.legend(loc="upper right")
     axes[0].set_ylabel("Policy entropy (nats)")
+    handles = {}  # each series once, below the panels (2026-11-16: inside, it covered the curves' ends)
+    for ax in axes:
+        for h, n in zip(*ax.get_legend_handles_labels()):
+            handles.setdefault(n, h)
+    fig.legend(list(handles.values()), list(handles), loc="outside lower center", ncols=min(len(handles), 5))
     return fig

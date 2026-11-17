@@ -1,6 +1,6 @@
 """Publish an experiment's training runs to results/summary/<name>/training/ (rlscape/eval/publish.py).
 
-Writes runs.csv (each run's provenance, decisions, wall time and settings), learning_curves.csv (every finished
+Writes runs.csv (each run's provenance, decisions, wall time and settings), learning_curves.csv.gz (every finished
 episode of every run), each run's config.json and a README. Refuses runs from a tree with uncommitted changes unless
 --allow-dirty, and an existing training summary unless --force.
 
