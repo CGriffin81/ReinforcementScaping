@@ -46,7 +46,9 @@ Then (00:11:37 CST), on Claude's offer to log the remedies in `docs/post-project
     0.03 when an episode earns about 200. A working option of about 300 ticks earns about 0.65.
   - In the loop, 95–99% of each batch is loot changes, so the working options get a few percent of the updates. This
     is Claude's inference for why it doesn't recover, not measured.
-  - Which seed falls in varies: (.75, .25) loops on seed 0, not seed 1; (.5, .5) the reverse.
+  - Which seed falls in varies. (.5, .5) loops on seed 1, not seed 0. (.75, .25) looped only on seed 0 when this was
+    written, with seed 1 at about 1.75M. Seed 1 then looped in its last 100k block, from 1.9M. This was corrected at
+    the 2026-11-17 07:08 run check (`m002-collapse-check`).
 - **The RL limitation:** a known one.
   - In hierarchical RL, a high-level policy that switches options at no cost switches too often. Harb et al. (AAAI
     2018) add a deliberation cost, a fixed cost per switch. The floor is a weak form of one, paid in discount.
