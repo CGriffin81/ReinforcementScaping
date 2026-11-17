@@ -4,8 +4,8 @@
 
 - Interaction ID: m002-collapse-check
 - Timestamp CST: 2026-11-16 19:32:45 CST (the prompt), 19:55:52 CST (Caleb's answer in the question dialog), and
-  the run checks at 21:01:39 and 23:32:02 CST and on 2026-11-17 at 07:08:22 CST, the session transcript's timestamps
-  (UTC−06:00).
+  the run checks at 21:01:39 and 23:32:02 CST and on 2026-11-17 at 07:08:22 and 13:35:36 CST (Caleb's answer in the
+  question dialog at 13:45:54 CST), the session transcript's timestamps (UTC−06:00).
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS. The check ran on the rerun's nine finished seed-0 runs. One collapses, and Caleb chose to carry on
@@ -16,8 +16,10 @@
     21:47:00 CST);
   - the second run check (23:32:02 CST) and the corrections: `c895905`, to `main` directly (Caleb: "Commit it to
     main directly", 23:51:48 CST);
-  - the third run check (2026-11-17 07:08:22 CST) and `m002-loop-cause`'s correction: this commit, to `main`
-    directly (Caleb: "Commit it to main directly", 07:24:25 CST).
+  - the third run check (2026-11-17 07:08:22 CST) and `m002-loop-cause`'s correction: `dc08b5a`, to `main`
+    directly (Caleb: "Commit it to main directly", 07:24:25 CST);
+  - the fourth run check (13:35:36 CST) and the speed-rule decision: this commit, to `main` directly (Caleb: "Commit
+    it to main directly", 13:50:38 CST).
 
 ## Full Prompt
 
@@ -51,6 +53,19 @@ Then (23:51:48 CST):
 And (2026-11-17 07:08:22 CST):
 
 > Check on the runs.
+
+Then (07:24:25 CST):
+
+> Commit it to main directly
+
+And (13:35:36 CST):
+
+> Check on the runs.
+
+The question dialog asked whether to keep five jobs or go back to `--jobs 4` after the speed rule fired. Caleb's
+answer (13:45:54 CST):
+
+> "Keep five (Recommended)"
 
 ## Response Summary
 
@@ -283,6 +298,80 @@ And (2026-11-17 07:08:22 CST):
     E4's and E6b's seed 1 are the runs to watch. Neither is near the marker.
   - **Corrections to the earlier counts:** by the runs' `run.json` times, 10 runs were done at 21:02 and 13 at 23:32,
     not 11 and 14. The 23:32 census and follow-up already said 13.
+- **The fourth run check (Caleb: "Check on the runs.", 13:35:36 CST):**
+  - **The queue (PID 9884):** no failure in its log, and `train-queue.err` is empty.
+    - **Done:** 20 of the 50. Since 07:15, four finished:
+      - E6a's γ_hr 0.9 seed 1, at 08:39;
+      - E4's seed 1, at 08:48;
+      - E6b's seed 1, at 10:40;
+      - E5's seed 1, at 13:14.
+    - **Started:** E3's seed 2 at (.75, .25) at 08:40, at (.5, .5) at 08:49, at (.25, .75) at 10:41, and at (0, 1) at
+      13:15.
+    - **Training at 13:40:** E3's five seed-2 runs. They're at about 1.6M decisions for (1, 0), 1.05M for (.75, .25),
+      0.95M for (.5, .5), 0.8M for (.25, .75) and 0.1M for (0, 1).
+  - **What's left:** about 55.4M decisions.
+    - From 07:15 to 13:40 the runs made about 7.1M, about 308 a second.
+    - At 300 to 330 a second, the rest takes 47 to 51 hours. The last run ends on Nov 19, about 13:00 to 17:00.
+  - **RAM:**
+    - At 13:36, 1.8 to 2.0 GB was available, falling as E3's (0, 1) seed 2 grew (a 3.2 GB working set). By 13:43 it
+      was 3.5 GB.
+    - Hard page reads ran at 0 to 39 a second at 13:36. One 5-second sample hit 4,255 at 13:42:50, during Claude's reads
+      of the runs' files, with 3.5 GB available.
+
+    The RAM and paging rules don't fire.
+  - **The speed rule fired once** (scratchpad `rate_history.py`):
+    - **E3's (.75, .25) seed 2** made 69.8 decisions a second from 12:52 to 13:07. Then it made 51.8 from 13:07 to
+      13:22 (74%), 47.3 from 13:22 to 13:37, and 45.6 over the 4 minutes to 13:41.
+    - **It began with a run's start:** E3's (0, 1) seed 2 started at 13:15, in the slot E5's seed 1 left at 13:14.
+    - **The machine wasn't short:**
+      - the total held at 299 to 318 a second (307 at 13:41);
+      - the CPU was at 59–67%;
+      - the other runs held or rose over the same windows: (.25, .75) 79.8 to 88.4, (1, 0) 53.8 to 57.2, (0, 1) 80.5
+        to 88.1. (.5, .5) moved between 46.9 and 53.8.
+    - **The slow run doesn't loop:** 314 decisions an episode at 950k, 28% of them short, 1% loot-setting.
+    - **Asked Caleb** (the options are in the decision log). **Caleb (13:45:54 CST): keep five.**
+    - **Watched until midnight,** from 13:47:
+      - the runs' total speed every 15 minutes against the 15 before (scratchpad `total_watch.py`, log
+        `total_watch_1117.log`), where a fall below 80% asks again;
+      - RAM under 1 GB for a minute, and paging while RAM is under 2 GB (`watch_lows.ps1` on `trial_sample6.csv`, a
+        10-second sampler).
+  - **The four runs done since 07:15,** against their originals. These are the last 100k block's means (scratchpad
+    `collapse_1340.txt`, `wealth_rounds_1340.txt`). All four have `cuda`, no horizon bootstrap, the 100-tick floor and
+    a clean tree.
+
+    | Run | Collapse, rerun | Collapse, original | Reward, rerun | Reward, original | Net worth, rerun | Net worth, original |
+    |---|---|---|---|---|---|---|
+    | E6a γ_hr 0.9 seed 1 | – | – | 204.0 | 254.5 | 0.30M | 1.13M |
+    | E4 seed 1 | – | – | 107.4 | 106.3 | 0.06M | 0.10M |
+    | E6b seed 1 | 1.7M, then recovers | 400k | 101.2 | 48.8 | 0.13M | 0.04M |
+    | E5 seed 1 | – | – | 210.1 | 355.0 | 0.39M | 2.70M |
+
+    - **E6b's seed 1 passes the marker and recovers.**
+      - Its 1.7M block takes 1,069 decisions an episode, 49% of them short. Its last two blocks take 537 and 454.
+      - Its unshaped reward ends at 322.9 (original 215.8).
+      - Its original looped from 400k.
+    - **E4's seed 1** takes 728 decisions an episode in its last block, 49% of them short. Its original took 524, 39%
+      short. Its task reward is 118.9 (original 109.3).
+    - **E5's seed 1 misses the Gem Store loop that its original found** (scratchpad `strategy_e5_1340.txt`, the last
+      part's 50k decisions):
+      - the original spends 37% of its game time buying uncut emeralds and 17% selling them on the GE;
+      - the rerun spends 38% chopping and fletching logs.
+    - **E6a's γ_hr 0.9 seed 1** ends below its original. Neither run found the loop.
+  - **The census** (20 finished runs; scratchpad `census_rerun_1340.txt`):
+    - 4 pass the marker, and 3 end over it: E3's (.75, .25) seeds 0 and 1, and its (.5, .5) seed 1. E6b's seed 1
+      passes it and recovers.
+    - Among the same 20 runs, the first round had 5 ending looping: the 4 named at the third check, and E6b's seed 1.
+  - **The Gem Store loop:**
+    - With E5's seed 1, five rerun runs miss the loop that their originals found: E3's (.25, .75) seeds 0 and 1, its
+      (.5, .5) seed 1, E6a's γ_hr 0.5 seed 1, and E5's seed 1.
+    - Of the rerun's 16 finished runs that aren't at (1, 0) or (0, 1), none holds more than 1.2M net worth.
+    - None of the training E3 seed-2 runs at mixed weights buys emeralds (their last complete part; scratchpad
+      `strategy_1340.txt`):
+      - (.25, .75) chops and fletches logs, 84% of its time;
+      - (.5, .5) chops and fletches logs (43%) and fishes (14%);
+      - (.75, .25) splits its time between fishing, chopping and fletching.
+
+      In the first round, seed 2 didn't find the loop at (.25, .75) or at (.5, .5), so these don't test it.
 - **Corrections to `079009c`:**
   - **The loot-setting options are four** (`loot_all`, `loot_valuable`, `loot_vocabulary`, `loot_none`).
     - The live check's loot share (`live_check.py`) counted three, without `loot_vocabulary`. With all four, E3's
@@ -313,6 +402,11 @@ And (2026-11-17 07:08:22 CST):
   - `collapse_check.py` has E6a's γ_hr 0.5 (`"E6a g0.5"`);
   - `wealth_rounds.py` (each finished run's last block, net worth, level and reward, in both rounds);
   - `strategy_time.py` (a finished run's options by game time in its last part).
+- From the fourth run check:
+  - `live_check.py` skips the newest part, which may still be being written;
+  - `strategy_time.py` takes a part's file;
+  - `wealth_rounds.py` covers E4, E6b and E5;
+  - `total_watch.py` (the runs' total speed every 15 minutes).
 
 ## Infrastructure Changes
 
@@ -322,6 +416,9 @@ And (2026-11-17 07:08:22 CST):
 
 - **User decision (Caleb):** carry on; each run's final model is evaluated as planned, and the report gives each
   round's collapse count and names the looping runs.
+- **The speed rule (the fourth run check):**
+  - **Agent recommendation:** keep five jobs, since the fall is one run's share, not the machine's total.
+  - **User decision (Caleb, 13:45:54 CST):** keep five, watched until midnight.
 - **Claude's choices:**
   - the marker (a 100k block over 1,000 decisions an episode);
   - the zero-effect test (a decision with no skill and no wealth reward).
@@ -334,6 +431,8 @@ And (2026-11-17 07:08:22 CST):
   was 3.3 GB at 23:32.
 - The third run check read finished runs' files only. For the training runs, it copied each decision part but the
   newest and read the copies. Available RAM was 2.3 to 3.6 GB at 07:14.
+- The fourth run check read finished runs' files. For the training runs, it read their complete decision parts (all
+  but the newest), with three columns each. Available RAM was 1.8 to 3.6 GB.
 - The sim versions come from each run's `config.json` `git_sha`, checked against the `sim-v1.*` tags
   (`git merge-base --is-ancestor`). The sim diff between the rounds (`git diff` of `rlscape/sim/`) is the death-budget
   cap in `fishing.py` and `gathering.py` for E3, and the tan guard in `crafting.py` for E6a.
@@ -344,10 +443,16 @@ And (2026-11-17 07:08:22 CST):
 
 - **Done:** E6a's γ_hr 0.5 seed 0 repeats its failed run's 250k decisions and is past the crash.
 - **Claude:** run the same census on every rerun as it finishes. The report's collapse counts come from the full 50.
-  At 23:32, 13 are done, and 2 of them end over the marker. At 07:15, 16 are done, and 3 of them end over it.
-- **For the analysis:** at mixed weights, no rerun run has found the first round's Gem Store loop so far. That's
-  seven runs: E3's (.25, .75) and (.5, .5), and E6a's γ_hr 0.5 and 0.9.
-  - If seeds 2 to 4 do the same, the weighting's result differs between the two trainers.
-  - Which change causes it is untested.
-  - E3's (.5, .5) and (.25, .75) seed 2 are the queue's 23rd and 24th runs, after (.75, .25) seed 2.
-- **Watch:** E4's and E6b's seed 1, both rising toward the marker.
+  At 23:32, 13 are done, and 2 of them end over the marker. At 07:15, 16 are done, and 3 of them end over it. At 13:40,
+  20 are done, and 3 end over it.
+- **For the analysis:** no rerun run away from (0, 1) has found the first round's Gem Store loop so far.
+  - Five rerun runs miss it where their originals found it: E3's (.25, .75) seeds 0 and 1, its (.5, .5) seed 1,
+    E6a's γ_hr 0.5 seed 1, and E5's seed 1.
+  - If the other seeds do the same, the weighting's result differs between the two trainers. Which change causes it
+    is untested.
+  - The next tests are the seeds whose originals found it: E3's (.25, .75) seeds 3 and 4, E6a's γ_hr 0.5 seeds 2 and
+    4, and E5's seed 3 (3.16M; its options unchecked). The seed-2 runs training now at (.25, .75) and (.5, .5) don't
+    test it, because their originals didn't find it either.
+- **Done:** E4's and E6b's seed 1 ended without looping. E6b's passed the marker at 1.7M and recovered.
+- **The watch:** if the runs' total speed falls below 80% of the 15 minutes before, or RAM stays under 1 GB, Claude
+  asks Caleb again (until midnight).

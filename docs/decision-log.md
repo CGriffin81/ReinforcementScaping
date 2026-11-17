@@ -8059,3 +8059,28 @@ clean tree.
   post-project gap "A high-level policy can stall on near-instant options", and three references, [53]–[55] in
   `docs/resources.md`. Claude's answer on the loops' causes is in `m002-loop-cause`: a trainer bug (fixed by PR #30),
   and a learner limitation that the near-instant options expose. The loops aren't reward hacking.
+
+### OQ-81's speed rule fired (2026-11-17, 13:22): five jobs kept (Caleb)
+At Caleb's "Check on the runs." (13:35:36 CST), `m002-collapse-check`.
+- **The fall:** E3's (.75, .25) seed 2 made 69.8 decisions a second from 12:52 to 13:07. Then it made 51.8 from 13:07
+  to 13:22 (74%) and 47.3 from 13:22 to 13:37.
+  - It began as E3's (0, 1) seed 2 started, at 13:15. That run took the slot E5's seed 1 left at 13:14.
+  - The slow run doesn't loop. At 950k it takes 314 decisions an episode, 28% of them short.
+- **The machine:**
+  - The five runs' total held at 299 to 318 decisions a second.
+  - The CPU was at 59–67%.
+  - The other four runs held their speed or rose.
+  - Available RAM was 1.8 to 2.0 GB at 13:36, as the young run grew, and 3.5 GB by 13:43.
+  - Hard page reads were under 40 a second, except in one 5-second sample: 4,255 at 13:42:50, during Claude's reads of
+    the runs' files, with 3.5 GB available.
+
+  So the RAM and paging rules don't fire.
+- **The options:**
+  - keep five (recommended): the fall is one run's share of the machine, not the machine's total;
+  - back to `--jobs 4`, as the rule has it. That would start at the next run's end (about 16:00) and move the last
+    run's end about 11 hours later.
+- **Caleb (13:45:54 CST): keep five.** The queue is unchanged (PID 9884, `--jobs 5`).
+  - **Watched until midnight:**
+    - the runs' total speed every 15 minutes against the 15 before, where a fall below 80% asks again (scratchpad
+      `total_watch.py`);
+    - RAM under 1 GB for a minute, and paging while RAM is under 2 GB (`watch_lows.ps1` on a 10-second sampler).
