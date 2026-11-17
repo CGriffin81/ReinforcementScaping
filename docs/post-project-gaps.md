@@ -200,3 +200,31 @@ fix couldn't reach the experiments, and investigating needs a server beside the 
   gate (about an hour).
 - If the gate's free passage takes longer, or the walker goes round it, fit the gate's time or fix the walker in a
   new sim version, and rerun travel's check set (`scripts/validate_travel.py --set check`).
+
+## An option's walk can spend the coins the option needs on a fare (Caleb, 2026-11-16)
+
+**What's missing.** Every walk takes the fastest way the character can afford (Caleb, 2026-11-01), and pays its fares
+from the coins carried, including the coins the option took out for itself. A tanning path's restock keeps the coins
+carried and takes out the fee's. So with 1,001 coins carried at Catherby's bank, the walk to Ellis takes the 1,000 gp
+charter to Port Sarim, and one hide is tanned, not 20. With 999 coins it walks, and tans all 20. A person would keep
+the fee and walk. Sim v1.4 fixed only the crash when the fare left no coins (the tanner tans nothing then; E6a's
+γ_hr 0.5 seed 0, `m002-tan-guard`).
+
+**Why.** A fix changes trajectories that sim v1.3 completes. It would come in the middle of E3 to E6's 50 runs, and
+all 50 would have to train again, which doesn't fit before the peer review.
+
+**What it costs.**
+- **When:** an option walks carrying at least a fare on its fastest way. The fare costs gp and can leave the option
+  short:
+  - tanning carries hides back untanned;
+  - a shop purchase buys fewer units (`BuyShop` takes out the cost and the toll, not a fare);
+  - the GE's buying loses only the fare, since it takes out its coins at the GE, after the walk.
+- **How often:** not measured. It needs a fare on the fastest way, which from a mainland bank is a charter (1,000 gp
+  from Catherby to Port Sarim) or a 30 gp ship. The policies' decision logs can bound it: the fares paid on walks to a
+  tanner or a shop.
+
+**How to close it.**
+- Give `walk` the coins an option keeps aside: the route plans with the coins carried less the option's need, so
+  the fee or the purchase's cost isn't spent on a fare (`rlscape.sim.movement.route`, `TanAtTanner._restock`,
+  `BuyShop.run`).
+- Retrain, since trajectories change.
