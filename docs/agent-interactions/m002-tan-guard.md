@@ -135,5 +135,7 @@ And (19:32:00 CST):
 ## Follow-Up
 
 - **Done:** the PR, the tag, the five merges and the relaunch.
-- **Claude:** check that E6a's γ_hr 0.5 seed 0 starts when a slot frees and repeats its first 200k decisions.
-- **Claude:** the collapse check on E6a's γ_hr 0.9 seed 0 and E6b's seed 0 (around noon).
+- **Done, in `m002-collapse-check`:**
+  - E6a's γ_hr 0.5 seed 0 started again at 19:57:39, repeats its failed run's first 250k decisions byte for byte,
+    and is past the crash;
+  - the collapse check on the seed-0 runs.

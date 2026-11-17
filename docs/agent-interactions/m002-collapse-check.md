@@ -9,7 +9,10 @@
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS. The check ran on the rerun's nine finished seed-0 runs. One collapses, and Caleb chose to carry on
   and report it.
-- Commit: this commit, to `main` directly (Caleb: "Commit it to main directly", 20:04:21 CST).
+- Commit:
+  - `a06bbff`, to `main` directly (Caleb: "Commit it to main directly", 20:04:21 CST);
+  - the run check's update (21:01:47 CST): this commit, to `main` directly (Caleb: "Commit it to main directly",
+    21:47:09 CST).
 
 ## Full Prompt
 
@@ -21,6 +24,14 @@ also evaluate a pre-collapse checkpoint; or fix the loot loop and rerun all 50. 
 > "Carry on, report it (Recommended)"
 
 Then (20:04:21 CST):
+
+> Commit it to main directly
+
+And (21:01:47 CST):
+
+> Check on the runs.
+
+Then (21:47:09 CST):
 
 > Commit it to main directly
 
@@ -84,6 +95,25 @@ Then (20:04:21 CST):
 - **The failed run:** after the queue relaunch (`m002-tan-guard`), E6a's γ_hr 0.5 seed 0 started again at 19:57:39,
   when E3's (1, 0) seed 1 finished. Its `config.json` has E6a's merge of `main` (`176e4d6`, sim v1.4), a clean tree,
   `cuda` and both fixes.
+- **The run check (Caleb: "Check on the runs.", 21:01:47 CST):**
+  - **The queue:** no failure since 05:47. Eleven of the 50 are done; E3's (1, 0) seed 1 finished at about 19:56.
+    Five are training: E3's (0, 1), (.25, .75), (.5, .5) and (.75, .25) seed 1, at 1.6M, 1.1M, 1.5M and 1.3M
+    decisions at 21:02, and E6a's γ_hr 0.5 seed 0.
+  - **Speed** over 15 minutes: 423 decisions a second in all; E3's (0, 1) seed 1 makes 151.
+  - **RAM:** 5.8 GB available, 7 hard page reads a second, the CPU at 70%. OQ-81's rule doesn't fire.
+  - **E6a's γ_hr 0.5 seed 0 repeats its failed run:**
+    - its decision parts 0 to 4 (250k decisions) have the same SHA-256 as the failed run's;
+    - it passed the failed run's crash point (about 278k decisions; that part was written at 05:39 and the run failed
+      at 05:47);
+    - its part 5 (250k to 300k, written at 21:25) holds 3,444 tanning decisions, and its log has no error.
+  - **The training E3 seed-1 runs** (by 50k-decision part, against their originals):
+    - **E3 (0, 1) seed 1:** 347 to 355 decisions an episode and 1% short decisions through 1.55M. Its original
+      collapsed at 1.5M, onto 25,000 decisions an episode. Its speed comes from a policy that's cheap to simulate.
+    - **E3 (.5, .5) seed 1:** crossing the marker. From 1.2M it takes 1,350 to 1,920 decisions an episode, and 60–65%
+      of its decisions are short with no effect: bank deposits, withdrawals for a trip, and the loot-setting options
+      (10–22%). Its reward an episode holds at about 211 to 214 (peak 229.7 at 800k). Its original didn't collapse.
+      As Caleb decided, it carries on.
+    - **E3 (.75, .25) and (.25, .75) seed 1:** about 330–400 and 105–120 decisions an episode, no collapse.
 
 ## Documentation Changes
 
@@ -93,7 +123,8 @@ Then (20:04:21 CST):
 ## Code Changes
 
 - None. The check's scripts are in the session scratchpad: `collapse_check.py` (a run beside its original),
-  `loop_options.py` (what a run's short decisions are) and `collapse_census.py` (every run of a round).
+  `loop_options.py` (what a run's short decisions are), `collapse_census.py` (every run of a round), `live_check.py`
+  (a training run's parts beside its original's) and `part_tanning.py` (a part's tanning decisions).
 
 ## Infrastructure Changes
 
@@ -116,7 +147,5 @@ Then (20:04:21 CST):
 
 ## Follow-Up
 
-- **Claude:**
-  - check that E6a's γ_hr 0.5 seed 0 repeats its first 200k decisions (its first run's are in
-    `runs/e6a-discount-sweep-tanfail-partial/` in E6a's worktree);
-  - run the same census on every rerun as it finishes. The report's collapse counts come from the full 50.
+- **Done:** E6a's γ_hr 0.5 seed 0 repeats its failed run's 250k decisions and is past the crash.
+- **Claude:** run the same census on every rerun as it finishes. The report's collapse counts come from the full 50.
