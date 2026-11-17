@@ -233,7 +233,9 @@ all 50 would have to train again, which doesn't fit before the peer review.
 
 **What's missing.** A guard against stalling loops. Some trained policies fall into long runs of options that take
 almost no game time and earn nothing, most often the loot-setting options. A loot change takes 1 tick
-(`LOOT_MODE_TICKS`), and only the current mode is masked, so three modes can always cycle.
+(`LOOT_MODE_TICKS`), and only the current mode is masked, so three modes can always cycle. Some loop on banking instead,
+or as well: a deposit and withdrawals for a trip at a bank, 8 ticks each (the first round's E3 (0, 1) seed 1, the
+rerun's (.5, .5) seed 2; `m002-collapse-check`, 2026-11-17 16:18).
 - E3's (.75, .25) seed 0 is the clearest case: from 1.55M, 95–99% of its decisions are loot changes, taking 6–29% of
   the game time.
 - Its other decisions still earn 10–15 reward a game-hour, about the same as before the collapse. So its reward fell
@@ -265,6 +267,7 @@ fit before the peer review. Caleb asked to log the remedies here (2026-11-17).
   near-zero advantage. It changes the objective, so the reward weights' units (OQ-67) would need revisiting.
 - **No standalone settings option:** fold the loot mode into the fight options as a parameter, or mask the
   loot-setting options until a fight has run since the last change. This is an env contract change (the action space).
+  On its own it wouldn't stop a banking loop.
 - **Game-time weighting in the trainer:** weight each decision's loss by its duration, or count a rollout in game
   time, not decisions, so a burst of 1-tick decisions can't fill a batch.
 - **A check on the collapse's mechanism first:** the critic's step size and the late-collapse findings ([54], [55]),

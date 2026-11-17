@@ -58,6 +58,10 @@ Then (00:11:37 CST), on Claude's offer to log the remedies in `docs/post-project
   that the action space exposes. The remedies (a per-decision cost, the loot setting folded into the fight options or
   masked until a fight, batches weighted by game time) change the sim or the trainer, so under Caleb's (a) they're
   after-project work.
+  - Some runs loop on banking instead of loot changes. They deposit and withdraw for a trip at a bank, 8 ticks a
+    decision, with no reward: the first round's E3 (0, 1) seed 1, and the rerun's (.5, .5) seed 2 from 1.25M. Folding
+    or masking the loot setting wouldn't stop these loops. The per-decision cost and game-time batches would. This was
+    added at the 2026-11-17 16:18 run check (`m002-collapse-check`).
 
 ## Documentation Changes
 

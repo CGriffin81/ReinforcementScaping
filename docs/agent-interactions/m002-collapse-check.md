@@ -4,8 +4,8 @@
 
 - Interaction ID: m002-collapse-check
 - Timestamp CST: 2026-11-16 19:32:45 CST (the prompt), 19:55:52 CST (Caleb's answer in the question dialog), and
-  the run checks at 21:01:39 and 23:32:02 CST and on 2026-11-17 at 07:08:22 and 13:35:36 CST (Caleb's answer in the
-  question dialog at 13:45:54 CST), the session transcript's timestamps (UTC−06:00).
+  the run checks at 21:01:39 and 23:32:02 CST and on 2026-11-17 at 07:08:22, 13:35:36 (Caleb's answer in the
+  question dialog at 13:45:54 CST) and 16:18:35 CST, the session transcript's timestamps (UTC−06:00).
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS. The check ran on the rerun's nine finished seed-0 runs. One collapses, and Caleb chose to carry on
@@ -18,8 +18,10 @@
     main directly", 23:51:48 CST);
   - the third run check (2026-11-17 07:08:22 CST) and `m002-loop-cause`'s correction: `dc08b5a`, to `main`
     directly (Caleb: "Commit it to main directly", 07:24:25 CST);
-  - the fourth run check (13:35:36 CST) and the speed-rule decision: this commit, to `main` directly (Caleb: "Commit
-    it to main directly", 13:50:38 CST).
+  - the fourth run check (13:35:36 CST) and the speed-rule decision: `5112c23`, to `main` directly (Caleb: "Commit
+    it to main directly", 13:50:38 CST);
+  - the fifth run check (16:18:35 CST) and the banking loop's notes in `m002-loop-cause` and the post-project gap:
+    this commit, to `main` directly (Caleb: "Commit it to main directly", 16:54:58 CST).
 
 ## Full Prompt
 
@@ -66,6 +68,18 @@ The question dialog asked whether to keep five jobs or go back to `--jobs 4` aft
 answer (13:45:54 CST):
 
 > "Keep five (Recommended)"
+
+Then (13:50:38 CST):
+
+> Commit it to main directly
+
+And (16:18:35 CST):
+
+> Check on the runs.
+
+Then (16:54:58 CST):
+
+> Commit it to main directly
 
 ## Response Summary
 
@@ -372,6 +386,69 @@ answer (13:45:54 CST):
       - (.75, .25) splits its time between fishing, chopping and fletching.
 
       In the first round, seed 2 didn't find the loop at (.25, .75) or at (.5, .5), so these don't test it.
+- **The fifth run check (Caleb: "Check on the runs.", 16:18:35 CST):**
+  - **The queue (PID 9884):** no failure in its log, and `train-queue.err` is empty.
+    - **Done:** 21 of the 50. E3's (1, 0) seed 2 finished at 15:32.
+    - **Started:** E6a's γ_hr 0.5 seed 2, at 15:33.
+    - **Training at 16:20:** E3's seed 2 at (.75, .25), (.5, .5), (.25, .75) and (0, 1), at about 1.45M, 1.55M, 1.65M
+      and 1.2M decisions, and E6a's γ_hr 0.5 seed 2 at about 0.1M.
+  - **What's left:** about 52M decisions.
+    - From 13:40 to 16:20 the runs made about 3.4M, about 350 a second.
+    - At 300 to 360 a second, the rest takes 40 to 48 hours. The last run ends on Nov 19, about 08:00 to 16:00.
+  - **The watch hasn't fired** (since 13:47):
+    - **The total speed:** 333 to 399 decisions a second in each 15 minutes, 0.98 to 1.10 of the 15 before
+      (`total_watch_1117.log`).
+      - E3's (.75, .25) seed 2 kept slowing, from 52.2 a second (13:48 to 14:03) to 36.3 (15:49 to 16:04). Under
+        Caleb's 13:45 answer, only the total asks again.
+      - E3's (.5, .5) seed 2 sped up from 41–43 a second to 64, then 96, as its loop began (below).
+    - **RAM** (`trial_sample6.csv`, 939 samples from 13:48 to 16:18):
+      - never under 1 GB;
+      - under 2 GB in 2 samples, the lowest 1,847 MB at 16:15:34;
+      - no hard page reads over 1,000 a second while under 2 GB;
+      - the CPU averaged 66%.
+  - **E3's (1, 0) seed 2,** against its original (scratchpad `collapse_1620.txt`). It has `cuda`, no horizon bootstrap,
+    the 100-tick floor and a clean tree.
+    - Neither round collapses.
+    - Its last block's reward is 362.8 (original 306.4), its total level 391 (335), with 244 decisions an episode.
+    - The rerun's three (1, 0) seeds end at 365.9, 361.0 and 362.8.
+  - **E3's (.5, .5) seed 2 loops, on banking** (complete parts only; scratchpad `live_1620.txt`,
+    `loop_options_e3_55_s2.txt`, `loop_detail.py`):
+    - From 1.25M its episodes take 1,316 to 5,556 decisions, 75–94% of them short. Its original takes 163 to 199 over
+      the same parts, and it never looped.
+    - **Its loop isn't the loot-setting options** (0% of its decisions). It's banking at a bank, 8 ticks a decision,
+      with no skill or wealth reward:
+      - `bank_deposit`;
+      - then `bank_withdraw_for_fish_shrimp`, `bank_withdraw_for_mining` or `bank_withdraw_for_woodcutting`;
+      - then a deposit again.
+
+      In its part at 1.4M, these are 88% of its decisions and 18.6% of its game time.
+    - Its reward per episode ended is about 182 at 1.0M and 1.1M. It is 154.5 and 151.9 in the 1.3M and 1.4M blocks.
+  - **Banking loops aren't new** (each looping run's last part; scratchpad `loop_modes_1620.txt`):
+    - **The first round's E3 (0, 1) seed 1 looped on banking alone:** deposits and withdrawals for woodcutting and
+      mining are 98% of its last part's decisions. The decision log named this loop (2026-11-16, "a bank deposit and
+      withdraw at 8 ticks").
+    - **Some loops mix the two:**
+      - the rerun's (.5, .5) seed 1: loot changes 41% of its last part, deposits 8%;
+      - the first round's E6a γ_hr 0.5 seed 0: deposits 18%, then `loot_all` and `loot_vocabulary` at 6% each.
+    - **The other loops are loot changes:**
+      - the rerun's (.75, .25) seeds 0 and 1;
+      - the first round's E6a γ_hr 0.9 seeds 0, 2 and 3;
+      - E6b's five seeds.
+    - **The docs:** `m002-loop-cause` and the post-project gap describe the loop by the loot-setting options, since
+      they were measured on (.75, .25) seed 0.
+      - One of the gap's remedies would mask the loot options until a fight. That wouldn't stop a banking loop.
+      - The deliberation cost and game-time weighting would.
+      - Both docs now say so (below).
+  - **E3's (.75, .25) seed 2 is the next run to watch:** 350 to 515 decisions an episode from 1.0M (original 111 to
+    141), 27–38% short, and 3–20% loot-setting. Its seeds 0 and 1 looped from 1.5M and 1.9M.
+  - **E3's (.25, .75) and (0, 1) seed 2 don't loop:**
+    - (.25, .75): 143 to 228 decisions an episode from 1.0M, 2–18% short;
+    - (0, 1): 336 to 352 from 100k, 2–6% short.
+  - **E6a's γ_hr 0.5 seed 2** tests the Gem Store loop, since its original found it. At 100k it's too early to say.
+  - **The census** (21 finished runs; scratchpad `census_rerun_1620.txt`):
+    - 4 pass the marker, and 3 end over it.
+    - Among the same 21, the first round had 5 ending looping.
+    - With the training (.5, .5) seed 2, 5 rerun runs have passed the marker.
 - **Corrections to `079009c`:**
   - **The loot-setting options are four** (`loot_all`, `loot_valuable`, `loot_vocabulary`, `loot_none`).
     - The live check's loot share (`live_check.py`) counted three, without `loot_vocabulary`. With all four, E3's
@@ -386,6 +463,10 @@ answer (13:45:54 CST):
 
 - `docs/decision-log.md`: the check's findings, the options and Caleb's answer. From the second run check, its
   collapsed run's loop reads "three of the four loot-setting options".
+- From the fifth run check:
+  - `docs/agent-interactions/m002-loop-cause.md`: banking loops, and the remedy that wouldn't stop them;
+  - `docs/post-project-gaps.md`: the stalling gap names the banking loops, and its loot-masking remedy says it wouldn't
+    stop them.
 - This record.
 
 ## Code Changes
@@ -407,6 +488,9 @@ answer (13:45:54 CST):
   - `strategy_time.py` takes a part's file;
   - `wealth_rounds.py` covers E4, E6b and E5;
   - `total_watch.py` (the runs' total speed every 15 minutes).
+- From the fifth run check:
+  - `loop_options.py` skips a training run's newest part;
+  - `loop_detail.py` (one part's short no-effect options, with their ticks and the option after each).
 
 ## Infrastructure Changes
 
@@ -433,6 +517,8 @@ answer (13:45:54 CST):
   newest and read the copies. Available RAM was 2.3 to 3.6 GB at 07:14.
 - The fourth run check read finished runs' files. For the training runs, it read their complete decision parts (all
   but the newest), with three columns each. Available RAM was 1.8 to 3.6 GB.
+- The fifth run check read finished runs' files, and the training runs' complete decision parts (all but the newest).
+  Available RAM was 3.3 to 3.7 GB.
 - The sim versions come from each run's `config.json` `git_sha`, checked against the `sim-v1.*` tags
   (`git merge-base --is-ancestor`). The sim diff between the rounds (`git diff` of `rlscape/sim/`) is the death-budget
   cap in `fishing.py` and `gathering.py` for E3, and the tan guard in `crafting.py` for E6a.
@@ -444,7 +530,9 @@ answer (13:45:54 CST):
 - **Done:** E6a's γ_hr 0.5 seed 0 repeats its failed run's 250k decisions and is past the crash.
 - **Claude:** run the same census on every rerun as it finishes. The report's collapse counts come from the full 50.
   At 23:32, 13 are done, and 2 of them end over the marker. At 07:15, 16 are done, and 3 of them end over it. At 13:40,
-  20 are done, and 3 end over it.
+  20 are done, and 3 end over it. At 16:20, 21 are done and 3 end over it, and the training (.5, .5) seed 2 loops from
+  1.25M.
+- **Watch:** E3's (.75, .25) seed 2, whose episodes lengthen from 1.0M as its seeds 0 and 1 did before they looped.
 - **For the analysis:** no rerun run away from (0, 1) has found the first round's Gem Store loop so far.
   - Five rerun runs miss it where their originals found it: E3's (.25, .75) seeds 0 and 1, its (.5, .5) seed 1,
     E6a's γ_hr 0.5 seed 1, and E5's seed 1.
@@ -452,7 +540,7 @@ answer (13:45:54 CST):
     is untested.
   - The next tests are the seeds whose originals found it: E3's (.25, .75) seeds 3 and 4, E6a's γ_hr 0.5 seeds 2 and
     4, and E5's seed 3 (3.16M; its options unchecked). The seed-2 runs training now at (.25, .75) and (.5, .5) don't
-    test it, because their originals didn't find it either.
+    test it, because their originals didn't find it either. E6a's γ_hr 0.5 seed 2 started at 15:33.
 - **Done:** E4's and E6b's seed 1 ended without looping. E6b's passed the marker at 1.7M and recovered.
 - **The watch:** if the runs' total speed falls below 80% of the 15 minutes before, or RAM stays under 1 GB, Claude
   asks Caleb again (until midnight).
