@@ -17,7 +17,8 @@ replaces its own files only, so a training summary beside it stays).
 (rlscape/agents/training.py), every finished run under `runs_root` (one with a `run.json`):
 - `runs.csv`: a row per run: its variant and seed, its provenance (config hash, git and fork SHAs, dirty), its
   decisions, episodes and wall time, and its `ppo` and env settings (JSON);
-- `learning_curves.csv`: each run's learning curve (episodes.parquet), with its variant and seed;
+- `learning_curves.csv.gz`: each run's learning curve (episodes.parquet), with its variant and seed (gzipped from
+  2026-11-16: E3's first round was 46 MB as plain CSV);
 - `configs/`: each run's config.json;
 - from the runs' decision logs, where they kept one (rlscape/eval/behaviour.py), each with its variant and seed:
   `behaviour_bins.csv` (a row per bin of decisions: game time, episodes, the policy's entropy),
@@ -147,7 +148,7 @@ def publish_training(runs_root: Path, name: str, root: Path = SUMMARY_ROOT, allo
         shutil.copyfile(run / "config.json", out / "configs" / f"{variant + '_' if variant else ''}seed{seed}.json")
     table, curve = pd.DataFrame(rows), pd.concat(curves, ignore_index=True)
     table.to_csv(out / "runs.csv", index=False, lineterminator="\n")
-    curve.to_csv(out / "learning_curves.csv", index=False, lineterminator="\n")
+    curve.to_csv(out / "learning_curves.csv.gz", index=False, lineterminator="\n", compression=GZIP)
     behaviour = _behaviour(runs, metas)
     if behaviour:
         behaviour["bins"].to_csv(out / "behaviour_bins.csv", index=False, lineterminator="\n")
@@ -174,7 +175,7 @@ def _behaviour(runs: list[Path], metas: list[dict]) -> dict[str, pd.DataFrame]:
 def training_readme(name: str, runs_root: Path, runs: pd.DataFrame, curves: pd.DataFrame) -> str:
     lines = [f"# {name}: training", "",
              f"Published from `{_shown(runs_root)}` by `scripts/publish_training.py`: {len(runs)} runs. `runs.csv` "
-             "has each run's provenance and settings, `learning_curves.csv` each run's finished episodes, `configs/` "
+             "has each run's provenance and settings, `learning_curves.csv.gz` each run's finished episodes, `configs/` "
              "each run's config.json.", "",
              f"| Variant | Runs | Decisions a run | Total level, last {LAST_EPISODES} episodes | "
              f"Net worth (gp), last {LAST_EPISODES} episodes |", "|---|---:|---:|---:|---:|"]
