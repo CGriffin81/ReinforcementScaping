@@ -8033,8 +8033,8 @@ v1.3 bug). Each run is set beside its first-round original in 100k-decision bloc
 episodes average over 1,000 decisions. All nine configs have `cuda`, no horizon bootstrap, the 100-tick floor and a
 clean tree.
 - **One collapses: E3's (.75, .25) seed 0, at 1.5M.**
-  - From 1.6M, 97–98% of its decisions cycle the three loot-setting options (`loot_all`, `loot_valuable`,
-    `loot_none`), with no skill or wealth reward.
+  - From 1.6M, 97–98% of its decisions cycle three of the four loot-setting options (`loot_all`, `loot_valuable`,
+    `loot_none`; not `loot_vocabulary`), with no skill or wealth reward.
   - Its mean episode reward peaks at 261.2 (1.4M) and ends at 204.9.
   - Its original didn't collapse (237.1 at the end).
 - **The other eight don't.**
