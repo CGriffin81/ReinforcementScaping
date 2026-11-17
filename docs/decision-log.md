@@ -8016,3 +8016,13 @@ all the seeds; (b) plot the mean only where every seed has a value, leaving gaps
     with `--restart-partial`;
   - the failed run then trains again from the start, and the runs not yet started train on sim v1.4;
   - the five runs training now keep sim v1.3 in memory. One that meets the case fails, and trains again the same way.
+- **Done (Caleb: "Merge the PR into main and roll it out", 18:03:50 CST):**
+  - PR #32 merged into `main` as `dd17564`, tagged `sim-v1.4`;
+  - the queue (PID 12308) stopped at 18:05:47, its five runs training on;
+  - `main` merged into the five experiment branches: E3 `2528a8d`, E6a `176e4d6`, E4 `8f26bd7`, E6b `c0a82fc`, E5
+    `48c32d1`. Each branch's `rlscape/sim` is now `main`'s. PR #31's figure fixes came with it; they touch only
+    analysis and publishing;
+  - the failed run's folder and log moved to `runs/e6a-discount-sweep-tanfail-partial/` in E6a's worktree (its
+    traceback kept), so it lists as waiting;
+  - the queue relaunched from the task at 18:07:25 (PID 9884). It trains E6a's γ_hr 0.5 seed 0 next, when a slot frees.
+  - On sim v1.3: the nine seed-0 runs done and E3's five seed-1 runs training. The other 36 train on sim v1.4.
