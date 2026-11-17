@@ -63,7 +63,7 @@ def test_a_trained_policy_plays_in_the_harness_the_same_whatever_its_worker(trai
 
 def test_publishing_training_writes_each_runs_provenance_and_learning_curve(trained, tmp_path):
     out = publish_training(trained, "e9", root=tmp_path, allow_dirty=True)
-    runs, curves = pd.read_csv(out / "runs.csv"), pd.read_csv(out / "learning_curves.csv")
+    runs, curves = pd.read_csv(out / "runs.csv"), pd.read_csv(out / "learning_curves.csv.gz")
     assert list(runs.variant) == ["ent_coef0", "ent_coef0.01"] and (runs.decisions == 16).all()
     assert len(curves) == sum(len(pd.read_parquet(trained / v / "seed0" / "episodes.parquet")) for v in runs.variant)
     assert sorted(p.name for p in (out / "configs").iterdir()) == ["ent_coef0.01_seed0.json", "ent_coef0_seed0.json"]

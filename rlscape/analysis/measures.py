@@ -1,11 +1,12 @@
 """The analysis's measures, computed from an experiment's committed summary (rlscape.eval.publish): its training
-tables (`learning_curves.csv`, `behaviour_bins.csv`, `behaviour_options.csv.gz`) and its evaluation's (`episodes.csv`,
+tables (`learning_curves.csv.gz`, `behaviour_bins.csv`, `behaviour_options.csv.gz`) and its evaluation's (`episodes.csv`,
 `checkpoints.csv`, `decisions.csv.gz`).
 
 - **Learning curves** (OQ-78, Caleb, 2026-11-11): a run's mean episode reward per `CURVE_BIN` (20,000) decisions,
   the episodes binned by the decision they ended at (`binned_curve`). Its `value` is the env's reward over
   SKILL_UNIT, so 1 is what E1's ideal point (the guide's levels and greedy GP/hr's wealth, OQ-67) would score at the
-  run's own weighting, whatever the weighting.
+  run's own weighting, whatever the weighting. For the mean over seeds, a run's empty bin keeps its last value
+  (Caleb, 2026-11-16, `carried_curve`), so each bin's mean and CI are over all the seeds.
 - **Sudden or gradual** (OQ-78, revised by OQ-82 (c), Caleb, 2026-11-11): changepoints by ruptures' PELT on each
   run's binned curve, a mean shift's cost (`l2`) and a BIC penalty, 2σ²·ln n, with σ the curve's noise from its
   first differences (robust to the shifts; `changepoints`).
@@ -110,6 +111,24 @@ def binned_curve(curves: pd.DataFrame, every: int = CURVE_BIN) -> pd.DataFrame:
     binned["value"] = binned["reward"] / SKILL_UNIT
     binned["to_step"] = (binned["bin"] + 1) * every
     return binned
+
+
+def carried_curve(binned: pd.DataFrame, every: int = CURVE_BIN) -> pd.DataFrame:
+    """`binned_curve` for the mean over seeds (Caleb, 2026-11-16): a run's bin with no episode ending in it keeps the
+    run's last value, from its first bin to its variant's last, so every bin's mean and CI are over all the variant's
+    seeds. Without it, a run with long episodes (E3's first-round (0, 1) seed 1, looping) leaves most bins empty and
+    the mean saws between the seeds that have one and all of them. `carried` marks the filled bins. A run's own
+    changepoints, verdicts and sample efficiency use `binned_curve` as it is."""
+    runs = []
+    for (variant, seed), run in binned.groupby(["variant", "seed"], sort=True):
+        last = int(binned.loc[binned["variant"] == variant, "bin"].max())
+        filled = run.set_index("bin").reindex(pd.RangeIndex(int(run["bin"].min()), last + 1, name="bin"))
+        filled["carried"] = filled["value"].isna()
+        filled[["reward", "value"]] = filled[["reward", "value"]].ffill()
+        filled["episodes"] = filled["episodes"].fillna(0).astype(int)
+        filled["to_step"] = (filled.index + 1) * every
+        runs.append(filled.reset_index().assign(variant=variant, seed=seed))
+    return pd.concat(runs, ignore_index=True)[[*binned.columns, "carried"]]
 
 
 def noise(y: Sequence[float]) -> float:
@@ -226,11 +245,18 @@ def _shares(ticks: pd.DataFrame, keys: list[str]) -> pd.DataFrame:
     return shares.reset_index().melt(id_vars=keys, var_name="activity", value_name="share")
 
 
+def full_bins(bins: pd.DataFrame) -> pd.DataFrame:
+    """The behaviour bins without a run's last when it holds under half a bin's decisions (a run of 2,000,768 decisions
+    ends 768 into its 21st), as `binned_curve` leaves out a run's last half-empty bin (2026-11-16)."""
+    return bins[bins["decisions"] >= (bins["to_step"] - bins["from_step"]) / 2].reset_index(drop=True)
+
+
 def time_shares(options: pd.DataFrame, bins: pd.DataFrame) -> pd.DataFrame:
-    """Per (variant, seed, bin, activity): its share of the bin's game time in training, with the bin's `to_step`."""
+    """Per (variant, seed, bin, activity): its share of the bin's game time in training, with the bin's `to_step`,
+    for the bins in `bins` (so `full_bins`' leave out a run's half-empty last)."""
     ticks = options.assign(activity=options["option"].map(activity))
     shares = _shares(ticks, ["variant", "seed", "bin"])
-    return shares.merge(bins[["variant", "seed", "bin", "to_step"]], on=["variant", "seed", "bin"], how="left")
+    return shares.merge(bins[["variant", "seed", "bin", "to_step"]], on=["variant", "seed", "bin"], how="inner")
 
 
 def trace_shares(decisions: pd.DataFrame) -> pd.DataFrame:

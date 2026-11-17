@@ -96,6 +96,27 @@ def test_a_learning_curve_bins_episodes_by_the_decision_they_ended_and_drops_a_s
     assert binned["value"].tolist() == pytest.approx([2 / SKILL_UNIT, 6 / SKILL_UNIT])
 
 
+def test_the_mean_over_seeds_carries_a_runs_last_value_into_its_empty_bins():
+    """2026-11-16: seed 1 finishes an episode only in bins 0 and 3 (a looping run's long episodes), seed 0 in every
+    bin to 4. Carried, seed 1 keeps bin 0's value through bins 1 and 2 and bin 3's into bin 4, so each bin has both."""
+    curves = pd.DataFrame({"variant": "v", "seed": [0, 0, 0, 0, 0, 1, 1],
+                           "step": [500, 1500, 2500, 3500, 4500, 500, 3500],
+                           "reward": [1.0, 2.0, 3.0, 4.0, 5.0, 10.0, 0.0]})
+    carried = ms.carried_curve(ms.binned_curve(curves, every=1000), every=1000)
+    seed1 = carried[carried["seed"] == 1].set_index("bin")
+    assert list(seed1.index) == [0, 1, 2, 3, 4] and list(seed1["reward"]) == [10.0, 10.0, 10.0, 0.0, 0.0]
+    assert list(seed1["carried"]) == [False, True, True, False, True] and list(seed1["episodes"]) == [1, 0, 0, 1, 0]
+    assert list(seed1["to_step"]) == [1000, 2000, 3000, 4000, 5000]
+    assert not carried[carried["seed"] == 0]["carried"].any() and carried.groupby("bin").size().eq(2).all()
+
+
+def test_a_runs_last_behaviour_bin_is_left_out_when_under_half_full():
+    bins = pd.DataFrame({"variant": "v", "seed": 0, "bin": [0, 1, 2], "from_step": [0, 100, 200],
+                         "to_step": [100, 200, 300], "decisions": [100, 100, 8]})
+    assert list(ms.full_bins(bins)["bin"]) == [0, 1]
+    assert list(ms.full_bins(bins.assign(decisions=[100, 100, 50]))["bin"]) == [0, 1, 2]
+
+
 def verdicts(y: np.ndarray, every: int = ms.CURVE_BIN) -> tuple[dict, dict, list[int]]:
     """Both rules' verdicts of a curve binned every `every` decisions, and its changepoints' decisions."""
     starts, means = ms.segments(y)

@@ -329,14 +329,17 @@ class TanAtTanner(AtStation):
         return state.inventory.get(self.recipe.hide, 0) > 0 and state.inventory.get(COINS, 0) >= self.recipe.fee
 
     def _work(self, state: CharacterState, budget: int) -> OptionResult:
-        """TanningProduct.tan: every hide carried that the coins carried pay for, at once."""
+        """TanningProduct.tan: every hide carried that the coins carried pay for, at once. The walk here pays its
+        fares from the same coins, so they can pay for fewer hides than were loaded, or none (sim-v1.4: with none
+        left, taking the fee raised KeyError)."""
         r = self.recipe
         if TAN_TICKS > budget:
             return OptionResult(budget, COMPLETED)
         hides = min(state.inventory.get(r.hide, 0), state.inventory.get(COINS, 0) // r.fee)
-        state.take(COINS, hides * r.fee)
-        state.take(r.hide, hides)
-        state.add(r.product, hides)
+        if hides:
+            state.take(COINS, hides * r.fee)
+            state.take(r.hide, hides)
+            state.add(r.product, hides)
         return OptionResult(TAN_TICKS, INPUTS_EXHAUSTED)
 
 

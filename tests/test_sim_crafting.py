@@ -187,6 +187,23 @@ def test_a_tanning_path_tans_the_banked_hides_for_the_fee_and_no_xp():
 
 
 @needs_server
+def test_a_tanning_path_whose_walk_spends_every_coin_tans_nothing():
+    """sim-v1.4 (2026-11-16): the walk from the bank to the tanner pays its fares from the coins carried, the fee's
+    among them (the fastest affordable route). From Catherby with exactly the 1,000 gp charter to Port Sarim carried,
+    it leaves none, and the tanner tans nothing, as when a fare leaves fewer coins than the fee. On sim-v1.3 the
+    fee's take raised KeyError 995 (E6a's gamma_hr 0.5 seed 0, 05:47)."""
+    from rlscape.sim.crafting import TanAtTanner
+    catherby = next(b for b in gd.banks() if b.name == "Catherby")
+    for carried, tanned in ((1_000, 0), (1_001, 1)):
+        state = character({995: carried}, {COWHIDE: 20})
+        state.location, state.home_teleport_ready = (catherby.x, catherby.y, catherby.plane), 10**9
+        result = TanAtTanner(gd.tanning_recipes()["leather"]).run(state, np.random.default_rng(0), 9_000)
+        assert result.termination == "inputs_exhausted" and state.coins() == 0
+        assert state.inventory.get(LEATHER, 0) + state.bank.get(LEATHER, 0) == tanned
+        assert state.inventory.get(COWHIDE, 0) + state.bank.get(COWHIDE, 0) == 20 - tanned
+
+
+@needs_server
 def test_a_spinning_path_spins_a_flax_every_4_ticks_from_level_10():
     from rlscape.sim.crafting import SPIN_TICKS, Spin, SpinAtWheel
     path = SpinAtWheel(gd.spinning_recipes()["flax"])
