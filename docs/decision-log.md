@@ -8003,3 +8003,58 @@ estimate: about 80 hours, so done around Nov 19 morning, the analysis on Nov 20�
 - E6b's shaping takes the same floor, so F stays the agent's own discount;
 - the first 50 runs are kept aside in each worktree (`runs/<name>-bootstrap`), and E3's first evaluation and summary
   beside them. E2 isn't trained again.
+
+### Decided: the figure tooling's four fixes from the analysis rehearsal, with empty bins carried forward (2026-11-16)
+`m002-analysis-rehearsal`. The analysis ran end to end on the first round's E3 runs and evaluation, into scratch, and
+found four things to fix in the shared tooling before the rerun's summaries are published:
+1. `learning_curves.csv` was 45.8 MB (325,538 episodes): near GitHub's 50 MB warning for one file;
+2. the mean over seeds saws where a run leaves 20k-decision bins empty (E3's (0, 1) seed 1, looping, from 1.6M);
+3. labels collided in `learning_e3` and `pareto`;
+4. `entropy`'s legend covered its curves' ends, and its axis ran to 2.1M (a run's last behaviour bin holds its last
+   768 decisions).
+
+For 2, the options: (a) carry a run's last value into its empty bins (recommended), so each bin's mean and CI are over
+all the seeds; (b) plot the mean only where every seed has a value, leaving gaps. **Caleb (01:09:48 CST): all four,
+(a).**
+- The curves are written gzipped (`learning_curves.csv.gz`, 13.3 MB for the same table); the figure script reads
+  either, so E2's plain one still reads.
+- `carried_curve` fills a run's empty bins from its first bin to its variant's last, for the mean and its CI; the
+  figure's table counts the carried values (`carried`). A run's own changepoints, verdicts and sample efficiency use
+  its bins as they are.
+- `full_bins` leaves out a run's last behaviour bin when it holds under half a bin, as the learning curve already
+  did; the time allocation and discovery follow it.
+- A reference level near a panel's top is named below its line; the pareto's point labels take the first spot clear
+  of the others; the entropy legend is below the panels.
+
+### Decided: sim v1.4, tanning after a fare that spent every coin (2026-11-16)
+`m002-tan-guard`, at Caleb's "Check on the runs." (07:31:17 CST).
+- **The crash:** E6a's γ_hr 0.5 seed 0 failed at 05:47:40, 77 minutes in, after its 200k-decision checkpoint (05:25).
+  An env worker raised `KeyError: 995` in `TanAtTanner._work`, taking the fee from an inventory without coins, and
+  the run stopped. The queue started the next run (E4's seed 0, 05:48:41). No other run failed.
+- **The cause:** a tanning path's restock keeps the coins carried and takes out the fee's. The walk from the bank to
+  the tanner, the fastest way the character can afford (Caleb, 2026-11-01), pays its fares from the same coins. A
+  fare that leaves fewer coins than the fee leaves fewer hides tanned, or none. A fare that leaves no coins made the
+  fee's take of 0 coins raise.
+- **Reproduced:** at Catherby's bank, carrying exactly 1,000 coins, with 20 cowhides banked and the home teleport on
+  cooldown, `tan_leather`'s walk to Ellis takes the 1,000 gp charter to Port Sarim, and the fee raises KeyError 995.
+  With 1,001 coins it tans one hide; with 999 it walks and tans all 20. With 1,000 coins carried, the walks to Ellis
+  from 7 of the 20 banks take that charter (Catherby, Seers' Village, both East Ardougne banks, Yanille, the Fishing
+  Guild, Castle Wars). Buying at the GE and the shops already skips a purchase of no units. Training is
+  deterministic, so the same seed would crash at the same decision again.
+- **The options:**
+  - (a) sim v1.4: the tanner tans nothing when the coins can't pay for a hide, as it already does when a fare leaves
+    fewer coins than the fee. Every trajectory sim v1.3 completes is unchanged, so only the failed run trains again
+    (recommended).
+  - (b) Also keep the fee's coins from the walk's fares. That changes trajectories, so all 50 runs would train
+    again, which doesn't fit before Nov 26.
+  - (c) No sim change: E6a's γ_hr 0.5 with four seeds, or a fifth seed outside E1's set.
+- **Caleb (08:04:16 CST): (a).**
+- **Also asked:** should the fare-for-the-fee route go in `docs/post-project-gaps.md`? With 1,001 coins carried, the
+  walk takes the 1,000 gp charter and one hide is tanned. **Caleb: log it** (recommended; the other option was this
+  log only).
+- **What follows:**
+  - the fix goes into `main` by its own PR, tagged `sim-v1.4`;
+  - the queue's launcher is stopped, `main` is merged into the five experiment worktrees, and the queue is relaunched
+    with `--restart-partial`;
+  - the failed run then trains again from the start, and the runs not yet started train on sim v1.4;
+  - the five runs training now keep sim v1.3 in memory. One that meets the case fails, and trains again the same way.

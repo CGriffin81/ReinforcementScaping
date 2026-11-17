@@ -86,7 +86,11 @@ class Summaries:
         self.root = Path(root)
 
     def _read(self, path: Path) -> pd.DataFrame | None:
-        return pd.read_csv(path, keep_default_na=False, dtype={"variant": str}) if path.exists() else None
+        """The table, or its gzipped copy (`learning_curves.csv.gz` from 2026-11-16; E2's is plain)."""
+        for p in (path, path.with_name(path.name + ".gz")):
+            if p.exists():
+                return pd.read_csv(p, keep_default_na=False, dtype={"variant": str})
+        return None
 
     def training(self, table: str) -> pd.DataFrame | None:
         """A training table of every experiment that has one, `variant` replaced by the run's series."""
@@ -156,11 +160,15 @@ def build(summary: Path, out: Path, curve_bin: int = ms.CURVE_BIN) -> list[str]:
     curves, bins, options = (data.training(t) for t in ("learning_curves.csv", "behaviour_bins.csv",
                                                          "behaviour_options.csv.gz"))
     present = set(curves["variant"]) if curves is not None else set()
+    bins = ms.full_bins(bins) if bins is not None else None  # a run's half-empty last bin left out
 
     # --- learning curves (OQ-78) ---
     if curves is not None:
         binned = ms.binned_curve(curves, curve_bin)
-        stats = ms.over_seeds(binned, ["variant", "to_step"], "value").rename(columns={"variant": "series"})
+        carried = ms.carried_curve(binned, curve_bin)  # the mean over seeds: an empty bin keeps its last value
+        stats = ms.over_seeds(carried, ["variant", "to_step"], "value").merge(
+            carried.groupby(["variant", "to_step"], as_index=False)["carried"].sum(), on=["variant", "to_step"]
+        ).rename(columns={"variant": "series"})
         verdicts, changes = (t.rename(columns={"variant": "series"}) for t in ms.run_changes(binned,
                                                                                                every=curve_bin))
         save_table(verdicts, out / "verdicts.csv")
