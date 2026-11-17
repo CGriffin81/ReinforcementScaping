@@ -8055,3 +8055,7 @@ clean tree.
   - (c) a sim v1.5 change to the loot-setting options (untested; three modes can still cycle), then all 50 again:
     about 80 hours, so done about Nov 21, squeezing the analysis and the draft before the Nov 26 peer review.
 - **Caleb (19:55:52 CST): (a), carry on, report it.** The counts come from the full 50 once they finish.
+- **Logged (Caleb, 2026-11-17 00:11:37 CST: "Log both, then commit it to main directly"):** the remedies, as the
+  post-project gap "A high-level policy can stall on near-instant options", and three references, [53]–[55] in
+  `docs/resources.md`. Claude's answer on the loops' causes is in `m002-loop-cause`: a trainer bug (fixed by PR #30),
+  and a learner limitation that the near-instant options expose. The loops aren't reward hacking.
