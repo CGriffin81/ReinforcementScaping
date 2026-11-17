@@ -8026,3 +8026,32 @@ all the seeds; (b) plot the mean only where every seed has a value, leaving gaps
     traceback kept), so it lists as waiting;
   - the queue relaunched from the task at 18:07:25 (PID 9884). It trains E6a's γ_hr 0.5 seed 0 next, when a slot frees.
   - On sim v1.3: the nine seed-0 runs done and E3's five seed-1 runs training. The other 36 train on sim v1.4.
+
+### Decided: the rerun's collapsed runs are reported, not fixed (2026-11-16)
+`m002-collapse-check`. The collapse check on the rerun's nine finished seed-0 runs (E6a γ_hr 0.5's failed on the sim
+v1.3 bug). Each run is set beside its first-round original in 100k-decision blocks; the marker is a block whose
+episodes average over 1,000 decisions. All nine configs have `cuda`, no horizon bootstrap, the 100-tick floor and a
+clean tree.
+- **One collapses: E3's (.75, .25) seed 0, at 1.5M.**
+  - From 1.6M, 97–98% of its decisions cycle the three loot-setting options (`loot_all`, `loot_valuable`,
+    `loot_none`), with no skill or wealth reward.
+  - Its mean episode reward peaks at 261.2 (1.4M) and ends at 204.9.
+  - Its original didn't collapse (237.1 at the end).
+- **The other eight don't.**
+  - E6a γ_hr 0.9 and E6b, whose originals collapsed at 500k and 200k, end at 254.6 and 331.3 unshaped (originals
+    62.3 and 164.7).
+  - E3 (0, 1) dips from about 700 to 331–392 between 1.0M and 1.4M, then recovers to 745.2.
+  - E4 drifts: its short zero-effect decisions rise to 46%, over many options, and its task reward falls from 146.7 to
+    94.0. Its original fell too.
+  - E3 (.25, .75) settles on a lower strategy than its original (161.4 against 544.7).
+- **The first round, by the same marker:** 11 of 50 pass it, and 8 end looping (E3's (0, 1) seed 1, E6a γ_hr 0.9's
+  seeds 0 and 3, E6b's five). Among the same nine seed-0 runs, the first round had two loopers; the rerun has one.
+- **The options:**
+  - (a) carry on and report it (recommended): no change. Each run's final model is evaluated as planned, and the
+    report gives each round's collapse count and names the looping runs. It costs no time; a collapsed seed widens its
+    variant's CI;
+  - (b) as (a), plus a secondary evaluation of each collapsed run's checkpoint before its collapse, labelled as chosen
+    from the training curve;
+  - (c) a sim v1.5 change to the loot-setting options (untested; three modes can still cycle), then all 50 again:
+    about 80 hours, so done about Nov 21, squeezing the analysis and the draft before the Nov 26 peer review.
+- **Caleb (19:55:52 CST): (a), carry on, report it.** The counts come from the full 50 once they finish.
