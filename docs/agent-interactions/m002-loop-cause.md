@@ -40,6 +40,14 @@ Then (00:11:37 CST), on Claude's offer to log the remedies in `docs/post-project
 - **The training:** partly.
   - The first round's horizon bootstrap was a bug in the trainer, which Claude wrote. Fixed by PR #30. Among the same
     13 runs, 3 ended looping in the first round, against 2 in the rerun.
+    - With more runs done, this doesn't hold at γ_hr 0.99. Among the 36 runs done at the 2026-11-18 15:28 run check
+      (`m002-collapse-check`), 7 end looping in the first round and 8 in the rerun.
+    - At γ_hr 0.5 and 0.9 (E6a), the count went from 3 to 0. At 0.99 (E3, E4, E5, E6b) it went from 4 to 8, and E3's
+      alone from 1 to 7.
+    - The rerun's floor costs a decision at least 1.15% of its value at γ_hr 0.5, 0.18% at 0.9 and 0.017% at 0.99. So
+      the loops stopped where the floor costs most.
+    - Why E3 loops more at 0.99 is untested. The candidates are the horizon bootstrap's removal and E3's sim change
+      (the death-budget cap).
   - The trainer adapts PPO to the SMDP in its discount only (γ^τ with the 100-tick floor). Its batches (256 decisions
     an env), entropy bonus (0.01) and GAE λ count decisions, not game time.
   - The floor charges a 1-tick decision as 100 ticks: at γ_hr 0.99, 1 − 0.99^(100/6000) = 0.017% of the value, about
@@ -58,6 +66,8 @@ Then (00:11:37 CST), on Claude's offer to log the remedies in `docs/post-project
   that the action space exposes. The remedies (a per-decision cost, the loot setting folded into the fight options or
   masked until a fight, batches weighted by game time) change the sim or the trainer, so under Caleb's (a) they're
   after-project work.
+  - At the 2026-11-18 15:28 run check, the counts by discount no longer support the first part at γ_hr 0.99 (above).
+    How the report frames the cause is Caleb's call.
   - Some runs loop on banking instead of loot changes. They deposit and withdraw for a trip at a bank, 8 ticks a
     decision, with no reward: the first round's E3 (0, 1) seed 1, and the rerun's (.5, .5) seed 2 from 1.25M. Folding
     or masking the loot setting wouldn't stop these loops. The per-decision cost and game-time batches would. This was
