@@ -228,3 +228,48 @@ all 50 would have to train again, which doesn't fit before the peer review.
   the fee or the purchase's cost isn't spent on a fare (`rlscape.sim.movement.route`, `TanAtTanner._restock`,
   `BuyShop.run`).
 - Retrain, since trajectories change.
+
+## A high-level policy can stall on near-instant options (Caleb, 2026-11-16 and 2026-11-17)
+
+**What's missing.** A guard against stalling loops. Some trained policies fall into long runs of options that take
+almost no game time and earn nothing, most often the loot-setting options. A loot change takes 1 tick
+(`LOOT_MODE_TICKS`), and only the current mode is masked, so three modes can always cycle. Some loop on banking instead,
+or as well: a deposit and withdrawals for a trip at a bank, 8 ticks each (the first round's E3 (0, 1) seed 1, the
+rerun's (.5, .5) seed 2; `m002-collapse-check`, 2026-11-17 16:18).
+- E3's (.75, .25) seed 0 is the clearest case: from 1.55M, 95–99% of its decisions are loot changes, taking 6–29% of
+  the game time.
+- Its other decisions still earn 10–15 reward a game-hour, about the same as before the collapse. So its reward fell
+  by about a fifth (261.2 to 204.9), about the time the stalling takes.
+- The loop pays less than the policy it replaced, so it isn't reward hacking: the learner moved to a worse policy.
+- The first round's horizon bootstrap, a trainer bug fixed by PR #30, made it much worse. Among the same 13 runs, 3
+  ended looping in the first round and 2 in the rerun.
+- What remains: the trainer adapts PPO to the semi-MDP only in its discount. Its batches, entropy bonus and GAE λ count
+  decisions, not game time.
+- The 100-tick floor charges a loot change about 0.017% of the value at γ_hr 0.99, about 0.03 when an episode earns
+  about 200. A working option of about 300 ticks earns about 0.65.
+- The causes and the related work ([53]–[55] in `docs/resources.md`) are in `m002-loop-cause`.
+
+**Why.** Caleb chose to carry on and report the collapsed runs (decision log, 2026-11-16, option (a)). Every remedy
+changes the sim or the trainer, and all 50 of E3 to E6's runs would have to train again, about 80 hours. That doesn't
+fit before the peer review. Caleb asked to log the remedies here (2026-11-17).
+
+**What it costs.**
+- **Which runs:** 2 of the rerun's first 13 finished runs end looping (`m002-collapse-check`). The final count comes
+  from the full 50.
+- **What a looping run loses:** game time to stalling, so its final model scores lower than its peak.
+  - Evaluation uses each run's final model, so a collapsed seed widens its variant's confidence interval.
+  - The report names the looping runs and gives each round's count.
+- **Which comparisons:** a variant with a looping seed (E3's (.75, .25) and (.5, .5) so far) is compared with that
+  seed's loss included.
+
+**How to close it.** Any of these, tested one at a time on a seed that loops:
+- **A deliberation cost:** a fixed reward cost for each decision ([53]), set large enough to outweigh the noise in a
+  near-zero advantage. It changes the objective, so the reward weights' units (OQ-67) would need revisiting.
+- **No standalone settings option:** fold the loot mode into the fight options as a parameter, or mask the
+  loot-setting options until a fight has run since the last change. This is an env contract change (the action space).
+  On its own it wouldn't stop a banking loop.
+- **Game-time weighting in the trainer:** weight each decision's loss by its duration, or count a rollout in game
+  time, not decisions, so a burst of 1-tick decisions can't fill a batch.
+- **A check on the collapse's mechanism first:** the critic's step size and the late-collapse findings ([54], [55]),
+  for example the network's feature rank before and after a collapse.
+- Then retrain E3 to E6 and compare each round's collapse count.
