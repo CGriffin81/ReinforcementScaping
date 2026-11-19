@@ -177,6 +177,19 @@ and is credited where used.
 52. **J. D. Hunter (2007). "Matplotlib: A 2D graphics environment."** *Computing in Science & Engineering* 9(3),
     90–95. matplotlib 3.11.2 (its license is PSF-based). — **Used:** the report's figures
     (`rlscape/analysis/figures.py`). Added 2026-11-11.
+53. **J. Harb, P.-L. Bacon, M. Klissarov, D. Precup (2018). "When waiting is not an option: Learning options with a
+    deliberation cost."** *AAAI* 32(1), 3165–3172. arXiv:1709.04571. — **Used:** the looping runs' discussion
+    (`m002-loop-cause`): a fixed cost for each option switch keeps a high-level policy from switching too often. The
+    100-tick discount floor is a weak form of it. Added 2026-11-17.
+54. **S. Dohare, Q. Lan, A. R. Mahmood (2023). "Overcoming policy collapse in deep reinforcement learning."**
+    *Sixteenth European Workshop on Reinforcement Learning (EWRL)*. — **Used:** the looping runs' discussion
+    (`m002-loop-cause`): PPO's performance can collapse late in long runs. Checked from its listing, not its full
+    text. Added 2026-11-17.
+55. **S. Moalla, A. Miele, D. Pyatko, R. Pascanu, C. Gulcehre (2024). "No representation, no trust: Connecting
+    representation, collapse, and trust issues in PPO."** *NeurIPS*. arXiv:2405.00662. — **Used:** the looping runs'
+    discussion (`m002-loop-cause`): it ties PPO's performance collapse to its features collapsing, which erodes its
+    trust region. arXiv's first version lists four authors; its code page adds Pyatko. Whether this mechanism is the
+    loops' cause is untested. Added 2026-11-17.
 
 sb3-contrib's MaskablePPO ([15]) has been in use since 2026-11-08: `SMDPMaskablePPO` and its rollout buffer
 (`rlscape/agents/ppo.py`) subclass it.
