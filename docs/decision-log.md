@@ -8058,3 +8058,114 @@ all the seeds; (b) plot the mean only where every seed has a value, leaving gaps
     with `--restart-partial`;
   - the failed run then trains again from the start, and the runs not yet started train on sim v1.4;
   - the five runs training now keep sim v1.3 in memory. One that meets the case fails, and trains again the same way.
+- **Done (Caleb: "Merge the PR into main and roll it out", 18:03:50 CST):**
+  - PR #32 merged into `main` as `dd17564`, tagged `sim-v1.4`;
+  - the queue (PID 12308) stopped at 18:05:47, its five runs training on;
+  - `main` merged into the five experiment branches: E3 `2528a8d`, E6a `176e4d6`, E4 `8f26bd7`, E6b `c0a82fc`, E5
+    `48c32d1`. Each branch's `rlscape/sim` is now `main`'s. PR #31's figure fixes came with it; they touch only
+    analysis and publishing;
+  - the failed run's folder and log moved to `runs/e6a-discount-sweep-tanfail-partial/` in E6a's worktree (its
+    traceback kept), so it lists as waiting;
+  - the queue relaunched from the task at 18:07:25 (PID 9884). It trains E6a's γ_hr 0.5 seed 0 next, when a slot frees.
+  - On sim v1.3: the nine seed-0 runs done and E3's five seed-1 runs training. The other 36 train on sim v1.4.
+
+### Decided: the rerun's collapsed runs are reported, not fixed (2026-11-16)
+`m002-collapse-check`. The collapse check on the rerun's nine finished seed-0 runs (E6a γ_hr 0.5's failed on the sim
+v1.3 bug). Each run is set beside its first-round original in 100k-decision blocks; the marker is a block whose
+episodes average over 1,000 decisions. All nine configs have `cuda`, no horizon bootstrap, the 100-tick floor and a
+clean tree.
+- **One collapses: E3's (.75, .25) seed 0, at 1.5M.**
+  - From 1.6M, 97–98% of its decisions cycle three of the four loot-setting options (`loot_all`, `loot_valuable`,
+    `loot_none`; not `loot_vocabulary`), with no skill or wealth reward.
+  - Its mean episode reward peaks at 261.2 (1.4M) and ends at 204.9.
+  - Its original didn't collapse (237.1 at the end).
+- **The other eight don't.**
+  - E6a γ_hr 0.9 and E6b, whose originals collapsed at 500k and 200k, end at 254.6 and 129.9 (originals 62.3, and
+    0.0 at 1.7M). Corrected on 2026-11-18 (`m002-collapse-check`'s seventh run check): E6b's had read 331.3 and 164.7
+    "unshaped", and E4's below 146.7 to 94.0, from a script that took the shaping and RND's bonus out twice.
+  - E3 (0, 1) dips from about 700 to 331–392 between 1.0M and 1.4M, then recovers to 745.2.
+  - E4 drifts: its short zero-effect decisions rise to 46%, over many options, and its reward falls from 129.8 to
+    106.2. Its original fell too.
+  - E3 (.25, .75) settles on a lower strategy than its original (161.4 against 544.7).
+- **The first round, by the same marker:** 11 of 50 pass it, and 8 end looping (E3's (0, 1) seed 1, E6a γ_hr 0.9's
+  seeds 0 and 3, E6b's five). Among the same nine seed-0 runs, the first round had two loopers; the rerun has one.
+- **The options:**
+  - (a) carry on and report it (recommended): no change. Each run's final model is evaluated as planned, and the
+    report gives each round's collapse count and names the looping runs. It costs no time; a collapsed seed widens its
+    variant's CI;
+  - (b) as (a), plus a secondary evaluation of each collapsed run's checkpoint before its collapse, labelled as chosen
+    from the training curve;
+  - (c) a sim v1.5 change to the loot-setting options (untested; three modes can still cycle), then all 50 again:
+    about 80 hours, so done about Nov 21, squeezing the analysis and the draft before the Nov 26 peer review.
+- **Caleb (19:55:52 CST): (a), carry on, report it.** The counts come from the full 50 once they finish.
+- **Logged (Caleb, 2026-11-17 00:11:37 CST: "Log both, then commit it to main directly"):** the remedies, as the
+  post-project gap "A high-level policy can stall on near-instant options", and three references, [53]–[55] in
+  `docs/resources.md`. Claude's answer on the loops' causes is in `m002-loop-cause`: a trainer bug (fixed by PR #30),
+  and a learner limitation that the near-instant options expose. The loops aren't reward hacking.
+
+### OQ-81's speed rule fired (2026-11-17, 13:22): five jobs kept (Caleb)
+At Caleb's "Check on the runs." (13:35:36 CST), `m002-collapse-check`.
+- **The fall:** E3's (.75, .25) seed 2 made 69.8 decisions a second from 12:52 to 13:07. Then it made 51.8 from 13:07
+  to 13:22 (74%) and 47.3 from 13:22 to 13:37.
+  - It began as E3's (0, 1) seed 2 started, at 13:15. That run took the slot E5's seed 1 left at 13:14.
+  - The slow run doesn't loop. At 950k it takes 314 decisions an episode, 28% of them short.
+- **The machine:**
+  - The five runs' total held at 299 to 318 decisions a second.
+  - The CPU was at 59–67%.
+  - The other four runs held their speed or rose.
+  - Available RAM was 1.8 to 2.0 GB at 13:36, as the young run grew, and 3.5 GB by 13:43.
+  - Hard page reads were under 40 a second, except in one 5-second sample: 4,255 at 13:42:50, during Claude's reads of
+    the runs' files, with 3.5 GB available.
+
+  So the RAM and paging rules don't fire.
+- **The options:**
+  - keep five (recommended): the fall is one run's share of the machine, not the machine's total;
+  - back to `--jobs 4`, as the rule has it. That would start at the next run's end (about 16:00) and move the last
+    run's end about 11 hours later.
+- **Caleb (13:45:54 CST): keep five.** The queue is unchanged (PID 9884, `--jobs 5`).
+  - **Watched until midnight:**
+    - the runs' total speed every 15 minutes against the 15 before, where a fall below 80% asks again (scratchpad
+      `total_watch.py`);
+    - RAM under 1 GB for a minute, and paging while RAM is under 2 GB (`watch_lows.ps1` on a 10-second sampler).
+
+### OQ-81's RAM rule fired (2026-11-17, 18:45): five jobs kept (Caleb)
+At the midnight watch, `m002-collapse-check`.
+- **The low:** available RAM was under 1 GB from 18:44:26 to 18:45:35 (860 to 654 MB), and the watch (`watch_lows.ps1`)
+  fired at 18:45:35. The lowest sample was 385 MB at 18:46:17.
+  - E6b's seed 2 had started at 18:32 and was still growing.
+  - By 18:46:37 Windows had trimmed the runs' working sets, and 2.0 to 2.2 GB was available.
+  - Hard page reads ran at 1,197 to 3,863 a second in four samples about the trim, then fell under 300.
+- **The machine:**
+  - The runs' total speed held: 367 decisions a second from 18:20 to 18:35, then 234 to 283 a window as the queue
+    swapped E3's (0, 1) seed 2 (about 127 a second) for E6b's seed 2 (about 54). Each window was 0.96 to 0.98 of the
+    one before.
+  - The commit charge was at 96% of an 87.7 GB limit. The pagefile is system-managed, with 233 GB free on C:, and the
+    system log has no low-virtual-memory event in the 7 days before. The commit charge reached 99.4% three times that
+    day.
+- **The options:**
+  - keep five (recommended): the low is a young run growing, as on 2026-11-13, and Windows recovered the memory;
+  - back to `--jobs 4`, as the rule has it. That would start at the next run's end (about 20:00) and move the last
+    run's end 8 to 10 hours later.
+- **Caleb (19:39:22 CST): keep five.** The queue is unchanged (PID 9884, `--jobs 5`). The low-RAM watch was restarted
+  for the rest of the evening.
+  - **The watch had a gap:** its sampler stopped at 19:39:49, when the Claude session ended, so RAM went unwatched from
+    19:40 to 22:03. Then the sampler and both watches were restarted. The runs' total speed (328 decisions a second by
+    21:52) and the system log (no low-memory event) show no trouble in the gap.
+
+### Finding: the rerun stops the loops at γ_hr 0.5 and 0.9, not at 0.99 (2026-11-18)
+At Caleb's "Check on the runs." (15:28:13 CST), `m002-collapse-check`'s seventh run check. 36 of the 50 reruns are done.
+The marker is a run's last 100k block averaging over 1,000 decisions an episode.
+- **Overall:** 8 of the 36 end over it, against 7 of the same 36 in the first round.
+- **By discount:**
+  - at γ_hr 0.5 and 0.9 (E6a's 7 runs): from 3 in the first round to none;
+  - at 0.99 (29 runs): from 4 (E3's (0, 1) seed 1, E6b's seeds 0 to 2) to 8 (E3's (.5, .5) seeds 1 to 3, its (.75,
+    .25) seeds 0, 1 and 3, its (1, 0) seed 3, and E6b's seed 2).
+- **The floor's cost:** the rerun's 100-tick floor costs a decision at least 1 − γ_hr^(100/6000) of its value: 1.15% at
+  0.5, 0.18% at 0.9 and 0.017% at 0.99. So the loops stopped where the floor costs most.
+- **Why E3 loops more at 0.99** is untested. The candidates are the horizon bootstrap's removal and E3's sim change
+  (the death-budget cap).
+- **What it changes:** the 2026-11-16 entry's "a trainer bug (fixed by PR #30)" doesn't hold as a cause of the loops at
+  0.99. `m002-loop-cause` now says so. How the report frames the cause is Caleb's call. The recommendation: the counts
+  by discount for both rounds, by this one measure.
+- **A count to align:** by this measure the first round's 50 have 10 ending looping. The 2026-11-16 entry's 8 left out
+  E6a's γ_hr 0.5 seed 0 (1,003 in its last block) and γ_hr 0.9 seed 2 (over the marker only in its last block).
