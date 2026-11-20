@@ -1,0 +1,74 @@
+{
+  "config": {
+    "backend": "sim",
+    "policies": [
+      "random",
+      "greedy_xp",
+      "greedy_wealth",
+      "scripted_guide",
+      "gamma_hr0.5/seed0=ppo:runs/e6a-discount-sweep/gamma_hr0.5/seed0/model.zip",
+      "gamma_hr0.5/seed1=ppo:runs/e6a-discount-sweep/gamma_hr0.5/seed1/model.zip",
+      "gamma_hr0.5/seed2=ppo:runs/e6a-discount-sweep/gamma_hr0.5/seed2/model.zip",
+      "gamma_hr0.5/seed3=ppo:runs/e6a-discount-sweep/gamma_hr0.5/seed3/model.zip",
+      "gamma_hr0.5/seed4=ppo:runs/e6a-discount-sweep/gamma_hr0.5/seed4/model.zip",
+      "gamma_hr0.9/seed0=ppo:runs/e6a-discount-sweep/gamma_hr0.9/seed0/model.zip",
+      "gamma_hr0.9/seed1=ppo:runs/e6a-discount-sweep/gamma_hr0.9/seed1/model.zip",
+      "gamma_hr0.9/seed2=ppo:runs/e6a-discount-sweep/gamma_hr0.9/seed2/model.zip",
+      "gamma_hr0.9/seed3=ppo:runs/e6a-discount-sweep/gamma_hr0.9/seed3/model.zip",
+      "gamma_hr0.9/seed4=ppo:runs/e6a-discount-sweep/gamma_hr0.9/seed4/model.zip"
+    ],
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29
+    ],
+    "env": {
+      "horizon_ticks": 120000,
+      "activity_ticks": 1500
+    },
+    "reward_weights": [
+      0.5,
+      0.5
+    ]
+  },
+  "config_hash": "c2b345e83fb4",
+  "git_sha": "4ca2bed9592545b19e71c12306a89eb2b1343d76",
+  "git_dirty": false,
+  "server_sha": "cad9743444626e56b9e758db1b78867e7fe75b86",
+  "created": "2026-11-20T00:09:11+00:00",
+  "python": "3.12.14",
+  "numpy": "2.5.4",
+  "pandas": "3.1.0",
+  "script": "scripts/evaluate.py",
+  "argv": [
+    "--config",
+    "configs/e6a-discount-sweep-eval.yaml"
+  ]
+}
