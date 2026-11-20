@@ -1,0 +1,72 @@
+{
+  "name": "e3-reward-weight-sweep",
+  "seed": 0,
+  "config": {
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "total_decisions": 2000000,
+    "n_envs": 4,
+    "vec_env": "subproc",
+    "device": "cuda",
+    "torch_threads": 2,
+    "ppo": {
+      "bootstrap_horizon": false,
+      "discount_floor_ticks": 100,
+      "gamma_hr": 0.99,
+      "gae_lambda": 0.95,
+      "learning_rate": 0.0003,
+      "ent_coef": 0.01,
+      "n_steps": 256,
+      "batch_size": 1024,
+      "n_epochs": 4,
+      "policy_kwargs": {
+        "net_arch": [
+          256,
+          256
+        ]
+      }
+    },
+    "checkpoint_every": 100000,
+    "decision_log": true,
+    "env": {
+      "normalised_weights": [
+        0.5,
+        0.5
+      ]
+    },
+    "variant": "normalised_weights0.5-0.5"
+  },
+  "config_hash": "032efa025388",
+  "env_kwargs": {
+    "reward_weights": [
+      0.5,
+      9.180584398474737
+    ]
+  },
+  "git_sha": "cbe3baac95421c7eebae1c381995a41ef50c3d6b",
+  "git_dirty": false,
+  "server_sha": "cad9743444626e56b9e758db1b78867e7fe75b86",
+  "created": "2026-11-16T05:22:55+00:00",
+  "python": "3.12.14",
+  "numpy": "2.5.4",
+  "pandas": "3.1.0",
+  "torch": "2.14.1+cu130",
+  "stable_baselines3": "2.9.2",
+  "sb3_contrib": "2.9.2",
+  "script": "scripts/train.py",
+  "argv": [
+    "--config",
+    "D:\\ReinforcementScaping-runs\\configs\\e3-reward-weight-sweep.yaml",
+    "--variant",
+    "normalised_weights0.5-0.5",
+    "--seed",
+    "0"
+  ],
+  "gpu": "NVIDIA GeForce RTX 3050",
+  "deterministic": true
+}
