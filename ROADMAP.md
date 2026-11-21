@@ -376,6 +376,8 @@ train on sim v1.4.
     RND. It trains when E3 frees the machine.
 - [ ] **E5, the weight-conditioned PPO** (RQ3's second half): weights drawn each episode and given in the
   observation. Pareto coverage, hypervolume and training cost against E3's agents.
+  - *Built 2026-11-10* (`rlscape/agents/conditioned.py`; Caleb, OQ-74): u ~ U[0, 1] each episode, 2M decisions a
+    run, evaluated at E3's five weightings and every 0.1 (13). It trains when E3 frees the machine.
 - [ ] **E6** (RQ4), at (.5,.5) with 5 seeds each:
   - **E6a:** two more γ_hr values (§3's set: 0.5, 0.9, 0.99);
   - **E6b:** raw reward against PBRS. Φ is §3's candidate, the best GP/hr the current unlocks allow, confirmed when

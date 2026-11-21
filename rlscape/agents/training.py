@@ -23,6 +23,8 @@ command per experiment).
 - `out`: where the runs go (default `runs/<name>`, git-ignored);
 - `rnd` (E4): RND's exploration bonus (rlscape.agents.rnd): `coef`, the observation's parts it reads (`features`), and
   optionally its networks' and training's settings. Its predictor trains once a rollout (`ppo.n_steps`);
+- `conditioned` (E5): the weight-conditioned agent (rlscape.agents.conditioned), `weights: uniform`. Each episode draws
+  its normalised weighting, rewards by it and shows it in the observation; `env` then sets no weights of its own;
 - `sweep`: a grid of variants, `{key: [values]}`, a key being `ppo.<argument>`, `env.<setting>`, `rnd.<setting>` or
   one of the keys above. Each combination is a variant, named by its values (`learning_rate0.0001_ent_coef0.01`), with
   its own runs.
@@ -69,6 +71,7 @@ import yaml
 from stable_baselines3.common.callbacks import BaseCallback, CallbackList, CheckpointCallback
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv, VecMonitor
 
+from rlscape.agents.conditioned import check_conditioned, conditioned_sim_env
 from rlscape.agents.decision_log import DecisionLogger
 from rlscape.agents.ppo import SMDPMaskablePPO
 from rlscape.agents.rnd import KEYS as RND_KEYS
@@ -79,7 +82,7 @@ from rlscape.eval.harness import REPO, config_hash, provenance
 from rlscape.sim.engine import TICKS_PER_HOUR
 
 KEYS = {"seeds", "total_decisions", "n_envs", "vec_env", "device", "torch_threads", "env", "ppo", "checkpoint_every",
-        "decision_log", "out", "sweep", "variant", "rnd"}
+        "decision_log", "out", "sweep", "variant", "rnd", "conditioned"}
 UNSWEPT = {"seeds", "out", "sweep", "variant"}  # a sweep can't vary these
 REQUIRED = {"seeds", "total_decisions", "n_envs", "ppo"}
 ENV_KEYS = {"reward_weights", "normalised_weights", "hours", "activity_minutes", "preference_in_obs"}
@@ -114,6 +117,10 @@ def check_config(config: dict) -> dict:
         raise ValueError("config: vec_env is subproc or dummy")
     if config.get("rnd") is not None:
         check_rnd(config["rnd"])
+    if config.get("conditioned") is not None:
+        check_conditioned(config["conditioned"])
+        if {"reward_weights", "normalised_weights"} & set(env):
+            raise ValueError("config: a conditioned agent draws its weights each episode; env sets none")
     for key, values in (config.get("sweep") or {}).items():
         section, _, field = key.partition(".")
         known = (field and (section == "ppo" or (section == "env" and field in ENV_KEYS)
@@ -169,7 +176,12 @@ def env_kwargs(config: dict) -> dict:
 
 
 def make_vec_env(config: dict) -> VecEnv:
-    factories = [partial(SimEnv, **env_kwargs(config)) for _ in range(int(config["n_envs"]))]
+    """The training envs: SimEnv, or E5's weight-conditioned SimEnv when the config has `conditioned`."""
+    if config.get("conditioned"):
+        factory = partial(conditioned_sim_env, config["conditioned"]["weights"], **env_kwargs(config))
+    else:
+        factory = partial(SimEnv, **env_kwargs(config))
+    factories = [factory for _ in range(int(config["n_envs"]))]
     vec = SubprocVecEnv(factories) if config.get("vec_env", "subproc") == "subproc" else DummyVecEnv(factories)
     return VecMonitor(vec)
 
