@@ -1,0 +1,92 @@
+{
+  "name": "e4-rnd-exploration",
+  "seed": 3,
+  "config": {
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "total_decisions": 2000000,
+    "n_envs": 4,
+    "vec_env": "subproc",
+    "device": "cuda",
+    "torch_threads": 2,
+    "env": {
+      "normalised_weights": [
+        0.5,
+        0.5
+      ]
+    },
+    "ppo": {
+      "bootstrap_horizon": false,
+      "discount_floor_ticks": 100,
+      "gamma_hr": 0.99,
+      "gae_lambda": 0.95,
+      "learning_rate": 0.0003,
+      "ent_coef": 0.01,
+      "n_steps": 256,
+      "batch_size": 1024,
+      "n_epochs": 4,
+      "policy_kwargs": {
+        "net_arch": [
+          256,
+          256
+        ]
+      }
+    },
+    "rnd": {
+      "coef": 0.75,
+      "centre": true,
+      "ema_rollouts": 10,
+      "features": [
+        "skills",
+        "total_level",
+        "hitpoints_prayer",
+        "run_energy_weight",
+        "home_teleport",
+        "skull",
+        "pouches",
+        "wealth",
+        "inventory",
+        "bank",
+        "equipment",
+        "region",
+        "loot_mode",
+        "task",
+        "potions",
+        "access"
+      ]
+    },
+    "checkpoint_every": 100000,
+    "decision_log": true
+  },
+  "config_hash": "1a8413fe89bb",
+  "env_kwargs": {
+    "reward_weights": [
+      0.5,
+      9.180584398474737
+    ]
+  },
+  "git_sha": "8f26bd70638e6f35c3a70e8f6497035821a281c3",
+  "git_dirty": false,
+  "server_sha": "cad9743444626e56b9e758db1b78867e7fe75b86",
+  "created": "2026-11-18T15:08:37+00:00",
+  "python": "3.12.14",
+  "numpy": "2.5.4",
+  "pandas": "3.1.0",
+  "torch": "2.14.1+cu130",
+  "stable_baselines3": "2.9.2",
+  "sb3_contrib": "2.9.2",
+  "script": "scripts/train.py",
+  "argv": [
+    "--config",
+    "D:\\ReinforcementScaping-e4\\configs\\e4-rnd-exploration.yaml",
+    "--seed",
+    "3"
+  ],
+  "gpu": "NVIDIA GeForce RTX 3050",
+  "deterministic": true
+}
