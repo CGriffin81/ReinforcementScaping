@@ -268,6 +268,17 @@ def trace_shares(decisions: pd.DataFrame) -> pd.DataFrame:
     return _shares(ticks, ["policy", "seed"])
 
 
+def option_share(decisions: pd.DataFrame, option: str) -> pd.DataFrame:
+    """Per (policy, seed): the share of the evaluation episode's game time on one option, timed as `trace_shares`
+    times it (OQ-92 (b): the Gem Store's purchase)."""
+    frame = decisions.sort_values(["policy", "seed", "decision"])
+    ticks = frame.groupby(["policy", "seed"], sort=False)["t1"].diff().fillna(frame["t1"])
+    table = pd.DataFrame({"policy": frame["policy"], "seed": frame["seed"], "ticks": ticks,
+                          "on": ticks.where(frame["option"] == option, 0.0)})
+    table = table.groupby(["policy", "seed"], as_index=False)[["ticks", "on"]].sum()
+    return table.assign(share=table["on"] / table["ticks"])[["policy", "seed", "share"]]
+
+
 def discovery(shares: pd.DataFrame, threshold: float = DISCOVERY_SHARE) -> pd.DataFrame:
     """Per (variant, seed, activity): the first training bin in which the activity took at least `threshold` of the
     game time, and that bin's `to_step` (NaN for both if it never did)."""
