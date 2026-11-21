@@ -1,0 +1,72 @@
+{
+  "name": "e6b-pbrs-shaping",
+  "seed": 1,
+  "config": {
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "total_decisions": 2000000,
+    "n_envs": 4,
+    "vec_env": "subproc",
+    "device": "cuda",
+    "torch_threads": 2,
+    "env": {
+      "normalised_weights": [
+        0.5,
+        0.5
+      ]
+    },
+    "ppo": {
+      "bootstrap_horizon": false,
+      "discount_floor_ticks": 100,
+      "gamma_hr": 0.99,
+      "gae_lambda": 0.95,
+      "learning_rate": 0.0003,
+      "ent_coef": 0.01,
+      "n_steps": 256,
+      "batch_size": 1024,
+      "n_epochs": 4,
+      "policy_kwargs": {
+        "net_arch": [
+          256,
+          256
+        ]
+      }
+    },
+    "pbrs": {
+      "potential": "gathering_income"
+    },
+    "checkpoint_every": 100000,
+    "decision_log": true
+  },
+  "config_hash": "8be8d69e825f",
+  "env_kwargs": {
+    "reward_weights": [
+      0.5,
+      9.180584398474737
+    ]
+  },
+  "git_sha": "c0a82fc602d73f9f9d8a5d797f078920fa3d4a0c",
+  "git_dirty": false,
+  "server_sha": "cad9743444626e56b9e758db1b78867e7fe75b86",
+  "created": "2026-11-17T06:34:10+00:00",
+  "python": "3.12.14",
+  "numpy": "2.5.4",
+  "pandas": "3.1.0",
+  "torch": "2.14.1+cu130",
+  "stable_baselines3": "2.9.2",
+  "sb3_contrib": "2.9.2",
+  "script": "scripts/train.py",
+  "argv": [
+    "--config",
+    "D:\\ReinforcementScaping-e6b\\configs\\e6b-pbrs-shaping.yaml",
+    "--seed",
+    "1"
+  ],
+  "gpu": "NVIDIA GeForce RTX 3050",
+  "deterministic": true
+}

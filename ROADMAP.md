@@ -382,6 +382,9 @@ train on sim v1.4.
   - **E6a:** two more γ_hr values (§3's set: 0.5, 0.9, 0.99);
   - **E6b:** raw reward against PBRS. Φ is §3's candidate, the best GP/hr the current unlocks allow, confirmed when
     it's built.
+    *Built 2026-11-10* (`rlscape/agents/pbrs.py`; Caleb confirmed Φ, OQ-73): the discounted wealth reward of the
+    best gathering income the levels and unlocks allow, over the time left. `configs/e6b-pbrs-shaping.yaml` is
+    E3's (.5,.5) plus PBRS. It trains when E3 frees the machine.
 
 *Nov 19–21: analysis*
 - [ ] The figures:

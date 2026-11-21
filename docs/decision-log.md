@@ -7223,6 +7223,47 @@ than exp." `m002-oq61`.
   it.
 - **Tests:** `tests/test_training.py`, 5 passed. Without a wrapper the parts are 0, and the logged reward is the env's.
 
+### Decided: OQ-73, E6b's potential: the best gathering income the levels and unlocks allow, over the time left (Caleb)
+- **Raised:** 2026-11-10, when E6b's PBRS was built. ROADMAP had "Φ is §3's candidate, the best GP/hr the current
+  unlocks allow, confirmed when it's built". Record `m002-e6b-pbrs`.
+- **As built:** Φ(s) = w_wealth × G(s) / 100,000 × A(hours left), with A(h) = (1 − γ_hr^h) / −ln γ_hr. That's the
+  discounted wealth reward the best gathering income G would earn in the time left.
+  - G is the best gp/hr among woodcutting, mining, fishing, thieving and flax picking. It uses the skilling slots' rate
+    model for a canonical character: at the site, the best tool its level allows, an empty pack, its items and coins
+    banked, and the fresh combat stats.
+  - So Φ moves only with gathering levels and unlocks, and A(0) = 0 makes Φ 0 at the 20th hour.
+- **Found:** in the sim's rate model, flax picking pays about 90k gp/hr from the start. G stays there until 60
+  Woodcutting (yews, 114k) or 38 Thieving (master farmers, 481k). So 38 Thieving is Φ's big step, about +33 reward per
+  hour left at (.5, .5). With G steady, a 15-minute decision is charged about −1.9, the flax earnings it forgoes.
+- **Options:**
+  - **(a) As built (recommended, chosen).**
+  - **(b) Fights and processing added to G.** Fuller, but Φ would move with food, ammunition and inputs held, so the
+    shaping would be noisy on every trip. About half a day more.
+  - **(c) One hour of G, not the time left.** About 18 times smaller, but Φ falls to 0 at the 20th hour, a one-off step
+    at the episode's last decision.
+- **Answer (Caleb, 2026-11-10 23:29 CST):** (a), as built.
+
+### Built: PBRS for E6b (rlscape/agents/pbrs.py), and E6b's configs
+- **`PBRSShaping`, a gym wrapper on each training SimEnv** (in its own process). It adds F = γ_hr^τ Φ(s′) − Φ(s)
+  (`smdp.pbrs_bonus`, env contract §4) with the agent's own `ppo.gamma_hr`. Its infos carry `reward_extrinsic`,
+  `r_shaping` and `potential`, so the learning curve and the decision log keep the shaping apart (the reward parts
+  tooling).
+- **`GatheringIncome` and `Potential`:** Φ as OQ-73 has it. G is kept per (skill, its level, the canonical
+  character's access). A warm Φ takes about 0.05 ms, and a new level about 0.03 to 0.4 s once per process. No
+  measurable cost per decision: the timings differ by less than the ±10% noise of E3 sharing the machine.
+- **The trainer:** a `pbrs:` config section (`potential: gathering_income`). Without it a run is as before.
+- **`configs/e6b-pbrs-shaping.yaml`:** E3's (.5, .5) plus `pbrs`, checked setting for setting, so E3's (.5, .5) runs
+  are its raw-reward baseline, seed for seed. The eval config adds E1's baselines on the 30 seeds.
+- **Tests** (`tests/test_pbrs.py`, 5), on real states:
+  - G rises with a gathering level and not with place, pack or combat levels;
+  - Φ is 0 at the end;
+  - over a whole episode the discounted shaping sums to −Φ(s₀), exactly (Ng et al.'s identity), and each reward is
+    the env's plus F;
+  - a short run logs the shaping apart;
+  - a bad section is refused.
+- **A smoke run with subprocess envs:** each 15-minute decision charged about −1.9, short ones about 0, and every
+  logged reward is the env's plus F.
+
 ### Decided: OQ-74, E5's design: uniform weightings, 2M decisions a run, evaluated at 13 weightings (Caleb)
 - **Raised:** 2026-11-10, before building E5 (RQ3's second half: can a single preference-conditioned agent match a
   set of separately trained agents?). Record `m002-e5-conditioned`.

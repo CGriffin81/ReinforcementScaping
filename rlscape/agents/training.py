@@ -25,6 +25,9 @@ command per experiment).
   optionally its networks' and training's settings. Its predictor trains once a rollout (`ppo.n_steps`);
 - `conditioned` (E5): the weight-conditioned agent (rlscape.agents.conditioned), `weights: uniform`. Each episode draws
   its normalised weighting, rewards by it and shows it in the observation; `env` then sets no weights of its own;
+- `pbrs` (E6b): potential-based shaping (rlscape.agents.pbrs), `potential: gathering_income`. Each training env adds
+  F = γ_hr^τ Φ(s′) − Φ(s) to its reward with the agent's own `ppo.gamma_hr` and `ppo.discount_floor_ticks`, so the
+  optimal policy is unchanged;
 - `sweep`: a grid of variants, `{key: [values]}`, a key being `ppo.<argument>`, `env.<setting>`, `rnd.<setting>` or
   one of the keys above. Each combination is a variant, named by its values (`learning_rate0.0001_ent_coef0.01`), with
   its own runs.
@@ -73,6 +76,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv,
 
 from rlscape.agents.conditioned import check_conditioned, conditioned_sim_env
 from rlscape.agents.decision_log import DecisionLogger
+from rlscape.agents.pbrs import check_pbrs, shaped_sim_env
 from rlscape.agents.ppo import SMDPMaskablePPO
 from rlscape.agents.rnd import KEYS as RND_KEYS
 from rlscape.agents.rnd import RNDReward, check_rnd
@@ -82,9 +86,10 @@ from rlscape.eval.harness import REPO, config_hash, provenance
 from rlscape.sim.engine import TICKS_PER_HOUR
 
 KEYS = {"seeds", "total_decisions", "n_envs", "vec_env", "device", "torch_threads", "env", "ppo", "checkpoint_every",
-        "decision_log", "out", "sweep", "variant", "rnd", "conditioned"}
+        "decision_log", "out", "sweep", "variant", "rnd", "conditioned", "pbrs"}
 UNSWEPT = {"seeds", "out", "sweep", "variant"}  # a sweep can't vary these
 REQUIRED = {"seeds", "total_decisions", "n_envs", "ppo"}
+SMDP_DEFAULT_GAMMA_HR = 0.99  # SMDPMaskablePPO's default, when a config leaves gamma_hr out
 ENV_KEYS = {"reward_weights", "normalised_weights", "hours", "activity_minutes", "preference_in_obs"}
 REWARD_PARTS = ("r_intrinsic", "r_shaping")  # added by a training wrapper: RND's bonus (E4), PBRS's shaping (E6b)
 
@@ -121,6 +126,8 @@ def check_config(config: dict) -> dict:
         check_conditioned(config["conditioned"])
         if {"reward_weights", "normalised_weights"} & set(env):
             raise ValueError("config: a conditioned agent draws its weights each episode; env sets none")
+    if config.get("pbrs") is not None:
+        check_pbrs(config["pbrs"])
     for key, values in (config.get("sweep") or {}).items():
         section, _, field = key.partition(".")
         known = (field and (section == "ppo" or (section == "env" and field in ENV_KEYS)
@@ -176,9 +183,14 @@ def env_kwargs(config: dict) -> dict:
 
 
 def make_vec_env(config: dict) -> VecEnv:
-    """The training envs: SimEnv, or E5's weight-conditioned SimEnv when the config has `conditioned`."""
+    """The training envs: SimEnv; E5's weight-conditioned SimEnv when the config has `conditioned`; or SimEnv shaped by
+    PBRS (E6b) with the agent's gamma_hr when it has `pbrs`."""
     if config.get("conditioned"):
         factory = partial(conditioned_sim_env, config["conditioned"]["weights"], **env_kwargs(config))
+    elif config.get("pbrs"):
+        gamma_hr = float((config["ppo"] or {}).get("gamma_hr", SMDP_DEFAULT_GAMMA_HR))
+        floor_ticks = float((config["ppo"] or {}).get("discount_floor_ticks", 0.0))  # the agent's floor (v1.46)
+        factory = partial(shaped_sim_env, gamma_hr, floor_ticks, **env_kwargs(config))
     else:
         factory = partial(SimEnv, **env_kwargs(config))
     factories = [factory for _ in range(int(config["n_envs"]))]
