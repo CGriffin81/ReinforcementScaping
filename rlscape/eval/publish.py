@@ -39,6 +39,7 @@ import pandas as pd
 
 from rlscape.eval.behaviour import training_behaviour
 from rlscape.eval.harness import METRICS, REPO
+from rlscape.eval.rollout import MAX_DECISIONS
 
 SUMMARY_ROOT = REPO / "results" / "summary"
 TABLES = ("summary", "checkpoints", "episodes")
@@ -73,15 +74,20 @@ def publish(run_dir: Path, name: str, root: Path = SUMMARY_ROOT, allow_dirty: bo
     if (run_dir / "decisions.parquet").exists():
         pd.read_parquet(run_dir / "decisions.parquet").to_csv(out / TRACE_FILE, index=False, lineterminator="\n",
                                                                compression=GZIP)
-    (out / "README.md").write_text(readme(name, run_dir, meta, tables["summary"], (out / TRACE_FILE).exists()),
-                                   encoding="utf-8", newline="\n")
+    (out / "README.md").write_text(readme(name, run_dir, meta, tables["summary"], (out / TRACE_FILE).exists(),
+                                          tables["episodes"]), encoding="utf-8", newline="\n")
     return out
 
 
-def readme(name: str, run_dir: Path, meta: dict, summary: pd.DataFrame, traced: bool = False) -> str:
-    last = summary[summary.hour == summary.hour.max()]
+def readme(name: str, run_dir: Path, meta: dict, summary: pd.DataFrame, traced: bool = False,
+           episodes: pd.DataFrame | None = None) -> str:
+    hour = summary.hour.max()
+    last = summary[summary.hour == hour]
     metrics = [m for m in METRICS if m in set(last.metric)]
-    seeds = int(last.seeds.min())
+    seeds = int(summary[summary.hour == 0].seeds.max())  # the run's seeds: every episode has hour 0
+    reached = last.groupby("policy", sort=False).seeds.min()  # a policy's seeds whose episodes reach the last hour
+    short = {p: int(n) for p, n in reached.items() if n < seeds}
+    missing = [p for p in dict.fromkeys(summary.policy) if p not in reached.index]
     rows = [("Git SHA", f"`{meta.get('git_sha', '')}`"
              + (" (uncommitted changes: not reproducible from this SHA)" if meta.get("git_dirty", True) else "")),
             ("Fork SHA", f"`{meta.get('server_sha', '')}`"),
@@ -95,14 +101,27 @@ def readme(name: str, run_dir: Path, meta: dict, summary: pd.DataFrame, traced: 
              f"Published from `{_shown(run_dir)}` by `scripts/publish_summary.py`. The tables are CSV copies of the "
              "run's own (rlscape/eval/harness.py); `config.json` is the run's.", "",
              "| | |", "|---|---|", *[f"| {k} | {v} |" for k, v in rows], "",
-             f"## At hour {last.hour.max()}: mean [95% bootstrap CI] over {seeds} seeds", "",
+             f"## At hour {hour}: mean [95% bootstrap CI] over {seeds} seeds"
+             + (", except as marked" if short or missing else ""), "",
              "| Policy | " + " | ".join(METRIC_NAMES.get(m, m) for m in metrics) + " |",
              "|---|" + "---:|" * len(metrics)]
     for policy in dict.fromkeys(last.policy):
         cells = last[last.policy == policy].set_index("metric")
-        lines.append(f"| {policy} | " + " | ".join(
+        label = policy + (f" ({_seeds(short[policy])})" if policy in short else "")
+        lines.append(f"| {label} | " + " | ".join(
             f"{cells.loc[m, 'mean']:,.0f} [{cells.loc[m, 'ci_low']:,.0f}, {cells.loc[m, 'ci_high']:,.0f}]"
             for m in metrics) + " |")
+    if short or missing:
+        lines += ["", f"Short of hour {hour}:"]
+        for policy in [p for p in dict.fromkeys(summary.policy) if p in short or p in missing]:
+            stopped = seeds - short.get(policy, 0)
+            why = _why_short(episodes, policy, stopped)
+            lines.append(f"- `{policy}`: all {stopped} of its episodes stop before hour {hour}{why}, so it has no row."
+                         if policy in missing else
+                         f"- `{policy}`: {stopped} of its {seeds} episodes stop{'s' if stopped == 1 else ''} before "
+                         f"hour {hour}{why}; its row is over the {_seeds(short[policy])} that reach"
+                         f"{'es' if short[policy] == 1 else ''} it.")
+        lines.append("- `episodes.csv` has each episode's decisions and game ticks.")
     lines += ["", "Files:",
               "- `summary.csv`: per policy, checkpoint hour and metric, the mean over seeds, its 95% CI and the "
               "standard deviation;",
@@ -113,6 +132,19 @@ def readme(name: str, run_dir: Path, meta: dict, summary: pd.DataFrame, traced: 
         lines.append(f"- `{TRACE_FILE}`: every episode's trace, a row per decision: the game tick it ended at, its "
                      "option and why it ended, and the total level and net worth after it.")
     return "\n".join(lines + [""])
+
+
+def _seeds(n: int) -> str:
+    return f"{n} seed" + ("" if n == 1 else "s")
+
+
+def _why_short(episodes: pd.DataFrame | None, policy: str, stopped: int) -> str:
+    """", at the evaluation's cap of N decisions" when each of the policy's `stopped` short episodes stopped there.
+    The cap is the only early end: death respawns the character and the episode carries on (env contract §1)."""
+    if episodes is None or "decisions" not in episodes:
+        return ""
+    capped = int((episodes[episodes.policy == policy].decisions >= MAX_DECISIONS).sum())
+    return f", at the evaluation's cap of {MAX_DECISIONS:,} decisions" if capped == stopped else ""
 
 
 def publish_training(runs_root: Path, name: str, root: Path = SUMMARY_ROOT, allow_dirty: bool = False,
