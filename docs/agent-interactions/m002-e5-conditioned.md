@@ -7,7 +7,9 @@
   answered OQ-74 at 23:41:11 CST.
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: PARTIAL. E5 is built and tested and its configs are ready; it trains when E3 frees the machine.
+- Status: PARTIAL. E5 is built and tested and its configs are ready; E5 itself trained later. *Updated 2026-11-21:*
+  it trained from the queue (`m002-restart-v1.2`), again with the trainer's fixes (`m002-rerun`), was evaluated
+  (`m002-rerun-evals`) and merged into `main` by PR #36 (`m002-experiment-merges`).
 - Commit: on `experiment/e5-weight-conditioned-ppo`, from `tooling/reward-parts` (PR #18).
 
 ## Full Prompt

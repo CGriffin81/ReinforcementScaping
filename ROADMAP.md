@@ -62,7 +62,8 @@ Whole options (`reset` / `step` in the env contract) are built in Python on top 
 ## 2. Repository layout (as proposed; mostly built by 2026-11-09)
 
 *As built:* `rlscape/` also has `travel.py` and `routes.py` (walking routes on the server's collision map),
-`vocabulary.py`, `agents/` (`smdp.py`, `ppo.py`; RND to come), `eval/` (the harness), and `baselines/`
+`vocabulary.py`, `agents/` (`smdp.py`, `ppo.py`, `training.py`, `decision_log.py`, and E4's to E6b's `rnd.py`,
+`conditioned.py` and `pbrs.py`), `analysis/` (the figures' measures), `eval/` (the harness), and `baselines/`
 (`policies.py`, `guide.py`). There's no `envs/ServerEnv` or Envelope Q (cut, OQ-17). `results/` is git-ignored but
 for `results/summary/`, each experiment's committed summary (`scripts/publish_summary.py`, 2026-11-09).
 
@@ -146,7 +147,7 @@ episode about 385 decisions, and PPO training about 1M decisions an hour on this
 
 *Python track*
 - [x] `git init`, and a `uv` project pinned to Python 3.12 (`rlscape` package, pytest).
-- [x] Add the RL stack when the sim needs it: gymnasium, torch, stable-baselines3, sb3-contrib, morl-baselines, mo-gymnasium, tensorboard, pandas, pyarrow, matplotlib. *Done 2026-11-08 for PPO:* torch 2.14.1 with CUDA 13.0 (Caleb), stable-baselines3 and sb3-contrib 2.9.2, tensorboard; torch comes from `wheels/` (`scripts/fetch_torch_wheel.py`). morl-baselines and mo-gymnasium wait for E4.
+- [x] Add the RL stack when the sim needs it: gymnasium, torch, stable-baselines3, sb3-contrib, morl-baselines, mo-gymnasium, tensorboard, pandas, pyarrow, matplotlib. *Done 2026-11-08 for PPO:* torch 2.14.1 with CUDA 13.0 (Caleb), stable-baselines3 and sb3-contrib 2.9.2, tensorboard; torch comes from `wheels/` (`scripts/fetch_torch_wheel.py`). morl-baselines and mo-gymnasium aren't needed: E4's Envelope Q was cut for a weight-conditioned PPO (OQ-17 (a′)).
 - [x] `docs/env-contract.md` **v1.0, signed off by Caleb on 2026-10-28.** It adds the death rule: respawn and carry
   on, with a 2-minute gravestone outside the Wilderness.
 - [x] `docs/option-catalog.md` **v1.0, signed off by Caleb on 2026-10-28:** about 452 actions. Every question is
@@ -212,8 +213,9 @@ confirmed every env contract version (to v1.37) and option catalog v1.4 the same
 
 ### Week 3 (Oct 19–25): Masked PPO and the E2 sweep
 - [x] SMDP rollout buffer, unit-tested against hand-computed returns. *Done 2026-11-08:* `rlscape/agents/smdp.py` (GAE and PBRS with γ_hr^τ) and `rlscape/agents/ppo.py` (`SMDPMaskableRolloutBuffer`, `SMDPMaskablePPO`), with a short run on the sim.
-- [ ] `scripts/train.py`: config files, periodic checkpoints, TensorBoard, and a decision-logger callback.
-- [ ] Sanity ladder:
+- [x] `scripts/train.py`: config files, periodic checkpoints, TensorBoard, and a decision-logger callback. *Done
+  2026-11-09, in the finishing plan.*
+- [x] Sanity ladder: *Done 2026-11-09 to 11-10 as the finishing plan's E2 (PR #15).*
   1. PPO solves a 3-option toy catalog with a known optimum.
   2. PPO beats random on the full catalog.
   3. Small hyperparameter sweep at w = (0.5, 0.5).
@@ -221,22 +223,32 @@ confirmed every env contract version (to v1.37) and option catalog v1.4 the same
   - fold in the calibration data (real duration distributions, travel and bank overheads)
   - add the four new skills (Crafting, Agility, Herblore, Runecrafting; their options are open question OQ-2). Quests are out (2026-11-06)
   - pass the **±20% sim-to-server gate** on mean XP/hr, gp/hr and duration per calibrated option, with one patch round; residual gaps are reported
-- [ ] **E2:** weightings (1,0), (.75,.25), (.5,.5), (.25,.75), (0,1) × 5 seeds.
+- [x] **E2:** weightings (1,0), (.75,.25), (.5,.5), (.25,.75), (0,1) × 5 seeds. *Done as the finishing plan's E3,
+  in normalised units (OQ-67; PR #33).*
 
 **Exit:** first learning curves, with E2 running.
 
 ### Week 4 (Oct 26–Nov 1): Exploration (E3) and ablations (E5)
-- [ ] RND wrapper. **E3:** PPO vs PPO+RND at (.5,.5), 5 seeds, comparing discovery order and first-discovery time.
-- [ ] **E5:** γ_hr sweep, raw reward vs PBRS, and option-duration granularity (short / medium / until-inventory-full).
-- [ ] Analysis utilities: time-allocation stacked areas, discovery timeline, and changepoint detection on learning curves (e.g. `ruptures`) for RQ2's sudden-vs-gradual question.
+- [x] RND wrapper. **E3:** PPO vs PPO+RND at (.5,.5), 5 seeds, comparing discovery order and first-discovery time.
+  *Done as the finishing plan's E4 (PR #35).*
+- [x] **E5:** γ_hr sweep, raw reward vs PBRS, and option-duration granularity (short / medium / until-inventory-full).
+  *Done as the finishing plan's E6a and E6b (PRs #34, #37). The granularity was cut (OQ-17 (a′)).*
+- [x] Analysis utilities: time-allocation stacked areas, discovery timeline, and changepoint detection on learning
+  curves (e.g. `ruptures`) for RQ2's sudden-vs-gradual question. *Done 2026-11-11: `rlscape/analysis/` and
+  `scripts/figures.py`, the changepoints by ruptures' PELT (OQ-78, OQ-82).*
 
 **Exit:** E3 and E5 results.
 
 ### Week 5 (Nov 2–8): Preference-conditioned agent (E4)
-- [ ] Vector-reward env using the MO-Gymnasium API.
-- [ ] Envelope Q-learning from MORL-Baselines with the action-mask patch.
-- [ ] Pareto front and hypervolume (fixed reference point) for E4 against the union of E2 agents, plus a training-cost comparison in env steps and wall time.
-- [ ] **Midpoint review:** confirm E1–E5 are solid, then choose the stretch experiment or cut it.
+- [ ] Vector-reward env using the MO-Gymnasium API. *Cut (OQ-17 (a′), 2026-11-09): the weight-conditioned PPO that
+  replaced Envelope Q needs none. SimEnv's `info["reward_vec"]` is the vector reward.*
+- [ ] Envelope Q-learning from MORL-Baselines with the action-mask patch. *Cut (OQ-17 (a′)): replaced by a
+  weight-conditioned PPO, the finishing plan's E5 (PR #36).*
+- [ ] Pareto front and hypervolume (fixed reference point) for E4 against the union of E2 agents, plus a
+  training-cost comparison in env steps and wall time. *The front and hypervolume are done for the finishing plan's
+  E5 against E3's agents (`scripts/figures.py`'s `pareto`). The training cost isn't tabled yet (see E5 below).*
+- [x] **Midpoint review:** confirm E1–E5 are solid, then choose the stretch experiment or cut it. *Done 2026-11-09:
+  the finishing plan (OQ-17 (a′)) cut the stretch.*
 
 **Exit:** E4 Pareto figure.
 
@@ -331,8 +343,8 @@ The old weeks 6 to 8 (E6 on the server, the stretch, a replay with the client) a
   one HTML page, with a timeline, a map, the policy's choices, the skills and the curves. It's the demo, built early.
 - [x] The training queue (2026-11-11): `scripts/train_queue.py` trains several experiments' runs from one queue, each
   in its experiment's worktree (`--jobs` counts every training run on the machine), seed 0 of every experiment
-  first. Since the restart on sim v1.2 it trains E3's to E6's 50 runs. The worktrees `D:\ReinforcementScaping-e4`,
-  `-e6b` and `-e5` are set up like E6a's.
+  first. From the restart on sim v1.2 it trained E3's to E6's 50 runs, both rounds. The worktrees
+  `D:\ReinforcementScaping-e4`, `-e6b` and `-e5` are set up like E6a's.
 
 *Nov 13–18: the experiments* (the runs overlap the building)
 
@@ -368,26 +380,36 @@ tanning path whose walk to the tanner paid a charter with every coin it carried,
 tanner tans nothing then, as it already did when a fare left fewer coins than the fee, and equals sim v1.3 wherever
 sim v1.3 completes, so nothing else is retrained. The run trains again from the start, and the runs not yet started
 train on sim v1.4.
-- [ ] **E3, the reward-weight sweep** (RQ1 to RQ3): (1,0), (.75,.25), (.5,.5), (.25,.75) and (0,1) in normalised
+
+*Finished (2026-11-19 to 11-21):* the 50 reruns finished at 10:00 on Nov 19, none failed. 14 trained on sim v1.3
+(E3's seeds 0 and 1 at every weighting, and one run each of E6a, E4, E5 and E6b) and the rest on sim v1.4. Their
+evaluations ran on sim v1.4 on Nov 19, and the five summaries were published by Nov 20 (`m002-rerun-evals`). Each
+experiment merged into `main` by its own PR on Nov 21 (`m002-experiment-merges`). The loop census of both rounds is
+in the decision log (`m002-final-census`).
+- [x] **E3, the reward-weight sweep** (RQ1 to RQ3): (1,0), (.75,.25), (.5,.5), (.25,.75) and (0,1) in normalised
   units (OQ-67), 5 seeds each, 2M decisions a run (OQ-69), with E2's winner: λ 0.95, learning rate 3e-4, entropy 0.01.
-- [ ] **E4, PPO + RND** (RQ2, RQ4, H3): the RND wrapper, then PPO + RND at (.5,.5), 5 seeds, against E3's (.5,.5).
+  *Done (PR #33),* with the first round's evaluation beside it at the mixed weightings for the discussion (OQ-92 (b)).
+- [x] **E4, PPO + RND** (RQ2, RQ4, H3): the RND wrapper, then PPO + RND at (.5,.5), 5 seeds, against E3's (.5,.5).
   - The wrapper is built (2026-11-10, `rlscape/agents/rnd.py`) with Caleb's settings (OQ-72): a bonus spread of
     0.75, centred, read from the character's state. `configs/e4-rnd-exploration.yaml` is E3's (.5,.5) plus
-    RND. It trains when E3 frees the machine.
-- [ ] **E5, the weight-conditioned PPO** (RQ3's second half): weights drawn each episode and given in the
+    RND. *Done (PR #35).*
+- [x] **E5, the weight-conditioned PPO** (RQ3's second half): weights drawn each episode and given in the
   observation. Pareto coverage, hypervolume and training cost against E3's agents.
   - *Built 2026-11-10* (`rlscape/agents/conditioned.py`; Caleb, OQ-74): u ~ U[0, 1] each episode, 2M decisions a
-    run, evaluated at E3's five weightings and every 0.1 (13). It trains when E3 frees the machine.
-- [ ] **E6** (RQ4), at (.5,.5) with 5 seeds each:
-  - **E6a:** two more γ_hr values (§3's set: 0.5, 0.9, 0.99);
+    run, evaluated at E3's five weightings and every 0.1 (13). *Done (PR #36).* The Pareto coverage and hypervolume
+    are in the figures. The training cost isn't tabled yet: each run's decisions and wall time are in its summary's
+    `training/runs.csv`.
+- [x] **E6** (RQ4), at (.5,.5) with 5 seeds each:
+  - **E6a:** two more γ_hr values (§3's set: 0.5, 0.9, 0.99). *Done (PR #34).*
   - **E6b:** raw reward against PBRS. Φ is §3's candidate, the best GP/hr the current unlocks allow, confirmed when
     it's built.
     *Built 2026-11-10* (`rlscape/agents/pbrs.py`; Caleb confirmed Φ, OQ-73): the discounted wealth reward of the
     best gathering income the levels and unlocks allow, over the time left. `configs/e6b-pbrs-shaping.yaml` is
-    E3's (.5,.5) plus PBRS. It trains when E3 frees the machine.
+    E3's (.5,.5) plus PBRS. *Done (PR #37).* Two of its policies' evaluation episodes stop at the
+    100,000-decision cap, which its summary's README marks (OQ-91 (b)).
 
 *Nov 19–21: analysis*
-- [ ] The figures:
+- [x] The figures:
   - learning curves with CIs and changepoints;
   - the Pareto front and hypervolume;
   - time allocation as stacked areas;
@@ -395,15 +417,18 @@ train on sim v1.4.
   - the sim-to-real table from the calibration gate;
   - RQ5's bound (OQ-1 (C′)): prayer flicking by the scripted flick's measured effect, click-ahead pathing by
     the policies' share of game time walking (replayed in the seeded sim: the decision logs don't record it).
-- [ ] Every figure and table is rebuilt by one script from small summaries committed to `results/summary/`.
+- [x] Every figure and table is rebuilt by one script from small summaries committed to `results/summary/`.
   *Built 2026-11-11:* `scripts/figures.py` (`rlscape/analysis/`) makes the first four, with RQ1's progress at the
   checkpoints, each policy's activity mix in evaluation and the policy's entropy, from whichever experiments are
   published, and the tables for the milestones (OQ-83), sample efficiency (OQ-84), consistency across seeds (OQ-85)
   and each run's sudden-or-gradual verdict under OQ-82's rule and OQ-78's. *Built 2026-11-12* (Caleb: re-simulated on
   sim-v1.2; a family table and a case appendix): the sim-to-real tables, from `results/summary/sim-to-real/`
-  (`scripts/sim_to_real.py`: every calibration case's latest server runs against sim-v1.2, no server needed). Still
-  to add: RQ5. *Added 2026-11-20* (Caleb, OQ-92 (b)): the Gem Store tables for the discussion, E3's first round
-  (`results/summary/e3-reward-weight-sweep-bootstrap/`, on E3's branch) beside its rerun at the mixed weightings.
+  (`scripts/sim_to_real.py`: every calibration case's latest server runs against sim-v1.2, no server needed). *Added
+  2026-11-12* (OQ-87 (a)): RQ5's walking tables, from the evaluation traces' walk counter. *Added 2026-11-20* (Caleb,
+  OQ-92 (b)): the Gem Store tables for the discussion, E3's first round
+  (`results/summary/e3-reward-weight-sweep-bootstrap/`) beside its rerun at the mixed weightings. *Done 2026-11-21:*
+  with every experiment's summary on `main`, `scripts/figures.py` makes all nine figures and every table, none
+  skipped.
 - [x] The data the figures need (2026-11-11): each evaluation episode's trace (`decisions.csv.gz` in an experiment's
   summary) and each training run's behaviour from its decision log (`behaviour_bins.csv`, `behaviour_options.csv.gz`,
   `first_choices.csv.gz` in its training summary).
@@ -414,7 +439,9 @@ train on sim v1.4.
 - [ ] Its wording (Caleb, OQ-71 (a)): a decision is one option chosen, defined once in the method. A run's
   length is "training decisions" with its episodes beside it; an episode's count is "decisions per episode".
 - [ ] The peer review kept simple (Caleb, OQ-50 (a)): the whole repo at a tagged commit, with a two-page `README.md`
-  as the reviewer's guide; the report has the same map as a half-page appendix.
+  as the reviewer's guide; the report has the same map as a half-page appendix. *Drafted 2026-11-12*
+  (`README.md`, PR #28; OQ-88: the check runs on Windows). Still to do: the tag it names, once the report's numbers
+  are in.
 
 *Nov 26: peer review (Thanksgiving week runs at half capacity). Nov 27–30: revisions, and the demo (sim replays of an
 early, a middle and a final checkpoint: `scripts/replay.py`, built 2026-11-10, OQ-70). The report is due Mon Nov 30.*
@@ -514,7 +541,7 @@ Only attempted after E1–E6 are solid. Pick at most one.
 
 **Closest prior work:** RuneBench (`docs/resources.md` [18]) benchmarks LLM coding agents on RuneScape skill-XP and gold tasks. rs-sdk [19] shows a tool (MCP) interface and wiki-knowledge setup that option A could follow.
 
-*Superseded (2026-11-09): OQ-17 (a′) leaves no time for a stretch, and OQ-1 now asks how RQ5 is answered (Claude
-recommends (C′), a bound).*
+*Superseded (2026-11-09): OQ-17 (a′) leaves no time for a stretch. RQ5 is bounded instead (Caleb, 2026-11-12,
+OQ-1 (C′)).*
 
 **Recommendation: A (LLM planner).** It's the cheapest, the most likely to finish, and it adds a qualitatively different comparison to RQ1. It needs an Anthropic API key and a small budget (a cap of ~$25–50 is plenty). **B** is the pick if you'd rather keep the project pure-RL and are willing to set up WSL2 Ubuntu early. **C** is best kept as "future work" in the report.

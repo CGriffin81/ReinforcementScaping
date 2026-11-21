@@ -6,7 +6,9 @@
 - Timestamp CST: 2026-11-10 21:31:21 CST, the prompt's timestamp in the session transcript (UTC−06:00).
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: PARTIAL. The configs are ready; E6a trains when E3 frees the machine (from about Nov 12, 12:30 CST).
+- Status: PARTIAL. The configs are ready; E6a itself trained later. *Updated 2026-11-21:* it trained from the queue
+  (`m002-restart-v1.2`), again with the trainer's fixes (`m002-rerun`), was evaluated (`m002-rerun-evals`) and merged
+  into `main` by PR #34 (`m002-experiment-merges`).
 - Commit: E6a's configs on `experiment/e6a-discount-sweep`, from `tooling/replay` (PR #17's head, `fd9f371`).
 
 ## Full Prompt

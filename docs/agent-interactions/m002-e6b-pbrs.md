@@ -7,7 +7,9 @@
   confirmed Φ (OQ-73) at 23:29:49 CST.
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: PARTIAL. PBRS is built and tested and E6b's configs are ready; E6b trains when E3 frees the machine.
+- Status: PARTIAL. PBRS is built and tested and E6b's configs are ready; E6b itself trained later. *Updated
+  2026-11-21:* it trained from the queue (`m002-restart-v1.2`), again with the trainer's fixes (`m002-rerun`), was
+  evaluated (`m002-rerun-evals`) and merged into `main` by PR #37 (`m002-experiment-merges`).
 - Commit: on `experiment/e6b-pbrs-shaping`, from `tooling/reward-parts` (record `m002-reward-parts`).
 
 ## Full Prompt

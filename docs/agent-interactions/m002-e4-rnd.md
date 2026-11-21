@@ -7,7 +7,9 @@
   answered OQ-72 at 22:15:07 CST.
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
-- Status: PARTIAL. RND is built and tested and E4's configs are ready; E4 trains when E3 frees the machine.
+- Status: PARTIAL. RND is built and tested and E4's configs are ready; E4 itself trained later. *Updated
+  2026-11-21:* it trained after OQ-79's fix (`m002-oq79-rnd-centring`), again with the trainer's fixes (`m002-rerun`),
+  was evaluated (`m002-rerun-evals`) and merged into `main` by PR #35 (`m002-experiment-merges`).
 - Commit: on `experiment/e4-rnd-exploration`, from `tooling/replay` (PR #17's head, `fd9f371`).
 
 ## Full Prompt

@@ -81,5 +81,5 @@
 - **Caleb:** PR #20. Asked whether to commit this record and `m002-experiment-prs`; "Commit it to main directly"
   (13:43:21 CST). Done, as under Commit.
 - **Claude:** ROADMAP's boxes, with E4's, E5's and E6b's stale "trains when E3 frees the machine" lines and their
-  records' PARTIAL statuses, now on `main`; the video script's [TO FILL] loop counts; the reviewer guide's claims
-  table and RQ5's numbers.
+  records' PARTIAL statuses, now on `main` (done, `m002-roadmap-boxes`); the video script's [TO FILL] loop counts;
+  the reviewer guide's claims table and RQ5's numbers.
