@@ -781,3 +781,6 @@ Then (15:55:35 CST):
 - **Done:** the watch ran until midnight without firing.
 - **For the report:** the loop counts by discount, by one measure for both rounds, and what it says causes them
   (Caleb, 2026-11-20: OQ-89 (a) and OQ-90 (a); see Decisions).
+- **Done (2026-11-20, `m002-final-census`):** the census of all 50 in both rounds. 10 end looping in each round (11
+  and 13 pass the marker). At mixed weights the first round ends in the Gem Store loop in 10 of 40 pairs and the rerun
+  in 2; how the report presents it is OQ-92.

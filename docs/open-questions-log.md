@@ -12,4 +12,4 @@ Started 2026-10-31 (Caleb), from a review of the documentation.
 
 ---
 
-None open (2026-11-20: OQ-89, OQ-90 and OQ-91, the last three, answered; see the decision log).
+None open (2026-11-20: OQ-92, the last one, answered; see the decision log).
