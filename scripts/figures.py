@@ -15,7 +15,12 @@ with its plotted values as <name>.csv (its table view), and the measures' tables
   shares of game time on foot, in the walker's overhead and on transports, and per series their mean and CI;
 - `sim_to_real_families.csv` (the report's body), `sim_to_real_cases.csv` (its appendix) and `sim_to_real_drops.csv`:
   the calibration gate's cases against sim-v1.2 (rlscape/analysis/sim_to_real.py), from `results/summary/sim-to-real/`
-  (scripts/sim_to_real.py).
+  (scripts/sim_to_real.py);
+- `gem_store_rounds_per_seed.csv` and `gem_store_rounds.csv`: E3's first round beside its rerun at the mixed
+  weightings, for the discussion (OQ-92 (b)): per trained policy, then per series and round with a CI over the
+  training seeds, the hour-20 total level and net worth, the normalised gains and the share of game time buying
+  uncut emeralds at the Gem Store. The first round (`e3-reward-weight-sweep-bootstrap`) is the earlier trainer's,
+  evaluated on sim v1.3; nothing else reads it.
 
 The figures:
 - `learning_e3`, `learning_rq4`: learning curves with CIs and changepoints (RQ2; RQ4 against E3's (.5, .5));
@@ -34,6 +39,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 from collections.abc import Callable
 from pathlib import Path
 
@@ -49,6 +55,9 @@ from rlscape.eval.harness import REPO
 E1, E3, E4, E5 = "e1-baselines", "e3-reward-weight-sweep", "e4-rnd-exploration", "e5-weight-conditioned-ppo"
 E6A, E6B = "e6a-discount-sweep", "e6b-pbrs-shaping"
 TRAINED = (E3, E4, E6A, E6B, E5)
+E3_FIRST = "e3-reward-weight-sweep-bootstrap"  # E3's first round: only the Gem Store table reads it (OQ-92 (b))
+GEM_STORE = "buy_shop_1621"  # uncut emeralds at Hervi's Gem Store, the Gem Store loop's purchase (OQ-57 (a))
+MIXED = ("normalised_weights0.75-0.25", "normalised_weights0.5-0.5", "normalised_weights0.25-0.75")
 WEIGHTINGS = {"normalised_weights1-0": (1.0, 0.0), "normalised_weights0.75-0.25": (0.75, 0.25),
               "normalised_weights0.5-0.5": (0.5, 0.5), "normalised_weights0.25-0.75": (0.25, 0.75),
               "normalised_weights0-1": (0.0, 1.0)}
@@ -135,6 +144,45 @@ def series_weighting(series: str) -> tuple[float, float] | None:
 
 def save_table(table: pd.DataFrame, path: Path) -> None:
     table.to_csv(path, index=False, lineterminator="\n")
+
+
+ROUND_METRICS = ("total_level", "net_worth", "skill", "wealth", "gem_store_share")
+
+
+def gem_store_round(data: Summaries, experiment: str, label: str) -> pd.DataFrame | None:
+    """One round of E3's evaluation at the mixed weightings (OQ-92 (b)), a row per trained policy: its means over the
+    evaluation seeds of the last checkpoint's total level and net worth, of the normalised gains and of the share of
+    game time on the Gem Store's purchase. None if the round's summary or its trace isn't published."""
+    checkpoints, episodes, trace = (data.evaluation(experiment, t) for t in ("checkpoints.csv", "episodes.csv",
+                                                                             "decisions.csv.gz"))
+    if checkpoints is None or episodes is None or trace is None:
+        return None
+    last = checkpoints[checkpoints["hour"] == checkpoints["hour"].max()]
+    table = last.groupby("policy").agg(episodes=("seed", "size"), total_level=("total_level", "mean"),
+                                       net_worth=("net_worth", "mean"))
+    table = table.join(ms.gains(episodes).groupby("policy")[["skill", "wealth"]].mean())
+    table = table.join(ms.option_share(trace, GEM_STORE).groupby("policy")["share"].mean().rename("gem_store_share"))
+    table = table.reset_index()
+    parsed = [ms.parse_label(p) for p in table["policy"]]
+    table["variant"], table["train_seed"] = [p[0] for p in parsed], [p[1] for p in parsed]
+    table = table[table["variant"].isin(MIXED)].astype({"train_seed": int})
+    meta = json.loads((data.root / experiment / "config.json").read_text(encoding="utf-8"))
+    table["series"] = [series_name(E3, v) for v in table["variant"]]
+    table["order"] = [MIXED.index(v) for v in table["variant"]]
+    table = table.assign(round=label, git_sha=meta["git_sha"][:7]).sort_values(["order", "train_seed"])
+    return table[["round", "series", "train_seed", "policy", "episodes", *ROUND_METRICS, "git_sha"]]
+
+
+def round_summary(per_seed: pd.DataFrame) -> pd.DataFrame:
+    """Per series and round, beside each other: each metric's mean over the training seeds and its 95% CI."""
+    keys = ["series", "round"]
+    table = per_seed.groupby(keys, sort=False).agg(seeds=("train_seed", "size"), git_sha=("git_sha", "first"))
+    for metric in ROUND_METRICS:
+        stats = ms.over_seeds(per_seed, keys, metric).set_index(keys)
+        table[metric], table[f"{metric}_low"], table[f"{metric}_high"] = (stats[c] for c in ("mean", "ci_low",
+                                                                                             "ci_high"))
+    order = [series_name(E3, v) for v in MIXED]  # a series' two rounds next to each other, the first round first
+    return table.reset_index().sort_values("series", key=lambda s: s.map(order.index), kind="stable")
 
 
 def build(summary: Path, out: Path, curve_bin: int = ms.CURVE_BIN) -> list[str]:
@@ -325,6 +373,17 @@ def build(summary: Path, out: Path, curve_bin: int = ms.CURVE_BIN) -> list[str]:
 
     attempt("progress", "E3's evaluation summary", progress)
     attempt("pareto", "E3's evaluation summary and E1's", pareto)
+
+    # --- OQ-92 (b): E3's first round beside the rerun at the mixed weightings, for the discussion ---
+    rounds = [gem_store_round(data, experiment, label) for label, experiment in (("first round", E3_FIRST),
+                                                                                 ("rerun", E3))]
+    if all(r is not None for r in rounds):
+        per_seed = pd.concat(rounds, ignore_index=True)
+        save_table(per_seed, out / "gem_store_rounds_per_seed.csv")
+        save_table(round_summary(per_seed), out / "gem_store_rounds.csv")
+        print("made     gem_store_rounds tables")
+    else:
+        skipped.append(f"gem_store_rounds tables (needs both rounds of E3's evaluation: {E3_FIRST} and {E3})")
 
     # --- RQ5's click-ahead bound (OQ-1 (C′), OQ-87 (a)): the evaluated policies' walking ---
     walks = [w for w in walks if len(w)]

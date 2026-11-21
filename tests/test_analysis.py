@@ -283,6 +283,16 @@ def test_an_evaluation_traces_shares_are_its_decisions_durations():
     assert mine[mine > 0].sort_index().to_dict() == pytest.approx(by_activity.sort_index().to_dict())
 
 
+def test_an_options_share_is_its_decisions_durations_over_the_episodes():
+    # seed 0's decisions last 100, 300 and 600 ticks, the first and last at the Gem Store; seed 1 never buys there
+    decisions = pd.DataFrame({"policy": "p", "seed": [0, 1, 0, 0], "decision": [2, 0, 0, 1],
+                              "t1": [1_000, 50, 100, 400],
+                              "option": ["buy_shop_1621", "sell_ge_1621", "buy_shop_1621", "sell_ge_1621"]})
+    share = ms.option_share(decisions, "buy_shop_1621")
+    assert share[["policy", "seed"]].values.tolist() == [["p", 0], ["p", 1]]
+    assert share["share"].tolist() == pytest.approx([0.7, 0.0])
+
+
 # --- the figure script ----------------------------------------------------------------------------------------------
 
 @needs_server_data
@@ -297,6 +307,7 @@ def test_the_figure_script_rebuilds_every_figure_its_published_summaries_allow(t
     run = save(tmp_path / "eval", {"policies": policies}, checkpoints, episodes, summarize(checkpoints),
                decisions=decisions)
     publish(run, "e3-reward-weight-sweep", root=summary, allow_dirty=True)
+    publish(run, "e3-reward-weight-sweep-bootstrap", root=summary, allow_dirty=True)  # as E3's first round
 
     out = tmp_path / "figures"
     made = _script().build(summary, out, curve_bin=8)
@@ -316,3 +327,12 @@ def test_the_figure_script_rebuilds_every_figure_its_published_summaries_allow(t
     assert set(pd.read_csv(out / "milestones_summary.csv")["series"]) == {"random", "E3 (.5, .5)"}
     assert pd.read_csv(out / "consistency.csv")[["series", "seeds", "pairs"]].values.tolist() == [
         ["E3 (.5, .5)", 1, 0]]
+    # OQ-92 (b): the first round is read only by the Gem Store table, its rows beside the rerun's
+    per_seed = pd.read_csv(out / "gem_store_rounds_per_seed.csv")
+    assert per_seed[["round", "series", "train_seed", "episodes"]].values.tolist() == [
+        ["first round", "E3 (.5, .5)", 0, 2], ["rerun", "E3 (.5, .5)", 0, 2]]
+    assert per_seed["gem_store_share"].between(0, 1).all()
+    rounds = pd.read_csv(out / "gem_store_rounds.csv")
+    assert rounds[["series", "round", "seeds"]].values.tolist() == [["E3 (.5, .5)", "first round", 1],
+                                                                     ["E3 (.5, .5)", "rerun", 1]]
+    assert rounds["net_worth"].tolist() == per_seed["net_worth"].tolist()

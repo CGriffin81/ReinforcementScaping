@@ -67,7 +67,8 @@ Then (00:11:37 CST), on Claude's offer to log the remedies in `docs/post-project
   masked until a fight, batches weighted by game time) change the sim or the trainer, so under Caleb's (a) they're
   after-project work.
   - At the 2026-11-18 15:28 run check, the counts by discount no longer support the first part at γ_hr 0.99 (above).
-    How the report frames the cause is Caleb's call.
+    Caleb chose OQ-89 (a) on 2026-11-20 (the decision log). The report gives the counts by discount for both rounds,
+    and says the cause at 0.99 is untested. It doesn't call the loops a bug that was fixed.
   - Some runs loop on banking instead of loot changes. They deposit and withdraw for a trip at a bank, 8 ticks a
     decision, with no reward: the first round's E3 (0, 1) seed 1, and the rerun's (.5, .5) seed 2 from 1.25M. Folding
     or masking the loot setting wouldn't stop these loops. The per-decision cost and game-time batches would. This was

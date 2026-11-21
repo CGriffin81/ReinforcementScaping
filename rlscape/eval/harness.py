@@ -144,7 +144,8 @@ def _trained_spec(spec: str) -> bool:
 
 
 def _model_path(spec: str) -> Path:
-    return Path(spec.partition("ppo:")[2])
+    from rlscape.eval.trained import split  # a weight-conditioned spec ends in @<u> (rlscape.eval.trained)
+    return split(spec)[1]
 
 
 def _in_order(table: pd.DataFrame, policies: Sequence[str], columns: list[str]) -> pd.DataFrame:

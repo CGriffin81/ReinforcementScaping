@@ -1,0 +1,32 @@
+# E6a, the discount sweep (RQ4; ROADMAP's finishing plan): PPO at the normalised (.5, .5) with gamma_hr 0.5 and 0.9,
+# 5 seeds each. gamma_hr is the discount per game-hour (SMDP: an option of tau game-hours is discounted gamma_hr^tau),
+# so over a 15-minute option 0.5 is 0.84, 0.9 is 0.974 and 0.99 is 0.9975.
+# - The third value, 0.99 (ROADMAP §3's set), is E3's (.5, .5): every other setting here is E3's, so E3's runs at
+#   (.5, .5) are this sweep's 0.99 arm, seed for seed, and aren't trained again.
+# - The weights are in normalised units (OQ-67): (.5, .5) is SimEnv's (.5, 9.18) on sim v1.2.
+# - 2M decisions a run (OQ-69). E2's winner (OQ-65 (2)): GAE lambda 0.95, learning rate 3e-4, entropy 0.01.
+# 10 runs: about 22 hours four at a time.
+#   uv run python scripts/train.py --config configs/e6a-discount-sweep.yaml --jobs 4
+#   uv run python scripts/publish_training.py runs/e6a-discount-sweep e6a-discount-sweep
+seeds: [0, 1, 2, 3, 4]
+total_decisions: 2_000_000
+n_envs: 4
+vec_env: subproc
+device: cuda  # the GPU, deterministically (Caleb, OQ-80 (a))
+torch_threads: 2
+env:
+  normalised_weights: [0.5, 0.5]
+ppo:
+  bootstrap_horizon: false  # the horizon is the task's end (env contract v1.46, 2026-11-15, m002-rerun)
+  discount_floor_ticks: 100  # each decision discounts as at least a game-minute (v1.46)
+  gae_lambda: 0.95
+  learning_rate: 3.0e-4
+  ent_coef: 0.01
+  n_steps: 256
+  batch_size: 1024
+  n_epochs: 4
+  policy_kwargs: {net_arch: [256, 256]}
+sweep:
+  ppo.gamma_hr: [0.5, 0.9]
+checkpoint_every: 100_000
+decision_log: true

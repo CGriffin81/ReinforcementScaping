@@ -7151,6 +7151,65 @@ than exp." `m002-oq61`.
   step. A run's length is "training decisions", with its episodes beside it ("2M training decisions, about N
   episodes"). An episode's count is "decisions per episode". The configs, logs and docs stay as they are.
 
+### Decided: OQ-72, E4's RND bonus: its size, its centring and what it reads (Caleb)
+- **Raised:** 2026-11-10, while building E4's RND wrapper (`rlscape/agents/rnd.py`). Record `m002-e4-rnd`.
+- **Found:**
+  - At the normalised (.5, .5), the env's reward per decision has a mean of 0.65 to 1.25 and a spread (std) of about
+    1.5. That's measured on E2's best run and E3's (1, 0) seed 0, over 100k-decision windows early, mid and late.
+  - Scaled only by its spread, the bonus averaged about 3 times its spread per decision (a small test run).
+  - Decisions last from seconds to 15 game-minutes. A positive bonus on every decision would pay for more, shorter
+    decisions.
+  - Of the observation's 3,482 features, 2,293 are the action mask and 270 the candidates' rates. Both are derived
+    from the rest. 2 are the clock.
+- **(a) The bonus's size,** its spread per decision:
+  - **0.75, half the env's (recommended, chosen).** Burda et al.'s intrinsic-to-extrinsic ratio of 1 to 2. Strong
+    enough to change behaviour if H3 holds.
+  - **0.25, a sixth.** Less likely to cost reward, more likely to show nothing.
+  - **A sweep of both.** 10 runs, about 11 more machine-hours.
+- **(b) Centring:**
+  - **Centred, mean zero (recommended, chosen).** Its running mean is subtracted: novel states pay, familiar ones cost
+    a little, and no decision earns anything extra on average.
+  - **Uncentred, as Burda's.** Always positive. Its effect on discovery would be mixed with paying for short
+    decisions.
+- **(c) What it reads:**
+  - **The character's state, 917 features (recommended, chosen):** skills, total level, hitpoints and prayer, run
+    energy and weight, the home teleport's wait, the skull, pouches, wealth, inventory, bank, equipment, region, loot
+    mode, task, potions and access.
+  - **The full observation, 3,482.** Novelty would be mostly the mask's.
+  - **The full observation without the clock, 3,480.**
+- **Answer (Caleb, 2026-11-10 22:15 CST):** (a) 0.75, (b) centred, (c) the character's state.
+
+### Built: RND for E4 (rlscape/agents/rnd.py), and E4's configs
+- **`RNDReward`, a VecEnv wrapper** (ROADMAP §3's v1). After each step it scores each env's next state: the squared
+  error of a trained predictor against a fixed random target (MLPs, Burda's shapes), on the parts the config names.
+  - The bonus is `coef × (error − μ) / σ`, μ and σ the error's running mean and spread per decision (OQ-72). It's added
+    to the reward PPO learns from.
+  - The predictor trains on each rollout's states at its end (4 epochs, minibatches of 256, Adam 1e-4).
+  - Inputs are normalised by running statistics and clipped to ±5, as Burda's. The first rollout pays nothing; it
+    fills those statistics.
+  - Seeded from the run's seed.
+- **One value head.** Episodes end only at the 20-hour limit, which every run bootstraps, so the bonus isn't cut off
+  there.
+- **Kept apart:**
+  - infos carry `reward_extrinsic` and `r_intrinsic`;
+  - `episodes.parquet`'s `reward` stays the env's, with `r_intrinsic` beside it;
+  - the decision log has an `r_intrinsic` column; its `reward` is what PPO learned from;
+  - TensorBoard has `rnd/*`: the bonus's mean and spread, the error, the predictor's loss.
+- **The trainer:**
+  - an `rnd:` config section;
+  - `rnd.<setting>` can be swept;
+  - without it, a run is as before.
+- **Cost:** about 0.26 ms a decision (scoring and training), against about 15 ms of the sim's: under 2% more training
+  time.
+- **`configs/e4-rnd-exploration.yaml`:** E3's (.5, .5) with `rnd` added (checked setting for setting), so E3's runs at
+  (.5, .5) are E4's baseline, seed for seed. The eval config adds E1's baselines on the 30 seeds.
+- **Tests** (`tests/test_rnd.py`, 5), on real sim states:
+  - the bonus is the reward's difference from the env's, logged apart;
+  - a run with RND is repeatable;
+  - familiar states stop paying while new ones still do;
+  - a centred bonus averages about zero, and Burda's is positive;
+  - bad `rnd` sections are refused.
+  The trainer's own tests still pass (8).
 ### Built: reward parts kept apart in the learning curve and the decision log (tooling, E4 and E6b)
 - **Why:** E4's RND and E6b's PBRS each add to the env's reward during training. Their curves must still report the
   env's own reward, to compare with E3's, and the additions must be logged with every decision (CLAUDE.md's reward
@@ -7204,6 +7263,48 @@ than exp." `m002-oq61`.
   - a bad section is refused.
 - **A smoke run with subprocess envs:** each 15-minute decision charged about −1.9, short ones about 0, and every
   logged reward is the env's plus F.
+
+### Decided: OQ-74, E5's design: uniform weightings, 2M decisions a run, evaluated at 13 weightings (Caleb)
+- **Raised:** 2026-11-10, before building E5 (RQ3's second half: can a single preference-conditioned agent match a
+  set of separately trained agents?). Record `m002-e5-conditioned`.
+- **(a) How each training episode's weighting is drawn** (normalised units, OQ-67):
+  - **Uniform u in [0, 1] (recommended, chosen).** Continuous, the usual choice for preference-conditioned agents. It
+    covers the front between E3's points.
+  - **E3's five points only.** The closest match to E3, but nothing between them.
+- **(b) The budget per run** (5 seeds):
+  - **2M (recommended, chosen).** One E3 agent's budget, a fifth of E3's five weightings at a seed. About 11
+    machine-hours.
+  - **4M.** Two-fifths of E3's. About 22 machine-hours.
+  - **10M.** Equal to E3's five together. About 85 machine-hours (four runs, then the fifth alone): done about Nov 18
+    at best.
+- **(c) Where the trained agents are evaluated** (30 episode seeds each):
+  - **E3's five and every 0.1, 13 points (recommended, chosen).** Paired with E3 at its five, plus the front between.
+    About 1,950 episodes.
+  - **E3's five only.** 750 episodes.
+- **Answer (Caleb, 2026-11-10 23:41 CST):** (a) uniform, (b) 2M, (c) 13 points.
+
+### Built: E5's weight-conditioned agent (rlscape/agents/conditioned.py), and E5's configs
+- **`WeightConditioned`, a gym wrapper on each training SimEnv:**
+  - At each episode's start it draws u from U[0, 1], resets the env with `env_weights((u, 1 − u))`, and appends
+    (u, 1 − u) to every observation (3,484 features).
+  - Its draws come from a generator seeded by the env's first reset, so a run is repeatable.
+  - SimEnv's own `preference_in_obs` stays off. It would show the raw reward weights (up to 17.1), and changing its
+    encoder would change the frozen env.
+- **Evaluation:** `TrainedPolicy` takes a weighting, `<label>=ppo:<model.zip>@<u>`, and appends the same two features
+  to a plain SimEnv's observation (`rlscape/eval/trained.py`). The harness finds the model's path through it.
+- **The trainer:** a `conditioned:` section (`weights: uniform`). Its env sets no weights of its own (checked).
+- **`configs/e5-weight-conditioned-ppo.yaml`:** E3's settings but the weights (checked). The eval config has the 5
+  models at 13 weightings (65 specs) and E1's baselines on the 30 seeds.
+- **Tests** (`tests/test_conditioned.py`, 4), on real episodes:
+  - a weighting each episode, rewarded by it (the env's reward with those weights) and shown throughout;
+  - fresh draws, and the same ones from the same seed;
+  - a short run logs each decision's weighting in its observation, rewarded by it, and is repeatable;
+  - the harness evaluates the trained agent at u = 0.25 and 1;
+  - bad sections are refused.
+  The trainer's and harness's own tests still pass (8).
+- **A smoke run with subprocess envs:** each env drew its own weighting every episode.
+- **Not yet:** `scripts/replay.py` plays a conditioned model without its weighting. It needs `@<u>` before it can show
+  E5's runs.
 
 ### Built: the training queue, one queue for several experiments' runs (tooling, 2026-11-11)
 - **Why:** E6a, E4, E6b and E5 are 25 runs on four branches. `train.py --jobs` trains one experiment at a time, and
@@ -7400,6 +7501,14 @@ Asked together after Caleb's question "Why don't any of the runs do anything wit
   the cumulative one −0.3. The recommendation had said it would average about zero at every stage. That holds once
   the error levels off, not in the first one or two percent of a run.
 - **E4 joins the training queue** with it.
+
+### Built: E4's bonus centred on a recent mean (OQ-79 (a))
+- `rlscape/agents/rnd.py`: `RecentStats`, an exponential moving average of the error's mean and second moment over
+  `ema_rollouts` (10) rollouts' steps, bias-corrected; the centred bonus uses it, the uncentred one keeps the
+  cumulative statistics. E4's config states `ema_rollouts: 10`.
+- **Tests** (`tests/test_rnd.py`, 6, with `tests/test_training.py` 11 passed): a falling error is followed by the
+  recent mean and lagged by the cumulative one; the short integration test checks what holds in its first rollouts.
+- Record `m002-oq79-rnd-centring`.
 
 ### Decided: OQ-80, E3 to E6 train on the GPU, deterministically (Caleb, 2026-11-11: (a))
 - **The question** (Caleb: "Why are the experiments not running on GPU?"; `m002-gpu`): Caleb chose CUDA torch on
@@ -8088,6 +8197,8 @@ clean tree.
   - E3 (.25, .75) settles on a lower strategy than its original (161.4 against 544.7).
 - **The first round, by the same marker:** 11 of 50 pass it, and 8 end looping (E3's (0, 1) seed 1, E6a γ_hr 0.9's
   seeds 0 and 3, E6b's five). Among the same nine seed-0 runs, the first round had two loopers; the rerun has one.
+  Superseded on 2026-11-20 (OQ-90 (a), below): both rounds are counted by the run checks' rule in the final census,
+  which gives 10 of the first round's 50 ending looping.
 - **The options:**
   - (a) carry on and report it (recommended): no change. Each run's final model is evaluated as planned, and the
     report gives each round's collapse count and names the looping runs. It costs no time; a collapsed seed widens its
@@ -8168,3 +8279,154 @@ The marker is a run's last 100k block averaging over 1,000 decisions an episode.
   by discount for both rounds, by this one measure.
 - **A count to align:** by this measure the first round's 50 have 10 ending looping. The 2026-11-16 entry's 8 left out
   E6a's γ_hr 0.5 seed 0 (1,003 in its last block) and γ_hr 0.9 seed 2 (over the marker only in its last block).
+
+### Decided: what the report says causes the looping runs (2026-11-20, OQ-89)
+Raised at `m002-collapse-check`'s seventh run check (2026-11-18), logged as OQ-89 on 2026-11-19
+(`m002-outstanding-tasks`). The rerun's two changes ended the loops at γ_hr 0.5 and 0.9, but at 0.99 more runs end
+looping than in the first round, E3's most of all (the 2026-11-18 finding). `m002-loop-cause` had given "a trainer bug
+that was fixed" as part of the cause.
+- **The options:**
+  - (a) report the counts by discount, for both rounds, and say the cause at 0.99 is untested; name the candidates (the
+    horizon bootstrap's removal, and for E3 the sim's death-budget cap); don't call the loops a bug that was fixed; no
+    more training (recommended);
+  - (b) test it first: about four of E3's looping configurations trained again with the horizon bootstrap back on and
+    the floor kept, on sim v1.4, about 8 to 10 hours after the evaluations;
+  - (c) keep `m002-loop-cause`'s framing, a trainer bug and a learner limitation.
+- **Caleb (2026-11-20 01:25:35 CST): (a).** No more training for it. `m002-loop-cause` now says so.
+
+### Decided: which rule counts a run as looping, in both rounds (2026-11-20, OQ-90)
+Raised at the seventh run check, logged as OQ-90 on 2026-11-19. The run checks count a run as ending looping when its
+last 100k-decision block averages over 1,000 decisions an episode. By that rule 10 of the first round's 50 end looping.
+The 2026-11-16 entry counted 8: it left out E6a's γ_hr 0.5 seed 0 (1,003 in its last block) and γ_hr 0.9 seed 2 (over
+1,000 only in its last block).
+- **The options:**
+  - (a) the run checks' rule, the same for both rounds, with two counts in the report: runs that pass the marker in any
+    block, and runs that end over it (recommended);
+  - (b) that rule plus a second test, most of the last part's decisions short with no effect, which would drop marginal
+    runs like γ_hr 0.5 seed 0;
+  - (c) the 2026-11-16 entry's count, with its two exceptions written down.
+- **Caleb (2026-11-20 01:25:35 CST): (a).** The report's counts come from the final census of all 50 reruns and the
+  first round's 50 by this rule. The 2026-11-16 entry's first-round counts are superseded by it.
+
+### Decided: E6b's evaluation episodes that stop at the decision cap are reported as they are (2026-11-20, OQ-91)
+Raised when E6b's evaluation finished (2026-11-19, `m002-rerun-evals`). The evaluation's rollout stops an episode at
+100,000 decisions (`rlscape/eval/rollout.py`, `play`'s `max_decisions`, a safety limit from 2026-10-30); training has
+none. Two of E6b's policies loop on 1-tick options long enough to reach it:
+- all 30 of `pbrs/seed3`'s episodes stop there, between 16.8 and 19.8 game-hours: none reaches hour 20, and only 10
+  reach hour 18;
+- 3 of `pbrs/seed2`'s 30 stop there, between 19.5 and 19.7.
+
+No other episode in any evaluation (E3, E6a, E4, E5, and the first round's E3) reaches it; the most decisions in one is
+31,160.
+- **The options:**
+  - (a) raise the cap (say to 250,000) by a tooling PR into `main`, and run E6b's evaluation again, about 1.5 hours
+    (recommended);
+  - (b) report the episodes as they are, flagged as cut short by the evaluation: `pbrs/seed3` has no hour-20 value, and
+    `pbrs/seed2`'s hour-20 mean is over 27 seeds, which leaves the worst episodes out of the hour-20 front;
+  - (c) carry each stopped episode's values at the cap forward to hour 20, slightly understating the two policies.
+- **Caleb (2026-11-20 01:25:35 CST): (b).** E6b's summary is published from the evaluation as it ran. The report flags
+  the 33 episodes as stopped by the evaluation's cap, gives `pbrs/seed3` no hour-20 value, and gives `pbrs/seed2`'s
+  hour-20 mean over its 27 seeds that reach it. The cap stays.
+
+### Finding: the final loop census of all 50, in both rounds (2026-11-20)
+At Caleb's "Do the final census and Gem Store tally" (19:31:36 CST), `m002-final-census`. All 50 reruns and the first
+round's 50 are counted by OQ-90 (a)'s rule: a run passes the marker if any 100k-decision block's episodes average over
+1,000 decisions, and ends looping if its last block does. This completes the 2026-11-18 finding, which had 36.
+- **Overall:** the first round has 11 passing and 10 ending looping; the rerun 13 and 10.
+- **By discount:**
+
+  | γ_hr | Runs | First round: pass, end | Rerun: pass, end |
+  |---|---|---|---|
+  | 0.5 | 5 (E6a) | 1, 1 | 0, 0 |
+  | 0.9 | 5 (E6a) | 4, 3 | 0, 0 |
+  | 0.99 | 40 (E3 25, E4 5, E5 5, E6b 5) | 6, 6 (E3 1, E6b 5) | 13, 10 (E3 8, E6b 2) |
+
+- **Who ends looping:**
+  - First round: E3's (0, 1) seed 1; E6a's γ_hr 0.5 seed 0 and γ_hr 0.9 seeds 0, 2 and 3; E6b's five.
+  - Rerun: E3's (1, 0) seed 3, (.75, .25) seeds 0, 1 and 3, and (.5, .5) seeds 1 to 4; E6b's seeds 2 and 3.
+  - In both rounds: only E6b's seeds 2 and 3. Eight end looping only in the first round, eight only in the rerun, and
+    32 in neither.
+- **By E3 weighting, in the rerun:** (1, 0) 1 of 5, (.75, .25) 3 of 5, (.5, .5) 4 of 5, (.25, .75) and (0, 1) none.
+  The first round's only E3 looper was at (0, 1).
+- **What the rerun loops on:** the loot-setting options in eight of its ten, and banking in two (E3's (.5, .5) seeds 2
+  and 3: bank deposits, and withdrawals of food, skilling kits and gear).
+- **Passing and recovering:** E3's (.25, .75) seed 3 (rerun, 1.5M to 1.8M), E6a's γ_hr 0.9 seed 4 (first round, six
+  blocks from 400k) and E6b's seeds 1 and 4 (rerun).
+- **The last block:** ten runs have no episode ending in some block, since a looping episode can run past 100,000
+  decisions. Their last block with one is at 1.7M to 1.9M, and each one's last full decision part is 99–100% short
+  decisions, so each is still looping at the end. E6b's rerun seed 4 is the exception: its gap is mid-run (its loop at
+  600k), and it ends at 550 decisions an episode.
+- **What it means for the report** (OQ-89 (a)): the rerun's two changes ended the loops at γ_hr 0.5 and 0.9, and at
+  0.99 the rerun has more runs looping (10 of 40 against 6), E3's most of all. The cause at 0.99 is untested.
+
+### Finding: the rerun mostly misses the Gem Store loop (2026-11-20)
+`m002-final-census`. The Gem Store loop is OQ-57 (a)'s strategy: buy uncut emeralds at Hervi's Gem Store
+(`buy_shop_1621`), bank them and sell them on the GE. It's a real strategy, not a stall. The measure is the share
+of game time a run's last full decision part spends buying them. Over the 40 mixed-weight pairs (E3's (.75, .25),
+(.5, .5) and (.25, .75); E6a; E4; E6b; E5), every run is at 0–16% or 37–57%, with nothing in between.
+- **The first round ends in the loop in 10 of the 40, the rerun in 2:**
+
+  | Variant | First round | Rerun |
+  |---|---|---|
+  | E3 (.75, .25) | 0 of 5 | 0 of 5 |
+  | E3 (.5, .5) | 1 (seed 1) | 0 |
+  | E3 (.25, .75) | 4 (seeds 0, 1, 3, 4) | 0 |
+  | E6a γ_hr 0.5 | 3 (seeds 1, 2, 4) | 2 (seeds 3, 4) |
+  | E6a γ_hr 0.9, E4, E6b | 0 | 0 |
+  | E5 | 2 (seeds 1, 3) | 0 |
+
+  - In the loop, a run spends 37–57% of its game time buying. The first round's ten start between 0.35M and 1.85M
+    decisions; the rerun's two at 0.40M (γ_hr 0.5 seed 3) and 1.30M (seed 4).
+  - Only E6a's γ_hr 0.5 seed 4 finds it in both rounds. Of the first round's other nine, no rerun finds it; of the 30
+    without it, one rerun does (γ_hr 0.5 seed 3).
+  - **Part-time:** E4's seed 3 rerun buys there from about 1.0M, 2–26% of its game time by part (16% in its last). In
+    its last part, those purchases earn 150.6 of its 154.8 wealth reward. It never settles into the loop: 103.6 reward
+    and 0.17M at the end. Three runs buy 7.6–9.2% (E6a's γ_hr 0.9 seed 4 and E4's seed 1, first round; E4's seed 4,
+    rerun).
+- **What the loop is worth:** in training's last block, the first round's ten runs in it end at 355.0–563.2 reward and
+  2.70–4.23M. The nine reruns of the same seeds without it end at 130.2–251.4 and 0.39–1.15M.
+  - In E3's evaluation at hour 20 (E1's 30 seeds), the first round's (.25, .75) is at 3.36M on average, with level 123;
+    its four seeds in the loop are at 3.87–4.06M. The rerun's (.25, .75) is at 0.82M with level 168, against 3.74M for
+    the rerun's (0, 1). The first round's evaluation ran on sim v1.3 (`ba9d8ec`), the rerun's on sim v1.4.
+- **Why the rerun misses it** is untested. The candidates are OQ-89's: the horizon bootstrap's removal, the 100-tick
+  floor, and for E3 the sim's death-budget cap; it may also be chance over 5 seeds a variant. How the report presents
+  it is OQ-92.
+
+### Decided: the report shows E3's first round beside the rerun at the mixed weightings (2026-11-20, OQ-92)
+Raised at the final census (`m002-final-census`). At mixed weights the rerun ends in the Gem Store loop in 2 of 40
+runs, against 10 of 40 in the first round. In E3's evaluation, the first round's (.25, .75) is at 3.36M and the
+rerun's at 0.82M (the finding above).
+- **The options:**
+  - (a) report it as a finding, with the rerun's results as the results: the counts by round and variant, what the
+    runs in the loop earn, and the cause untested, beside OQ-89's loop counts;
+  - (b) as (a), plus the first round's E3 evaluation beside the rerun's at the mixed weightings, labelled as the
+    earlier trainer's, in a table or one figure in the discussion, not in the main front (recommended);
+  - (c) as (a), plus more (.25, .75) seeds on the rerun's trainer (about 8 hours and an evaluation), to estimate how
+    often it finds the loop.
+- **Caleb (2026-11-20 21:15:54 CST): (b).** Done in `m002-oq92`:
+  - **Published:** the first round's E3 evaluation, as `results/summary/e3-reward-weight-sweep-bootstrap/` on E3's
+    branch, from its clean run of 2026-11-15 (`ba9d8ec`). A note added by hand to its README gives the trainer, the
+    sims, and why the model paths in its `config.json` now hold the rerun's models.
+  - **The label, corrected:** the evaluation ran on sim v1.3, but 6 of the 25 runs trained on sim v1.2 (`b29de68`):
+    (1, 0) seeds 0 and 1, and seed 0 at each other weighting. sim v1.3 is sim v1.2 wherever sim v1.2 completes
+    (2026-11-12). So the label is the earlier trainer's, evaluated on sim v1.3.
+  - **The table:** `scripts/figures.py` writes `gem_store_rounds_per_seed.csv` and `gem_store_rounds.csv`: per
+    policy, then per series and round with a 95% CI over the training seeds, the hour-20 total level and net worth,
+    the normalised gains, and the share of game time buying uncut emeralds (`measures.option_share`). Nothing else
+    reads the first round.
+- **What it shows** (hour 20, E1's 30 seeds; the mean over 5 training seeds, with its CI):
+
+  | Series | Round | Total level | Net worth | Gem Store share |
+  |---|---|---|---|---|
+  | E3 (.75, .25) | first round | 345 [343, 347] | 0.08M [0.07, 0.10] | 0% |
+  | | rerun | 350 [311, 387] | 0.08M [0.04, 0.10] | 0% |
+  | E3 (.5, .5) | first round | 310 [250, 349] | 0.76M [0.17, 1.91] | 8.5% [0, 25.4] |
+  | | rerun | 263 [247, 282] | 0.59M [0.21, 0.97] | 0% |
+  | E3 (.25, .75) | first round | 123 [90, 178] | 3.36M [2.09, 4.04] | 43.7% [21.7, 55.5] |
+  | | rerun | 168 [157, 185] | 0.82M [0.74, 0.90] | 0% |
+
+  - The five first-round seeds that end training in the loop ((.5, .5) seed 1 and (.25, .75) seeds 0, 1, 3 and 4)
+    spend 42–56% of their evaluation's game time buying there, at 3.05–4.06M. Every other policy, in both rounds,
+    spends at most 0.12%.
+  - So the first round's (.25, .75) owes its wealth to the loop. Without it, its seed 2 (0.83M, level 230) is where
+    the rerun's five are (0.73–0.93M).

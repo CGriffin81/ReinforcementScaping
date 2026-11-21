@@ -2,9 +2,12 @@
 seeds and checkpoints as E1's baselines.
 
 A spec is `ppo:<path to model.zip>`, or `<label>=ppo:<path>` to name it in the tables (the label defaults to the whole
-spec). `TrainedPolicy` plays the model as it was trained, sampling from its masked action distribution (Caleb,
-2026-11-09, OQ-65 (4): sampled, not greedy), with torch's generator seeded by the episode's seed at its start, so an
-episode depends only on the model and its seed, whatever the worker played before.
+spec). E5's weight-conditioned agents take a weighting too, `<label>=ppo:<path>@<u>`: the normalised skill share u (the
+wealth share is 1 − u), appended to each observation as in training (rlscape.agents.conditioned).
+
+`TrainedPolicy` plays the model as it was trained, sampling from its masked action distribution (Caleb, 2026-11-09,
+OQ-65 (4): sampled, not greedy), with torch's generator seeded by the episode's seed at its start, so an episode
+depends only on the model and its seed, whatever the worker played before.
 """
 
 from __future__ import annotations
@@ -27,11 +30,28 @@ def is_trained(spec: str) -> bool:
 def split(spec: str) -> tuple[str, Path]:
     """(label, model path) of a spec."""
     if spec.startswith(PREFIX):
-        return spec, Path(spec[len(PREFIX):])
+        return spec, Path(_strip_preference(spec[len(PREFIX):])[0])
     label, _, rest = spec.partition("=")
     if not rest.startswith(PREFIX) or not label:
         raise ValueError(f"not a trained policy: {spec!r} (ppo:<model.zip> or <label>=ppo:<model.zip>)")
-    return label, Path(rest[len(PREFIX):])
+    return label, Path(_strip_preference(rest[len(PREFIX):])[0])
+
+
+def _strip_preference(path: str) -> tuple[str, float | None]:
+    """A spec's path and the skill share after an `@`, if it gives one."""
+    head, at, tail = path.rpartition("@")
+    if not at:
+        return path, None
+    u = float(tail)
+    if not 0.0 <= u <= 1.0:
+        raise ValueError(f"a preference's skill share is in [0, 1], not {u}")
+    return head, u
+
+
+def preference(spec: str) -> np.ndarray | None:
+    """The normalised weighting (u, 1 − u) a spec gives its weight-conditioned agent, or None."""
+    u = _strip_preference(spec.partition("=")[2] if not spec.startswith(PREFIX) else spec)[1]
+    return None if u is None else np.array([u, 1.0 - u], dtype=np.float32)
 
 
 def load(path: Path) -> SMDPMaskablePPO:
@@ -46,10 +66,13 @@ class TrainedPolicy:
     def __init__(self, spec: str):
         self.name, self.path = split(spec)
         self.model = load(self.path)
+        self.preference = preference(spec)
 
     def reset(self, seed: int | None) -> None:
         th.manual_seed(0 if seed is None else seed)
 
     def act(self, env, obs: np.ndarray) -> int:
+        if self.preference is not None:
+            obs = np.concatenate([obs, self.preference])  # as rlscape.agents.conditioned.with_preference
         action, _ = self.model.predict(obs, action_masks=env.action_masks(), deterministic=False)
         return int(action)
