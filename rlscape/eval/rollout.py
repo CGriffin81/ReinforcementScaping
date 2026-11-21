@@ -19,6 +19,7 @@ from rlscape.envs.sim_env import SimEnv
 from rlscape.eval import walking
 
 TRACE = ("decision", "t1", "option", "termination", "total_level", "net_worth", *walking.FIELDS)
+MAX_DECISIONS = 100_000  # an evaluation episode stops here; a policy looping on 1-tick options can reach it (OQ-91)
 NO_COUNTER = (float("nan"),) * len(walking.FIELDS)
 
 
@@ -41,7 +42,7 @@ class Episode:
 
 
 def play(env: SimEnv, policy: Policy, seed: int, options: dict | None = None,
-         max_decisions: int = 100_000) -> Episode:
+         max_decisions: int = MAX_DECISIONS) -> Episode:
     """One episode from `env.reset(seed)`. The policy is reset with the same seed; it never shares the env's random
     numbers, so a policy's lookahead can't change the episode it's playing."""
     obs, info = env.reset(seed=seed, options=options)
