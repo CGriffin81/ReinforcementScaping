@@ -24,7 +24,7 @@
   - the fifth run check (16:18:35 CST) and the banking loop's notes in `m002-loop-cause` and the post-project gap:
     `bf02845`, to `main` directly (Caleb: "Commit it to main directly", 16:54:58 CST);
   - the RAM-rule decision (19:39:22 CST), the sixth run check (22:02:46 CST), the seventh run check (2026-11-18
-    15:28:13 CST) and the corrections to E4's and E6b's rewards: this commit, to `main` directly (Caleb: "Commit it to
+    15:28:13 CST) and the corrections to E4's and E6b's rewards: `562fb03`, to `main` directly (Caleb: "Commit it to
     main directly", 2026-11-18 15:55:35 CST).
 
 ## Full Prompt
@@ -730,7 +730,8 @@ Then (15:55:35 CST):
   - **Agent recommendation:** give the loop counts by discount, for both rounds, by one measure. Say the rerun's
     changes ended the loops at γ_hr 0.5 and 0.9, but not at 0.99, where E3 loops more, and that the cause is untested.
     Don't call the loops a trainer bug that was fixed.
-  - **User decision:** Caleb's, for the report. Not asked yet.
+  - **User decision (Caleb, 2026-11-20 01:25:35 CST):** as recommended, OQ-89 (a), and the measure is the run checks'
+    rule for both rounds, OQ-90 (a) (the decision log).
 - **Claude's choices:**
   - the marker (a 100k block over 1,000 decisions an episode);
   - the zero-effect test (a decision with no skill and no wealth reward).
@@ -779,4 +780,4 @@ Then (15:55:35 CST):
 - **Done:** E4's and E6b's seed 1 ended without looping. E6b's passed the marker at 1.7M and recovered.
 - **Done:** the watch ran until midnight without firing.
 - **For the report:** the loop counts by discount, by one measure for both rounds, and what it says causes them
-  (Caleb's call; the recommendation is under Decisions).
+  (Caleb, 2026-11-20: OQ-89 (a) and OQ-90 (a); see Decisions).

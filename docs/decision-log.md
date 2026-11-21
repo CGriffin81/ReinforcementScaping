@@ -8047,6 +8047,8 @@ clean tree.
   - E3 (.25, .75) settles on a lower strategy than its original (161.4 against 544.7).
 - **The first round, by the same marker:** 11 of 50 pass it, and 8 end looping (E3's (0, 1) seed 1, E6a γ_hr 0.9's
   seeds 0 and 3, E6b's five). Among the same nine seed-0 runs, the first round had two loopers; the rerun has one.
+  Superseded on 2026-11-20 (OQ-90 (a), below): both rounds are counted by the run checks' rule in the final census,
+  which gives 10 of the first round's 50 ending looping.
 - **The options:**
   - (a) carry on and report it (recommended): no change. Each run's final model is evaluated as planned, and the
     report gives each round's collapse count and names the looping runs. It costs no time; a collapsed seed widens its
@@ -8127,3 +8129,51 @@ The marker is a run's last 100k block averaging over 1,000 decisions an episode.
   by discount for both rounds, by this one measure.
 - **A count to align:** by this measure the first round's 50 have 10 ending looping. The 2026-11-16 entry's 8 left out
   E6a's γ_hr 0.5 seed 0 (1,003 in its last block) and γ_hr 0.9 seed 2 (over the marker only in its last block).
+
+### Decided: what the report says causes the looping runs (2026-11-20, OQ-89)
+Raised at `m002-collapse-check`'s seventh run check (2026-11-18), logged as OQ-89 on 2026-11-19
+(`m002-outstanding-tasks`). The rerun's two changes ended the loops at γ_hr 0.5 and 0.9, but at 0.99 more runs end
+looping than in the first round, E3's most of all (the 2026-11-18 finding). `m002-loop-cause` had given "a trainer bug
+that was fixed" as part of the cause.
+- **The options:**
+  - (a) report the counts by discount, for both rounds, and say the cause at 0.99 is untested; name the candidates (the
+    horizon bootstrap's removal, and for E3 the sim's death-budget cap); don't call the loops a bug that was fixed; no
+    more training (recommended);
+  - (b) test it first: about four of E3's looping configurations trained again with the horizon bootstrap back on and
+    the floor kept, on sim v1.4, about 8 to 10 hours after the evaluations;
+  - (c) keep `m002-loop-cause`'s framing, a trainer bug and a learner limitation.
+- **Caleb (2026-11-20 01:25:35 CST): (a).** No more training for it. `m002-loop-cause` now says so.
+
+### Decided: which rule counts a run as looping, in both rounds (2026-11-20, OQ-90)
+Raised at the seventh run check, logged as OQ-90 on 2026-11-19. The run checks count a run as ending looping when its
+last 100k-decision block averages over 1,000 decisions an episode. By that rule 10 of the first round's 50 end looping.
+The 2026-11-16 entry counted 8: it left out E6a's γ_hr 0.5 seed 0 (1,003 in its last block) and γ_hr 0.9 seed 2 (over
+1,000 only in its last block).
+- **The options:**
+  - (a) the run checks' rule, the same for both rounds, with two counts in the report: runs that pass the marker in any
+    block, and runs that end over it (recommended);
+  - (b) that rule plus a second test, most of the last part's decisions short with no effect, which would drop marginal
+    runs like γ_hr 0.5 seed 0;
+  - (c) the 2026-11-16 entry's count, with its two exceptions written down.
+- **Caleb (2026-11-20 01:25:35 CST): (a).** The report's counts come from the final census of all 50 reruns and the
+  first round's 50 by this rule. The 2026-11-16 entry's first-round counts are superseded by it.
+
+### Decided: E6b's evaluation episodes that stop at the decision cap are reported as they are (2026-11-20, OQ-91)
+Raised when E6b's evaluation finished (2026-11-19, `m002-rerun-evals`). The evaluation's rollout stops an episode at
+100,000 decisions (`rlscape/eval/rollout.py`, `play`'s `max_decisions`, a safety limit from 2026-10-30); training has
+none. Two of E6b's policies loop on 1-tick options long enough to reach it:
+- all 30 of `pbrs/seed3`'s episodes stop there, between 16.8 and 19.8 game-hours: none reaches hour 20, and only 10
+  reach hour 18;
+- 3 of `pbrs/seed2`'s 30 stop there, between 19.5 and 19.7.
+
+No other episode in any evaluation (E3, E6a, E4, E5, and the first round's E3) reaches it; the most decisions in one is
+31,160.
+- **The options:**
+  - (a) raise the cap (say to 250,000) by a tooling PR into `main`, and run E6b's evaluation again, about 1.5 hours
+    (recommended);
+  - (b) report the episodes as they are, flagged as cut short by the evaluation: `pbrs/seed3` has no hour-20 value, and
+    `pbrs/seed2`'s hour-20 mean is over 27 seeds, which leaves the worst episodes out of the hour-20 front;
+  - (c) carry each stopped episode's values at the cap forward to hour 20, slightly understating the two policies.
+- **Caleb (2026-11-20 01:25:35 CST): (b).** E6b's summary is published from the evaluation as it ran. The report flags
+  the 33 episodes as stopped by the evaluation's cap, gives `pbrs/seed3` no hour-20 value, and gives `pbrs/seed2`'s
+  hour-20 mean over its 27 seeds that reach it. The cap stays.
