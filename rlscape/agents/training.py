@@ -21,15 +21,19 @@ command per experiment).
 - `checkpoint_every`: decisions between checkpoints;
 - `decision_log`: record every decision (rlscape.agents.decision_log);
 - `out`: where the runs go (default `runs/<name>`, git-ignored);
-- `sweep`: a grid of variants, `{key: [values]}`, a key being `ppo.<argument>`, `env.<setting>` or one of the keys
-  above. Each combination is a variant, named by its values (`learning_rate0.0001_ent_coef0.01`), with its own runs.
+- `rnd` (E4): RND's exploration bonus (rlscape.agents.rnd): `coef`, the observation's parts it reads (`features`), and
+  optionally its networks' and training's settings. Its predictor trains once a rollout (`ppo.n_steps`);
+- `sweep`: a grid of variants, `{key: [values]}`, a key being `ppo.<argument>`, `env.<setting>`, `rnd.<setting>` or
+  one of the keys above. Each combination is a variant, named by its values (`learning_rate0.0001_ent_coef0.01`), with
+  its own runs.
 
 **A run** (`<out>/seed<k>/`, or `<out>/<variant>/seed<k>/` in a sweep):
 - `config.json`: the config, its hash, the seed, the provenance taken at the start (git SHAs, dirty, versions) and
   the command line;
 - `options.json`: the catalog (index, id, family);
 - `checkpoints/ppo_<decisions>_steps.zip`, then `model.zip`;
-- `tb/`: TensorBoard. sb3's own curves, and `sim/*`: the means of the rollout's finished episodes;
+- `tb/`: TensorBoard. sb3's own curves, and `sim/*`: the means of the rollout's finished episodes; with RND, `rnd/*`
+  (the bonus, the predictor's error and loss);
 - `episodes.parquet`: the learning curve, a row per finished episode. Its `reward` is the env's weighted reward; what a
   training wrapper adds to it is apart (`REWARD_PARTS`);
 - `decisions/`: the decision log;
@@ -67,13 +71,15 @@ from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv,
 
 from rlscape.agents.decision_log import DecisionLogger
 from rlscape.agents.ppo import SMDPMaskablePPO
+from rlscape.agents.rnd import KEYS as RND_KEYS
+from rlscape.agents.rnd import RNDReward, check_rnd
 from rlscape.envs.sim_env import SimEnv
 from rlscape.envs.weights import env_weights
 from rlscape.eval.harness import REPO, config_hash, provenance
 from rlscape.sim.engine import TICKS_PER_HOUR
 
 KEYS = {"seeds", "total_decisions", "n_envs", "vec_env", "device", "torch_threads", "env", "ppo", "checkpoint_every",
-        "decision_log", "out", "sweep", "variant"}
+        "decision_log", "out", "sweep", "variant", "rnd"}
 UNSWEPT = {"seeds", "out", "sweep", "variant"}  # a sweep can't vary these
 REQUIRED = {"seeds", "total_decisions", "n_envs", "ppo"}
 ENV_KEYS = {"reward_weights", "normalised_weights", "hours", "activity_minutes", "preference_in_obs"}
@@ -106,9 +112,12 @@ def check_config(config: dict) -> dict:
             raise ValueError(f"config: ppo.{key} is the text {value!r}: YAML reads 3e-4 as text, so write 3.0e-4")
     if config.get("vec_env", "subproc") not in ("subproc", "dummy"):
         raise ValueError("config: vec_env is subproc or dummy")
+    if config.get("rnd") is not None:
+        check_rnd(config["rnd"])
     for key, values in (config.get("sweep") or {}).items():
         section, _, field = key.partition(".")
-        known = (field and (section == "ppo" or (section == "env" and field in ENV_KEYS))) or \
+        known = (field and (section == "ppo" or (section == "env" and field in ENV_KEYS)
+                            or (section == "rnd" and field in RND_KEYS))) or \
             (not field and section in KEYS - UNSWEPT)
         if not known or not isinstance(values, list) or not values:
             raise ValueError(f"config: sweep.{key} must be a known key with a list of values")
@@ -215,6 +224,26 @@ class EpisodeTable(BaseCallback):
                                                 "net_worth"])
 
 
+class RNDStats(BaseCallback):
+    """TensorBoard's `rnd/*` once a rollout: the bonus and the predictor's error (means since the last), its loss."""
+
+    def _on_step(self) -> bool:
+        return True
+
+    def _on_rollout_end(self) -> None:
+        for key, value in self.training_env.take_stats().items():
+            self.logger.record(f"rnd/{key}", value)
+
+
+def with_rnd(vec: VecEnv, config: dict, seed: int) -> VecEnv:
+    """The training envs with RND's bonus when the config has `rnd`, its predictor trained once a rollout."""
+    if not config.get("rnd"):
+        return vec
+    parts = vec.get_attr("encoder", indices=[0])[0].parts
+    rnd = config["rnd"]
+    return RNDReward(vec, parts, seed=seed, rollout=int((config["ppo"] or {}).get("n_steps", 2048)), **rnd)
+
+
 def on_cuda(config: dict) -> bool:
     """Whether the run's model goes on the GPU: `device: cuda`, or `auto` with one there."""
     device = str(config.get("device", "auto"))
@@ -261,6 +290,7 @@ def train(config: dict, name: str, seed: int, out: Path | None = None, force: bo
         th.set_num_threads(int(config["torch_threads"]))
     vec = make_vec_env(config)
     try:
+        vec = with_rnd(vec, config, seed)
         catalog = vec.env_method("option_catalog", indices=[0])[0]
         (run / "options.json").write_text(json.dumps([{"index": o.action, "id": o.id, "family": o.family}
                                                       for o in catalog], indent=0), encoding="utf-8")
@@ -272,7 +302,7 @@ def train(config: dict, name: str, seed: int, out: Path | None = None, force: bo
             model.decision_logger = DecisionLogger(run / "decisions", vec.num_envs)
         n_envs = vec.num_envs
         episodes = EpisodeTable()
-        callbacks = [episodes]
+        callbacks = [episodes] + ([RNDStats()] if config.get("rnd") else [])
         if config.get("checkpoint_every"):
             callbacks.append(CheckpointCallback(max(int(config["checkpoint_every"]) // n_envs, 1),
                                                 str(run / "checkpoints"), name_prefix="ppo"))

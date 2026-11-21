@@ -7151,6 +7151,65 @@ than exp." `m002-oq61`.
   step. A run's length is "training decisions", with its episodes beside it ("2M training decisions, about N
   episodes"). An episode's count is "decisions per episode". The configs, logs and docs stay as they are.
 
+### Decided: OQ-72, E4's RND bonus: its size, its centring and what it reads (Caleb)
+- **Raised:** 2026-11-10, while building E4's RND wrapper (`rlscape/agents/rnd.py`). Record `m002-e4-rnd`.
+- **Found:**
+  - At the normalised (.5, .5), the env's reward per decision has a mean of 0.65 to 1.25 and a spread (std) of about
+    1.5. That's measured on E2's best run and E3's (1, 0) seed 0, over 100k-decision windows early, mid and late.
+  - Scaled only by its spread, the bonus averaged about 3 times its spread per decision (a small test run).
+  - Decisions last from seconds to 15 game-minutes. A positive bonus on every decision would pay for more, shorter
+    decisions.
+  - Of the observation's 3,482 features, 2,293 are the action mask and 270 the candidates' rates. Both are derived
+    from the rest. 2 are the clock.
+- **(a) The bonus's size,** its spread per decision:
+  - **0.75, half the env's (recommended, chosen).** Burda et al.'s intrinsic-to-extrinsic ratio of 1 to 2. Strong
+    enough to change behaviour if H3 holds.
+  - **0.25, a sixth.** Less likely to cost reward, more likely to show nothing.
+  - **A sweep of both.** 10 runs, about 11 more machine-hours.
+- **(b) Centring:**
+  - **Centred, mean zero (recommended, chosen).** Its running mean is subtracted: novel states pay, familiar ones cost
+    a little, and no decision earns anything extra on average.
+  - **Uncentred, as Burda's.** Always positive. Its effect on discovery would be mixed with paying for short
+    decisions.
+- **(c) What it reads:**
+  - **The character's state, 917 features (recommended, chosen):** skills, total level, hitpoints and prayer, run
+    energy and weight, the home teleport's wait, the skull, pouches, wealth, inventory, bank, equipment, region, loot
+    mode, task, potions and access.
+  - **The full observation, 3,482.** Novelty would be mostly the mask's.
+  - **The full observation without the clock, 3,480.**
+- **Answer (Caleb, 2026-11-10 22:15 CST):** (a) 0.75, (b) centred, (c) the character's state.
+
+### Built: RND for E4 (rlscape/agents/rnd.py), and E4's configs
+- **`RNDReward`, a VecEnv wrapper** (ROADMAP §3's v1). After each step it scores each env's next state: the squared
+  error of a trained predictor against a fixed random target (MLPs, Burda's shapes), on the parts the config names.
+  - The bonus is `coef × (error − μ) / σ`, μ and σ the error's running mean and spread per decision (OQ-72). It's added
+    to the reward PPO learns from.
+  - The predictor trains on each rollout's states at its end (4 epochs, minibatches of 256, Adam 1e-4).
+  - Inputs are normalised by running statistics and clipped to ±5, as Burda's. The first rollout pays nothing; it
+    fills those statistics.
+  - Seeded from the run's seed.
+- **One value head.** Episodes end only at the 20-hour limit, which every run bootstraps, so the bonus isn't cut off
+  there.
+- **Kept apart:**
+  - infos carry `reward_extrinsic` and `r_intrinsic`;
+  - `episodes.parquet`'s `reward` stays the env's, with `r_intrinsic` beside it;
+  - the decision log has an `r_intrinsic` column; its `reward` is what PPO learned from;
+  - TensorBoard has `rnd/*`: the bonus's mean and spread, the error, the predictor's loss.
+- **The trainer:**
+  - an `rnd:` config section;
+  - `rnd.<setting>` can be swept;
+  - without it, a run is as before.
+- **Cost:** about 0.26 ms a decision (scoring and training), against about 15 ms of the sim's: under 2% more training
+  time.
+- **`configs/e4-rnd-exploration.yaml`:** E3's (.5, .5) with `rnd` added (checked setting for setting), so E3's runs at
+  (.5, .5) are E4's baseline, seed for seed. The eval config adds E1's baselines on the 30 seeds.
+- **Tests** (`tests/test_rnd.py`, 5), on real sim states:
+  - the bonus is the reward's difference from the env's, logged apart;
+  - a run with RND is repeatable;
+  - familiar states stop paying while new ones still do;
+  - a centred bonus averages about zero, and Burda's is positive;
+  - bad `rnd` sections are refused.
+  The trainer's own tests still pass (8).
 ### Built: reward parts kept apart in the learning curve and the decision log (tooling, E4 and E6b)
 - **Why:** E4's RND and E6b's PBRS each add to the env's reward during training. Their curves must still report the
   env's own reward, to compare with E3's, and the additions must be logged with every decision (CLAUDE.md's reward
@@ -7359,6 +7418,14 @@ Asked together after Caleb's question "Why don't any of the runs do anything wit
   the cumulative one −0.3. The recommendation had said it would average about zero at every stage. That holds once
   the error levels off, not in the first one or two percent of a run.
 - **E4 joins the training queue** with it.
+
+### Built: E4's bonus centred on a recent mean (OQ-79 (a))
+- `rlscape/agents/rnd.py`: `RecentStats`, an exponential moving average of the error's mean and second moment over
+  `ema_rollouts` (10) rollouts' steps, bias-corrected; the centred bonus uses it, the uncentred one keeps the
+  cumulative statistics. E4's config states `ema_rollouts: 10`.
+- **Tests** (`tests/test_rnd.py`, 6, with `tests/test_training.py` 11 passed): a falling error is followed by the
+  recent mean and lagged by the cumulative one; the short integration test checks what holds in its first rollouts.
+- Record `m002-oq79-rnd-centring`.
 
 ### Decided: OQ-80, E3 to E6 train on the GPU, deterministically (Caleb, 2026-11-11: (a))
 - **The question** (Caleb: "Why are the experiments not running on GPU?"; `m002-gpu`): Caleb chose CUDA torch on

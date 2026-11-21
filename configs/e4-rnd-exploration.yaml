@@ -1,0 +1,38 @@
+# E4, PPO + RND (RQ2, RQ4, H3; ROADMAP's finishing plan): PPO with random network distillation's exploration bonus
+# at the normalised (.5, .5), 5 seeds, against E3's (.5, .5), which is the same config without RND.
+# - Every setting but `rnd` is E3's (.5, .5): seeds 0 to 4, 2M decisions (OQ-69), E2's winner (OQ-65 (2)), the
+#   normalised weights (OQ-67; SimEnv's (.5, 9.18) on sim v1.2). So E3's runs at (.5, .5) are E4's baseline,
+#   seed for seed.
+# - RND (rlscape/agents/rnd.py; Caleb, 2026-11-10, OQ-72): the bonus's spread is 0.75, half the env's reward's per
+#   decision (about 1.5 at (.5, .5)), Burda et al.'s intrinsic-to-extrinsic ratio of 1 to 2 (a); centred, so it
+#   averages zero per decision (b); it reads the character's state, 917 of the observation's 3,482 features (c).
+# 5 runs, four at once: about 17 hours.
+#   uv run python scripts/train.py --config configs/e4-rnd-exploration.yaml --jobs 4
+#   uv run python scripts/publish_training.py runs/e4-rnd-exploration e4-rnd-exploration
+seeds: [0, 1, 2, 3, 4]
+total_decisions: 2_000_000
+n_envs: 4
+vec_env: subproc
+device: cuda  # the GPU, deterministically (Caleb, OQ-80 (a))
+torch_threads: 2
+env:
+  normalised_weights: [0.5, 0.5]
+ppo:
+  bootstrap_horizon: false  # the horizon is the task's end (env contract v1.46, 2026-11-15, m002-rerun)
+  discount_floor_ticks: 100  # each decision discounts as at least a game-minute (v1.46)
+  gamma_hr: 0.99
+  gae_lambda: 0.95
+  learning_rate: 3.0e-4
+  ent_coef: 0.01
+  n_steps: 256
+  batch_size: 1024
+  n_epochs: 4
+  policy_kwargs: {net_arch: [256, 256]}
+rnd:
+  coef: 0.75
+  centre: true
+  ema_rollouts: 10  # centred on a recent mean, over about the last 10 rollouts (Caleb, OQ-79 (a))
+  features: [skills, total_level, hitpoints_prayer, run_energy_weight, home_teleport, skull, pouches, wealth,
+             inventory, bank, equipment, region, loot_mode, task, potions, access]
+checkpoint_every: 100_000
+decision_log: true

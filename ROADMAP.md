@@ -99,7 +99,7 @@ ReinforcementScaping/
 | **What counts as wealth** | If equipment doesn't count toward bank value, buying an axe looks like losing money. The agent is penalized for investing, which biases the H1 test. | Wealth = GP + (bank + inventory + equipped items) × the **fixed** price table, i.e. net worth. |
 | **Skill reward normalization** | Raw XP grows exponentially per level, so high-level XP would dominate. Total level is the reported metric. | Reward fractional level gained (level + progress toward the next level) to match the reported metric. Wealth reward = Δnet worth / a fixed scale (100k GP). E3 to E6 give their weights in units of E1's best 20-hour gain on each objective, converted by `rlscape/envs/weights.py` (OQ-67, 2026-11-10). |
 | **Valuation table** | Runs are only comparable if net worth is computed the same way every time. | **Done (Caleb's formula):** `data/prices_v2.csv` = max(high alchemy − nature rune, January 2009 GE price from the RuneScape Wiki), coins = 1. Fixed for the whole study. `prices_v1` (the 10-hour snapshot) is superseded but kept. |
-| **RND with masking** | Neither SB3 nor sb3-contrib includes RND. | v1: a VecEnv wrapper that adds a normalized, non-episodic intrinsic reward for MaskablePPO. v2, only if v1 results are ambiguous: dual value heads, using CleanRL's `ppo_rnd_envpool.py` as reference. |
+| **RND with masking** | Neither SB3 nor sb3-contrib includes RND. | v1: a VecEnv wrapper that adds a normalized, non-episodic intrinsic reward for MaskablePPO. v2, only if v1 results are ambiguous: dual value heads, using CleanRL's `ppo_rnd_envpool.py` as reference. *Built 2026-11-10 as v1 (OQ-72):* the bonus is centred and scaled per decision, since options last seconds to 15 minutes; the 20-hour limit is bootstrapped, so it isn't cut off there. |
 | **Masking in Envelope Q** | MORL-Baselines' Envelope Q-learning has no action-mask support out of the box. | Patch action selection and the target max to set invalid Q to −∞, and store the next-state mask in the replay buffer. *Cut (OQ-17 (a′), 2026-11-09): a weight-conditioned PPO replaces Envelope Q.* |
 | **Bot helpers cut corners** (found Oct 5) | `ScriptAPI.sellOnGE`/`sellAllOnGe` delete the items and pay nothing (`GrandExchange.addBotOffer`). `buyFromGE` never dispatches. `teleportToGE` and `withdraw` skip travel. And any GE offer from an artificial player becomes a bot offer. | **Done:** the agent's character is an `RLPlayer`, treated as a human by every game rule. The bridge trades through the human GE path (`ge_offer` / `ge_collect`, only at the GE). Gathering and combat logic can still be borrowed from the bundled scripts. |
 | **Python version** | This machine has Python 3.14, and RL libraries lag new Python releases. | Use a `uv` project pinned to Python 3.12. |
@@ -371,6 +371,9 @@ train on sim v1.4.
 - [ ] **E3, the reward-weight sweep** (RQ1 to RQ3): (1,0), (.75,.25), (.5,.5), (.25,.75) and (0,1) in normalised
   units (OQ-67), 5 seeds each, 2M decisions a run (OQ-69), with E2's winner: λ 0.95, learning rate 3e-4, entropy 0.01.
 - [ ] **E4, PPO + RND** (RQ2, RQ4, H3): the RND wrapper, then PPO + RND at (.5,.5), 5 seeds, against E3's (.5,.5).
+  - The wrapper is built (2026-11-10, `rlscape/agents/rnd.py`) with Caleb's settings (OQ-72): a bonus spread of
+    0.75, centred, read from the character's state. `configs/e4-rnd-exploration.yaml` is E3's (.5,.5) plus
+    RND. It trains when E3 frees the machine.
 - [ ] **E5, the weight-conditioned PPO** (RQ3's second half): weights drawn each episode and given in the
   observation. Pareto coverage, hypervolume and training cost against E3's agents.
 - [ ] **E6** (RQ4), at (.5,.5) with 5 seeds each:
