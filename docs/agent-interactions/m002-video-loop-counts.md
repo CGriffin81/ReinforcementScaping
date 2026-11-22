@@ -8,8 +8,9 @@
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS. The video script's three loop-count [TO FILL]s are filled from the final census.
 - Commit: `355130f` on `main` (Caleb: "Commit it to main directly, keep eight of them in the main experiment, ...",
-  2026-11-22 13:08:55 CST); the banking edit in a docs commit to `main` after it (Caleb: "Name banking in section 7
-  and commit it to main directly", 13:13:38 CST).
+  2026-11-22 13:08:55 CST); the banking edit, `98de047` (Caleb: "Name banking in section 7 and commit it to main
+  directly", 13:13:38 CST); section 6's looping seeds in a docs commit to `main` after it (Caleb: "Mention the
+  looping seeds in section 6 and commit it", 13:15:08 CST).
 
 ## Full Prompt
 
@@ -76,10 +77,24 @@
   "Near-instant" covers both.
 - **The times:** 4 words longer, so section 7 runs 8:00 to 9:06 and the close 9:06 to 9:31.
 
+## Third Follow-Up Prompt
+
+> Mention the looping seeds in section 6 and commit it
+
+- **Section 6's RQ4 paragraph** now reads: "Plain PPO there averages level 263 and 588 thousand coins, but four of its
+  five seeds end training in a loop. The agent in the demo is the one that doesn't."
+  - It's E3's (.5, .5), which RQ4's three changes are compared with. Seeds 1 to 4 end looping by the census's rule,
+    and seed 0 is the demo's (the table above).
+  - "End training in a loop" is the census's count. In evaluation the same four average 1,541 to 7,686 decisions an
+    episode, against seed 0's 678.
+  - Which loops they are is left to section 7, which now names both kinds.
+- **The times:** section 6 is 21 words longer, so it runs 5:47 to 8:09, section 7 8:09 to 9:15, and the close 9:15
+  to 9:40. The header now says about 1,350 words: about 9¾ minutes, or about 8½ without the cut paragraphs.
+
 ## Documentation Changes
 
 - `docs/video-script.md`: section 7's counts, its and the close's times, and the header; then section 7's loop
-  sentence, naming banking.
+  sentence, naming banking; then section 6's looping seeds, and the times and length after it.
 - `docs/agent-interactions/m002-video-script.md`: a dated update on its "Not claimed" line.
 - This record.
 
@@ -94,7 +109,8 @@
 ## Decisions
 
 - **User decisions:** fill the loop counts (this prompt); commit it, and keep "eight of them in the main experiment"
-  (Caleb, 2026-11-22 13:08:55 CST); name banking in section 7 and commit it (13:13:38 CST).
+  (Caleb, 2026-11-22 13:08:55 CST); name banking in section 7 and commit it (13:13:38 CST); mention the looping
+  seeds in section 6 and commit it (13:15:08 CST).
 - **Agent choices:** the "ends looping" count (OQ-90 (a)'s second count) rather than "passes the marker", as the
   draft's wording asks; "still" dropped; the E3 share added; the banking sentence's wording.
 
@@ -107,7 +123,7 @@
 ## Follow-Up
 
 - **Caleb:** asked whether to commit and whether to keep "eight of them in the main experiment"; commit, and keep it
-  (13:08:55 CST). Done, as under Commit. Section 7 names banking (13:13:38 CST). Still open: whether section 6
-  should say that 4 of the 5 plain-PPO seeds at (.5, .5) end looping.
+  (13:08:55 CST). Done, as under Commit. Section 7 names banking (13:13:38 CST), and section 6 the looping seeds
+  (13:15:08 CST).
 - **Claude:** the script's other [TO FILL]s once the report's analysis gives them; the reviewer guide's claims table,
   its tag and RQ5's numbers.

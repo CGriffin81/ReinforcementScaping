@@ -3,8 +3,8 @@
 A draft for Caleb to read over a recording of the replay page, written 2026-11-20 (`m002-video-script`).
 
 - **How it reads:** **[SCREEN]** lines say what to show; the paragraphs under them are the narration. It's about
-  1,330 words: about 9½ minutes at 140 words a minute, and each section's times come from its words. The paragraphs
-  marked *(cut for a short version)* are about 165 words, so without them it's about 8 minutes. A shorter limit
+  1,350 words: about 9¾ minutes at 140 words a minute, and each section's times come from its words. The paragraphs
+  marked *(cut for a short version)* are about 165 words, so without them it's about 8½ minutes. A shorter limit
   needs real cuts (the simulator section and RQ4's list first).
 - **The numbers** are measured: each is an hour-20 mean from the published evaluation summaries (2026-11-19). A
   configuration's number is the mean over its 5 training seeds, each evaluated on the same 30 episodes. The demo's
@@ -160,7 +160,7 @@ some skill for eight times the wealth.
 In the middle of training it had the same plan but chased wealth harder: 1.5 million coins, but level 223. By the end
 it had rebalanced toward skill, which is what a half-and-half weight asks for.
 
-## 6. The results (5:47 to 8:00)
+## 6. The results (5:47 to 8:09)
 
 **[SCREEN]** The progress figure **[TO FILL: its name in `results/figures/`]**, with the baselines.
 
@@ -187,7 +187,8 @@ against 3.7 million. **[TO FILL: the hypervolume comparison, and whether one age
 **[SCREEN]** The learning curves for RQ4 (`learning_rq4`).
 
 Last, what changes which strategies are found? I tried three changes at the half-and-half weight. Plain PPO there
-averages level 263 and 588 thousand coins.
+averages level 263 and 588 thousand coins, but four of its five seeds end training in a loop. The agent in the demo
+is the one that doesn't.
 - An exploration bonus, random network distillation, ended lower on both: level 226 and 135 thousand coins.
   **[TO FILL: H3's verdict, the order activities are discovered in.]**
 - A shorter discount horizon pushed the agents toward wealth. At γ 0.5 per game-hour, they average 2.2 million
@@ -196,7 +197,7 @@ averages level 263 and 588 thousand coins.
   loops so much that its evaluation episodes hit the evaluator's limit of 100,000 decisions before hour twenty. Which
   brings me to what went wrong.
 
-## 7. What went wrong, and the limits (8:00 to 9:06)
+## 7. What went wrong, and the limits (8:09 to 9:15)
 
 **[SCREEN]** A looping run's learning curve: its decisions per episode jumping.
 
@@ -211,7 +212,7 @@ in the main experiment. Why is untested.
 the server itself. Quests are out of scope. And the low-level actions, like walking and clicking, are scripted, not
 learned: I could only bound what learning them might add.
 
-## 8. Close (9:06 to 9:31)
+## 8. Close (9:15 to 9:40)
 
 **[SCREEN]** The repository's README.
 
