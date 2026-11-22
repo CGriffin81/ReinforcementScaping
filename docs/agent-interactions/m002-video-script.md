@@ -45,7 +45,8 @@
   and E6b's unpublished summary). E6b's mean is over the 4 seeds that reach hour 20 (OQ-91 (b)). The simulator's
   "533 of 548" is from `results/summary/sim-to-real/`.
 - **Not claimed:** H1 to H3's verdicts, E5's hypervolume, the final loop counts and the figures' names are [TO FILL].
-  The loop paragraph follows OQ-89 (a): the counts by discount, and the cause at γ_hr 0.99 untested.
+  The loop paragraph follows OQ-89 (a): the counts by discount, and the cause at γ_hr 0.99 untested. *Updated
+  2026-11-22:* the loop counts are filled from the final census (`m002-video-loop-counts`).
 - **The repository is private** (`gh repo view`). The script's header says so: the graders need access to the link.
 
 ## Documentation Changes

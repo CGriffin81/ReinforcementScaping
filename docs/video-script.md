@@ -3,14 +3,18 @@
 A draft for Caleb to read over a recording of the replay page, written 2026-11-20 (`m002-video-script`).
 
 - **How it reads:** **[SCREEN]** lines say what to show; the paragraphs under them are the narration. It's about
-  1,320 words: about 9½ minutes at 140 words a minute, and each section's times come from its words. The paragraphs
+  1,330 words: about 9½ minutes at 140 words a minute, and each section's times come from its words. The paragraphs
   marked *(cut for a short version)* are about 165 words, so without them it's about 8 minutes. A shorter limit
   needs real cuts (the simulator section and RQ4's list first).
 - **The numbers** are measured: each is an hour-20 mean from the published evaluation summaries (2026-11-19). A
   configuration's number is the mean over its 5 training seeds, each evaluated on the same 30 episodes. The demo's
   numbers are one episode, seed 0, the same one the evaluation scored.
-- **[TO FILL]** marks what waits on the report's analysis: the verdicts on H1 to H3, the final loop counts, and the
-  figures' names. Nothing here claims a verdict.
+- **[TO FILL]** marks what waits on the report's analysis: the verdicts on H1 to H3, the hypervolume comparison, and
+  the figures' names. Nothing here claims a verdict.
+- **The loop counts** (section 7, filled 2026-11-22) are the final census's (decision log, 2026-11-20), by OQ-90
+  (a)'s rule: runs whose last 100k-decision block averages over 1,000 decisions an episode, the first round against
+  the rerun. At γ_hr 0.5 and 0.9 that's 4 of 10 against none; at 0.99, 6 of 40 against 10 (8 of the rerun's 10 in
+  E3).
 - **The repository is private.** The graders need to open the link, so it has to be public, or shared with them,
   before you submit.
 
@@ -192,22 +196,22 @@ averages level 263 and 588 thousand coins.
   loops so much that its evaluation episodes hit the evaluator's limit of 100,000 decisions before hour twenty. Which
   brings me to what went wrong.
 
-## 7. What went wrong, and the limits (8:00 to 9:00)
+## 7. What went wrong, and the limits (8:00 to 9:05)
 
 **[SCREEN]** A looping run's learning curve: its decisions per episode jumping.
 
 Some agents learn to loop. They repeat near-instant options, like changing which loot to pick up, which take one
 game tick and earn nothing, thousands of times an episode. Partway through the project, I changed two things in the
 trainer. I fixed a bug in how it handled an episode's time limit, and I gave every decision a minimum cost in game
-time. Then I retrained all fifty runs. After that, **[TO FILL: N]** of the 10 runs at the shorter discount horizons
-end looping, against **[TO FILL: the first round's]** before. At γ 0.99, **[TO FILL: N]** of 40 still do, and why is
+time. Then I retrained all fifty runs. After that, none of the 10 runs at the shorter discount horizons end looping,
+against 4 before. But at γ 0.99, 10 of 40 do, against 6 before, eight of them in the main experiment. Why is
 untested.
 
 *(cut for a short version)* There are limits too. Everything is in a simulator, checked against the server but not
 the server itself. Quests are out of scope. And the low-level actions, like walking and clicking, are scripted, not
 learned: I could only bound what learning them might add.
 
-## 8. Close (9:00 to 9:24)
+## 8. Close (9:05 to 9:29)
 
 **[SCREEN]** The repository's README.
 
