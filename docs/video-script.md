@@ -196,22 +196,22 @@ averages level 263 and 588 thousand coins.
   loops so much that its evaluation episodes hit the evaluator's limit of 100,000 decisions before hour twenty. Which
   brings me to what went wrong.
 
-## 7. What went wrong, and the limits (8:00 to 9:05)
+## 7. What went wrong, and the limits (8:00 to 9:06)
 
 **[SCREEN]** A looping run's learning curve: its decisions per episode jumping.
 
-Some agents learn to loop. They repeat near-instant options, like changing which loot to pick up, which take one
-game tick and earn nothing, thousands of times an episode. Partway through the project, I changed two things in the
-trainer. I fixed a bug in how it handled an episode's time limit, and I gave every decision a minimum cost in game
-time. Then I retrained all fifty runs. After that, none of the 10 runs at the shorter discount horizons end looping,
-against 4 before. But at γ 0.99, 10 of 40 do, against 6 before, eight of them in the main experiment. Why is
-untested.
+Some agents learn to loop. They repeat near-instant options that earn nothing, thousands of times an episode:
+changing which loot to pick up, or depositing items at the bank and withdrawing them again. Partway through the
+project, I changed two things in the trainer. I fixed a bug in how it handled an episode's time limit, and I gave
+every decision a minimum cost in game time. Then I retrained all fifty runs. After that, none of the 10 runs at the
+shorter discount horizons end looping, against 4 before. But at γ 0.99, 10 of 40 do, against 6 before, eight of them
+in the main experiment. Why is untested.
 
 *(cut for a short version)* There are limits too. Everything is in a simulator, checked against the server but not
 the server itself. Quests are out of scope. And the low-level actions, like walking and clicking, are scripted, not
 learned: I could only bound what learning them might add.
 
-## 8. Close (9:05 to 9:29)
+## 8. Close (9:06 to 9:31)
 
 **[SCREEN]** The repository's README.
 

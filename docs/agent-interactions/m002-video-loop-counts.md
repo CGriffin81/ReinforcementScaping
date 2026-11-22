@@ -7,8 +7,9 @@
 - Agent: Claude Code (desktop app, Code tab)
 - Model: Claude Opus 5.5 (`claude-opus-5-5`)
 - Status: SUCCESS. The video script's three loop-count [TO FILL]s are filled from the final census.
-- Commit: a docs commit to `main` after `04755d1` (Caleb: "Commit it to main directly, keep eight of them in the main
-  experiment, ...", 2026-11-22 13:08:55 CST).
+- Commit: `355130f` on `main` (Caleb: "Commit it to main directly, keep eight of them in the main experiment, ...",
+  2026-11-22 13:08:55 CST); the banking edit in a docs commit to `main` after it (Caleb: "Name banking in section 7
+  and commit it to main directly", 13:13:38 CST).
 
 ## Full Prompt
 
@@ -65,9 +66,20 @@
     seeds in it don't pass the 1,000-decision marker. The census's first-round E3 looper is (0, 1) seed 1.
 - **Section 7's example,** "like changing which loot to pick up", is one of the two kinds. Banking is the other.
 
+## Second Follow-Up Prompt
+
+> Name banking in section 7 and commit it to main directly
+
+- **Section 7's loop sentence** now names both kinds: "They repeat near-instant options that earn nothing, thousands
+  of times an episode: changing which loot to pick up, or depositing items at the bank and withdrawing them again."
+- **"Which take one game tick" is gone:** a bank deposit or withdrawal takes about 8 ticks, so it no longer fits both.
+  "Near-instant" covers both.
+- **The times:** 4 words longer, so section 7 runs 8:00 to 9:06 and the close 9:06 to 9:31.
+
 ## Documentation Changes
 
-- `docs/video-script.md`: section 7's counts, its and the close's times, and the header.
+- `docs/video-script.md`: section 7's counts, its and the close's times, and the header; then section 7's loop
+  sentence, naming banking.
 - `docs/agent-interactions/m002-video-script.md`: a dated update on its "Not claimed" line.
 - This record.
 
@@ -82,9 +94,9 @@
 ## Decisions
 
 - **User decisions:** fill the loop counts (this prompt); commit it, and keep "eight of them in the main experiment"
-  (Caleb, 2026-11-22 13:08:55 CST).
+  (Caleb, 2026-11-22 13:08:55 CST); name banking in section 7 and commit it (13:13:38 CST).
 - **Agent choices:** the "ends looping" count (OQ-90 (a)'s second count) rather than "passes the marker", as the
-  draft's wording asks; "still" dropped; the E3 share added.
+  draft's wording asks; "still" dropped; the E3 share added; the banking sentence's wording.
 
 ## Validation
 
@@ -95,7 +107,7 @@
 ## Follow-Up
 
 - **Caleb:** asked whether to commit and whether to keep "eight of them in the main experiment"; commit, and keep it
-  (13:08:55 CST). Done, as under Commit. Still open: whether section 6 should say that 4 of the 5 plain-PPO seeds at
-  (.5, .5) end looping, and whether section 7 should name banking beside the loot settings.
+  (13:08:55 CST). Done, as under Commit. Section 7 names banking (13:13:38 CST). Still open: whether section 6
+  should say that 4 of the 5 plain-PPO seeds at (.5, .5) end looping.
 - **Claude:** the script's other [TO FILL]s once the report's analysis gives them; the reviewer guide's claims table,
   its tag and RQ5's numbers.
