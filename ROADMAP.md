@@ -244,9 +244,9 @@ confirmed every env contract version (to v1.37) and option catalog v1.4 the same
   replaced Envelope Q needs none. SimEnv's `info["reward_vec"]` is the vector reward.*
 - [ ] Envelope Q-learning from MORL-Baselines with the action-mask patch. *Cut (OQ-17 (a′)): replaced by a
   weight-conditioned PPO, the finishing plan's E5 (PR #36).*
-- [ ] Pareto front and hypervolume (fixed reference point) for E4 against the union of E2 agents, plus a
-  training-cost comparison in env steps and wall time. *The front and hypervolume are done for the finishing plan's
-  E5 against E3's agents (`scripts/figures.py`'s `pareto`). The training cost isn't tabled yet (see E5 below).*
+- [x] Pareto front and hypervolume (fixed reference point) for E4 against the union of E2 agents, plus a
+  training-cost comparison in env steps and wall time. *Done for the finishing plan's E5 against E3's agents
+  (`scripts/figures.py`'s `pareto`, and its training-cost tables from 2026-11-21; see E5 below).*
 - [x] **Midpoint review:** confirm E1–E5 are solid, then choose the stretch experiment or cut it. *Done 2026-11-09:
   the finishing plan (OQ-17 (a′)) cut the stretch.*
 
@@ -397,8 +397,8 @@ in the decision log (`m002-final-census`).
   observation. Pareto coverage, hypervolume and training cost against E3's agents.
   - *Built 2026-11-10* (`rlscape/agents/conditioned.py`; Caleb, OQ-74): u ~ U[0, 1] each episode, 2M decisions a
     run, evaluated at E3's five weightings and every 0.1 (13). *Done (PR #36).* The Pareto coverage and hypervolume
-    are in the figures. The training cost isn't tabled yet: each run's decisions and wall time are in its summary's
-    `training/runs.csv`.
+    are in the figures. *Added 2026-11-21:* the training cost, per front as the hypervolumes are
+    (`training_cost.csv`): E3's five agents at a seed take 10.0M decisions and 38.1 hours, E5's one 2.0M and 8.4.
 - [x] **E6** (RQ4), at (.5,.5) with 5 seeds each:
   - **E6a:** two more γ_hr values (§3's set: 0.5, 0.9, 0.99). *Done (PR #34).*
   - **E6b:** raw reward against PBRS. Φ is §3's candidate, the best GP/hr the current unlocks allow, confirmed when

@@ -7,6 +7,10 @@ with its plotted values as <name>.csv (its table view), and the measures' tables
 - `verdicts.csv` and `changepoints.csv`: each run's, under OQ-82 (c)'s rule and OQ-78 (a)'s;
 - `discovery.csv`: each run's (OQ-76);
 - `hypervolume.csv` and `hypervolume_per_seed.csv` (OQ-77);
+- `training_cost_per_seed.csv` and `training_cost.csv`: E5's training cost against E3's (ROADMAP's E5). Per training
+  seed, what the front `hypervolume_per_seed.csv` scores cost to train: E3's five agents at that seed, one per
+  weighting, or E5's one agent. That is its runs, decisions (the SMDP's env steps), episodes and wall hours. Per method,
+  the mean front's cost with a 95% CI over the seeds, and the totals;
 - `sample_efficiency.csv`: each run's decisions to match the best greedy baseline at its weighting (OQ-84);
 - `milestones.csv` and `milestones_summary.csv`: each evaluation episode's hours to 50% and 100% of E1's ideal point
   on each objective, and per series the share that got there and the median (OQ-83);
@@ -113,6 +117,10 @@ class Summaries:
     def evaluation(self, experiment: str, table: str) -> pd.DataFrame | None:
         return self._read(self.root / experiment / table)
 
+    def runs(self, experiment: str) -> pd.DataFrame | None:
+        """An experiment's trained runs (`training/runs.csv`): each run's decisions, episodes and wall time."""
+        return self._read(self.root / experiment / "training" / "runs.csv")
+
 
 def trained_series(experiment: str, policies: pd.Series) -> pd.Series:
     """Each evaluated policy's series (a baseline keeps its name; E5's adds its weighting)."""
@@ -183,6 +191,33 @@ def round_summary(per_seed: pd.DataFrame) -> pd.DataFrame:
                                                                                              "ci_high"))
     order = [series_name(E3, v) for v in MIXED]  # a series' two rounds next to each other, the first round first
     return table.reset_index().sort_values("series", key=lambda s: s.map(order.index), kind="stable")
+
+
+def training_cost(data: Summaries) -> tuple[pd.DataFrame, pd.DataFrame] | None:
+    """E5's training cost against E3's, per front: a row per method and training seed with the runs that train the
+    front (E3's five at that seed, E5's one), their decisions, episodes and wall hours, and the sims' commits; then per
+    method the mean front's decisions and wall hours (with a 95% CI over the seeds) and the totals. None unless both
+    training summaries are published. Wall time is each run's own, and the queue trained five runs at once on one
+    machine, so it's comparable between E3's runs and E5's, which shared that load, but it isn't a run's speed alone."""
+    runs = {method: data.runs(experiment) for method, experiment in zip(METHODS, (E3, E5))}
+    if any(r is None for r in runs.values()):
+        return None
+    rows = []
+    for method, table in runs.items():
+        for seed, group in table.groupby("seed"):
+            rows.append({"method": method, "train_seed": int(seed), "runs": len(group),
+                         "decisions": int(group["decisions"].sum()), "episodes": int(group["episodes"].sum()),
+                         "wall_hours": group["wall_seconds"].sum() / 3600,
+                         "git_sha": " ".join(sorted({sha[:7] for sha in group["git_sha"]}))})
+    per_front = pd.DataFrame(rows)
+    cost = per_front.groupby("method", sort=False).agg(seeds=("train_seed", "size"),
+                                                       runs_per_front=("runs", "mean"),
+                                                       decisions_per_front=("decisions", "mean"))
+    wall = ms.over_seeds(per_front, ["method"], "wall_hours").set_index("method")
+    cost["wall_hours_per_front"], cost["wall_hours_low"], cost["wall_hours_high"] = (wall[c] for c in (
+        "mean", "ci_low", "ci_high"))
+    totals = per_front.groupby("method", sort=False)[["runs", "decisions", "wall_hours"]].sum()
+    return per_front, cost.join(totals).reset_index()
 
 
 def build(summary: Path, out: Path, curve_bin: int = ms.CURVE_BIN) -> list[str]:
@@ -373,6 +408,15 @@ def build(summary: Path, out: Path, curve_bin: int = ms.CURVE_BIN) -> list[str]:
 
     attempt("progress", "E3's evaluation summary", progress)
     attempt("pareto", "E3's evaluation summary and E1's", pareto)
+
+    # --- E5's training cost against E3's (ROADMAP's E5), per front as the hypervolumes are ---
+    cost = training_cost(data)
+    if cost is not None:
+        save_table(cost[0], out / "training_cost_per_seed.csv")
+        save_table(cost[1], out / "training_cost.csv")
+        print("made     training_cost tables")
+    else:
+        skipped.append("training_cost tables (needs E3's and E5's training summaries)")
 
     # --- OQ-92 (b): E3's first round beside the rerun at the mixed weightings, for the discussion ---
     rounds = [gem_store_round(data, experiment, label) for label, experiment in (("first round", E3_FIRST),

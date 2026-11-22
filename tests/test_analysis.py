@@ -295,6 +295,31 @@ def test_an_options_share_is_its_decisions_durations_over_the_episodes():
 
 # --- the figure script ----------------------------------------------------------------------------------------------
 
+def test_the_training_cost_is_per_training_seed_what_one_front_costs(tmp_path):
+    # E3's front at a seed is its five agents, one per weighting (1 to 5 hours each); E5's is its one agent
+    figures = _script()
+    e3 = pd.DataFrame([{"variant": v, "seed": s, "git_sha": "a" * 40, "decisions": 100, "episodes": 2,
+                        "wall_seconds": 3600.0 * (i + 1)} for i, v in enumerate(figures.WEIGHTINGS) for s in (1, 0)])
+    e5 = pd.DataFrame({"variant": "", "seed": [0, 1], "git_sha": ["b" * 40, "c" * 40], "decisions": 100,
+                       "episodes": 3, "wall_seconds": [7200.0, 10800.0]})
+    for experiment, runs in ((figures.E3, e3), (figures.E5, e5)):
+        (tmp_path / experiment / "training").mkdir(parents=True)
+        runs.to_csv(tmp_path / experiment / "training" / "runs.csv", index=False)
+    per_front, cost = figures.training_cost(figures.Summaries(tmp_path))
+    e3_name, e5_name = figures.METHODS
+    assert per_front[["method", "train_seed", "runs", "decisions", "episodes", "wall_hours", "git_sha"]
+                     ].values.tolist() == [[e3_name, 0, 5, 500, 10, 15.0, "aaaaaaa"],
+                                           [e3_name, 1, 5, 500, 10, 15.0, "aaaaaaa"],
+                                           [e5_name, 0, 1, 100, 3, 2.0, "bbbbbbb"],
+                                           [e5_name, 1, 1, 100, 3, 3.0, "ccccccc"]]
+    assert cost[["method", "seeds", "runs_per_front", "decisions_per_front", "wall_hours_per_front", "runs",
+                 "decisions", "wall_hours"]].values.tolist() == [[e3_name, 2, 5, 500, 15.0, 10, 1000, 30.0],
+                                                                 [e5_name, 2, 1, 100, 2.5, 2, 200, 5.0]]
+    assert cost[["wall_hours_low", "wall_hours_high"]].values.tolist() == [[15.0, 15.0], [2.0, 3.0]]
+    shutil.rmtree(tmp_path / figures.E5)  # no table without both experiments
+    assert figures.training_cost(figures.Summaries(tmp_path)) is None
+
+
 @needs_server_data
 def test_the_figure_script_rebuilds_every_figure_its_published_summaries_allow(trained, tmp_path):
     from rlscape.eval.harness import run_tables, save, summarize

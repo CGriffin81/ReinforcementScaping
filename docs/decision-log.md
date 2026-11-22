@@ -8430,3 +8430,30 @@ rerun's at 0.82M (the finding above).
     spends at most 0.12%.
   - So the first round's (.25, .75) owes its wealth to the loop. Without it, its seed 2 (0.83M, level 230) is where
     the rerun's five are (0.73–0.93M).
+
+### Built: E5's training cost against E3's (2026-11-21)
+
+- **Found (`m002-roadmap-boxes`):** the plan compares E5 with E3's agents on training cost (ROADMAP's E5; the
+  proposal's E4 "in env steps and wall time"), and nothing tabled it. Each run's decisions and wall time were in its
+  summary's `training/runs.csv`.
+- **Caleb (2026-11-21 19:04:48 CST): add the table**, Claude's recommendation. The other option was to leave the
+  comparison to the report's text.
+- **The table:** `scripts/figures.py`'s `training_cost`, per front, as `hypervolume_per_seed.csv` scores it: at each
+  training seed, E3's five agents (one per weighting) or E5's one.
+  - `training_cost_per_seed.csv`: each front's runs, decisions, episodes, wall hours, and its runs' commits.
+  - `training_cost.csv`: the mean front, with a 95% CI over the seeds, and the totals.
+- **What it shows** (5 training seeds each; the hypervolume is `hypervolume.csv`'s):
+
+  | Method | Runs per front | Decisions per front | Wall hours per front | Hypervolume |
+  |---|---|---|---|---|
+  | E3: an agent per weighting | 5 | 10.0M | 38.1 [35.9, 40.2] | 0.373 [0.278, 0.484] |
+  | E5: one weight-conditioned agent | 1 | 2.0M | 8.4 [7.9, 8.8] | 0.394 [0.360, 0.456] |
+
+  - E5's front takes a fifth of E3's decisions and 22% of its wall time, and its hypervolume's CI lies inside E3's.
+  - In all, E3's 25 runs took 50.0M decisions and 190.7 run-hours; E5's 5 took 10.0M and 42.2.
+  - A run's wall time for its 2M decisions depends on what it does: E3's (0, 1) runs took 4.2 to 5.3 hours, its
+    (1, 0) runs 9.3 to 11.0, and E5's 7.3 to 8.9.
+- **The wall time's caveat:** it's each run's own, as its `run.json` timed it, and the queue trained five runs at once
+  on one machine. From the runs' starts and ends (`run.json`'s `finished` less its wall time), every E3 and E5 run had
+  on average 3.8 to 4.0 others beside it. The exception is E5's seed 4, with 2.8 at the queue's tail; its 7.3 hours
+  is the fastest. So E3's runs and E5's shared one load, but no run's wall time is its speed alone.
