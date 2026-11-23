@@ -8511,3 +8511,14 @@ training seeds a variant) and its training summaries.
   - **`mix_divergence.csv` (`rlscape/analysis/measures.py`'s `divergence_between`):** per pair of E3's weightings,
     the mean divergence between a seed of each over all 25 pairs, with a bootstrap 95% CI. It's read beside
     `consistency.csv`.
+
+### Fixed: the hour-2 comparison names the best baseline (2026-11-23)
+Found while checking the progress report's numbers (`m002-progress-report`), fixed at Caleb's request
+(`m002-readme-hour2`).
+- **The slip:** the reviewer's guide's RQ1 row, and H1's evidence above (2026-11-22), compared the all-skill agents'
+  level at hour 2 (121) with the guide's 97. The guide is the best baseline on level at hour 20 (351), but at hour 2
+  it's greedy XP/hr, at 106 (CI 105.3–105.8; `results/figures/progress.csv`). On net worth, greedy GP/hr's 108k is
+  already the best at hour 2.
+- **What it changes:** nothing in the results or H1's verdict. The all-skill agents lead every baseline at hour 2
+  either way (121, CI 118.1–123.6), so "they lead from the first checkpoint" stands. The guide's RQ1 row now names
+  greedy XP/hr's 106, as the progress report does.
