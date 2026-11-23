@@ -1,0 +1,94 @@
+/* The progress report's print style, in APA 7 student-paper format: Letter pages with 1-inch margins, the page number
+   top right, Times New Roman 12 pt, double-spaced, paragraphs indented 0.5 in, ragged right. Headings: level 1
+   centred bold, level 2 flush left bold, level 3 flush left bold italic, level 4 indented bold and run in. Tables and
+   figures: the number in bold above, the title in italics under it, a note below; tables have horizontal rules only.
+   Printed to PDF by scripts/progress_report.py with headless Edge. */
+
+@page {
+  size: Letter;
+  margin: 1in;
+  @top-right {
+    content: counter(page);
+    font: 12pt "Times New Roman", Times, serif;
+    color: #000000;
+  }
+}
+
+html { background: #ffffff; }
+
+body {
+  margin: 0;
+  color: #000000;
+  font: 12pt/2 "Times New Roman", Times, serif;
+}
+
+p { margin: 0; text-indent: 0.5in; }
+
+/* --- the title page ------------------------------------------------------------------------------------------- */
+
+.title-page { break-after: page; text-align: center; }
+.title-page p { text-indent: 0; }
+.title-page .title { margin-top: 1.33in; font-weight: 700; }   /* three to four lines down */
+.title-page .gap { height: 2em; }                              /* one blank double-spaced line */
+
+/* --- headings ------------------------------------------------------------------------------------------------- */
+
+h1, h2, h3, h4 { margin: 0; font-size: 12pt; line-height: 2; break-after: avoid; }
+h1, h2 { font-weight: 700; text-align: center; }               /* the paper's title, and level 1 */
+h3 { font-weight: 700; text-align: left; }                     /* level 2 */
+h4 { font-weight: 700; font-style: italic; text-align: left; } /* level 3 */
+.l4 { font-weight: 700; }                                      /* level 4: in an indented paragraph, run in */
+
+/* --- lists and quotations ------------------------------------------------------------------------------------- */
+
+ul { margin: 0; padding-left: 0.75in; }
+li { margin: 0; }
+blockquote { margin: 0 0 0 0.5in; }
+blockquote p { text-indent: 0; }
+blockquote ul { padding-left: 0.25in; list-style: none; }
+
+/* --- tables --------------------------------------------------------------------------------------------------- */
+
+.apa-table { margin: 0 0 2em; }
+.table-number, .figure-number { text-indent: 0; font-weight: 700; break-after: avoid; }
+.table-title, .figure-title { text-indent: 0; font-style: italic; break-after: avoid; }
+.table-note, .figure-note { text-indent: 0; }
+
+table {
+  width: 100%;
+  margin: 0;
+  border-collapse: collapse;
+  border-top: 1px solid #000000;
+  border-bottom: 1px solid #000000;
+  font-size: 12pt;
+  line-height: 1.15;                                           /* the table body may be single-spaced */
+  break-inside: auto;
+}
+thead { display: table-header-group; }
+tr { break-inside: avoid; }
+th, td { padding: 3pt 6pt; text-align: left; vertical-align: top; }
+th {
+  border-bottom: 1px solid #000000;
+  font-weight: 400;
+  text-align: center;
+  vertical-align: bottom;
+}
+th:first-child { text-align: left; }                           /* the stub heading */
+td.num { text-align: center; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* --- figures -------------------------------------------------------------------------------------------------- */
+
+figure { margin: 0 0 2em; break-inside: avoid; }
+figure img { display: block; width: 100%; margin: 4pt auto; }
+figure.wide img { width: 92%; }
+figure.narrow img { width: 80%; }
+figure.half img { width: 66%; }
+figure.mix img { width: 62%; }                                 /* the activity mix: it fits under its paragraph */
+/* --- the reference list --------------------------------------------------------------------------------------- */
+
+.references { break-before: page; }
+.references p { padding-left: 0.5in; text-indent: -0.5in; }
+
+code { font: 11pt Consolas, "Courier New", monospace; }
+.page-break { break-before: page; }
+.keep { break-inside: avoid; }

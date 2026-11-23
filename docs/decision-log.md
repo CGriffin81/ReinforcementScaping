@@ -8522,3 +8522,29 @@ Found while checking the progress report's numbers (`m002-progress-report`), fix
 - **What it changes:** nothing in the results or H1's verdict. The all-skill agents lead every baseline at hour 2
   either way (121, CI 118.1–123.6), so "they lead from the first checkpoint" stands. The guide's RQ1 row now names
   greedy XP/hr's 106, as the progress report does.
+
+### Found: what "woodcutting" and plain PPO's wealth are made of (2026-11-23)
+Asked by Caleb with the progress report's APA version (`m002-progress-report-apa`): are the agents choosing between
+chop-and-fletch and chop-and-burn, or only chopping; and if plain PPO doesn't "discover" buying and selling, how does
+it gain wealth? Measured by replaying evaluation episodes (the harness's seeds and sampled actions, so the replays are
+the evaluation's episodes) and reading the path each skilling slot held and the final holdings (scratch scripts, not
+in the repo).
+- **Woodcutting is three activities.** Each woodcutting slot holds a path that keeps the logs, burns them where they
+  are cut (Firemaking) or fletches them (Fletching); the activity mix files all three as woodcutting (OQ-76). The
+  agents choose between them:
+  - (1, 0), four of five runs (120 episodes): woodcutting is 21.4% of game time, 13.6% chop-and-burn (willows,
+    oaks, logs) and 7.8% chop-and-fletch (mostly normal logs); almost none kept.
+  - (.75, .25), one run so far: 22.3%, 18.5% burn, 3.6% fletch.
+  - (.25, .75), all five runs (150 episodes): 96.7%, of which 91.6% is chopping normal logs and fletching them into
+    arrow shafts, 3.5% chopping and keeping yews, 1.2% burning. Arrow shafts (5 gp each, stacking in one slot) are
+    94.2% of the final net worth summed over the episodes, yew logs 5.0%.
+- **Plain PPO trades, too rarely to count as discovered.** Discovery is the first 100k-decision block in which an
+  activity takes at least 5% of game time. In evaluation, plain PPO at (.5, .5) spends 21.4% of its game time
+  banking (partly the banking loops), 1.4% buying and 0.1% selling (`results/figures/mix.csv`); RND spends 18.2%
+  buying and 17.8% selling. Net worth counts every item held, banked or worn at its price, so selling isn't needed:
+  in episode 0 of each of plain PPO's five runs the wealth is mostly banked herb seeds from Master Farmers (seeds 0
+  and 1; snapdragon 37,500 gp and ranarr 22,700 gp a seed) or arrow shafts (seeds 2 to 4, the largest part). Over
+  seed 0's 30 episodes, seeds are 94.4% of the final net worth.
+- **Where it shows:** the progress report's RQ3 and H3 paragraphs; the reviewer's guide's RQ3 row and the video
+  script's section 6, which had said "woodcutting alone" and "almost all woodcutting" (Caleb,
+  `m002-woodcutting-wording`).

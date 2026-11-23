@@ -3,7 +3,7 @@
 A draft for Caleb to read over a recording of the replay page, written 2026-11-20 (`m002-video-script`).
 
 - **How it reads:** **[SCREEN]** lines say what to show; the paragraphs under them are the narration. It's about
-  1,525 words: about 11 minutes at 140 words a minute, and each section's times come from its words. The paragraphs
+  1,535 words: about 11 minutes at 140 words a minute, and each section's times come from its words. The paragraphs
   marked *(cut for a short version)* are about 175 words, so without them it's about 9¾ minutes. A shorter limit
   needs real cuts (the simulator section and RQ4's list first).
 - **The numbers** are measured: each is an hour-20 mean from the published evaluation summaries (2026-11-19). A
@@ -96,7 +96,7 @@ spend hours on something that earns little, so that later activities earn far mo
 that chooses between whole activities can learn plans like that, and beat sensible hand-made strategies. And how does
 the balance between two goals, skill and wealth, change what it learns?
 
-## 3. The formulation (1:01 to 2:42)
+## 3. The formulation (1:01 to 2:44)
 
 **[SCREEN]** The formulation (the slides' slide 2): state, then an option, then τ game ticks later, the reward and the
 next state.
@@ -118,7 +118,7 @@ Options take very different amounts of time, from a fraction of a second to over
 game time: a reward τ ticks later is discounted by γ to the power τ, with γ set per game-hour. The learner is PPO
 with action masking, with that discount built into its advantage estimates.
 
-## 4. The simulator (2:42 to 3:25)
+## 4. The simulator (2:44 to 3:27)
 
 **[SCREEN]** The sim-to-real table (`results/summary/sim-to-real/README.md`), then the repository's `rlscape/sim/`.
 
@@ -128,7 +128,7 @@ trading times, is measured on a local copy of the server, which I modified so an
 inside it. Then every kind of option was checked against the server: 533 of 548 measurements are within plus or
 minus 20 percent, and each one outside is explained. Every result in this video comes from the simulator.
 
-## 5. The demo (3:25 to 5:47)
+## 5. The demo (3:27 to 5:48)
 
 **[SCREEN]** The top of the replay page: the four bands of "What each replay did, over 20 game-hours".
 
@@ -168,7 +168,7 @@ some skill for eight times the wealth.
 In the middle of training it had the same plan but chased wealth harder: 1.5 million coins, but level 223. By the end
 it had rebalanced toward skill, which is what a half-and-half weight asks for.
 
-## 6. The results (5:47 to 9:23)
+## 6. The results (5:48 to 9:26)
 
 **[SCREEN]** The progress figure (`progress`), with the baselines.
 
@@ -192,8 +192,8 @@ they win, at the ends, they're ahead from hour two, and the all-wealth agents wi
 **[SCREEN]** The activity-mix figure (`mix`).
 
 The second, that each weighting finds its own mix of activities, is partly supported too. Toward wealth, yes: a
-quarter skill is almost all woodcutting, and all wealth is buying uncut gems in a shop and selling them on the Grand
-Exchange. But all skill and three-quarters skill share one mix.
+quarter skill almost only chops logs and fletches them into arrow shafts, and all wealth is buying uncut gems in a
+shop and selling them on the Grand Exchange. But all skill and three-quarters skill share one mix.
 
 *(cut for a short version)* **[SCREEN]** The trade-off figure (`pareto`) again, with E5's points.
 
@@ -216,7 +216,7 @@ is the one that doesn't.
   loops so much that its evaluation episodes hit the evaluator's limit of 100,000 decisions before hour twenty. Which
   brings me to what went wrong.
 
-## 7. What went wrong, and the limits (9:23 to 10:29)
+## 7. What went wrong, and the limits (9:26 to 10:33)
 
 **[SCREEN]** A looping run's learning curve: its decisions per episode jumping.
 
@@ -231,7 +231,7 @@ in the main experiment. Why is untested.
 the server itself. Quests are out of scope. And the low-level actions, like walking and clicking, are scripted, not
 learned: I could only bound what learning them might add.
 
-## 8. Close (10:29 to 10:53)
+## 8. Close (10:33 to 10:57)
 
 **[SCREEN]** The repository's README.
 

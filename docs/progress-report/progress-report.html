@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Learning to Climb: Progress Report</title>
+<link rel="stylesheet" href="report.css">
+</head>
+<body>
+
+<div class="title-page">
+<p class="title">Learning to Climb: Hierarchical Reinforcement Learning for Skill and Wealth Accumulation in
+2009Scape</p>
+<p class="title-line"><b>Progress Report</b></p>
+<div class="gap"></div>
+<p>Caleb Griffin</p>
+<p>School of Computing, Wichita State University</p>
+<p>CS898BG: Reinforcement Learning</p>
+<p>Dr. Sourabh Bose</p>
+<p>November 23, 2026</p>
+</div>
+
+<h1>Learning to Climb: Hierarchical Reinforcement Learning for Skill and Wealth Accumulation in 2009Scape</h1>
+<p>This report explains the project's original research question, what has been built and run since the proposal,
+the findings so far, and the work that remains. A separate document, the supporting results, holds every table and
+figure behind it.</p>
+
+<h2>Status at a Glance</h2>
+<ul>
+<li><i>Built.</i> A modified 2009Scape server that an agent can drive, and a simulator of the game calibrated
+against it option by option (533 of 548 measured metrics within ±20%).</li>
+<li><i>Run.</i> Every experiment, trained, evaluated and analyzed: four baselines, a sanity check of the learner, and
+50 training runs of 2 million decisions each (five reward weightings, an exploration bonus, two more discount factors,
+reward shaping and a weight-conditioned agent, five seeds each).</li>
+<li><i>Found so far.</i> At the two ends of the skill–wealth weighting, the learned agents beat every baseline, with
+95% confidence intervals (CIs) clear of the best baseline's, from the first checkpoint on. At the mixed weightings,
+plain proximal policy optimization (PPO) does not beat the best baseline on its own reward, but a shorter discount
+horizon does. Of the hypotheses, H1 and H2 are partly supported and H3 is supported.</li>
+<li><i>Left.</i> The final report, the peer review and the demo video. No more training is needed.</li>
+</ul>
+
+<h2>The Original Question</h2>
+<p>Progression in a massively multiplayer online role-playing game such as RuneScape is a long-horizon,
+multi-objective planning problem. Skills unlock income, income buys equipment that speeds up training, and an early
+investment may pay off hours of game time later. The proposal (Griffin, 2026a) set out to train agents that choose
+whole activities in 2009Scape (2009Scape Project, n.d.), a free, open-source recreation of RuneScape as it was in
+2009, and to study how their strategies emerge, shift and differ across reward definitions and algorithms. Its main
+question was “Given a fixed game-time budget, how do learned high-level policies compare with scripted and greedy
+strategies at accumulating skills and wealth, and how do their strategies emerge during training?” (Griffin, 2026a,
+p. 1). It divided the question into five research questions (RQs):</p>
+<blockquote>
+<ul>
+<li>RQ1 (performance). Can a learned policy exceed greedy XP-per-hour, greedy GP-per-hour, and a scripted
+guide-style routine on total level and bank value at fixed game-time checkpoints?</li>
+<li>RQ2 (strategy emergence). In what order does the agent discover activities, and does it learn to invest early
+(for example, training a skill that unlocks better income later)? Does this appear gradually or as a sudden change in
+the learning curve?</li>
+<li>RQ3 (reward design). How does the weighting between skill and wealth rewards shape behavior and the achievable
+trade-off frontier? Can a single preference-conditioned agent match a set of separately trained agents?</li>
+<li>RQ4 (exploration and credit assignment). Do an exploration bonus, the discount factor, and potential-based
+shaping change which strategies are found and how quickly?</li>
+<li>RQ5 (exploratory, time permitting). Do learned low-level options (click-ahead pathing, prayer flicking) improve
+high-level results over scripted versions? (Griffin, 2026a, pp. 1–2)</li>
+</ul>
+</blockquote>
+<p>Here XP is experience points and GP is gold pieces, the game's currency. The proposal expected three outcomes:</p>
+<blockquote><p>(H1) Learned policies will beat greedy baselines mainly by front-loading investments whose payoff is
+delayed. (H2) Different reward weightings will produce visibly different activity mixes rather than the same strategy
+at different speeds. (H3) An exploration bonus will change the order in which activities are discovered. (Griffin,
+2026a, p. 2)</p></blockquote>
+<p>It set its own test of success: the project succeeds “if at least one learned configuration outperforms the
+strongest greedy baseline on a target metric with non-overlapping 95% confidence intervals across seeds, or if I can
+document and analyze why it does not” (Griffin, 2026a, p. 5).</p>
+
+<h2>What Was Built</h2>
+<h3>The Game Server and the Decision Gate</h3>
+<p>I forked the 2009Scape server (AGPLv3) and added a reinforcement learning (RL) bridge to it: a local socket
+interface that spawns a character, reads its full state and drives it through the game's own player-facing paths
+(the bank, shops and the Grand Exchange [GE], the game's player market). The game's rules treat the character as a
+human player.</p>
+<p>The game runs on a clock of ticks, and every action, walking step and timer is counted in them. By default, as in
+the original game, a tick lasts 600 ms, so 100 ticks are one minute of game time and 6,000 ticks are one game-hour;
+at this default, one game-hour takes one hour on the clock. That default is the reference for every speed below:
+“real time” means one tick every 600 ms. The first week's decision gate had three checks:</p>
+<ul>
+<li><i>Speed (passed).</i> The tick length can be set while the server runs. With 100 ambient bots in the world, the
+server asked for 120 ms ticks ran at 123 ms a tick, 4.9 times real time, and asked for 15 ms ticks, it ran at
+17.6 ms, 34 times real time.</li>
+<li><i>State and actions (passed).</i> The bridge reads the character's full state and drives the game's own
+interactions.</li>
+<li><i>The Grand Exchange (answered: static).</i> The market is stocked by bots and its prices never move: a 10-hour
+warm-up changed none of its 7,324 prices. So net worth is valued at a fixed price table: each item's January 2009 GE
+price (Weird Gloop, n.d.), or its high-alchemy value less a nature rune where that is higher.</li>
+</ul>
+<h3>A Calibrated Simulator</h3>
+<p>Training takes millions of decisions, far more than the server can play. So the agents train on an event-level
+simulator of the game. Its skilling, combat and drop formulas are ported from the server's source code, and the
+overheads (walking, banking, trading, clicking) are measured on the server. Every kind of option was then checked
+against the server in the calibration gate: 533 of 548 measured metrics are within ±20%, over 236 cases in 11
+families, and each of the 15 outside is explained (Table S11 in the supporting results). The calibration ran the
+server at 50 ms ticks, 12 times real time. Because the simulator counts ticks, not seconds, the tick length should
+change only how long a run takes on the clock, not what happens in it. A speed check confirmed this by rerunning
+cases at the default 600 ms: for gathering, combat and walking, all 18 of its cases agreed (experience rates within
+8%, and every walk the same to the tick but one), and later checks for Agility, Crafting, Herblore and Runecrafting
+passed as well. The simulator was then frozen for the experiments.</p>
+<h3>The Formulation as Built</h3>
+<p>Table 1 gives the RL formulation as it was built. The agent is a high-level policy over options, in the
+semi-Markov decision process (semi-MDP) sense of Sutton et al. (1999): each choice runs for a variable stretch of game
+time.</p>
+<div class="apa-table">
+<p class="table-number">Table 1</p>
+<p class="table-title">The Reinforcement Learning Formulation as Built</p>
+<table>
+<thead><tr><th style="width: 18%">Component</th><th>As built</th></tr></thead>
+<tbody>
+<tr><td>Agent</td><td>A high-level policy that chooses options; each option's low-level steps are scripted.</td></tr>
+<tr><td>Episode</td><td>A fresh level-3 character with the starter kit, for 20 game-hours (120,000 ticks), with
+checkpoints every 2 game-hours. Quests are out of scope: all 68 are complete from the start, as flags only.</td></tr>
+<tr><td>Actions</td><td>2,294 options: an activity at a site (“chop logs and fletch them,” “pickpocket Master
+Farmers,” “fight cows”), banking, buying in shops, and buying or selling on the GE. An action mask hides the options
+whose requirements are not met (Huang &amp; Ontañón, 2022).</td></tr>
+<tr><td>Observation</td><td>3,488 features: levels and experience, inventory, bank and equipment, location, time
+left, and features of each option.</td></tr>
+<tr><td>Reward</td><td>r = u · Δ(total level) / 323.87 + (1 − u) · Δ(net worth) / 1,763,863 gp. Each objective is in
+units of the best 20-hour gain any baseline made on it (the scripted guide's levels, greedy GP/hr's wealth), so
+(.5, .5) weights them equally. The weighting (u, 1 − u), written (skill, wealth), is the experimental
+variable.</td></tr>
+<tr><td>Discount</td><td>Semi-MDP: a reward τ ticks after the decision is discounted by
+γ<sub>hr</sub><sup>τ / 6,000</sup>, a discount per game-hour, with each decision counted as at least 100 ticks.
+γ<sub>hr</sub> = 0.99 unless an experiment varies it.</td></tr>
+<tr><td>Learner</td><td>Masked PPO (Schulman et al., 2017) from sb3-contrib, the companion library of Stable-Baselines3
+(Raffin et al., 2021), with a semi-MDP rollout buffer: generalized advantage estimation (GAE; Schulman et al., 2016)
+with γ<sup>τ</sup>. GAE λ = 0.95, learning rate 3 × 10<sup>−4</sup> and entropy coefficient 0.01, chosen by the sanity
+check (E2). 2 million decisions a run.</td></tr>
+<tr><td>Evaluation</td><td>Each trained policy (sampling its actions) plays the same 30 seeded episodes as the
+baselines. Each configuration has five training seeds; results are means over the seeds with bootstrap 95%
+CIs.</td></tr>
+</tbody>
+</table>
+<p class="table-note"><i>Note.</i> The four baselines are random play, greedy XP per hour, greedy GP per hour and a
+scripted guide that follows the RuneScape Wiki's January 2009 training guides.</p>
+</div>
+
+<h2>Changes From the Proposal</h2>
+<p>The proposal expected the plan to evolve. Table 2 lists the changes, each with its reason; the project's decision
+log has every one with its options and date.</p>
+<div class="apa-table">
+<p class="table-number">Table 2</p>
+<p class="table-title">Changes From the Proposal and Their Reasons</p>
+<table>
+<thead><tr><th style="width: 27%">The proposal</th><th style="width: 33%">Now</th><th>Reason</th></tr></thead>
+<tbody>
+<tr><td>Baselines and the best checkpoints replayed on the real server (E1, E6)</td><td>Everything runs in the
+simulator; the server checks it option by option (the calibration gate)</td><td>Building the bridge and calibrating
+the simulator took until November 9. On that date I cut the scope so that every research question could still be
+answered by the deadline.</td></tr>
+<tr><td>A preference-conditioned agent by Envelope Q-learning (Yang et al., 2019; E4)</td><td>A weight-conditioned
+PPO: the weighting is drawn each episode and given in the observation (now E5)</td><td>The same scope decision: it
+reuses the masked PPO trainer, where Envelope Q-learning's implementation would have needed patching for action
+masks.</td></tr>
+<tr><td>Ablations: discount, shaping and option duration (E5)</td><td>The discount sweep and potential-based reward
+shaping (now E6a and E6b); option duration cut</td><td>No research question asks about option duration.</td></tr>
+<tr><td>A stretch goal: DreamerV3 (Hafner et al., 2025), a planner built on a large language model (Wang et al.,
+2023), or learned micro-options (E7)</td><td>Cut. RQ5 is answered by an upper bound on what learned micro-options
+could add</td><td>Time; RQ5 was “time permitting.”</td></tr>
+<tr><td>Quests in the game</td><td>Out of scope: every quest is complete from the start, as flags only</td><td>To
+simplify the experiment (decided November 6).</td></tr>
+<tr><td>(none)</td><td>A PPO sanity check (now E2): a toy task with a known optimum, PPO against random play, and a
+small hyperparameter sweep</td><td>To make sure the learner works before the main sweep. It also showed that with raw
+weights a level outweighs 100,000 gp, so the weights are now in normalized units (Table 1).</td></tr>
+<tr><td>(none)</td><td>On November 15 the trainer stopped bootstrapping the value at the 20-hour limit and counted
+each decision as at least 100 ticks; all 50 runs were trained again</td><td>The first runs' critics did not
+converge, and some runs collapsed into loops of near-instant options. The limit is a true end (the observation has
+the time left), so it should not be bootstrapped.</td></tr>
+</tbody>
+</table>
+<p class="table-note"><i>Note.</i> The experiments are now numbered E1 baselines, E2 the sanity check, E3 the
+reward-weight sweep, E4 PPO with random network distillation (RND), E5 the weight-conditioned PPO, E6a the discount
+sweep and E6b potential-based reward shaping (PBRS; Table S1 in the supporting results).</p>
+</div>
+
+<h2>Progress Against the Plan</h2>
+<p>Table 3 sets the proposal's week-by-week schedule beside what happened.</p>
+<div class="apa-table">
+<p class="table-number">Table 3</p>
+<p class="table-title">The Proposal's Schedule Against What Happened</p>
+<table>
+<thead><tr><th style="width: 15%">Proposal's week</th><th style="width: 27%">Planned</th><th>What happened</th></tr>
+</thead>
+<tbody>
+<tr><td>1 (Oct 5–11)</td><td>Server setup; the decision gate</td><td>Done: the server is forked and the bridge
+built; the gate passed.</td></tr>
+<tr><td>2 (Oct 12–18)</td><td>Calibration; simulator v0; the RL environment; baselines</td><td>Done, but the
+simulator grew. The environment's specification was signed off on October 28, calibration on the server ran from
+October 31, and four more skills (Crafting, Agility, Herblore, Runecrafting) were built and calibrated by
+November 9.</td></tr>
+<tr><td>3 (Oct 19–25)</td><td>Masked PPO; start the weight sweep</td><td>Masked PPO with the semi-MDP rollout buffer
+was built November 8. The sanity check (E2) passed November 9–10, and the baselines (E1) were rerun on the frozen
+simulator by November 11.</td></tr>
+<tr><td>4–5 (Oct 26–Nov 8)</td><td>RND and the ablations; the preference-conditioned agent</td><td>Built November 10
+(RND, PBRS and the weight-conditioned PPO) and trained with the rest, below.</td></tr>
+<tr><td>6 (Nov 9–15)</td><td>Real-server validation</td><td>Replaced by the calibration gate's comparison (its table
+was built November 12). The first round of E3 to E6b's 50 runs finished November 15; with the trainer's fix (Table
+2), all 50 trained again from November 16.</td></tr>
+<tr><td>7 (Nov 16–22)</td><td>A stretch experiment; behavior analysis and replays</td><td>The stretch is cut. All 50
+runs finished and were evaluated on November 19 and published November 20. The analysis figures, the claims table
+and H1 to H3's verdicts were done November 21–22. The replay pages (an early, a middle and a final checkpoint) were
+built November 10.</td></tr>
+<tr><td>8 (Nov 23–30)</td><td>Final analysis, write-up and demonstration</td><td>In progress: this report; the
+reviewer's guide is drafted; the video script is written and the recording is to do.</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>Findings So Far</h2>
+<p>Every number below is the mean over five training seeds, each evaluated on the same 30 seeded 20-hour episodes,
+with a bootstrap 95% CI in brackets. The supporting results have every table in full.</p>
+
+<h3>RQ1: Beating the Baselines at the Ends of the Weighting, Not Yet in the Middle</h3>
+<p>The all-skill agents reach a total level of 382, 95% CI [363, 393], above the scripted guide's 351 [344, 357],
+the best baseline on level (Table 4). The all-wealth agents reach 3.74M gp [3.16M, 4.06M], about twice greedy GP/hr's
+1.76M [1.67M, 1.85M]. In both cases the 95% CIs do not overlap the baseline's, which is the proposal's test of
+success. Both lead from the first checkpoint (Figure 1): at hour 2, 121 levels against at most 106 for a baseline,
+and 247k gp against at most 108k.</p>
+<p>On the reward each agent was trained for, its weighted value, the ends win as well: (1, 0) scores 1.09 against
+the guide's 1.00 (four of five seeds above it), and (0, 1) 2.12 against greedy GP/hr's 1.00 (five of five). At the
+three mixed weightings, though, the best baseline scores higher on average: (.75, .25) scores 0.75 against the
+guide's 0.77, (.5, .5) 0.53 against greedy GP/hr's 0.57, and (.25, .75) 0.45 against 0.79. At (.5, .5), a shorter
+discount horizon beats the baseline in every seed (RQ4).</p>
+<div class="apa-table keep">
+<p class="table-number">Table 4</p>
+<p class="table-title">Total Level and Net Worth at Hour 20</p>
+<table>
+<thead><tr><th>Policy</th><th>Total level [95% CI]</th><th>Net worth, gp [95% CI]</th></tr></thead>
+<tbody>
+<tr><td>Scripted guide</td><td class="num">351 [344, 357]</td><td class="num">130k [124k, 136k]</td></tr>
+<tr><td>Greedy XP/hr</td><td class="num">157 [157, 157]</td><td class="num">1k [1k, 1k]</td></tr>
+<tr><td>Greedy GP/hr</td><td class="num">79 [69, 89]</td><td class="num">1.76M [1.67M, 1.85M]</td></tr>
+<tr><td>Random</td><td class="num">214 [206, 223]</td><td class="num">17k [12k, 22k]</td></tr>
+<tr><td>E3 (1, 0): all skill</td><td class="num"><b>382 [363, 393]</b></td><td class="num">11k [7k, 15k]</td></tr>
+<tr><td>E3 (.75, .25)</td><td class="num">350 [311, 387]</td><td class="num">75k [42k, 106k]</td></tr>
+<tr><td>E3 (.5, .5)</td><td class="num">263 [247, 281]</td><td class="num">588k [210k, 966k]</td></tr>
+<tr><td>E3 (.25, .75)</td><td class="num">168 [157, 185]</td><td class="num">819k [743k, 896k]</td></tr>
+<tr><td>E3 (0, 1): all wealth</td><td class="num">41 [38, 44]</td><td class="num"><b>3.74M [3.16M,
+4.06M]</b></td></tr>
+</tbody>
+</table>
+<p class="table-note"><i>Note.</i> A baseline's mean is over its 30 episodes; an agent's is over its five training
+seeds, each the mean of the same 30 episodes. Weightings are (skill, wealth). Bold marks the best policy on each
+measure; its CI does not overlap the best baseline's.</p>
+</div>
+<figure>
+<p class="figure-number">Figure 1</p>
+<p class="figure-title">Total Level and Net Worth at Each 2-Hour Checkpoint</p>
+<img src="../../results/figures/progress.png" alt="Total level and net worth over the 20 hours">
+<p class="figure-note"><i>Note.</i> E1's four baselines (grey) and E3's agents at five weightings (skill, wealth),
+with 95% CI bands.</p>
+</figure>
+
+<h3>RQ2: Discovery Order, and Gradual or Sudden Learning</h3>
+<p>An activity counts as discovered in a training run when it first takes at least 5% of the game time in a block
+of 100,000 decisions. At (.5, .5), woodcutting, agility and melee are discovered in the first block, fishing by
+400,000–500,000 decisions and thieving by 500,000–600,000 in all five runs, and banking by 0.8M–1.4M in four
+(Figure 2, which also shows the exploration bonus's runs, for H3). Learning is gradual at the skill end (all five runs
+at (1, 0), four of five at (.75, .25)) and sudden at the wealth end (all five at (0, 1)); at (.5, .5), one run is
+gradual, two are sudden and two show no gain. Whether the agents invest early is H1, below.</p>
+<figure class="narrow">
+<p class="figure-number">Figure 2</p>
+<p class="figure-title">When Each Activity Is Discovered at (.5, .5)</p>
+<img src="../../results/figures/discovery.png" alt="When each activity is discovered">
+<p class="figure-note"><i>Note.</i> Plain PPO (light) and PPO + RND (dark): one dot per run, at the first
+100,000-decision block of training in which the activity takes at least 5% of the game time; the right column counts
+the runs that discover it.</p>
+</figure>
+
+<h3>RQ3: The Weighting, the Trade-Off Frontier, and One Agent Against Five</h3>
+<p>From all skill to all wealth, the mean level at hour 20 falls from 382 to 41, and net worth rises from 11k to
+3.74M gp. The activity mix moves with the weighting (Figure 3). At (1, 0) it is spread over melee, woodcutting,
+fishing and crafting (15–22% of game time each). At (.25, .75) it is woodcutting (97%), and at (0, 1) it is buying
+uncut gems in a shop and selling them on the GE (93%). Woodcutting here counts every woodcutting option, and the
+agents do choose what happens to the logs: each option either keeps the logs, burns them where they are cut
+(Firemaking experience) or cuts them into arrow shafts or bows with a knife (Fletching experience). At (1, 0),
+woodcutting takes about a fifth of the game time: the agents burn about two thirds of what they chop and fletch the
+rest (14% and 8% of the game time), and almost never keep the logs. At (.25, .75), they mostly chop normal logs and
+cut them into arrow shafts (92% of the game time), which stack in one inventory slot and are valued at 5 gp each; for
+another 4% they chop yew logs and keep them. Arrow shafts are 94% of these agents' net worth at hour 20, and yew logs
+5%. These shares come from replaying the evaluation episodes: all 150 at (.25, .75), and those of four of the five
+runs at (1, 0).</p>
+<figure class="mix">
+<p class="figure-number">Figure 3</p>
+<p class="figure-title">Each Policy's Activity Mix in Evaluation</p>
+<img src="../../results/figures/mix.png" alt="Each policy's activity mix">
+<p class="figure-note"><i>Note.</i> Each bar is the share of the 20 game-hours a policy spends on each activity: the
+baselines, E3's five weightings, RQ4's variants and E5's agent at five weightings. Woodcutting includes chopping that
+burns or fletches the logs where they are cut.</p>
+</figure>
+<p>One weight-conditioned agent (E5) covers about the same front as five separately trained ones (Figure 4; Roijers
+et al., 2013): a hypervolume of 0.394 [0.360, 0.456] against 0.373 [0.278, 0.484], for a fifth of the training
+(2.0M decisions and 8.4 hours a front, against 10.0M and 38.1). It falls short at the ends: told “all skill,” it
+reaches level 359, against the specialists' 382, and told “all wealth,” 862k gp, against 3.74M.</p>
+<figure class="half">
+<p class="figure-number">Figure 4</p>
+<p class="figure-title">The Skill–Wealth Trade-Off at Hour 20</p>
+<img src="../../results/figures/pareto.png" alt="The skill–wealth trade-off">
+<p class="figure-note"><i>Note.</i> Skill gain in units of the scripted guide's and wealth gain in units of greedy
+GP/hr's: E3's five agents (blue) and E5's one weight-conditioned agent (orange), with each method's front and
+hypervolume.</p>
+</figure>
+
+<h3>RQ4: The Exploration Bonus, the Discount and Shaping at (.5, .5)</h3>
+<p>RQ4 compares three changes with plain PPO at (.5, .5): RND's exploration bonus (Burda et al., 2019; E4), shorter
+discount horizons (E6a) and PBRS (Ng et al., 1999; E6b). All three change what is found and how fast (Figure 5 and
+Table 5). The exploration bonus ends lower on both objectives, and none of its learning curves gains. A shorter
+horizon learns faster and moves toward wealth: every run at γ<sub>hr</sub> = 0.9 and 0.5 reaches the best baseline's
+value in training, and both beat it in every seed in evaluation; two of the seeds at γ<sub>hr</sub> = 0.5 find the
+gem trade (about 4M gp each). Potential-based shaping ends lower too, and none of its curves gains; its fifth seed's
+evaluation episodes stop at the evaluator's cap of 100,000 decisions before hour 20, so it has four seeds at
+hour 20.</p>
+<figure>
+<p class="figure-number">Figure 5</p>
+<p class="figure-title">Learning Curves at (.5, .5)</p>
+<img src="../../results/figures/learning_rq4.png" alt="RQ4's learning curves">
+<p class="figure-note"><i>Note.</i> Episode reward (E1's ideal point = 1) over training, the mean of five runs with a
+95% CI band, against E3's plain PPO (γ<sub>hr</sub> = 0.99). The grey line is the best baseline, greedy GP/hr.</p>
+</figure>
+<div class="apa-table">
+<p class="table-number">Table 5</p>
+<p class="table-title">The Exploration Bonus, the Discount and Shaping at (.5, .5), at Hour 20</p>
+<table>
+<thead><tr><th>Variant</th><th>Total level</th><th>Net worth, gp</th><th>Weighted value</th>
+<th>Reaches 0.57 in training</th></tr></thead>
+<tbody>
+<tr><td>Plain PPO (E3, γ<sub>hr</sub> = 0.99)</td><td class="num">263 [247, 281]</td><td class="num">588k [210k,
+966k]</td><td class="num">0.53 [0.39, 0.66]</td><td>3 of 5 runs, by 0.70M–1.06M decisions</td></tr>
+<tr><td>PPO + RND (E4)</td><td class="num">226 [220, 232]</td><td class="num">135k [91k, 179k]</td>
+<td class="num">0.34 [0.33, 0.35]</td><td>None</td></tr>
+<tr><td>γ<sub>hr</sub> = 0.9 (E6a)</td><td class="num">330 [312, 357]</td><td class="num">1.14M [0.67M, 1.54M]</td>
+<td class="num">0.79 [0.69, 0.89]</td><td>5 of 5, by 0.44M–0.74M</td></tr>
+<tr><td>γ<sub>hr</sub> = 0.5 (E6a)</td><td class="num">247 [154, 341]</td><td class="num">2.21M [0.93M, 3.50M]</td>
+<td class="num">0.96 [0.74, 1.18]</td><td>5 of 5, by 0.26M–0.38M</td></tr>
+<tr><td>PBRS (E6b), 4 seeds</td><td class="num">194 [125, 247]</td><td class="num">142k [104k, 183k]</td>
+<td class="num">0.24 [0.11, 0.35]</td><td>None</td></tr>
+</tbody>
+</table>
+<p class="table-note"><i>Note.</i> Means with 95% CIs in brackets. The weighted value is the reward the agents were
+trained for, over the 20 hours; 0.57 is greedy GP/hr's, the best baseline's at (.5, .5). The last column gives the
+runs whose learning curve reaches it, and by how many training decisions.</p>
+</div>
+
+<h3>RQ5: Learned Low-Level Options, Bounded</h3>
+<p>RQ5 was “time permitting” and is answered by a bound, not an experiment. A perfect learned click-ahead could save
+at most the scripted walker's overhead beyond the shortest walk: 2.6% [1.4%, 4.0%] of the game time at (.5, .5),
+and 10.5% at most, for (0, 1), whose agents spend 96% of their game time walking. The scripted prayer flick never
+drains prayer and gets the prayer's full effect, so a learned flick cannot beat it.</p>
+
+<h3>The Hypotheses</h3>
+<p><span class="l4">H1, Investing Early: Partly Supported.</span> The demonstration's (.5, .5) run invests, in one
+episode: it pickpockets its Thieving up to 38, the level Master Farmers need, by hour 7.9 while worth 38k gp, then
+passes a million gp by hour 20. But that is not how the agents win where they win. At both ends they lead from the
+first checkpoint, and the lead grows; the all-wealth agents gain 6 levels in 20 hours, and their win is the gem trade
+from the start.</p>
+<p><span class="l4">H2, Different Mixes Rather Than One Strategy at Different Speeds: Partly Supported.</span> On the
+wealth side the weighting changes the strategy; on the skill side it is one strategy (Figure 3). (1, 0) and
+(.75, .25) have nearly the same mix, and the Jensen–Shannon divergence between their seeds' mixes (0.138 bits) is
+less than between (.75, .25)'s own seeds (0.194). (.25, .75) and (0, 1) each have their own mix, which their seeds
+agree on (0.020 and 0.015 bits), 0.51–0.95 bits from every other weighting.</p>
+<p><span class="l4">H3, the Bonus Changes the Discovery Order: Supported.</span> RND changes which activities are
+discovered, and when (Figure 2). “Discovered” has RQ2's meaning: an activity first takes at least 5% of the game time
+in a 100,000-decision block of training. So an activity a run does only rarely is never discovered, though it
+happens. All five RND runs discover buying and selling, by 100,000–500,000 decisions; plain PPO discovers buying in
+none of its five runs and selling in one. Plain PPO still banks, buys and sells, but too little to count: in
+evaluation it spends 21% of its game time banking (partly in the banking loops described under Problems and
+Limitations), 1.4% buying and 0.1% selling. It does not need to sell to grow its net worth, because net worth counts
+coins and every item held, in the inventory, the bank or worn, at its price. In one evaluation episode of each of its
+five runs, its wealth at hour 20 is mostly what it has banked: in two runs, seeds pickpocketed from Master Farmers (a
+snapdragon seed is valued at 37,500 gp and a ranarr seed at 22,700 gp), and in the other three, arrow shafts fletched
+from logs are the largest part. RND, by contrast, spends 18% of its game time buying and 18% selling, and it never
+discovers fishing or banking, which plain PPO discovers in five and four of its five runs. The change does not pay
+(RQ4).</p>
+
+<h2>Problems and Limitations</h2>
+<ul>
+<li><i>Some runs end training in a loop.</i> At γ<sub>hr</sub> = 0.99, 10 of 40 runs end training repeating
+near-instant options that earn nothing (changing which loot to pick up, or banking and withdrawing), thousands of
+times an episode: eight of E3's 25 (four of five at (.5, .5)) and two of E6b's five. None of the 10 runs at
+γ<sub>hr</sub> = 0.5 or 0.9 loops. The cause is untested; the final report will discuss it as a limitation.</li>
+<li><i>The mixed weightings are sensitive to the trainer.</i> Before the November 15 fix, E3's first round found the
+gem trade in five of its 15 mixed-weight runs; the rerun found it in none. At (.25, .75), the first round ended at
+3.36M gp and level 123, against the rerun's 0.82M and 168. Why is untested.</li>
+<li><i>Everything is in the simulator.</i> It is checked against the server option by option, not by replaying whole
+episodes there.</li>
+<li><i>Five training seeds</i> leave wide intervals where the seeds disagree, such as at (.5, .5).</li>
+<li><i>Scope.</i> Quests are out, and the low-level actions are scripted, not learned (RQ5 is a bound).</li>
+</ul>
+
+<h2>Remaining Work</h2>
+<ul>
+<li>Write the final report from these results. The repository's reviewer's guide already maps each claim to its
+evidence, figures and code.</li>
+<li>The peer review, on a tagged copy of the repository with the reviewer's guide.</li>
+<li>Revisions, and the demonstration video (its script is written; the replay pages show an early, a middle and a
+final checkpoint of one agent beside the scripted guide).</li>
+</ul>
+
+<h2>Supporting Documents</h2>
+<ul>
+<li><i>The original proposal</i> (Griffin, 2026a): the research questions, formulation and plan this report measures
+against.</li>
+<li><i>The supporting results:</i> every table and figure behind this report, in full (Tables S1–S12 and Figures
+S1–S9).</li>
+<li><i>The repository</i> (Griffin, 2026b), which is public: the code, the simulator, each experiment's configuration
+and committed results (<code>results/summary/</code>), the reviewer's guide (<code>README.md</code>), the plan and its
+status (<code>ROADMAP.md</code>), every decision with its date (<code>docs/decision-log.md</code>) and the
+environment's specification (<code>docs/env-contract.md</code>).</li>
+</ul>
+<p><span class="l4">How the Work Was Done.</span> I set the research questions and made every design, scope and
+methodology decision. The code was written with an AI coding assistant (Claude Code), which I reviewed and ran, and
+every interaction with it is logged in the repository (<code>docs/agent-interactions/</code>).</p>
+
+<div class="references">
+<h2>References</h2>
+<p>Burda, Y., Edwards, H., Storkey, A., &amp; Klimov, O. (2019). Exploration by random network distillation. In
+<i>International Conference on Learning Representations</i>. https://arxiv.org/abs/1810.12894</p>
+<p>Griffin, C. (2026a). <i>Learning to climb: Hierarchical reinforcement learning for skill and wealth accumulation
+in 2009Scape</i> [Unpublished project proposal, CS898BG Reinforcement Learning]. School of Computing, Wichita State
+University.</p>
+<p>Griffin, C. (2026b). <i>ReinforcementScaping</i> [Computer software]. GitHub.
+https://github.com/CGriffin81/ReinforcementScaping</p>
+<p>Hafner, D., Pasukonis, J., Ba, J., &amp; Lillicrap, T. (2025). Mastering diverse control tasks through world
+models. <i>Nature</i>.</p>
+<p>Huang, S., &amp; Ontañón, S. (2022). A closer look at invalid action masking in policy gradient algorithms.
+<i>The International FLAIRS Conference Proceedings</i>, <i>35</i>. https://arxiv.org/abs/2006.14171</p>
+<p>Ng, A. Y., Harada, D., &amp; Russell, S. (1999). Policy invariance under reward transformations: Theory and
+application to reward shaping. In <i>Proceedings of the Sixteenth International Conference on Machine Learning</i>
+(pp. 278–287). Morgan Kaufmann.</p>
+<p>Raffin, A., Hill, A., Gleave, A., Kanervisto, A., Ernestus, M., &amp; Dormann, N. (2021). Stable-Baselines3:
+Reliable reinforcement learning implementations. <i>Journal of Machine Learning Research</i>, <i>22</i>(268),
+1–8.</p>
+<p>Roijers, D. M., Vamplew, P., Whiteson, S., &amp; Dazeley, R. (2013). A survey of multi-objective sequential
+decision-making. <i>Journal of Artificial Intelligence Research</i>, <i>48</i>, 67–113.</p>
+<p>Schulman, J., Moritz, P., Levine, S., Jordan, M., &amp; Abbeel, P. (2016). High-dimensional continuous control
+using generalized advantage estimation. In <i>International Conference on Learning Representations</i>.
+https://arxiv.org/abs/1506.02438</p>
+<p>Schulman, J., Wolski, F., Dhariwal, P., Radford, A., &amp; Klimov, O. (2017). <i>Proximal policy optimization
+algorithms</i> (arXiv:1707.06347). arXiv. https://arxiv.org/abs/1707.06347</p>
+<p>Sutton, R. S., Precup, D., &amp; Singh, S. (1999). Between MDPs and semi-MDPs: A framework for temporal
+abstraction in reinforcement learning. <i>Artificial Intelligence</i>, <i>112</i>(1–2), 181–211.</p>
+<p>2009Scape Project. (n.d.). <i>2009Scape</i> [Computer software]. GitLab. https://gitlab.com/2009scape/2009scape</p>
+<p>Wang, G., Xie, Y., Jiang, Y., Mandlekar, A., Xiao, C., Zhu, Y., Fan, L., &amp; Anandkumar, A. (2023).
+<i>Voyager: An open-ended embodied agent with large language models</i> (arXiv:2305.16291). arXiv.
+https://arxiv.org/abs/2305.16291</p>
+<p>Weird Gloop. (n.d.). <i>RuneScape Wiki Grand Exchange price history</i> [Data set]. Retrieved October 5, 2026,
+from https://api.weirdgloop.org/exchange/history/rs/sample</p>
+<p>Yang, R., Sun, X., &amp; Narasimhan, K. (2019). A generalized algorithm for multi-objective reinforcement learning
+and policy adaptation. In <i>Advances in Neural Information Processing Systems</i> (Vol. 32).
+https://arxiv.org/abs/1908.08342</p>
+</div>
+
+</body>
+</html>
