@@ -9,8 +9,13 @@ A draft for Caleb to read over a recording of the replay page, written 2026-11-2
 - **The numbers** are measured: each is an hour-20 mean from the published evaluation summaries (2026-11-19). A
   configuration's number is the mean over its 5 training seeds, each evaluated on the same 30 episodes. The demo's
   numbers are one episode, seed 0, the same one the evaluation scored.
-- **[TO FILL]** marks what waits on the report's analysis: the verdicts on H1 to H3, the hypervolume comparison, and
-  the figures' names. Nothing here claims a verdict.
+- **[TO FILL]** marks what waits on the report's analysis: the verdicts on H1 to H3 and the hypervolume comparison.
+  Nothing here claims a verdict.
+- **The slides and figures to show** (2026-11-22, `m002-video-slides`):
+  - The title card and the formulation slide are a Slides deck, "Learning to Climb video slides"
+    (https://claude.ai/artifact/2A3RY6Kavdyhy1LpaWrSnA, private to Caleb). Present it full screen, or download it as
+    a PDF from its Share menu.
+  - The figures: `uv run python scripts/figures.py` writes each as a PNG and a PDF to `results/figures/` (git-ignored).
 - **The loop counts** (section 7, filled 2026-11-22) are the final census's (decision log, 2026-11-20), by OQ-90
   (a)'s rule: runs whose last 100k-decision block averages over 1,000 decisions an episode, the first round against
   the rerun. At γ_hr 0.5 and 0.9 that's 4 of 10 against none; at 0.99, 6 of 40 against 10 (8 of the rerun's 10 in
@@ -80,8 +85,8 @@ how to become as skilled and as rich as it can.
 
 ## 2. The question (0:22 to 1:01)
 
-**[SCREEN]** Title card: *Learning to Climb: Hierarchical RL for Skill and Wealth Accumulation in 2009Scape*, Caleb
-Griffin, CS898BG.
+**[SCREEN]** Title card (the slides' slide 1): *Learning to Climb: Hierarchical RL for Skill and Wealth Accumulation
+in 2009Scape*, Caleb Griffin, CS898BG.
 
 I'm Caleb Griffin, and this is my project for CS898BG, Learning to Climb. RuneScape is a good test bed for long-term
 planning. There are twenty-four skills, combat, and a player-run market. And the best moves often pay off late: you
@@ -91,7 +96,8 @@ the balance between two goals, skill and wealth, change what it learns?
 
 ## 3. The formulation (1:01 to 2:42)
 
-**[SCREEN]** A slide: state, then an option, then τ game ticks later, the reward and the next state.
+**[SCREEN]** The formulation (the slides' slide 2): state, then an option, then τ game ticks later, the reward and the
+next state.
 
 I set this up as a semi-Markov decision process. The agent doesn't click or press keys. Each action is an *option*:
 a whole activity, like "chop logs and fletch them", "pickpocket Master Farmers", "fight cows", "bank", or "sell an
@@ -162,7 +168,7 @@ it had rebalanced toward skill, which is what a half-and-half weight asks for.
 
 ## 6. The results (5:47 to 8:09)
 
-**[SCREEN]** The progress figure **[TO FILL: its name in `results/figures/`]**, with the baselines.
+**[SCREEN]** The progress figure (`progress`), with the baselines.
 
 Here is the full evaluation. Each trained agent plays the same thirty episodes, and I compare it with four baselines:
 random choice, a greedy agent that maximises XP per hour, a greedy agent that maximises coins per hour, and the

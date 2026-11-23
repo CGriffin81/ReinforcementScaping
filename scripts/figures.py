@@ -73,7 +73,7 @@ COLORS = {"E3 (1, 0)": fg.BLUE, "E3 (.75, .25)": fg.ORANGE, "E3 (.5, .5)": fg.AQ
           "PBRS": fg.BLUE, "weight-conditioned": fg.ORANGE}
 METHODS = {"E3: an agent per weighting": fg.BLUE, "E5: one weight-conditioned agent": fg.ORANGE}
 RQ4 = (("E4: an exploration bonus", ("PPO + RND",)),
-       ("E6a: the discount per game-hour (E3 (.5, .5) is γ_hr 0.99)", ("γ_hr 0.9", "γ_hr 0.5")),
+       ("E6a: γ_hr (E3 at 0.99)", ("γ_hr 0.9", "γ_hr 0.5")),  # short: a longer title runs into E6b's
        ("E6b: potential-based shaping", ("PBRS",)))
 
 
