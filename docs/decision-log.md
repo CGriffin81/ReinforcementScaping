@@ -8548,3 +8548,21 @@ in the repo).
 - **Where it shows:** the progress report's RQ3 and H3 paragraphs; the reviewer's guide's RQ3 row and the video
   script's section 6, which had said "woodcutting alone" and "almost all woodcutting" (Caleb,
   `m002-woodcutting-wording`).
+
+### Done: Windows Update back on (Caleb, 2026-11-23)
+Closes "Windows Update paused until the last test is done" (2026-11-12). Caleb asked to turn it back on (17:17:53
+CST). Read-only checks found no pause left: `HKLM\SOFTWARE\Microsoft\WindowsUpdate\UpdatePolicy\Settings` has
+`PausedQualityStatus` and `PausedFeatureStatus` at 0, no `Pause*` values under `UX\Settings`, no update policy, and
+the update services running. Caleb confirmed in Settings that updates are on (17:21:07 CST), and the ROADMAP's
+*After the last test* step is ticked (`m002-windows-update-on`). Nothing was changed from the session.
+
+### Decided: the woodcutting replays stop where they are (Caleb, 2026-11-23)
+Caleb, 17:44:58 CST: "You can terminate these checks. If the figures move for the final report, we'll note that as
+a change due to additional analysis. I want to be able to submit this report as soon as possible." (The two
+(.75, .25) replays still running had been stopped at 17:41:00, at his request; nothing cites them.)
+- **Where the replays stopped:** 16 of the 20 runs finished. (1, 0): four of five (seed 3, a looping run, stopped);
+  (.75, .25): three (seeds 0 and 3 stopped); (.25, .75): all five; (.5, .5): four (seed 2 stopped).
+- **What stands:** the progress report's and the reviewer's guide's figures, which already name their basis: (1, 0)
+  over four of five runs, (.25, .75) over all 150 episodes, H3's holdings from one episode a run.
+- **For the final report:** if a fuller replay moves a figure, the report notes it as a change from additional
+  analysis.

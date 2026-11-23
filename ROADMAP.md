@@ -355,8 +355,8 @@ runs, seed 0 of every experiment first: about 110 hours, so done around Nov 16 t
 
 *Restarted after a Windows Update restart (2026-11-12):* the machine restarted at 02:29 and killed E3's four seed-0
 runs, which started again from the start at 04:41 (about 6 hours lost, so the queue ends around midday Nov 16).
-Windows Update is paused until the last test is done (Caleb). The restarted (0, 1) run repeated the killed one's
-1.0M decisions byte for byte.
+Windows Update was paused until the last test was done (Caleb; back on 2026-11-23). The restarted (0, 1) run
+repeated the killed one's 1.0M decisions byte for byte.
 
 *On sim v1.3 from the evening of 2026-11-12 (Caleb, `m002-death-budget`):* E3's (.5, .5) seed 1 hung from 18:54 on a
 sim v1.2 stop, a Draynor fisher's kill after its option's budget. Sim v1.3 ends such an option at the budget and
@@ -449,9 +449,10 @@ in the decision log (`m002-final-census`).
 early, a middle and a final checkpoint: `scripts/replay.py`, built 2026-11-10, OQ-70). The report is due Mon Nov 30.*
 
 *After the last test* (Caleb, 2026-11-12):
-- [ ] **Turn Windows Update back on** (Settings → Windows Update → Resume updates) once every run, evaluation and
+- [x] **Turn Windows Update back on** (Settings → Windows Update → Resume updates) once every run, evaluation and
   test is done. It's paused from Nov 12 so that a forced restart can't kill a run: one at 02:29 on Nov 12 killed the
-  queue and cost about 6 hours.
+  queue and cost about 6 hours. *Done 2026-11-23 (Caleb): the Settings page shows updates on; Windows had already
+  stopped recording any pause.*
 
 **If time runs short:** depth gives way, not a research question (from Caleb's answer):
 - fewer γ_hr values or weightings, or shorter runs;
