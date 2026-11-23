@@ -15,6 +15,11 @@ with its plotted values as <name>.csv (its table view), and the measures' tables
 - `milestones.csv` and `milestones_summary.csv`: each evaluation episode's hours to 50% and 100% of E1's ideal point
   on each objective, and per series the share that got there and the median (OQ-83);
 - `consistency.csv`: per trained series, the mean pairwise Jensen–Shannon divergence of its seeds' mixes (OQ-85);
+- `mix_divergence.csv`: per pair of E3's weightings, the same divergence between a seed of each, over every such pair,
+  to read beside `consistency.csv` (H2);
+- `weighted_value_per_seed.csv` and `weighted_value.csv`: each agent trained at one weighting (E3, E4, E6a, E6b), its
+  20-hour value on the reward's scale against E1's best baseline at that weighting, and per series the mean with a 95%
+  CI over the training seeds and how many seeds are above it (RQ1, H1);
 - `rq5_walking.csv` and `rq5_walking_summary.csv`: RQ5's click-ahead bound (OQ-87 (a)), each evaluation episode's
   shares of game time on foot, in the walker's overhead and on transports, and per series their mean and CI;
 - `sim_to_real_families.csv` (the report's body), `sim_to_real_cases.csv` (its appendix) and `sim_to_real_drops.csv`:
@@ -133,11 +138,17 @@ def trained_series(experiment: str, policies: pd.Series) -> pd.Series:
     return policies.map(one)
 
 
+def baseline_values(e1: pd.DataFrame, u: tuple[float, float], among: tuple[str, ...] = tuple(BASELINES)
+                    ) -> pd.Series:
+    """E1's baselines `among` these at weighting u: each one's mean value on the learning curves' scale."""
+    g = ms.gains(e1[e1["policy"].isin(among)])
+    return (u[0] * g["skill"] + u[1] * g["wealth"]).groupby(g["policy"]).mean()
+
+
 def best_baseline(e1: pd.DataFrame, u: tuple[float, float], among: tuple[str, ...] = tuple(BASELINES)
                   ) -> tuple[str, float]:
     """E1's best baseline `among` these at weighting u, by its mean value on the learning curves' scale."""
-    g = ms.gains(e1[e1["policy"].isin(among)])
-    values = (u[0] * g["skill"] + u[1] * g["wealth"]).groupby(g["policy"]).mean()
+    values = baseline_values(e1, u, among)
     best = values.idxmax()
     return f"best of E1: {BASELINES.get(best, best)}", float(values[best])
 
@@ -218,6 +229,49 @@ def training_cost(data: Summaries) -> tuple[pd.DataFrame, pd.DataFrame] | None:
         "mean", "ci_low", "ci_high"))
     totals = per_front.groupby("method", sort=False)[["runs", "decisions", "wall_hours"]].sum()
     return per_front, cost.join(totals).reset_index()
+
+
+FIXED = (E3, E4, E6A, E6B)  # the experiments whose agents train at one weighting; E5's are on the `pareto` figure
+
+
+def weighted_values(data: Summaries) -> tuple[pd.DataFrame, pd.DataFrame] | None:
+    """Each agent trained at one weighting against E1's best baseline at that weighting (RQ1, H1; Caleb,
+    2026-11-22), on the reward's scale: u × skill + (1 − u) × wealth, each a 20-hour gain in OQ-67's units. A row per
+    trained policy, with its evaluation episodes' mean gains and value; then per series its value's mean over the
+    training seeds with a 95% CI, the best baseline and its value, and how many seeds are above it. None without E1's
+    evaluation or any of `FIXED`'s."""
+    e1 = data.evaluation(E1, "episodes.csv")
+    if e1 is None:
+        return None
+    frames = []
+    for experiment in FIXED:
+        episodes = data.evaluation(experiment, "episodes.csv")
+        if episodes is None:
+            continue
+        g = ms.gains(episodes)
+        g = g[g["train_seed"].notna()].assign(series=trained_series(experiment, g["policy"]))
+        frames.append(g)
+    if not frames:
+        return None
+    g = pd.concat(frames, ignore_index=True)
+    weights = {s: series_weighting(s) for s in g["series"].unique()}
+    g["value"] = [weights[s][0] * k + weights[s][1] * w for s, k, w in zip(g["series"], g["skill"], g["wealth"])]
+    per_seed = g.groupby(["series", "train_seed", "policy"], as_index=False).agg(
+        episodes=("seed", "size"), skill=("skill", "mean"), wealth=("wealth", "mean"), value=("value", "mean"))
+    order = [*[series_name(E3, v) for v in WEIGHTINGS], *[s for _, series in RQ4 for s in series]]
+    per_seed = per_seed.assign(train_seed=per_seed["train_seed"].astype(int)).sort_values(
+        ["series", "train_seed"], key=lambda c: c.map(order.index) if c.name == "series" else c)
+    rows = []
+    for series, group in per_seed.groupby("series", sort=False):
+        u = weights[series]
+        values = baseline_values(e1, u)
+        best = values.idxmax()
+        stats = ms.over_seeds(group, ["series"], "value").iloc[0]
+        rows.append({"series": series, "u_skill": u[0], "u_wealth": u[1], "seeds": len(group),
+                     "value": stats["mean"], "value_low": stats["ci_low"], "value_high": stats["ci_high"],
+                     "best_baseline": BASELINES.get(best, best), "best_baseline_value": float(values[best]),
+                     "seeds_above": int((group["value"] > values[best]).sum())})
+    return per_seed.reset_index(drop=True), pd.DataFrame(rows)
 
 
 def build(summary: Path, out: Path, curve_bin: int = ms.CURVE_BIN) -> list[str]:
@@ -306,6 +360,12 @@ def build(summary: Path, out: Path, curve_bin: int = ms.CURVE_BIN) -> list[str]:
         trained = per_policy[per_policy["train_seed"].notna()]
         if len(trained):  # OQ-85
             save_table(ms.consistency(trained).rename(columns={"variant": "series"}), out / "consistency.csv")
+            e3_series = [series_name(E3, v) for v in WEIGHTINGS]  # H2: between E3's weightings, beside it
+            e3_mixes = trained[trained["variant"].isin(e3_series)]
+            if len(e3_mixes):
+                between = ms.divergence_between(e3_mixes, order=e3_series)
+                save_table(between.rename(columns={"variant_a": "series_a", "variant_b": "series_b"}),
+                           out / "mix_divergence.csv")
     mix = per_policy.groupby(["variant", "activity"], as_index=False)["share"].mean() if mixes else None
     overall = pd.concat([t.groupby("activity")["share"].mean() for t in (shares, mix) if t is not None], axis=1) \
         if shares is not None or mix is not None else None
@@ -417,6 +477,15 @@ def build(summary: Path, out: Path, curve_bin: int = ms.CURVE_BIN) -> list[str]:
         print("made     training_cost tables")
     else:
         skipped.append("training_cost tables (needs E3's and E5's training summaries)")
+
+    # --- RQ1 and H1: each agent trained at one weighting against E1's best baseline there ---
+    values = weighted_values(data)
+    if values is not None:
+        save_table(values[0], out / "weighted_value_per_seed.csv")
+        save_table(values[1], out / "weighted_value.csv")
+        print("made     weighted_value tables")
+    else:
+        skipped.append("weighted_value tables (needs E1's evaluation summary and E3's, E4's, E6a's or E6b's)")
 
     # --- OQ-92 (b): E3's first round beside the rerun at the mixed weightings, for the discussion ---
     rounds = [gem_store_round(data, experiment, label) for label, experiment in (("first round", E3_FIRST),

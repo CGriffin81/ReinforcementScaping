@@ -213,6 +213,20 @@ def test_consistency_is_the_mean_divergence_over_a_variants_seed_pairs_of_their_
     assert table.iloc[0]["js_bits"] == pytest.approx(np.mean(pairs))
 
 
+def test_the_divergence_between_two_variants_is_the_mean_over_every_pair_of_a_seed_of_each():
+    mixes = {("a", 0): {"melee": 1.0}, ("a", 1): {"melee": 0.5, "mining": 0.5}, ("b", 0): {"mining": 1.0},
+             ("c", 0): {"melee": 1.0}}
+    rows = [{"variant": v, "train_seed": k, "seed": s, "activity": a, "share": share}
+            for (v, k), mix in mixes.items() for s in (0, 1) for a, share in mix.items()]
+    table = ms.divergence_between(pd.DataFrame(rows), order=["c", "a", "b", "absent"])
+    assert table[["variant_a", "variant_b", "pairs"]].values.tolist() == [["c", "a", 2], ["c", "b", 1],
+                                                                        ["a", "b", 2]]
+    a_b = [ms.js_divergence([1, 0], [0, 1]), ms.js_divergence([0.5, 0.5], [0, 1])]
+    c_a = [0.0, ms.js_divergence([1, 0], [0.5, 0.5])]
+    assert table["js_bits"].tolist() == pytest.approx([np.mean(c_a), 1.0, np.mean(a_b)])
+    assert ms.divergence_between(pd.DataFrame(rows))["variant_a"].tolist() == ["a", "a", "b"]  # sorted without order
+
+
 def test_the_level_milestones_are_the_guides_whole_level_gain_in_e1():
     checkpoints = pd.read_csv(REPO / "results" / "summary" / "e1-baselines" / "checkpoints.csv")
     guide = checkpoints[checkpoints.policy == "scripted_guide"].pivot(index="seed", columns="hour",
@@ -320,6 +334,36 @@ def test_the_training_cost_is_per_training_seed_what_one_front_costs(tmp_path):
     assert figures.training_cost(figures.Summaries(tmp_path)) is None
 
 
+def test_each_agent_at_one_weighting_is_scored_against_e1s_best_baseline_at_that_weighting(tmp_path):
+    # the guide gains one skill unit, greedy GP/hr one wealth unit and a tenth of a skill unit; E3's all-skill seeds
+    # score 1.2 and 0.9 against the guide's 1, its all-wealth seed 0.5 against greedy GP/hr's 1, and E4's (.5, .5)
+    # seed 0.75 against greedy GP/hr's 0.55 (the guide's is 0.5)
+    figures = _script()
+
+    def episodes(rows: list[tuple[str, float, float]]) -> pd.DataFrame:
+        return pd.DataFrame([{"policy": p, "seed": s, "r_skill": k * SKILL_UNIT, "r_wealth": w * WEALTH_UNIT}
+                             for p, k, w in rows for s in (0, 1)])
+
+    e1 = episodes([("scripted_guide", 1.0, 0.0), ("greedy_wealth", 0.1, 1.0), ("random", 0.1, 0.1)])
+    e3 = episodes([("normalised_weights1-0/seed1", 0.9, 0.0), ("normalised_weights1-0/seed0", 1.2, 0.3),
+                   ("normalised_weights0-1/seed0", 0.0, 0.5), ("scripted_guide", 1.0, 0.0)])
+    e4 = episodes([("rnd/seed0", 0.5, 1.0)])
+    for experiment, table in ((figures.E1, e1), (figures.E3, e3), (figures.E4, e4)):
+        (tmp_path / experiment).mkdir()
+        table.to_csv(tmp_path / experiment / "episodes.csv", index=False)
+    per_seed, summary = figures.weighted_values(figures.Summaries(tmp_path))
+    assert per_seed[["series", "train_seed", "episodes"]].values.tolist() == [
+        ["E3 (1, 0)", 0, 2], ["E3 (1, 0)", 1, 2], ["E3 (0, 1)", 0, 2], ["PPO + RND", 0, 2]]
+    assert per_seed["value"].tolist() == pytest.approx([1.2, 0.9, 0.5, 0.75])
+    assert summary[["series", "u_skill", "seeds", "best_baseline", "seeds_above"]].values.tolist() == [
+        ["E3 (1, 0)", 1.0, 2, "guide", 1], ["E3 (0, 1)", 0.0, 1, "greedy GP/hr", 0],
+        ["PPO + RND", 0.5, 1, "greedy GP/hr", 1]]
+    assert summary["value"].tolist() == pytest.approx([1.05, 0.5, 0.75])
+    assert summary["best_baseline_value"].tolist() == pytest.approx([1.0, 1.0, 0.55])
+    shutil.rmtree(tmp_path / figures.E1)  # no table without E1's baselines
+    assert figures.weighted_values(figures.Summaries(tmp_path)) is None
+
+
 @needs_server_data
 def test_the_figure_script_rebuilds_every_figure_its_published_summaries_allow(trained, tmp_path):
     from rlscape.eval.harness import run_tables, save, summarize
@@ -352,6 +396,10 @@ def test_the_figure_script_rebuilds_every_figure_its_published_summaries_allow(t
     assert set(pd.read_csv(out / "milestones_summary.csv")["series"]) == {"random", "E3 (.5, .5)"}
     assert pd.read_csv(out / "consistency.csv")[["series", "seeds", "pairs"]].values.tolist() == [
         ["E3 (.5, .5)", 1, 0]]
+    assert pd.read_csv(out / "mix_divergence.csv").empty  # one weighting: no pair between weightings
+    values = pd.read_csv(out / "weighted_value.csv")
+    assert values[["series", "seeds", "best_baseline"]].values.tolist() == [["E3 (.5, .5)", 1, "greedy GP/hr"]]
+    assert pd.read_csv(out / "weighted_value_per_seed.csv")["episodes"].tolist() == [2]
     # OQ-92 (b): the first round is read only by the Gem Store table, its rows beside the rerun's
     per_seed = pd.read_csv(out / "gem_store_rounds_per_seed.csv")
     assert per_seed[["round", "series", "train_seed", "episodes"]].values.tolist() == [

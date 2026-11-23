@@ -435,7 +435,9 @@ in the decision log (`m002-final-census`).
 
 *Nov 22–25: the draft and the copy to review*
 - [ ] The report answers RQ1 to RQ4 (and RQ5 as a bound, OQ-1 (C′)), with a verdict on each of H1 to H3. Negative results
-  get their supporting analysis.
+  get their supporting analysis. *The verdicts (Caleb, 2026-11-22):* H1 and H2 partly supported, H3 supported.
+  The reviewer's guide's claims table has each one's evidence, and `scripts/figures.py` tables what they rest on
+  (`weighted_value.csv`, `mix_divergence.csv`).
 - [ ] Its wording (Caleb, OQ-71 (a)): a decision is one option chosen, defined once in the method. A run's
   length is "training decisions" with its episodes beside it; an episode's count is "decisions per episode".
 - [ ] The peer review kept simple (Caleb, OQ-50 (a)): the whole repo at a tagged commit, with a two-page `README.md`

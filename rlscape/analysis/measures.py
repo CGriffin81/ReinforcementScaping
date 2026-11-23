@@ -332,6 +332,25 @@ def consistency(shares: pd.DataFrame, n_boot: int = N_BOOT, seed: int = 0) -> pd
     return pd.DataFrame(rows, columns=["variant", "seeds", "pairs", "js_bits", "ci_low", "ci_high"])
 
 
+def divergence_between(shares: pd.DataFrame, order: Sequence[str] | None = None, n_boot: int = N_BOOT,
+                       seed: int = 0) -> pd.DataFrame:
+    """Per pair of variants (H2, Caleb, 2026-11-22): the mean Jensen–Shannon divergence between a training seed's mix
+    of one and a training seed's of the other, over every such pair, with a bootstrap 95% CI over the pairs. It's on
+    `consistency`'s scale, to read beside a variant's divergence within itself: two variants whose mixes differ no
+    more than their own seeds' do have one mix. `shares` is `consistency`'s; the pairs follow `order` (the variants
+    in it that `shares` has), or the variants sorted."""
+    mixes = shares.groupby(["variant", "train_seed", "activity"])["share"].mean().unstack("activity", fill_value=0)
+    present = list(mixes.index.get_level_values("variant").unique())
+    variants = [v for v in order if v in present] if order is not None else sorted(present)
+    rng, rows = np.random.default_rng(seed), []
+    for a, b in combinations(variants, 2):
+        values = [js_divergence(p, q) for _, p in mixes.loc[a].iterrows() for _, q in mixes.loc[b].iterrows()]
+        low, high = bootstrap_ci(values, rng, n_boot)
+        rows.append({"variant_a": a, "variant_b": b, "pairs": len(values), "js_bits": float(np.mean(values)),
+                     "ci_low": low, "ci_high": high})
+    return pd.DataFrame(rows, columns=["variant_a", "variant_b", "pairs", "js_bits", "ci_low", "ci_high"])
+
+
 def milestones(decisions: pd.DataFrame, checkpoints: pd.DataFrame) -> pd.DataFrame:
     """Per (policy, seed, milestone) of an evaluation (OQ-83): the game hours at the end of the first decision after
     which the episode's gain over its fresh character (its hour-0 checkpoint) reaches the milestone's target, inf if

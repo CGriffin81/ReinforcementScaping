@@ -8457,3 +8457,57 @@ rerun's at 0.82M (the finding above).
   on one machine. From the runs' starts and ends (`run.json`'s `finished` less its wall time), every E3 and E5 run had
   on average 3.8 to 4.0 others beside it. The exception is E5's seed 4, with 2.8 at the queue's tail; its 7.3 hours
   is the fastest. So E3's runs and E5's shared one load, but no run's wall time is its speed alone.
+
+### Decided: H1 to H3's verdicts, and two tables behind them (Caleb, 2026-11-22)
+Asked with the reviewer's guide's claims table (`m002-reviewer-claims`), answered in the question dialog (22:26:01
+CST, the tool result's timestamp in the transcript). The evidence is E3's evaluation at hour 20 (E1's 30 seeds, five
+training seeds a variant) and its training summaries.
+- **H1, learned policies win by front-loading investments with delayed payoff.**
+  - **Evidence:**
+    - Where the agents win, they lead from hour 2 on, with no early deficit. The all-skill agents are at level 121
+      then, against the guide's 97, and the all-wealth agents at 247k gp, against greedy GP/hr's 108k.
+    - The all-wealth agents gain 6 levels in 20 hours. 93% of their game time goes on buying uncut gems in shops
+      and selling them on the GE, from their first two hours on.
+    - The demo's (.5, .5) run invests: it trains Thieving to the 38 that Master Farmers need by hour 7.9, then passes
+      a million gp.
+  - **The options:** not supported (recommended); partly supported; supported.
+  - **Caleb: partly supported.**
+- **H2, weightings give different activity mixes, not one strategy at different speeds.**
+  - **Evidence** (the Jensen–Shannon divergence between two weightings' seeds, on `consistency.csv`'s scale):
+    - (1, 0) and (.75, .25) are 0.138 bits apart, less than (.75, .25)'s own seeds (0.194).
+    - (.5, .5) is 0.335 and 0.349 bits from them, about its own seeds' 0.296.
+    - (.25, .75) (woodcutting, 97%) and (0, 1) (the gem trade, 93%) are 0.51–0.95 bits from every other weighting.
+  - **The options:** partly supported (recommended): the wealth side changes strategy, and the skill side is one
+    strategy at different speeds; supported; not supported.
+  - **Caleb: partly supported.**
+- **H3, an exploration bonus changes the order activities are discovered in.**
+  - **Evidence:** against plain PPO at (.5, .5):
+    - Buying and selling are discovered in all five RND runs by 100k–500k decisions. Plain PPO discovers buying in
+      none of its five and selling in one.
+    - RND never discovers fishing or banking, which plain PPO discovers in 5 and 4 of 5.
+    - RND ends lower on both objectives (level 226 and 135k gp, against 263 and 588k).
+  - **The options:** supported (recommended), with the note that the change doesn't pay; partly supported, as the
+    sets differ, not only the order; not supported.
+  - **Caleb: supported.**
+- **Two tables, so that every number behind the verdicts is rebuilt** (Caleb: both, the recommendation; the other
+  options were the weighted values only, or neither). Both are made by `scripts/figures.py`:
+  - **`weighted_value_per_seed.csv` and `weighted_value.csv` (`weighted_values`):** each agent trained at one weighting
+    (E3, E4, E6a, E6b), at its 20-hour value on the reward's scale, against E1's best baseline at that weighting:
+
+    | Series | Value [95% CI] | Best baseline | Its value | Seeds above |
+    |---|---|---|---|---|
+    | E3 (1, 0) | 1.093 [1.034, 1.128] | guide | 1.000 | 4 of 5 |
+    | E3 (.75, .25) | 0.754 [0.664, 0.837] | guide | 0.768 | 2 of 5 |
+    | E3 (.5, .5) | 0.526 [0.394, 0.657] | greedy GP/hr | 0.571 | 2 of 5 |
+    | E3 (.25, .75) | 0.453 [0.417, 0.488] | greedy GP/hr | 0.785 | 0 of 5 |
+    | E3 (0, 1) | 2.118 [1.793, 2.303] | greedy GP/hr | 1.000 | 5 of 5 |
+    | PPO + RND | 0.342 [0.329, 0.352] | greedy GP/hr | 0.571 | 0 of 5 |
+    | γ_hr 0.9 | 0.787 [0.693, 0.890] | greedy GP/hr | 0.571 | 5 of 5 |
+    | γ_hr 0.5 | 0.963 [0.745, 1.181] | greedy GP/hr | 0.571 | 5 of 5 |
+    | PBRS | 0.240 [0.113, 0.350] | greedy GP/hr | 0.571 | 0 of 5 |
+
+    So plain PPO beats the best baseline at the ends and not at the mixed weightings. At (.5, .5), γ_hr 0.9 and 0.5
+    beat it in every seed.
+  - **`mix_divergence.csv` (`rlscape/analysis/measures.py`'s `divergence_between`):** per pair of E3's weightings,
+    the mean divergence between a seed of each over all 25 pairs, with a bootstrap 95% CI. It's read beside
+    `consistency.csv`.
