@@ -3,14 +3,16 @@
 A draft for Caleb to read over a recording of the replay page, written 2026-11-20 (`m002-video-script`).
 
 - **How it reads:** **[SCREEN]** lines say what to show; the paragraphs under them are the narration. It's about
-  1,350 words: about 9¾ minutes at 140 words a minute, and each section's times come from its words. The paragraphs
-  marked *(cut for a short version)* are about 165 words, so without them it's about 8½ minutes. A shorter limit
+  1,525 words: about 11 minutes at 140 words a minute, and each section's times come from its words. The paragraphs
+  marked *(cut for a short version)* are about 175 words, so without them it's about 9¾ minutes. A shorter limit
   needs real cuts (the simulator section and RQ4's list first).
 - **The numbers** are measured: each is an hour-20 mean from the published evaluation summaries (2026-11-19). A
   configuration's number is the mean over its 5 training seeds, each evaluated on the same 30 episodes. The demo's
   numbers are one episode, seed 0, the same one the evaluation scored.
-- **[TO FILL]** marks what waits on the report's analysis: the verdicts on H1 to H3 and the hypervolume comparison.
-  Nothing here claims a verdict.
+- **The verdicts** on H1 to H3 (section 6, filled 2026-11-23) are Caleb's (decision log, 2026-11-22): H1 and H2
+  partly supported, H3 supported, each with the evidence the reviewer's guide gives it. The hypervolumes are
+  `scripts/figures.py`'s `hypervolume.csv`: 0.394 (95% CI 0.360 to 0.456) for E5's one agent, 0.373 (0.278 to 0.484)
+  for E3's five.
 - **The slides and figures to show** (2026-11-22, `m002-video-slides`):
   - The title card and the formulation slide are a Slides deck, "Learning to Climb video slides"
     (https://claude.ai/artifact/2A3RY6Kavdyhy1LpaWrSnA, private to Caleb). Present it full screen, or download it as
@@ -166,7 +168,7 @@ some skill for eight times the wealth.
 In the middle of training it had the same plan but chased wealth harder: 1.5 million coins, but level 223. By the end
 it had rebalanced toward skill, which is what a half-and-half weight asks for.
 
-## 6. The results (5:47 to 8:09)
+## 6. The results (5:47 to 9:23)
 
 **[SCREEN]** The progress figure (`progress`), with the baselines.
 
@@ -180,30 +182,41 @@ wealth agent makes 1.76 million coins, but reaches only level 79.
 The main experiment trains five weightings, from all skill to all wealth, five seeds each. As the weight moves toward
 wealth, the average total level falls from 382 to 41, and net worth rises from about 11 thousand to 3.7 million
 coins. At the ends, the all-skill agents average level 382, above the guide in four of five seeds. The all-wealth
-agents average 3.7 million coins, about twice the greedy wealth agent, and all five seeds beat it.
-**[TO FILL: H1's verdict, whether they win by investing early, as the Master Farmer agent did.]**
-**[TO FILL: H2's verdict, whether the weightings choose different activities or the same ones at different speeds.]**
+agents average 3.7 million coins, about twice the greedy wealth agent, and all five seeds beat it. In between, they
+don't: at the three mixed weightings, the best baseline scores higher, on average, on the very reward the agents were
+trained for.
 
-*(cut for a short version)* **[SCREEN]** The same figure with E5's points.
+My first hypothesis, that the agents win by investing early as the demo's agent did, is only partly supported. Where
+they win, at the ends, they're ahead from hour two, and the all-wealth agents win by trading uncut gems from the start.
+
+**[SCREEN]** The activity-mix figure (`mix`).
+
+The second, that each weighting finds its own mix of activities, is partly supported too. Toward wealth, yes: a
+quarter skill is almost all woodcutting, and all wealth is buying uncut gems in a shop and selling them on the Grand
+Exchange. But all skill and three-quarters skill share one mix.
+
+*(cut for a short version)* **[SCREEN]** The trade-off figure (`pareto`) again, with E5's points.
 
 Next, I trained one agent that is told the weight at the start of each episode, instead of five specialists. Told
 "all skill", it averages level 359, against the specialists' 382. Told "all wealth", it averages 862 thousand coins,
-against 3.7 million. **[TO FILL: the hypervolume comparison, and whether one agent matches five.]**
+against 3.7 million. But over the whole trade-off it about matches them: a hypervolume of 0.39 against 0.37, with
+wide, overlapping intervals, for a fifth of the training.
 
 **[SCREEN]** The learning curves for RQ4 (`learning_rq4`).
 
 Last, what changes which strategies are found? I tried three changes at the half-and-half weight. Plain PPO there
 averages level 263 and 588 thousand coins, but four of its five seeds end training in a loop. The agent in the demo
 is the one that doesn't.
-- An exploration bonus, random network distillation, ended lower on both: level 226 and 135 thousand coins.
-  **[TO FILL: H3's verdict, the order activities are discovered in.]**
+- An exploration bonus, random network distillation, did change what's discovered, which supports my third
+  hypothesis: all its seeds took up buying and selling, and none fishing or banking, unlike plain PPO. But it ended
+  lower on both: level 226 and 135 thousand coins.
 - A shorter discount horizon pushed the agents toward wealth. At γ 0.5 per game-hour, they average 2.2 million
   coins. At 0.9, they average level 330 and 1.1 million coins, above 0.99's 263 and 588 thousand.
 - Potential-based shaping ended at level 194 and 142 thousand coins, over four of its five seeds. The fifth seed
   loops so much that its evaluation episodes hit the evaluator's limit of 100,000 decisions before hour twenty. Which
   brings me to what went wrong.
 
-## 7. What went wrong, and the limits (8:09 to 9:15)
+## 7. What went wrong, and the limits (9:23 to 10:29)
 
 **[SCREEN]** A looping run's learning curve: its decisions per episode jumping.
 
@@ -218,7 +231,7 @@ in the main experiment. Why is untested.
 the server itself. Quests are out of scope. And the low-level actions, like walking and clicking, are scripted, not
 learned: I could only bound what learning them might add.
 
-## 8. Close (9:15 to 9:40)
+## 8. Close (10:29 to 10:53)
 
 **[SCREEN]** The repository's README.
 
